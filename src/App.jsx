@@ -1789,9 +1789,7 @@ function LoginView({
           <button
             className="text-indigo-600 hover:underline"
             onClick={goRegister}
-          >
-            Create account
-          </button>
+          >{t("createAccount")}</button>
         )}
         <button className="text-indigo-600 hover:underline" onClick={goSecret}>{t("forgotUsernamePassword")}</button>
       </div>
@@ -1861,9 +1859,7 @@ function RegisterView({ dark, onToggleDark, onRegister, goLogin }) {
         <button
           type="submit"
           className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-        >
-          Create Account
-        </button>
+        >{t("createAccount")}</button>
       </form>
       <div className="mt-4 text-sm text-center">
         Already have an account?{" "}
@@ -3224,7 +3220,7 @@ function NotesUI({
                     setComposerCollapsed(false);
                     setTimeout(() => titleRef.current?.focus(), 10);
                   }}
-                  placeholder="Write a note..."
+                  placeholder={t("writeNote")}
                   className="w-full bg-transparent placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none p-2"
                 />
               ) : (
@@ -3234,7 +3230,7 @@ function NotesUI({
                     ref={titleRef}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Title"
+                    placeholder={t("noteTitle")}
                     disabled={!isOnline}
                     className={`w-full bg-transparent text-lg font-semibold placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none mb-2 p-2 ${
                       !isOnline ? "opacity-50 cursor-not-allowed" : ""
@@ -3248,7 +3244,7 @@ function NotesUI({
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       onKeyDown={onComposerKeyDown}
-                      placeholder="Write a note..."
+                      placeholder={t("writeNote")}
                       disabled={!isOnline}
                       className={`w-full bg-transparent placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none resize-none p-2 ${
                         !isOnline ? "opacity-50 cursor-not-allowed" : ""
@@ -3342,7 +3338,7 @@ function NotesUI({
                       value={tags}
                       onChange={(e) => setTags(e.target.value)}
                       type="text"
-                      placeholder="Add tags (comma-separated)"
+                      placeholder={t("addTagsCommaSeparated")}
                       disabled={!isOnline}
                       className={`w-full sm:flex-1 bg-transparent text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none p-2 ${
                         !isOnline ? "opacity-50 cursor-not-allowed" : ""
@@ -3360,8 +3356,7 @@ function NotesUI({
                             className="px-2 py-1 rounded-lg border border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10 flex items-center gap-2 text-sm"
                             title="Formatting"
                           >
-                            <FormatIcon /> Formatting
-                          </button>
+                            <FormatIcon />{t("formatting")}</button>
                           <Popover
                             anchorRef={composerFmtBtnRef}
                             open={showComposerFmt}
@@ -3511,9 +3506,7 @@ function NotesUI({
                             ? "bg-indigo-600 text-white hover:bg-indigo-700"
                             : "bg-gray-400 text-gray-200 cursor-not-allowed"
                         }`}
-                      >
-                        Add Note
-                      </button>
+                      >{t("addNote")}</button>
                     </div>
                   </div>
                 </>
@@ -6703,7 +6696,7 @@ export default function App() {
                   onChange={(e) => {
                     if (isOnline) setMTitle(e.target.value);
                   }}
-                  placeholder="Title"
+                  placeholder={t("noteTitle")}
                   disabled={!isOnline}
                 />
                 <div className="flex items-center gap-2 flex-none ml-auto">
@@ -7780,9 +7773,7 @@ export default function App() {
                 }}
               >
                 {loadingUsers ? (
-                  <div className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
-                    Searching...
-                  </div>
+                  <div className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{t("searching")}</div>
                 ) : (
                   filteredUsers.map((user) => (
                     <div
