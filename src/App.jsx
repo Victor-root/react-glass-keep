@@ -7376,16 +7376,14 @@ export default function App() {
 
               {/* Inline Edited stamp: only when scrollable (appears at very end) */}
               {editedStamp && modalScrollable && (
-                <div className="mt-6 text-xs text-gray-600 dark:text-gray-300 text-right">
-                  Edited: {editedStamp}
+                <div className="mt-6 text-xs text-gray-600 dark:text-gray-300 text-right">{t("editedPrefix")} {editedStamp}
                 </div>
               )}
             </div>
 
             {/* Absolute Edited stamp: only when NOT scrollable (sits just above footer) */}
             {editedStamp && !modalScrollable && (
-              <div className="absolute bottom-3 right-4 text-xs text-gray-600 dark:text-gray-300 pointer-events-none">
-                Edited: {editedStamp}
+              <div className="absolute bottom-3 right-4 text-xs text-gray-600 dark:text-gray-300 pointer-events-none">{t("editedPrefix")} {editedStamp}
               </div>
             )}
           </div>
