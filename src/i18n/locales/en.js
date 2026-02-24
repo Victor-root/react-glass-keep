@@ -212,4 +212,5 @@ loginFailed: "Login failed",
   unpin: "Unpin",
   pinNote: "Pin note",
   unpinNote: "Unpin note",
+  addTag: "Add tag",
 };

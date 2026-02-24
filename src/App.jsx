@@ -7361,7 +7361,7 @@ export default function App() {
                   onKeyDown={handleTagKeyDown}
                   onBlur={handleTagBlur}
                   onPaste={handleTagPaste}
-                  placeholder={mTagList.length ? "Add tag" : t("addTags")}
+                  placeholder={mTagList.length ? t("addTag") : t("addTags")}
                   className="bg-transparent text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none min-w-[8ch] flex-1"
                 />
               )}

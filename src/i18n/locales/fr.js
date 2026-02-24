@@ -212,4 +212,5 @@ loginFailed: "Échec de la connexion",
   unpin: "Désépingler",
   pinNote: "Épingler la note",
   unpinNote: "Désépingler la note",
+  addTag: "Ajouter un tag",
 };
