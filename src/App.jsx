@@ -12,6 +12,43 @@ import { marked as markedParser } from "marked";
 import DrawingCanvas from "./DrawingCanvas";
 import { t } from "./i18n";
 
+function trColorName(name) {
+  const v = String(name || "").trim().toLowerCase();
+  const map = {
+    "default": "colorDefault",
+    "red": "colorRed",
+    "orange": "colorOrange",
+    "yellow": "colorYellow",
+    "green": "colorGreen",
+    "teal": "colorTeal",
+    "cyan": "colorCyan",
+    "blue": "colorBlue",
+    "dark blue": "colorDarkBlue",
+    "darkblue": "colorDarkBlue",
+    "indigo": "colorIndigo",
+    "purple": "colorPurple",
+    "deep purple": "colorDeepPurple",
+    "deeppurple": "colorDeepPurple",
+    "pink": "colorPink",
+    "brown": "colorBrown",
+    "gray": "colorGray",
+    "grey": "colorGray",
+    "light gray": "colorLightGray",
+    "light grey": "colorLightGray",
+    "dark gray": "colorDarkGray",
+    "dark grey": "colorDarkGray",
+    "black": "colorBlack",
+    "white": "colorWhite",
+    "peach": "colorPeach",
+    "sage": "colorSage",
+    "mint": "colorMint",
+    "sky": "colorSky",
+    "sand": "colorSand",
+  };
+  return map[v] ? t(map[v]) : name;
+}
+
+
 // Ensure we can call marked.parse(...)
 const marked =
   typeof markedParser === "function" ? { parse: markedParser } : markedParser;
@@ -743,9 +780,9 @@ function formatEditedStamp(iso) {
     minute: "2-digit",
   });
 
-  if (sameYMD(d, now)) return `Today, ${timeStr}`;
+  if (sameYMD(d, now)) return `${t("todayLabel")}, ${timeStr}`;
   const yest = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  if (sameYMD(d, yest)) return `Yesterday, ${timeStr}`;
+  if (sameYMD(d, yest)) return `${t("yesterdayLabel")}, ${timeStr}`;
 
   const month = d.toLocaleString([], { month: "short" });
   const day = d.getDate();
@@ -1030,7 +1067,8 @@ const ColorDot = ({ name, selected, onClick, darkMode }) => (
   <button
     type="button"
     onClick={onClick}
-    title={name}
+    title={trColorName(name)}
+    aria-label={trColorName(name)}
     className={`w-6 h-6 rounded-full border-2 border-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${name === "default" ? "flex items-center justify-center" : ""} ${selected ? "ring-2 ring-indigo-500" : ""}`}
     style={{
       backgroundColor:
@@ -1228,12 +1266,8 @@ function FormatToolbar({ dark, onAction }) {
         <button className={base} onClick={() => onAction("quote")}>
           &gt;
         </button>
-        <button className={base} onClick={() => onAction("ul")}>
-          • list
-        </button>
-        <button className={base} onClick={() => onAction("ol")}>
-          1. list
-        </button>
+        <button className={base} onClick={() => onAction("ul")}>{t("bulletListLabel")}</button>
+        <button className={base} onClick={() => onAction("ol")}>{t("orderedListLabel")}</button>
         <button className={base} onClick={() => onAction("link")}>
           🔗
         </button>
@@ -1614,14 +1648,14 @@ function NoteCard({
             style={{ backgroundColor: bgFor(n.color, dark) }}
           />
           <button
-            aria-label={n.pinned ? "Unpin note" : "Pin note"}
+            aria-label={n.pinned ? t("unpinNote") : t("pinNote")}
             onClick={(e) => {
               if (disablePin) return;
               e.stopPropagation();
               togglePin(n.id, !n.pinned);
             }}
             className="relative rounded-full p-2 opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            title={n.pinned ? "Unpin" : "Pin"}
+            title={n.pinned ? t("unpin") : t("pin")}
             disabled={!!disablePin}
           >
             {n.pinned ? <PinFilled /> : <PinOutline />}
@@ -2110,7 +2144,7 @@ function SettingsPanel({
         <div className="p-4 overflow-y-auto h-[calc(100%-64px)]">
           {/* Data Management Section */}
           <div className="mb-8">
-            <h4 className="text-md font-semibold mb-4">Data Management</h4>
+            <h4 className="text-md font-semibold mb-4">{t("dataManagement")}</h4>
             <div className="space-y-3">
               <button
                 className={`block w-full text-left px-4 py-3 border border-[var(--border-light)] rounded-lg ${dark ? "hover:bg-white/10" : "hover:bg-gray-50"} transition-colors`}
@@ -2119,7 +2153,7 @@ function SettingsPanel({
                   onExportAll?.();
                 }}
               >
-                <div className="font-medium">Export ALL notes (.json)</div>
+                <div className="font-medium">{t("exportAllNotesJson")}</div>
                 <div className="text-sm text-gray-500">{t("downloadAllNotesJson")}</div>
               </button>
 
@@ -2152,10 +2186,8 @@ function SettingsPanel({
                   onImportMd?.();
                 }}
               >
-                <div className="font-medium">Import Markdown files (.md)</div>
-                <div className="text-sm text-gray-500">
-                  Import notes from Markdown files
-                </div>
+                <div className="font-medium">{t("importMarkdownFilesMd")}</div>
+                <div className="text-sm text-gray-500">{t("importNotesFromMarkdownFiles")}</div>
               </button>
 
               <button
@@ -2338,7 +2370,7 @@ function AdminPanel({
       setEditUserModalOpen(false);
       setEditingUser(null);
     } catch (e) {
-      showToast(e.message || "Failed to update user", "error");
+      showToast(e.message || t("failedUpdateUser"), "error");
     } finally {
       setIsUpdatingUser(false);
     }
@@ -2474,24 +2506,21 @@ function AdminPanel({
                   }
                   className="mr-2"
                 />
-                <label htmlFor="is_admin" className="text-sm">
-                  Make admin
-                </label>
+                <label htmlFor="is_admin" className="text-sm">{t("makeAdmin")}</label>
               </div>
               <button
                 type="submit"
                 disabled={isCreatingUser}
                 className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
               >
-                {isCreatingUser ? "Creating..." : "Create User"}
+                {isCreatingUser ? "Creating..." : t("createUser")}
               </button>
             </form>
           </div>
 
           {/* Users List Section */}
           <div>
-            <h4 className="text-md font-semibold mb-4">
-              All Users ({allUsers.length})
+            <h4 className="text-md font-semibold mb-4">{t("allUsers")} ({allUsers.length})
             </h4>
             <div className="space-y-3">
               {allUsers.map((user) => (
@@ -2606,9 +2635,7 @@ function AdminPanel({
                   }
                   className="mr-2"
                 />
-                <label htmlFor="edit_is_admin" className="text-sm">
-                  Make admin
-                </label>
+                <label htmlFor="edit_is_admin" className="text-sm">{t("makeAdmin")}</label>
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button
@@ -2621,7 +2648,7 @@ function AdminPanel({
                   disabled={isUpdatingUser}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {isUpdatingUser ? "Updating..." : "Update User"}
+                  {isUpdatingUser ? "Updating..." : t("updateUser")}
                 </button>
               </div>
             </form>
@@ -2827,9 +2854,7 @@ function NotesUI({
                 className="px-3 py-1.5 rounded-lg border border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10 text-sm flex items-center gap-1"
                 onClick={() => onBulkPin(true)}
               >
-                <PinIcon />
-                Pin
-              </button>
+                <PinIcon />{t("pin")}</button>
             )}
             <button
               className="px-3 py-1.5 rounded-lg border border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10 text-sm flex items-center gap-1"
@@ -2940,7 +2965,7 @@ function NotesUI({
           <span
             className={`text-sm hidden sm:inline ${dark ? "text-gray-100" : "text-gray-900"}`}
           >
-            {currentUser?.name ? `Hi, ${currentUser.name}` : currentUser?.email}
+            {currentUser?.name ? `${t("hiPrefix")} ${currentUser.name}` : currentUser?.email}
           </span>
 
           {/* Header 3-dot menu */}
@@ -2984,7 +3009,7 @@ function NotesUI({
                   }}
                 >
                   {listView ? <GridIcon /> : <ListIcon />}
-                  {listView ? "Grid View" : "List View"}
+                  {listView ? t("gridView") : t("listView")}
                 </button>
                 {/* Theme toggle text item */}
                 <button
@@ -2995,7 +3020,7 @@ function NotesUI({
                   }}
                 >
                   {dark ? <SunIcon /> : <MoonIcon />}
-                  {dark ? "Light Mode" : "Dark Mode"}
+                  {dark ? t("lightMode") : t("darkMode")}
                 </button>
                 <button
                   className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
@@ -3004,9 +3029,7 @@ function NotesUI({
                     onStartMulti?.();
                   }}
                 >
-                  <CheckSquareIcon />
-                  Multi select
-                </button>
+                  <CheckSquareIcon />{t("multiSelect")}</button>
                 {currentUser?.is_admin && (
                   <button
                     className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
@@ -5131,7 +5154,7 @@ export default function App() {
       setNewUserForm({ name: "", email: "", password: "", is_admin: false });
       return newUser;
     } catch (e) {
-      alert(e.message || "Failed to create user");
+      alert(e.message || t("failedCreateUser"));
       throw e;
     }
   };
@@ -5223,7 +5246,7 @@ export default function App() {
           ? parsed
           : [];
       if (!notesArr.length) {
-        alert("No notes found in file.");
+        alert(t("noNotesFoundInFile"));
         return;
       }
       await api("/notes/import", {
@@ -5293,7 +5316,7 @@ export default function App() {
         } catch (e) {}
       }
       if (!notesArr.length) {
-        alert("No valid Google Keep notes found.");
+        alert(t("noValidGoogleKeepNotesFound"));
         return;
       }
       await api("/notes/import", {
@@ -5356,7 +5379,7 @@ export default function App() {
       }
 
       if (!notesArr.length) {
-        alert("No valid markdown files found.");
+        alert(t("noValidMarkdownFilesFound"));
         return;
       }
 
@@ -6093,7 +6116,7 @@ export default function App() {
       );
       closeModal();
     } catch (e) {
-      alert(e.message || "Failed to save note");
+      alert(e.message || t("failedSaveNote"));
     } finally {
       setSavingModal(false);
     }
@@ -6113,7 +6136,7 @@ export default function App() {
 
       setNotes((prev) => prev.filter((n) => String(n.id) !== String(activeId)));
       closeModal();
-      showToast("Note deleted successfully", "success");
+      showToast(t("noteDeletedSuccessfully"), "success");
     } catch (e) {
       if (e.status === 404 || e.message?.includes("not found")) {
         showToast("You can't delete this note as you don't own it", "error");
@@ -6524,7 +6547,7 @@ export default function App() {
         if (wrapper.querySelector(".code-copy-btn")) return;
         const btn = document.createElement("button");
         btn.className = "code-copy-btn";
-        btn.textContent = "Copy";
+        btn.textContent = t("copy");
         btn.setAttribute("data-copy-btn", "1");
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
@@ -6532,7 +6555,7 @@ export default function App() {
           const text = codeEl ? codeEl.textContent : pre.textContent;
           navigator.clipboard?.writeText(text || "");
           btn.textContent = "Copied";
-          setTimeout(() => (btn.textContent = "Copy"), 1200);
+          setTimeout(() => (btn.textContent = t("copy")), 1200);
         });
         wrapper.appendChild(btn);
       });
@@ -6548,13 +6571,13 @@ export default function App() {
           return;
         const btn = document.createElement("button");
         btn.className = "inline-code-copy-btn";
-        btn.textContent = "Copy";
+        btn.textContent = t("copy");
         btn.setAttribute("data-copy-btn", "1");
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
           navigator.clipboard?.writeText(code.textContent || "");
           btn.textContent = "Copied";
-          setTimeout(() => (btn.textContent = "Copy"), 1200);
+          setTimeout(() => (btn.textContent = t("copy")), 1200);
         });
         code.insertAdjacentElement("afterend", btn);
       });
@@ -6662,10 +6685,10 @@ export default function App() {
                         setShowModalFmt(false);
                       }}
                       title={
-                        viewMode ? "Switch to Edit mode" : "Switch to View mode"
+                        viewMode ? t("switchToEditMode") : t("switchToViewMode")
                       }
                     >
-                      {viewMode ? t("editMode") : "View mode"}
+                      {viewMode ? t("editMode") : t("viewMode")}
                     </button>
                   )}
 
