@@ -2238,7 +2238,7 @@ function SettingsPanel({
                     } else {
                       // Disable without confirmation
                       setLocalAiEnabled(false);
-                      showToast("AI Assistant disabled", "info");
+                      showToast(t("aiAssistantDisabled"), "info");
                     }
                   }}
                 >
@@ -2319,14 +2319,14 @@ function AdminPanel({
   const handleCreateUser = async (e) => {
     e.preventDefault();
     if (!newUserForm.name || !newUserForm.email || !newUserForm.password) {
-      showToast("Please fill in all required fields", "error");
+      showToast(t("pleaseFillRequiredFields"), "error");
       return;
     }
 
     setIsCreatingUser(true);
     try {
       await createUser(newUserForm);
-      showToast("User created successfully!", "success");
+      showToast(t("userCreatedSuccessfullyBang"), "success");
     } catch (e) {
       // Error already handled in createUser function
     } finally {
@@ -2348,7 +2348,7 @@ function AdminPanel({
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     if (!editUserForm.name || !editUserForm.email) {
-      showToast("Name and email are required", "error");
+      showToast(t("nameAndEmailRequired"), "error");
       return;
     }
 
@@ -2365,7 +2365,7 @@ function AdminPanel({
       }
 
       await updateUser(editingUser.id, updateData);
-      showToast("User updated successfully!", "success");
+      showToast(t("userUpdatedSuccessfullyBang"), "success");
       setEditUserModalOpen(false);
       setEditingUser(null);
     } catch (e) {
@@ -3609,7 +3609,7 @@ function AdminView({ dark }) {
       if (!res.ok) throw new Error(data?.error || "Failed to load users");
       setUsers(Array.isArray(data) ? data : []);
     } catch (e) {
-      alert(e.message || "Failed to load admin data");
+      alert(e.message || t("failedLoadAdminData"));
       setUsers([]);
     } finally {
       setLoading(false);
@@ -3626,7 +3626,7 @@ function AdminView({ dark }) {
       if (!res.ok) throw new Error(data?.error || "Delete failed");
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (e) {
-      alert(e.message || "Delete failed");
+      alert(e.message || t("deleteFailed"));
     }
   }
 
@@ -4029,7 +4029,7 @@ export default function App() {
           );
           onExitMulti();
         } catch (e) {
-          alert(e.message || "Bulk delete failed");
+          alert(e.message || t("bulkDeleteFailed"));
         }
       },
     });
@@ -4192,7 +4192,7 @@ export default function App() {
       const ts = new Date().toISOString().replace(/[:.]/g, "-");
       triggerBlobDownload(`glass-keep-selected-${ts}.zip`, blob);
     } catch (e) {
-      alert(e.message || "ZIP download failed");
+      alert(e.message || t("zipDownloadFailed"));
     }
   };
 
@@ -5060,7 +5060,7 @@ export default function App() {
       setComposerCollapsed(true);
       if (contentRef.current) contentRef.current.style.height = "auto";
     } catch (e) {
-      alert(e.message || "Failed to add note");
+      alert(e.message || t("failedAddNote"));
     }
   };
 
@@ -5101,7 +5101,7 @@ export default function App() {
         closeModal();
       }
     } catch (e) {
-      alert(e.message || "Failed to archive note");
+      alert(e.message || t("failedArchiveNote"));
     }
   };
 
@@ -5126,7 +5126,7 @@ export default function App() {
       });
       setAdminSettings(settings);
     } catch (e) {
-      alert(e.message || "Failed to update admin settings");
+      alert(e.message || t("failedUpdateAdminSettings"));
     }
   };
 
@@ -5162,7 +5162,7 @@ export default function App() {
       await api(`/admin/users/${userId}`, { method: "DELETE", token });
       setAllUsers((prev) => prev.filter((u) => u.id !== userId));
     } catch (e) {
-      alert(e.message || "Failed to delete user");
+      alert(e.message || t("failedDeleteUser"));
     }
   };
 
@@ -5228,7 +5228,7 @@ export default function App() {
         ) + ".json";
       triggerJSONDownload(fname, json);
     } catch (e) {
-      alert(e.message || "Export failed");
+      alert(e.message || t("exportFailed"));
     }
   };
 
@@ -5253,9 +5253,9 @@ export default function App() {
         body: { notes: notesArr },
       });
       await loadNotes();
-      alert(`Imported ${notesArr.length} note(s) successfully.`);
+      alert(t("importedNotesSuccessfully").replace("{count}", String(notesArr.length)));
     } catch (e) {
-      alert(e.message || "Import failed");
+      alert(e.message || t("importFailed"));
     }
   };
 
@@ -5323,9 +5323,9 @@ export default function App() {
         body: { notes: notesArr },
       });
       await loadNotes();
-      alert(`Imported ${notesArr.length} Google Keep note(s).`);
+      alert(t("importedGoogleKeepNotes").replace("{count}", String(notesArr.length)));
     } catch (e) {
-      alert(e.message || "Google Keep import failed");
+      alert(e.message || t("googleKeepImportFailed"));
     }
   };
 
@@ -5387,9 +5387,9 @@ export default function App() {
         body: { notes: notesArr },
       });
       await loadNotes();
-      alert(`Imported ${notesArr.length} markdown file(s) successfully.`);
+      alert(t("importedMarkdownFilesSuccessfully").replace("{count}", String(notesArr.length)));
     } catch (e) {
-      alert(e.message || "Markdown import failed");
+      alert(e.message || t("markdownImportFailed"));
     }
   };
 
@@ -5448,7 +5448,7 @@ export default function App() {
         method: "DELETE",
         token,
       });
-      showToast("Collaborator removed successfully", "success");
+      showToast(t("collaboratorRemovedSuccessfully"), "success");
       if (collaborationDialogNoteId) {
         loadNoteCollaborators(collaborationDialogNoteId);
       }
@@ -5457,7 +5457,7 @@ export default function App() {
       }
       invalidateNotesCache();
     } catch (e) {
-      showToast(e.message || "Failed to remove collaborator", "error");
+      showToast(e.message || t("failedRemoveCollaborator"), "error");
     }
   };
 
@@ -5579,7 +5579,7 @@ export default function App() {
         ),
       );
 
-      showToast(`Added ${username} as collaborator successfully!`, "success");
+      showToast(t("addedCollaboratorSuccessfully").replace("{username}", String(username)), "success");
       setCollaboratorUsername("");
       setShowUserDropdown(false);
       setFilteredUsers([]);
@@ -5589,7 +5589,7 @@ export default function App() {
         loadNoteCollaborators(activeId);
       }
     } catch (e) {
-      showToast(e.message || "Failed to add collaborator", "error");
+      showToast(e.message || t("failedAddCollaborator"), "error");
     }
   };
 
@@ -5611,7 +5611,7 @@ export default function App() {
       downloadText(fname, content);
       alert(t("secretKeyDownloadedSafe"));
     } catch (e) {
-      alert(e.message || "Could not generate secret key.");
+      alert(e.message || t("couldNotGenerateSecretKey"));
     }
   };
 
@@ -6125,7 +6125,7 @@ export default function App() {
       // Check if user owns the note
       const note = notes.find((n) => String(n.id) === String(activeId));
       if (note && note.user_id !== currentUser?.id) {
-        showToast("You can't delete this note as you don't own it", "error");
+        showToast(t("cannotDeleteNotOwner"), "error");
         return;
       }
 
@@ -6137,9 +6137,9 @@ export default function App() {
       showToast(t("noteDeletedSuccessfully"), "success");
     } catch (e) {
       if (e.status === 404 || e.message?.includes("not found")) {
-        showToast("You can't delete this note as you don't own it", "error");
+        showToast(t("cannotDeleteNotOwner"), "error");
       } else {
-        showToast(e.message || "Delete failed", "error");
+        showToast(e.message || t("deleteFailed"), "error");
       }
     }
   };
@@ -6158,7 +6158,7 @@ export default function App() {
         ),
       );
     } catch (e) {
-      alert(e.message || "Failed to toggle pin");
+      alert(e.message || t("failedTogglePin"));
     }
   };
 
