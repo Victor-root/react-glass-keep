@@ -786,7 +786,7 @@ function formatEditedStamp(iso) {
 
   const month = d.toLocaleString([], { month: "short" });
   const day = d.getDate();
-  if (d.getFullYear() === now.getFullYear()) return `${month} ${day}`;
+  if (d.getFullYear() === now.getFullYear()) return `${day} ${month}`;
   const yyyy = String(d.getFullYear());
   return `${day} ${month} ${yyyy}`;
 }
@@ -1676,8 +1676,7 @@ function NoteCard({
           />
           {imgs.length > 1 && (
             <span className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-0.5 rounded-full">
-              +{imgs.length - 1} more
-            </span>
+              {t("moreItems").replace("{count}", String(imgs.length - 1))}</span>
           )}
         </div>
       )}
@@ -1710,11 +1709,11 @@ function NoteCard({
           ))}
           {extraCount > 0 && (
             <div className="text-xs text-gray-600 dark:text-gray-300">
-              +{extraCount} more…
+              {t("moreItems").replace("{count}", String(extraCount))}
             </div>
           )}
           <div className="text-xs text-gray-600 dark:text-gray-300">
-            {done}/{total} completed
+            {t("completedFraction").replace("{done}", String(done)).replace("{total}", String(total))}
           </div>
         </div>
       )}
@@ -2222,10 +2221,10 @@ function SettingsPanel({
                     if (!localAiEnabled) {
                       // Show confirmation dialog when enabling
                       showGenericConfirm({
-                        title: "Enable AI Assistant?",
+                        title: t("enableAiAssistantQuestion"),
                         message:
-                          "This will download a ~700MB AI model (Llama-3.2-1B) to the server and may use significant CPU resources. The download will happen in the background. Continue?",
-                        confirmText: "Enable AI",
+                          t("enableAiAssistantWarning"),
+                        confirmText: t("enableAi"),
                         cancelText: t("cancel"),
                         danger: false,
                         onConfirm: async () => {
@@ -6553,7 +6552,7 @@ export default function App() {
           const codeEl = pre.querySelector("code");
           const text = codeEl ? codeEl.textContent : pre.textContent;
           navigator.clipboard?.writeText(text || "");
-          btn.textContent = "Copied";
+          btn.textContent = t("copied");
           setTimeout(() => (btn.textContent = t("copy")), 1200);
         });
         wrapper.appendChild(btn);
@@ -6575,7 +6574,7 @@ export default function App() {
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
           navigator.clipboard?.writeText(code.textContent || "");
-          btn.textContent = "Copied";
+          btn.textContent = t("copied");
           setTimeout(() => (btn.textContent = t("copy")), 1200);
         });
         code.insertAdjacentElement("afterend", btn);
