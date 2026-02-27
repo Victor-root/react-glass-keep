@@ -1,5 +1,7 @@
 # Glass Keep
-
+> **Fork purpose**  
+> This fork focuses on improving Glass Keep localization, starting with a full **French translation** of the interface.  
+> The changes also provide reusable **i18n groundwork** so other languages can be added more easily in the future.
 A sleek, Keep-style notes app with Markdown, checklists, images, tag chips, color themes, dark mode, drag-and-drop reordering, import/export, auth, and a glassy UI — built with Vite + React and a tiny Express + SQLite API.
 
 ---
