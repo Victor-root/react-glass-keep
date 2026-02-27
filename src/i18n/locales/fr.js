@@ -215,4 +215,5 @@ loginFailed: "Échec de la connexion",
   addTag: "Ajouter un tag",
   deleteNotes: "Supprimer des notes",
   deleteSelectedNotesConfirm: "Supprimer {count} note(s) sélectionnée(s) ? Cette action est irréversible.",
+  selectedPrefix: "Sélectionné :",
 };

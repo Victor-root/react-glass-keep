@@ -215,4 +215,5 @@ loginFailed: "Login failed",
   addTag: "Add tag",
   deleteNotes: "Delete Notes",
   deleteSelectedNotesConfirm: "Delete {count} selected note(s)? This cannot be undone.",
+  selectedPrefix: "Selected:",
 };

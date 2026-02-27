@@ -2863,8 +2863,7 @@ function NotesUI({
               <ArchiveIcon />
               {activeTagFilter === "ARCHIVED" ? "Unarchive" : t("archive")}
             </button>
-            <span className="text-xs opacity-70 ml-2">
-              Selected: {selectedIds.length}
+            <span className="text-xs opacity-70 ml-2">{t("selectedPrefix")} {selectedIds.length}
             </span>
           </div>
           <button
