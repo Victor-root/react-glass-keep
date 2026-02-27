@@ -213,4 +213,6 @@ loginFailed: "Login failed",
   pinNote: "Pin note",
   unpinNote: "Unpin note",
   addTag: "Add tag",
+  deleteNotes: "Delete Notes",
+  deleteSelectedNotesConfirm: "Delete {count} selected note(s)? This cannot be undone.",
 };

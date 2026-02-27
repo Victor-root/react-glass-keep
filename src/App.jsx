@@ -4016,8 +4016,8 @@ export default function App() {
   const onBulkDelete = async () => {
     if (!selectedIds.length) return;
     showGenericConfirm({
-      title: "Delete Notes",
-      message: `Delete ${selectedIds.length} selected note(s)? This cannot be undone.`,
+      title: t("deleteNotes"),
+      message: t("deleteSelectedNotesConfirm").replace("{count}", String(selectedIds.length)),
       confirmText: t("delete"),
       danger: true,
       onConfirm: async () => {
