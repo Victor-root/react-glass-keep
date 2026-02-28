@@ -649,39 +649,6 @@ const PinIcon = () => (
   </svg>
 );
 
-// Modern composer icons (Material Design style)
-const TextNoteIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="16" y1="13" x2="8" y2="13" />
-    <line x1="16" y1="17" x2="8" y2="17" />
-    <line x1="10" y1="9" x2="8" y2="9" />
-  </svg>
-);
-
-const ChecklistIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 11l3 3L22 4" />
-    <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
-  </svg>
-);
-
-const BrushIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M18.37 2.63a2.12 2.12 0 013 3L14 13l-4 1 1-4z" />
-    <path d="M9 14.5A3.5 3.5 0 005.5 18c-1.2 0-2.5.7-2.5 2 2.5 0 4.5-1.3 5-3.5" />
-  </svg>
-);
-
-const AddImageIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-    <circle cx="8.5" cy="8.5" r="1.5" />
-    <polyline points="21 15 16 10 5 21" />
-  </svg>
-);
-
 /** ---------- Utils ---------- */
 const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const mdToPlain = (md) => {
@@ -953,12 +920,11 @@ html:not(.dark) .note-content pre .code-copy-btn {
 
 .dragging { opacity: 0.5; transform: scale(1.05); }
 .drag-over { outline: 2px dashed rgba(99,102,241,.6); outline-offset: 6px; }
-.masonry-grid { column-gap: 0.75rem; column-count: 1; }
+.masonry-grid { column-gap: 1.5rem; column-count: 1; }
 @media (min-width: 640px) { .masonry-grid { column-count: 2; } }
 @media (min-width: 768px) { .masonry-grid { column-count: 3; } }
 @media (min-width: 1024px) { .masonry-grid { column-count: 4; } }
 @media (min-width: 1280px) { .masonry-grid { column-count: 5; } }
-@media (min-width: 1536px) { .masonry-grid { column-count: 6; } }
 
 /* New grid layout to place notes row-wise (left-to-right, top-to-bottom) */
 /* Keep-like masonry using CSS Grid with JS-calculated row spans (preserves horizontal order) */
@@ -1555,7 +1521,7 @@ function NoteCard({
 }) {
   const isChecklist = n.type === "checklist";
   const isDraw = n.type === "draw";
-  const previewText = useMemo(() => n.content || "", [n.content]);
+  const previewText = useMemo(() => mdToPlain(n.content || ""), [n.content]);
   const MAX_CHARS = 600;
   const isLong = previewText.length > MAX_CHARS;
   const displayText = isLong
@@ -1611,7 +1577,7 @@ function NoteCard({
           openModal(n.id);
         }
       }}
-      className={`note-card glass-card rounded-xl p-3 mb-3 cursor-pointer transform hover:scale-[1.02] transition-transform duration-200 relative min-h-[54px] group ${
+      className={`note-card glass-card rounded-xl p-4 mb-6 cursor-pointer transform hover:scale-[1.02] transition-transform duration-200 relative min-h-[54px] group ${
         multiMode && selected
           ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-transparent"
           : ""
@@ -1716,10 +1682,9 @@ function NoteCard({
       )}
 
       {!isChecklist && !isDraw ? (
-        <div
-          className="text-sm break-words whitespace-pre-wrap line-clamp-[16] note-content note-content--dense"
-          dangerouslySetInnerHTML={{ __html: marked.parse(displayText || "") }}
-        />
+        <div className="text-sm break-words whitespace-pre-wrap line-clamp-6">
+          {displayText}
+        </div>
       ) : isDraw ? (
         <DrawingPreview
           data={n.content}
@@ -1985,14 +1950,13 @@ function TagSidebar({
   onClose,
   tagsWithCounts,
   activeTag,
-  activeTagFilters = [],
   onSelect,
   dark,
   permanent = false,
   width = 288,
   onResize,
 }) {
-  const isAllNotes = activeTag === null && activeTagFilters.length === 0;
+  const isAllNotes = activeTag === null;
   const isAllImages = activeTag === ALL_IMAGES;
 
   return (
@@ -2055,32 +2019,18 @@ function TagSidebar({
           >{t("archivedNotes")}</button>
 
           {/* User tags */}
-          {activeTagFilters.length > 0 && (
-            <div className="px-3 py-1 mb-2 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
-              <span>🔀 {activeTagFilters.length} tag{activeTagFilters.length > 1 ? "s" : ""} actif{activeTagFilters.length > 1 ? "s" : ""}</span>
-              <button
-                onClick={() => onSelect(null)}
-                className="text-xs underline hover:no-underline"
-              >tout effacer</button>
-            </div>
-          )}
           {tagsWithCounts.map(({ tag, count }) => {
             const active =
-              activeTagFilters.length > 0
-                ? activeTagFilters.map((t) => t.toLowerCase()).includes(tag.toLowerCase())
-                : typeof activeTag === "string" &&
-                  activeTag !== ALL_IMAGES &&
-                  activeTag.toLowerCase() === tag.toLowerCase();
+              typeof activeTag === "string" &&
+              activeTag !== ALL_IMAGES &&
+              activeTag.toLowerCase() === tag.toLowerCase();
             return (
               <button
                 key={tag}
                 className={`w-full text-left px-3 py-2 rounded-md mb-1 flex items-center justify-between ${active ? (dark ? "bg-white/10" : "bg-black/5") : dark ? "hover:bg-white/10" : "hover:bg-black/5"}`}
                 onClick={() => {
                   onSelect(tag);
-                  // Ne ferme la sidebar que si c'est un filtre simple (pas multi-select)
-                  if (activeTagFilters.length === 0 && !activeTagFilters.includes(tag)) {
-                    onClose();
-                  }
+                  onClose();
                 }}
                 title={tag}
               >
@@ -2733,14 +2683,6 @@ function NotesUI({
   composerFileRef,
   tags,
   setTags,
-  composerTagList,
-  setComposerTagList,
-  composerTagInput,
-  setComposerTagInput,
-  composerTagFocused,
-  setComposerTagFocused,
-  composerTagInputRef,
-  tagsWithCounts,
   composerColor,
   setComposerColor,
   addNote,
@@ -3155,7 +3097,7 @@ function NotesUI({
       {/* AI Response Box */}
       {localAiEnabled && (aiResponse || isAiLoading) && (
         <div className="px-4 sm:px-6 md:px-8 lg:px-12 mb-6">
-          <div className="max-w-2xl mx-auto glass-card rounded-xl shadow-lg p-5 border border-indigo-500/30 relative bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/30 dark:to-purple-950/30 z-[50]">
+          <div className="max-w-2xl mx-auto glass-card rounded-xl shadow-lg p-5 border border-indigo-500/30 relative overflow-hidden bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/30 dark:to-purple-950/30">
             {isAiLoading && (
               <div
                 className="absolute top-0 left-0 h-1 bg-indigo-500 transition-all duration-300"
@@ -3346,111 +3288,17 @@ function NotesUI({
                   )}
 
                   {/* Responsive composer footer */}
-                  <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:gap-3 gap-3 relative" style={{ zIndex: 200, position: "relative" }}>
-                    {/* Tag chips + suggestions (composer) */}
-                    <div className="w-full sm:flex-1 flex flex-wrap items-center gap-1 p-2 min-h-[36px] relative z-[100]">
-                      {composerTagList.map((ctag, i) => (
-                        <span
-                          key={ctag + i}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200"
-                        >
-                          {ctag}
-                          {isOnline && (
-                            <button
-                              type="button"
-                              onClick={() => setComposerTagList((prev) => prev.filter((_, idx) => idx !== i))}
-                              className="hover:text-red-500 font-bold"
-                            >×</button>
-                          )}
-                        </span>
-                      ))}
-                      {isOnline && (
-                        <div className="relative flex-1 min-w-[8ch]">
-                          <input
-                            ref={composerTagInputRef}
-                            value={composerTagInput}
-                            onChange={(e) => setComposerTagInput(e.target.value)}
-                            onFocus={() => setComposerTagFocused(true)}
-                            onKeyDown={(e) => {
-                              if ((e.key === "Enter" || e.key === ",") && composerTagInput.trim()) {
-                                e.preventDefault();
-                                const val = composerTagInput.trim().replace(/,+$/, "");
-                                if (val && !composerTagList.map((x) => x.toLowerCase()).includes(val.toLowerCase())) {
-                                  setComposerTagList((prev) => [...prev, val]);
-                                }
-                                setComposerTagInput("");
-                              } else if (e.key === "Backspace" && !composerTagInput && composerTagList.length) {
-                                setComposerTagList((prev) => prev.slice(0, -1));
-                              }
-                            }}
-                            onBlur={() => {
-                              setTimeout(() => {
-                                const val = composerTagInput.trim().replace(/,+$/, "");
-                                if (val && !composerTagList.map((x) => x.toLowerCase()).includes(val.toLowerCase())) {
-                                  setComposerTagList((prev) => [...prev, val]);
-                                }
-                                setComposerTagInput("");
-                                setComposerTagFocused(false);
-                              }, 200);
-                            }}
-                            onPaste={(e) => {
-                              e.preventDefault();
-                              const pasted = e.clipboardData.getData("text");
-                              const newTags = pasted.split(",").map((t) => t.trim()).filter(Boolean);
-                              const unique = newTags.filter(
-                                (t) => !composerTagList.map((x) => x.toLowerCase()).includes(t.toLowerCase())
-                              );
-                              if (unique.length) setComposerTagList((prev) => [...prev, ...unique]);
-                            }}
-                            type="text"
-                            placeholder={composerTagList.length ? t("addTag") : t("addTagsCommaSeparated")}
-                            className="bg-transparent text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none w-full"
-                          />
-                          {composerTagFocused && (() => {
-                            const suggestions = tagsWithCounts
-                              .map((x) => x.tag)
-                              .filter(
-                                (t) =>
-                                  (!composerTagInput.trim() || t.toLowerCase().includes(composerTagInput.toLowerCase())) &&
-                                  !composerTagList.map((x) => x.toLowerCase()).includes(t.toLowerCase())
-                              );
-                            if (suggestions.length === 0) return null;
-                            const rect = composerTagInputRef.current?.getBoundingClientRect();
-                            if (!rect) return null;
-                            return createPortal(
-                              <div
-                                style={{
-                                  position: "fixed",
-                                  top: rect.bottom + 4,
-                                  left: rect.left,
-                                  width: Math.max(rect.width, 200),
-                                  zIndex: 99999,
-                                }}
-                                className="rounded-lg shadow-lg bg-white/95 dark:bg-gray-800/95 backdrop-blur border border-gray-200 dark:border-gray-600 max-h-40 overflow-y-auto"
-                              >
-                                {suggestions.map((stag) => (
-                                  <button
-                                    key={stag}
-                                    type="button"
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      if (!composerTagList.map((x) => x.toLowerCase()).includes(stag.toLowerCase())) {
-                                        setComposerTagList((prev) => [...prev, stag]);
-                                      }
-                                      setComposerTagInput("");
-                                    }}
-                                    className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-200 first:rounded-t-lg last:rounded-b-lg"
-                                  >
-                                    🏷️ {stag}
-                                  </button>
-                                ))}
-                              </div>,
-                              document.body
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
+                  <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:gap-3 gap-3 relative">
+                    <input
+                      value={tags}
+                      onChange={(e) => setTags(e.target.value)}
+                      type="text"
+                      placeholder={t("addTagsCommaSeparated")}
+                      disabled={!isOnline}
+                      className={`w-full sm:flex-1 bg-transparent text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none p-2 ${
+                        !isOnline ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                    />
 
                     <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap sm:flex-none relative">
                       {/* Formatting button (composer) - only for text mode */}
@@ -3492,7 +3340,7 @@ function NotesUI({
                           }`}
                           title={t("textNote")}
                         >
-                          <TextNoteIcon />
+                          📝
                         </button>
                         <button
                           type="button"
@@ -3504,7 +3352,7 @@ function NotesUI({
                           }`}
                           title={t("checklist")}
                         >
-                          <ChecklistIcon />
+                          ✅
                         </button>
                         <button
                           type="button"
@@ -3516,7 +3364,7 @@ function NotesUI({
                           }`}
                           title={t("drawing")}
                         >
-                          <BrushIcon />
+                          🖌️
                         </button>
                       </div>
 
@@ -3601,7 +3449,7 @@ function NotesUI({
                         className="px-2 py-1 rounded-lg border border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10 flex-shrink-0 text-lg"
                         title={t("addImages")}
                       >
-                        <AddImageIcon />
+                        🖼️
                       </button>
 
                       {/* Add Note */}
@@ -3905,7 +3753,6 @@ export default function App() {
 
   // Tag filter & sidebar
   const [tagFilter, setTagFilter] = useState(null); // null = all, ALL_IMAGES = only notes with images
-  const [activeTagFilters, setActiveTagFilters] = useState([]); // multi-tag filter
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [alwaysShowSidebarOnWide, setAlwaysShowSidebarOnWide] = useState(() => {
     try {
@@ -3940,10 +3787,6 @@ export default function App() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
-  const [composerTagList, setComposerTagList] = useState([]);
-  const [composerTagInput, setComposerTagInput] = useState("");
-  const [composerTagFocused, setComposerTagFocused] = useState(false);
-  const composerTagInputRef = useRef(null);
   const [composerColor, setComposerColor] = useState("default");
   const [composerImages, setComposerImages] = useState([]);
   const contentRef = useRef(null);
@@ -3971,8 +3814,6 @@ export default function App() {
   const [mBody, setMBody] = useState("");
   const [mTagList, setMTagList] = useState([]);
   const [tagInput, setTagInput] = useState("");
-  const [modalTagFocused, setModalTagFocused] = useState(false);
-  const modalTagInputRef = useRef(null);
   const [mColor, setMColor] = useState("default");
   const [viewMode, setViewMode] = useState(true);
   const [mImages, setMImages] = useState([]);
@@ -5159,7 +5000,7 @@ export default function App() {
       if (
         !title.trim() &&
         !content.trim() &&
-        composerTagList.length === 0 &&
+        !tags.trim() &&
         composerImages.length === 0
       )
         return;
@@ -5183,7 +5024,10 @@ export default function App() {
           ? JSON.stringify(composerDrawingData)
           : "",
       items: isChecklist ? clItems : [],
-      tags: composerTagList,
+      tags: tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean),
       images: composerImages,
       color: composerColor,
       pinned: false,
@@ -5207,9 +5051,6 @@ export default function App() {
       setTitle("");
       setContent("");
       setTags("");
-      setComposerTagList([]);
-      setComposerTagInput("");
-      setComposerTagFocused(false);
       setComposerImages([]);
       setComposerColor("default");
       setClItems([]);
@@ -6507,12 +6348,6 @@ export default function App() {
       } else if (tagFilter === "ARCHIVED") {
         // In archived view, show all notes (they're already filtered by the backend)
         // Just apply search filter
-      } else if (activeTagFilters.length > 0) {
-        // Multi-tag filter : la note doit contenir TOUS les tags sélectionnés
-        const noteTags = (n.tags || []).map((t) => String(t).toLowerCase());
-        if (!activeTagFilters.every((f) => noteTags.includes(f.toLowerCase()))) {
-          return false;
-        }
       } else if (
         tag &&
         !(n.tags || []).some((t) => String(t).toLowerCase() === tag)
@@ -6539,13 +6374,13 @@ export default function App() {
         images.includes(q)
       );
     });
-  }, [notes, search, tagFilter, activeTagFilters]);
+  }, [notes, search, tagFilter]);
   const pinned = filtered.filter((n) => n.pinned);
   const others = filtered.filter((n) => !n.pinned);
   const filteredEmptyWithSearch =
     filtered.length === 0 &&
     notes.length > 0 &&
-    !!(search || (tagFilter && tagFilter !== "ARCHIVED") || activeTagFilters.length > 0);
+    !!(search || (tagFilter && tagFilter !== "ARCHIVED"));
   const allEmpty = notes.length === 0;
 
   /** -------- Modal link handler: open links in new tab (no auto-enter edit) -------- */
@@ -6783,7 +6618,7 @@ export default function App() {
         }}
       >
         <div
-          className="glass-card rounded-xl shadow-2xl w-full h-full max-w-none rounded-none sm:w-11/12 sm:max-w-3xl lg:max-w-4xl sm:h-[95vh] sm:rounded-xl flex flex-col relative overflow-hidden"
+          className="glass-card rounded-xl shadow-2xl w-full h-full max-w-none rounded-none sm:w-11/12 sm:max-w-2xl sm:h-[95vh] sm:rounded-xl flex flex-col relative overflow-hidden"
           style={{ backgroundColor: modalBgFor(mColor, dark) }}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
@@ -7518,62 +7353,15 @@ export default function App() {
               ))}
               {/* Tag input - hidden when offline */}
               {isOnline && (
-                <div className="relative flex-1 min-w-[8ch]">
-                  <input
-                    ref={modalTagInputRef}
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={handleTagKeyDown}
-                    onFocus={() => setModalTagFocused(true)}
-                    onBlur={() => { setTimeout(() => { handleTagBlur(); setModalTagFocused(false); }, 200); }}
-                    onPaste={handleTagPaste}
-                    placeholder={mTagList.length ? t("addTag") : t("addTags")}
-                    className="bg-transparent text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none w-full"
-                  />
-                  {modalTagFocused && (() => {
-                    const suggestions = tagsWithCounts
-                      .map((x) => x.tag)
-                      .filter(
-                        (t) =>
-                          (!tagInput.trim() || t.toLowerCase().includes(tagInput.toLowerCase())) &&
-                          !mTagList.map((x) => x.toLowerCase()).includes(t.toLowerCase())
-                      );
-                    if (suggestions.length === 0) return null;
-                    const rect = modalTagInputRef.current?.getBoundingClientRect();
-                    if (!rect) return null;
-                    const spaceBelow = window.innerHeight - rect.bottom;
-                    const dropUp = spaceBelow < 180;
-                    return createPortal(
-                      <div
-                        style={{
-                          position: "fixed",
-                          ...(dropUp
-                            ? { bottom: window.innerHeight - rect.top + 4, left: rect.left }
-                            : { top: rect.bottom + 4, left: rect.left }),
-                          width: Math.max(rect.width, 200),
-                          zIndex: 99999,
-                        }}
-                        className="rounded-lg shadow-lg bg-white/95 dark:bg-gray-800/95 backdrop-blur border border-gray-200 dark:border-gray-600 max-h-40 overflow-y-auto"
-                      >
-                        {suggestions.map((tag) => (
-                          <button
-                            key={tag}
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              addTags(tag);
-                              setTagInput("");
-                            }}
-                            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-200 first:rounded-t-lg last:rounded-b-lg"
-                          >
-                            🏷️ {tag}
-                          </button>
-                        ))}
-                      </div>,
-                      document.body
-                    );
-                  })()}
-                </div>
+                <input
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagKeyDown}
+                  onBlur={handleTagBlur}
+                  onPaste={handleTagPaste}
+                  placeholder={mTagList.length ? t("addTag") : t("addTags")}
+                  className="bg-transparent text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none min-w-[8ch] flex-1"
+                />
               )}
             </div>
 
@@ -7658,7 +7446,7 @@ export default function App() {
                     className="px-2 py-1 rounded-lg border border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10 text-lg"
                     title={t("addImages")}
                   >
-                    <AddImageIcon />
+                    🖼️
                   </button>
                 </>
               )}
@@ -8106,20 +7894,7 @@ export default function App() {
         onClose={() => setSidebarOpen(false)}
         tagsWithCounts={tagsWithCounts}
         activeTag={tagFilter}
-        activeTagFilters={activeTagFilters}
-        onSelect={(tag) => {
-          if (tag === "ARCHIVED" || tag === ALL_IMAGES || tag === null) {
-            setTagFilter(tag);
-            setActiveTagFilters([]);
-          } else {
-            setTagFilter(null);
-            setActiveTagFilters((prev) =>
-              prev.includes(tag)
-                ? prev.filter((t) => t !== tag)
-                : [...prev, tag]
-            );
-          }
-        }}
+        onSelect={(tag) => setTagFilter(tag)}
         dark={dark}
         permanent={alwaysShowSidebarOnWide && windowWidth >= 700}
         width={sidebarWidth}
@@ -8191,14 +7966,6 @@ export default function App() {
         setComposerImages={setComposerImages}
         composerFileRef={composerFileRef}
         tags={tags}
-        composerTagList={composerTagList}
-        setComposerTagList={setComposerTagList}
-        composerTagInput={composerTagInput}
-        setComposerTagInput={setComposerTagInput}
-        composerTagFocused={composerTagFocused}
-        setComposerTagFocused={setComposerTagFocused}
-        composerTagInputRef={composerTagInputRef}
-        tagsWithCounts={tagsWithCounts}
         setTags={setTags}
         composerColor={composerColor}
         setComposerColor={setComposerColor}
