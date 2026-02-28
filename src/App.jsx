@@ -1979,6 +1979,34 @@ function SecretLoginView({ dark, onToggleDark, onLoginWithKey, goLogin }) {
   );
 }
 
+// Sidebar icons (Material Design style)
+const NotesIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
+    <line x1="9" y1="9" x2="15" y2="9" /><line x1="9" y1="13" x2="15" y2="13" /><line x1="9" y1="17" x2="13" y2="17" />
+  </svg>
+);
+const ImagesIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+const ArchiveSidebarIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="21 8 21 21 3 21 3 8" />
+    <rect x="1" y="3" width="22" height="5" />
+    <line x1="10" y1="12" x2="14" y2="12" />
+  </svg>
+);
+const TagIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+    <line x1="7" y1="7" x2="7.01" y2="7" />
+  </svg>
+);
+
 /** ---------- Tag Sidebar / Drawer ---------- */
 function TagSidebar({
   open,
@@ -2029,30 +2057,30 @@ function TagSidebar({
         <nav className="p-2 overflow-y-auto h-[calc(100%-56px)]">
           {/* Notes (All) */}
           <button
-            className={`w-full text-left px-3 py-2 rounded-md mb-1 ${isAllNotes ? (dark ? "bg-white/10" : "bg-black/5") : dark ? "hover:bg-white/10" : "hover:bg-black/5"}`}
+            className={`w-full text-left px-3 py-2 rounded-md mb-1 flex items-center gap-3 ${isAllNotes ? (dark ? "bg-white/10" : "bg-black/5") : dark ? "hover:bg-white/10" : "hover:bg-black/5"}`}
             onClick={() => {
               onSelect(null);
               onClose();
             }}
-          >{t("notesAll")}</button>
+          ><NotesIcon />{t("notesAll")}</button>
 
           {/* All Images */}
           <button
-            className={`w-full text-left px-3 py-2 rounded-md mb-2 ${isAllImages ? (dark ? "bg-white/10" : "bg-black/5") : dark ? "hover:bg-white/10" : "hover:bg-black/5"}`}
+            className={`w-full text-left px-3 py-2 rounded-md mb-2 flex items-center gap-3 ${isAllImages ? (dark ? "bg-white/10" : "bg-black/5") : dark ? "hover:bg-white/10" : "hover:bg-black/5"}`}
             onClick={() => {
               onSelect(ALL_IMAGES);
               onClose();
             }}
-          >{t("allImages")}</button>
+          ><ImagesIcon />{t("allImages")}</button>
 
           {/* Archived Notes */}
           <button
-            className={`w-full text-left px-3 py-2 rounded-md mb-2 ${activeTag === "ARCHIVED" ? (dark ? "bg-white/10" : "bg-black/5") : dark ? "hover:bg-white/10" : "hover:bg-black/5"}`}
+            className={`w-full text-left px-3 py-2 rounded-md mb-2 flex items-center gap-3 ${activeTag === "ARCHIVED" ? (dark ? "bg-white/10" : "bg-black/5") : dark ? "hover:bg-white/10" : "hover:bg-black/5"}`}
             onClick={() => {
               onSelect("ARCHIVED");
               onClose();
             }}
-          >{t("archivedNotes")}</button>
+          ><ArchiveSidebarIcon />{t("archivedNotes")}</button>
 
           {/* User tags */}
           {activeTagFilters.length > 0 && (
@@ -2084,7 +2112,7 @@ function TagSidebar({
                 }}
                 title={tag}
               >
-                <span className="truncate">{tag}</span>
+                <span className="flex items-center gap-2 truncate"><TagIcon />{tag}</span>
                 <span className="text-xs opacity-70">{count}</span>
               </button>
             );
