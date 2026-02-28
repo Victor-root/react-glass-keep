@@ -1950,13 +1950,14 @@ function TagSidebar({
   onClose,
   tagsWithCounts,
   activeTag,
+  activeTagFilters = [],
   onSelect,
   dark,
   permanent = false,
   width = 288,
   onResize,
 }) {
-  const isAllNotes = activeTag === null;
+  const isAllNotes = activeTag === null && activeTagFilters.length === 0;
   const isAllImages = activeTag === ALL_IMAGES;
 
   return (
@@ -2019,18 +2020,32 @@ function TagSidebar({
           >{t("archivedNotes")}</button>
 
           {/* User tags */}
+          {activeTagFilters.length > 0 && (
+            <div className="px-3 py-1 mb-2 text-xs text-gray-500 dark:text-gray-400 flex items-center justify-between">
+              <span>🔀 {activeTagFilters.length} tag{activeTagFilters.length > 1 ? "s" : ""} actif{activeTagFilters.length > 1 ? "s" : ""}</span>
+              <button
+                onClick={() => onSelect(null)}
+                className="text-xs underline hover:no-underline"
+              >tout effacer</button>
+            </div>
+          )}
           {tagsWithCounts.map(({ tag, count }) => {
             const active =
-              typeof activeTag === "string" &&
-              activeTag !== ALL_IMAGES &&
-              activeTag.toLowerCase() === tag.toLowerCase();
+              activeTagFilters.length > 0
+                ? activeTagFilters.map((t) => t.toLowerCase()).includes(tag.toLowerCase())
+                : typeof activeTag === "string" &&
+                  activeTag !== ALL_IMAGES &&
+                  activeTag.toLowerCase() === tag.toLowerCase();
             return (
               <button
                 key={tag}
                 className={`w-full text-left px-3 py-2 rounded-md mb-1 flex items-center justify-between ${active ? (dark ? "bg-white/10" : "bg-black/5") : dark ? "hover:bg-white/10" : "hover:bg-black/5"}`}
                 onClick={() => {
                   onSelect(tag);
-                  onClose();
+                  // Ne ferme la sidebar que si c'est un filtre simple (pas multi-select)
+                  if (activeTagFilters.length === 0 && !activeTagFilters.includes(tag)) {
+                    onClose();
+                  }
                 }}
                 title={tag}
               >
@@ -2683,6 +2698,14 @@ function NotesUI({
   composerFileRef,
   tags,
   setTags,
+  composerTagList,
+  setComposerTagList,
+  composerTagInput,
+  setComposerTagInput,
+  composerTagFocused,
+  setComposerTagFocused,
+  composerTagInputRef,
+  tagsWithCounts,
   composerColor,
   setComposerColor,
   addNote,
@@ -3097,7 +3120,7 @@ function NotesUI({
       {/* AI Response Box */}
       {localAiEnabled && (aiResponse || isAiLoading) && (
         <div className="px-4 sm:px-6 md:px-8 lg:px-12 mb-6">
-          <div className="max-w-2xl mx-auto glass-card rounded-xl shadow-lg p-5 border border-indigo-500/30 relative overflow-hidden bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/30 dark:to-purple-950/30">
+          <div className="max-w-2xl mx-auto glass-card rounded-xl shadow-lg p-5 border border-indigo-500/30 relative bg-gradient-to-br from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/30 dark:to-purple-950/30 z-[50]">
             {isAiLoading && (
               <div
                 className="absolute top-0 left-0 h-1 bg-indigo-500 transition-all duration-300"
@@ -3288,17 +3311,111 @@ function NotesUI({
                   )}
 
                   {/* Responsive composer footer */}
-                  <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:gap-3 gap-3 relative">
-                    <input
-                      value={tags}
-                      onChange={(e) => setTags(e.target.value)}
-                      type="text"
-                      placeholder={t("addTagsCommaSeparated")}
-                      disabled={!isOnline}
-                      className={`w-full sm:flex-1 bg-transparent text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none p-2 ${
-                        !isOnline ? "opacity-50 cursor-not-allowed" : ""
-                      }`}
-                    />
+                  <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:gap-3 gap-3 relative" style={{ zIndex: 200, position: "relative" }}>
+                    {/* Tag chips + suggestions (composer) */}
+                    <div className="w-full sm:flex-1 flex flex-wrap items-center gap-1 p-2 min-h-[36px] relative z-[100]">
+                      {composerTagList.map((ctag, i) => (
+                        <span
+                          key={ctag + i}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200"
+                        >
+                          {ctag}
+                          {isOnline && (
+                            <button
+                              type="button"
+                              onClick={() => setComposerTagList((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="hover:text-red-500 font-bold"
+                            >×</button>
+                          )}
+                        </span>
+                      ))}
+                      {isOnline && (
+                        <div className="relative flex-1 min-w-[8ch]">
+                          <input
+                            ref={composerTagInputRef}
+                            value={composerTagInput}
+                            onChange={(e) => setComposerTagInput(e.target.value)}
+                            onFocus={() => setComposerTagFocused(true)}
+                            onKeyDown={(e) => {
+                              if ((e.key === "Enter" || e.key === ",") && composerTagInput.trim()) {
+                                e.preventDefault();
+                                const val = composerTagInput.trim().replace(/,+$/, "");
+                                if (val && !composerTagList.map((x) => x.toLowerCase()).includes(val.toLowerCase())) {
+                                  setComposerTagList((prev) => [...prev, val]);
+                                }
+                                setComposerTagInput("");
+                              } else if (e.key === "Backspace" && !composerTagInput && composerTagList.length) {
+                                setComposerTagList((prev) => prev.slice(0, -1));
+                              }
+                            }}
+                            onBlur={() => {
+                              setTimeout(() => {
+                                const val = composerTagInput.trim().replace(/,+$/, "");
+                                if (val && !composerTagList.map((x) => x.toLowerCase()).includes(val.toLowerCase())) {
+                                  setComposerTagList((prev) => [...prev, val]);
+                                }
+                                setComposerTagInput("");
+                                setComposerTagFocused(false);
+                              }, 200);
+                            }}
+                            onPaste={(e) => {
+                              e.preventDefault();
+                              const pasted = e.clipboardData.getData("text");
+                              const newTags = pasted.split(",").map((t) => t.trim()).filter(Boolean);
+                              const unique = newTags.filter(
+                                (t) => !composerTagList.map((x) => x.toLowerCase()).includes(t.toLowerCase())
+                              );
+                              if (unique.length) setComposerTagList((prev) => [...prev, ...unique]);
+                            }}
+                            type="text"
+                            placeholder={composerTagList.length ? t("addTag") : t("addTagsCommaSeparated")}
+                            className="bg-transparent text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none w-full"
+                          />
+                          {composerTagFocused && (() => {
+                            const suggestions = tagsWithCounts
+                              .map((x) => x.tag)
+                              .filter(
+                                (t) =>
+                                  (!composerTagInput.trim() || t.toLowerCase().includes(composerTagInput.toLowerCase())) &&
+                                  !composerTagList.map((x) => x.toLowerCase()).includes(t.toLowerCase())
+                              );
+                            if (suggestions.length === 0) return null;
+                            const rect = composerTagInputRef.current?.getBoundingClientRect();
+                            if (!rect) return null;
+                            return createPortal(
+                              <div
+                                style={{
+                                  position: "fixed",
+                                  top: rect.bottom + 4,
+                                  left: rect.left,
+                                  width: Math.max(rect.width, 200),
+                                  zIndex: 99999,
+                                }}
+                                className="rounded-lg shadow-lg bg-white/95 dark:bg-gray-800/95 backdrop-blur border border-gray-200 dark:border-gray-600 max-h-40 overflow-y-auto"
+                              >
+                                {suggestions.map((stag) => (
+                                  <button
+                                    key={stag}
+                                    type="button"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      if (!composerTagList.map((x) => x.toLowerCase()).includes(stag.toLowerCase())) {
+                                        setComposerTagList((prev) => [...prev, stag]);
+                                      }
+                                      setComposerTagInput("");
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-200 first:rounded-t-lg last:rounded-b-lg"
+                                  >
+                                    🏷️ {stag}
+                                  </button>
+                                ))}
+                              </div>,
+                              document.body
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap sm:flex-none relative">
                       {/* Formatting button (composer) - only for text mode */}
@@ -3753,6 +3870,7 @@ export default function App() {
 
   // Tag filter & sidebar
   const [tagFilter, setTagFilter] = useState(null); // null = all, ALL_IMAGES = only notes with images
+  const [activeTagFilters, setActiveTagFilters] = useState([]); // multi-tag filter
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [alwaysShowSidebarOnWide, setAlwaysShowSidebarOnWide] = useState(() => {
     try {
@@ -3787,6 +3905,10 @@ export default function App() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState("");
+  const [composerTagList, setComposerTagList] = useState([]);
+  const [composerTagInput, setComposerTagInput] = useState("");
+  const [composerTagFocused, setComposerTagFocused] = useState(false);
+  const composerTagInputRef = useRef(null);
   const [composerColor, setComposerColor] = useState("default");
   const [composerImages, setComposerImages] = useState([]);
   const contentRef = useRef(null);
@@ -3814,6 +3936,8 @@ export default function App() {
   const [mBody, setMBody] = useState("");
   const [mTagList, setMTagList] = useState([]);
   const [tagInput, setTagInput] = useState("");
+  const [modalTagFocused, setModalTagFocused] = useState(false);
+  const modalTagInputRef = useRef(null);
   const [mColor, setMColor] = useState("default");
   const [viewMode, setViewMode] = useState(true);
   const [mImages, setMImages] = useState([]);
@@ -5000,7 +5124,7 @@ export default function App() {
       if (
         !title.trim() &&
         !content.trim() &&
-        !tags.trim() &&
+        composerTagList.length === 0 &&
         composerImages.length === 0
       )
         return;
@@ -5024,10 +5148,7 @@ export default function App() {
           ? JSON.stringify(composerDrawingData)
           : "",
       items: isChecklist ? clItems : [],
-      tags: tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
+      tags: composerTagList,
       images: composerImages,
       color: composerColor,
       pinned: false,
@@ -5051,6 +5172,9 @@ export default function App() {
       setTitle("");
       setContent("");
       setTags("");
+      setComposerTagList([]);
+      setComposerTagInput("");
+      setComposerTagFocused(false);
       setComposerImages([]);
       setComposerColor("default");
       setClItems([]);
@@ -6348,6 +6472,12 @@ export default function App() {
       } else if (tagFilter === "ARCHIVED") {
         // In archived view, show all notes (they're already filtered by the backend)
         // Just apply search filter
+      } else if (activeTagFilters.length > 0) {
+        // Multi-tag filter : la note doit contenir TOUS les tags sélectionnés
+        const noteTags = (n.tags || []).map((t) => String(t).toLowerCase());
+        if (!activeTagFilters.every((f) => noteTags.includes(f.toLowerCase()))) {
+          return false;
+        }
       } else if (
         tag &&
         !(n.tags || []).some((t) => String(t).toLowerCase() === tag)
@@ -6374,13 +6504,13 @@ export default function App() {
         images.includes(q)
       );
     });
-  }, [notes, search, tagFilter]);
+  }, [notes, search, tagFilter, activeTagFilters]);
   const pinned = filtered.filter((n) => n.pinned);
   const others = filtered.filter((n) => !n.pinned);
   const filteredEmptyWithSearch =
     filtered.length === 0 &&
     notes.length > 0 &&
-    !!(search || (tagFilter && tagFilter !== "ARCHIVED"));
+    !!(search || (tagFilter && tagFilter !== "ARCHIVED") || activeTagFilters.length > 0);
   const allEmpty = notes.length === 0;
 
   /** -------- Modal link handler: open links in new tab (no auto-enter edit) -------- */
@@ -7353,15 +7483,62 @@ export default function App() {
               ))}
               {/* Tag input - hidden when offline */}
               {isOnline && (
-                <input
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleTagKeyDown}
-                  onBlur={handleTagBlur}
-                  onPaste={handleTagPaste}
-                  placeholder={mTagList.length ? t("addTag") : t("addTags")}
-                  className="bg-transparent text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none min-w-[8ch] flex-1"
-                />
+                <div className="relative flex-1 min-w-[8ch]">
+                  <input
+                    ref={modalTagInputRef}
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    onFocus={() => setModalTagFocused(true)}
+                    onBlur={() => { setTimeout(() => { handleTagBlur(); setModalTagFocused(false); }, 200); }}
+                    onPaste={handleTagPaste}
+                    placeholder={mTagList.length ? t("addTag") : t("addTags")}
+                    className="bg-transparent text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none w-full"
+                  />
+                  {modalTagFocused && (() => {
+                    const suggestions = tagsWithCounts
+                      .map((x) => x.tag)
+                      .filter(
+                        (t) =>
+                          (!tagInput.trim() || t.toLowerCase().includes(tagInput.toLowerCase())) &&
+                          !mTagList.map((x) => x.toLowerCase()).includes(t.toLowerCase())
+                      );
+                    if (suggestions.length === 0) return null;
+                    const rect = modalTagInputRef.current?.getBoundingClientRect();
+                    if (!rect) return null;
+                    const spaceBelow = window.innerHeight - rect.bottom;
+                    const dropUp = spaceBelow < 180;
+                    return createPortal(
+                      <div
+                        style={{
+                          position: "fixed",
+                          ...(dropUp
+                            ? { bottom: window.innerHeight - rect.top + 4, left: rect.left }
+                            : { top: rect.bottom + 4, left: rect.left }),
+                          width: Math.max(rect.width, 200),
+                          zIndex: 99999,
+                        }}
+                        className="rounded-lg shadow-lg bg-white/95 dark:bg-gray-800/95 backdrop-blur border border-gray-200 dark:border-gray-600 max-h-40 overflow-y-auto"
+                      >
+                        {suggestions.map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              addTags(tag);
+                              setTagInput("");
+                            }}
+                            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-800 dark:text-gray-200 first:rounded-t-lg last:rounded-b-lg"
+                          >
+                            🏷️ {tag}
+                          </button>
+                        ))}
+                      </div>,
+                      document.body
+                    );
+                  })()}
+                </div>
               )}
             </div>
 
@@ -7894,7 +8071,20 @@ export default function App() {
         onClose={() => setSidebarOpen(false)}
         tagsWithCounts={tagsWithCounts}
         activeTag={tagFilter}
-        onSelect={(tag) => setTagFilter(tag)}
+        activeTagFilters={activeTagFilters}
+        onSelect={(tag) => {
+          if (tag === "ARCHIVED" || tag === ALL_IMAGES || tag === null) {
+            setTagFilter(tag);
+            setActiveTagFilters([]);
+          } else {
+            setTagFilter(null);
+            setActiveTagFilters((prev) =>
+              prev.includes(tag)
+                ? prev.filter((t) => t !== tag)
+                : [...prev, tag]
+            );
+          }
+        }}
         dark={dark}
         permanent={alwaysShowSidebarOnWide && windowWidth >= 700}
         width={sidebarWidth}
@@ -7966,6 +8156,14 @@ export default function App() {
         setComposerImages={setComposerImages}
         composerFileRef={composerFileRef}
         tags={tags}
+        composerTagList={composerTagList}
+        setComposerTagList={setComposerTagList}
+        composerTagInput={composerTagInput}
+        setComposerTagInput={setComposerTagInput}
+        composerTagFocused={composerTagFocused}
+        setComposerTagFocused={setComposerTagFocused}
+        composerTagInputRef={composerTagInputRef}
+        tagsWithCounts={tagsWithCounts}
         setTags={setTags}
         composerColor={composerColor}
         setComposerColor={setComposerColor}
