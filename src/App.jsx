@@ -149,34 +149,34 @@ async function api(path, { method = "GET", body, token } = {}) {
 /** ---------- Colors ---------- */
 /* Added 6 pastel boho colors + two-line picker layout via grid-cols-6 */
 const LIGHT_COLORS = {
-  default: "rgba(255, 255, 255, 0.6)",
-  red: "rgba(252, 165, 165, 0.6)",
-  yellow: "rgba(253, 224, 71, 0.6)",
-  green: "rgba(134, 239, 172, 0.6)",
-  blue: "rgba(147, 197, 253, 0.6)",
-  purple: "rgba(196, 181, 253, 0.6)",
+  default: "rgba(255, 255, 255, 0.85)",
+  red: "rgba(242, 139, 130, 0.85)",
+  yellow: "rgba(255, 214, 51, 0.85)",
+  green: "rgba(124, 233, 157, 0.85)",
+  blue: "rgba(120, 180, 255, 0.85)",
+  purple: "rgba(180, 160, 255, 0.85)",
 
-  peach: "rgba(255, 183, 178, 0.6)",
-  sage: "rgba(197, 219, 199, 0.6)",
-  mint: "rgba(183, 234, 211, 0.6)",
-  sky: "rgba(189, 224, 254, 0.6)",
-  sand: "rgba(240, 219, 182, 0.6)",
-  mauve: "rgba(220, 198, 224, 0.6)",
+  peach: "rgba(249, 160, 140, 0.85)",
+  sage: "rgba(167, 205, 170, 0.85)",
+  mint: "rgba(140, 225, 190, 0.85)",
+  sky: "rgba(150, 210, 255, 0.85)",
+  sand: "rgba(230, 200, 150, 0.85)",
+  mauve: "rgba(210, 175, 218, 0.85)",
 };
 const DARK_COLORS = {
-  default: "rgba(40, 40, 40, 0.6)",
-  red: "rgba(153, 27, 27, 0.6)",
-  yellow: "rgba(154, 117, 21, 0.6)",
-  green: "rgba(22, 101, 52, 0.6)",
-  blue: "rgba(30, 64, 175, 0.6)",
-  purple: "rgba(76, 29, 149, 0.6)",
+  default: "rgba(40, 40, 40, 0.85)",
+  red: "rgba(140, 36, 36, 0.85)",
+  yellow: "rgba(140, 110, 25, 0.85)",
+  green: "rgba(28, 110, 58, 0.85)",
+  blue: "rgba(35, 72, 165, 0.85)",
+  purple: "rgba(82, 38, 140, 0.85)",
 
-  peach: "rgba(191, 90, 71, 0.6)",
-  sage: "rgba(54, 83, 64, 0.6)",
-  mint: "rgba(32, 102, 77, 0.6)",
-  sky: "rgba(30, 91, 150, 0.6)",
-  sand: "rgba(140, 108, 66, 0.6)",
-  mauve: "rgba(98, 74, 112, 0.6)",
+  peach: "rgba(170, 80, 62, 0.85)",
+  sage: "rgba(55, 90, 65, 0.85)",
+  mint: "rgba(35, 108, 82, 0.85)",
+  sky: "rgba(35, 95, 145, 0.85)",
+  sand: "rgba(135, 105, 60, 0.85)",
+  mauve: "rgba(100, 72, 115, 0.85)",
 };
 const COLOR_ORDER = [
   "default",
@@ -993,6 +993,15 @@ html:not(.dark) .note-content pre .code-copy-btn {
 @media (min-width: 1024px) { .masonry-grid { column-count: 4; } }
 @media (min-width: 1280px) { .masonry-grid { column-count: 5; } }
 @media (min-width: 1536px) { .masonry-grid { column-count: 6; } }
+
+/* Pinned cards flex layout */
+.pinned-grid { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-start; }
+.pinned-grid > div { width: 100%; }
+@media (min-width: 640px) { .pinned-grid > div { width: calc(50% - 0.375rem); } }
+@media (min-width: 768px) { .pinned-grid > div { width: calc(33.333% - 0.5rem); } }
+@media (min-width: 1024px) { .pinned-grid > div { width: calc(25% - 0.5625rem); } }
+@media (min-width: 1280px) { .pinned-grid > div { width: calc(20% - 0.6rem); } }
+@media (min-width: 1536px) { .pinned-grid > div { width: calc(16.666% - 0.625rem); } }
 
 /* New grid layout to place notes row-wise (left-to-right, top-to-bottom) */
 /* Keep-like masonry using CSS Grid with JS-calculated row spans (preserves horizontal order) */
@@ -3702,12 +3711,12 @@ function NotesUI({
             )}
             <div
               className={
-                listView ? "max-w-2xl mx-auto space-y-6" : "masonry-grid"
+                listView ? "max-w-2xl mx-auto space-y-6" : "pinned-grid"
               }
             >
               {pinned.map((n) => (
+                <div key={n.id}>
                 <NoteCard
-                  key={n.id}
                   n={n}
                   dark={dark}
                   openModal={openModal}
@@ -3729,6 +3738,7 @@ function NotesUI({
                   onUpdateChecklistItem={onUpdateChecklistItem}
                   currentUser={currentUser}
                 />
+                </div>
               ))}
             </div>
           </section>
@@ -3973,40 +3983,8 @@ export default function App() {
     try {
       const stored = localStorage.getItem("sidebarAlwaysVisible");
       return stored === null ? true : stored === "true";
-
-  /* Persist + enforce sidebarAlwaysVisible on wide screens */
-  useEffect(() => {
-    // persist
-    try {
-      localStorage.setItem("sidebarAlwaysVisible", String(activeTagFilters));
-    } catch (e) {}
-
-    // enforce on wide screens
-    const mq = window.matchMedia?.("(min-width: 1024px)");
-    const apply = () => {
-      try {
-        if (activeTagFilters && mq?.matches) setSidebarOpen(true);
-      } catch (e) {}
-    };
-
-    apply();
-    try {
-      mq?.addEventListener?.("change", apply);
     } catch (e) {
-      try { mq?.addListener?.(apply); } catch (e2) {}
-    }
-
-    return () => {
-      try {
-        mq?.removeEventListener?.("change", apply);
-      } catch (e) {
-        try { mq?.removeListener?.(apply); } catch (e2) {}
-      }
-    };
-  }, [activeTagFilters]);
-
-    } catch (e) {
-      return false;
+      return true;
     }
   });
   const [sidebarWidth, setSidebarWidth] = useState(() => {
