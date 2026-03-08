@@ -923,6 +923,27 @@ body {
 }
 
 /* Copy buttons */
+/* Hide scrollbars on mobile (keep scrolling) */
+@media (max-width: 639px) {
+
+  /* Hide PAGE scrollbars on mobile (keep scrolling) */
+  html, body {
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* IE/Edge legacy */
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;              /* Chrome/Safari/Brave */
+  }
+  .mobile-hide-scrollbar {
+    scrollbar-width: none;      /* Firefox */
+    -ms-overflow-style: none;   /* IE/Edge legacy */
+  }
+  .mobile-hide-scrollbar::-webkit-scrollbar {
+    display: none;              /* Chrome/Safari/Brave */
+  }
+}
+
 .note-content pre .code-copy-btn,
 .code-block-wrapper .code-copy-btn {
   font-size: .75rem;
@@ -6811,7 +6832,7 @@ export default function App() {
         }}
       >
         <div
-          className="glass-card rounded-xl shadow-2xl w-full h-full max-w-none rounded-none sm:w-11/12 sm:max-w-3xl lg:max-w-4xl sm:h-[95vh] sm:rounded-xl flex flex-col relative overflow-hidden"
+          className="glass-card rounded-none shadow-2xl w-full h-full max-w-none sm:w-11/12 sm:max-w-3xl lg:max-w-4xl sm:h-[95vh] sm:rounded-xl flex flex-col relative overflow-hidden"
           style={{ backgroundColor: modalBgFor(mColor, dark) }}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
@@ -6820,7 +6841,7 @@ export default function App() {
           {/* Scroll container */}
           <div
             ref={modalScrollRef}
-            className="relative flex-1 min-h-0 overflow-y-auto overflow-x-auto"
+            className="relative flex-1 min-h-0 overflow-y-auto overflow-x-auto mobile-hide-scrollbar"
           >
             {/* Sticky header (kept single line on desktop, wraps on mobile) */}
             <div
