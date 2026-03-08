@@ -926,6 +926,19 @@ body {
 /* Hide scrollbars on mobile (keep scrolling) */
 @media (max-width: 639px) {
 
+  /* Mobile: notes grid 2 columns */
+  .masonry-grid {
+    column-count: 2;
+    column-gap: 0.75rem;
+  }
+  .masonry-grid > * {
+    break-inside: avoid;
+    display: inline-block;
+    width: 100%;
+    margin-bottom: 0.75rem;
+  }
+
+
   /* Hide PAGE scrollbars on mobile (keep scrolling) */
   html, body {
     scrollbar-width: none;      /* Firefox */
@@ -3959,6 +3972,38 @@ export default function App() {
   const [alwaysShowSidebarOnWide, setAlwaysShowSidebarOnWide] = useState(() => {
     try {
       return localStorage.getItem("sidebarAlwaysVisible") === "true";
+
+  /* Persist + enforce sidebarAlwaysVisible on wide screens */
+  useEffect(() => {
+    // persist
+    try {
+      localStorage.setItem("sidebarAlwaysVisible", String(activeTagFilters));
+    } catch (e) {}
+
+    // enforce on wide screens
+    const mq = window.matchMedia?.("(min-width: 1024px)");
+    const apply = () => {
+      try {
+        if (activeTagFilters && mq?.matches) setSidebarOpen(true);
+      } catch (e) {}
+    };
+
+    apply();
+    try {
+      mq?.addEventListener?.("change", apply);
+    } catch (e) {
+      try { mq?.addListener?.(apply); } catch (e2) {}
+    }
+
+    return () => {
+      try {
+        mq?.removeEventListener?.("change", apply);
+      } catch (e) {
+        try { mq?.removeListener?.(apply); } catch (e2) {}
+      }
+    };
+  }, [activeTagFilters]);
+
     } catch (e) {
       return false;
     }
@@ -8076,7 +8121,7 @@ export default function App() {
 
   // Close sidebar when navigating away or opening modal
   useEffect(() => {
-    if (open) setSidebarOpen(false);
+    if (open && !(activeTagFilters && window.matchMedia?.("(min-width: 1024px)")?.matches)) setSidebarOpen(false);
   }, [open]);
 
   // ---- Routing ----
