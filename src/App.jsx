@@ -3971,7 +3971,8 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [alwaysShowSidebarOnWide, setAlwaysShowSidebarOnWide] = useState(() => {
     try {
-      return localStorage.getItem("sidebarAlwaysVisible") === "true";
+      const stored = localStorage.getItem("sidebarAlwaysVisible");
+      return stored === null ? true : stored === "true";
 
   /* Persist + enforce sidebarAlwaysVisible on wide screens */
   useEffect(() => {
