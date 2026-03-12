@@ -1671,7 +1671,7 @@ function NoteCard({
         <div className="mb-3 relative overflow-hidden rounded-lg border border-[var(--border-light)]">
           <img
             src={mainImg.src}
-            alt={mainImg.name || "note image"}
+            alt={mainImg.name || t("noteImage")}
             className="w-full h-40 object-cover"
           />
           {imgs.length > 1 && (
@@ -1843,9 +1843,9 @@ function RegisterView({ dark, onToggleDark, onRegister, goLogin }) {
     if (pw !== pw2) return setErr(t("passwordsDoNotMatch"));
     try {
       const res = await onRegister(name.trim() || "User", email.trim(), pw);
-      if (!res.ok) setErr(res.error || "Registration failed");
+      if (!res.ok) setErr(res.error || t("registrationFailed"));
     } catch (er) {
-      setErr(er.message || "Registration failed");
+      setErr(er.message || t("registrationFailed"));
     }
   };
 
@@ -2544,8 +2544,8 @@ function AdminPanel({
                         <button
                           onClick={() => {
                             showGenericConfirm({
-                              title: "Delete User",
-                              message: `Are you sure you want to delete ${user.name}?`,
+                              title: t("deleteUser"),
+                              message: t("deleteUserConfirmName").replace("{name}", user.name),
                               confirmText: t("delete"),
                               danger: true,
                               onConfirm: () => deleteUser(user.id),
@@ -2557,8 +2557,8 @@ function AdminPanel({
                     </div>
                   </div>
                   <div className="text-xs text-gray-500 space-y-1">
-                    <div>Notes: {user.notes}</div>
-                    <div>Storage: {formatBytes(user.storage_bytes ?? 0)}</div>
+                    <div>{t("notes")}: {user.notes}</div>
+                    <div>{t("storage")}: {formatBytes(user.storage_bytes ?? 0)}</div>
                     <div>
                       Joined: {new Date(user.created_at).toLocaleDateString()}
                     </div>
@@ -3606,7 +3606,7 @@ function AdminView({ dark }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to load users");
+      if (!res.ok) throw new Error(data?.error || t("failedLoadUsers"));
       setUsers(Array.isArray(data) ? data : []);
     } catch (e) {
       alert(e.message || t("failedLoadAdminData"));
@@ -3623,7 +3623,7 @@ function AdminView({ dark }) {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Delete failed");
+      if (!res.ok) throw new Error(data?.error || t("deleteFailed"));
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (e) {
       alert(e.message || t("deleteFailed"));
@@ -3694,7 +3694,7 @@ function AdminView({ dark }) {
                           : "bg-gray-500/10 text-gray-700 dark:text-gray-300 border border-gray-500/20"
                       }`}
                     >
-                      {u.is_admin ? "Yes" : "No"}
+                      {u.is_admin ? t("yes") : t("no")}
                     </span>
                   </td>
                   <td className="py-2 pr-3">
@@ -3705,9 +3705,8 @@ function AdminView({ dark }) {
                       className="px-2.5 py-1.5 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700"
                       onClick={() => {
                         showGenericConfirm({
-                          title: "Delete User",
-                          message:
-                            "Delete this user and ALL their notes? This cannot be undone.",
+                          title: t("deleteUser"),
+                          message: t("deleteUserAndNotesConfirm"),
                           confirmText: t("delete"),
                           danger: true,
                           onConfirm: () => removeUser(u.id),
@@ -4412,7 +4411,7 @@ export default function App() {
     } catch (err) {
       console.error("AI Error:", err);
       setAiResponse(
-        "Sorry, I encountered an error while processing your request.",
+        t("aiRequestFailedFriendly"),
       );
     } finally {
       setIsAiLoading(false);
@@ -7570,12 +7569,12 @@ export default function App() {
                                       className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
                                       title={
                                         collab.id === currentUser?.id
-                                          ? "Remove yourself"
-                                          : "Remove collaborator"
+                                          ? t("removeYourself")
+                                          : t("removeCollaborator")
                                       }
                                     >
                                       {collab.id === currentUser?.id
-                                        ? "Leave"
+                                        ? t("leave")
                                         : t("remove")}
                                     </button>
                                   )}
@@ -8068,7 +8067,7 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-2">
-              {genericConfirmConfig.title || "Confirm Action"}
+              {genericConfirmConfig.title || t("confirmAction")}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-300">
               {genericConfirmConfig.message}
