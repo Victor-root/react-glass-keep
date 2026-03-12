@@ -19,6 +19,36 @@ const DRAWING_COLORS = [
 
 const PEN_SIZES = [1, 2, 4, 8, 12, 16, 24, 32];
 
+
+const PenToolIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M3 17.25V21h3.75l11-11-3.75-3.75-11 11zM20.71 7.04a1.003 1.003 0 000-1.42L18.37 3.29a1.003 1.003 0 00-1.42 0L15.13 5.11l3.75 3.75 1.83-1.82z" />
+  </svg>
+);
+
+const EraserToolIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M16.24 3.56L21.9 9.22a2 2 0 010 2.83l-7.78 7.78a2 2 0 01-1.41.59H5.83a2 2 0 01-1.41-.59L1.59 17a2 2 0 010-2.83l11.82-11.82a2 2 0 012.83 0zM7 19h5.17l7.78-7.78-4.24-4.24L4 18.71 5.29 20H7z" />
+  </svg>
+);
+
+const ExpandMoreIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" />
+  </svg>
+);
+
+const UndoToolIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12.5 8c-2.35 0-4.45 1.02-5.9 2.64L4 8v8h8l-3.04-3.04A5.47 5.47 0 0112.5 11c2.76 0 5 2.24 5 5 0 .34-.03.67-.1.99l2.02 1.17c.28-.68.43-1.42.43-2.16 0-4.42-3.58-8-8-8z" />
+  </svg>
+);
+
+const DeleteToolIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 002-2V7H6v12zm3.46-7.12 1.41-1.41L12 11.59l1.12-1.12 1.41 1.41L13.41 13l1.12 1.12-1.41 1.41L12 14.41l-1.12 1.12-1.41-1.41L10.59 13l-1.13-1.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4z" />
+  </svg>
+);
 function DrawingCanvas({ data, onChange, width = 800, height = 600, readOnly = false, darkMode = false, hideModeToggle = false, initialMode = null }) {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -320,14 +350,14 @@ function DrawingCanvas({ data, onChange, width = 800, height = 600, readOnly = f
               className={`px-2 py-1 rounded text-sm ${tool === 'pen' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
               title={t("pen")}
             >
-              ✏️
+              <PenToolIcon />
             </button>
             <button
               onClick={() => setTool('eraser')}
               className={`px-2 py-1 rounded text-sm ${tool === 'eraser' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
               title={t("eraser")}
             >
-              🧽
+              <EraserToolIcon />
             </button>
           </div>
 
@@ -343,7 +373,7 @@ function DrawingCanvas({ data, onChange, width = 800, height = 600, readOnly = f
                   className="w-4 h-4 rounded border border-gray-400"
                   style={{ backgroundColor: color }}
                 />
-                <span>▼</span>
+                <ExpandMoreIcon />
               </button>
 
               {showColorPicker && (
@@ -387,14 +417,14 @@ function DrawingCanvas({ data, onChange, width = 800, height = 600, readOnly = f
               className="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm disabled:opacity-50 hover:bg-gray-300 dark:hover:bg-gray-600"
               title={t("undo")}
             >
-              ↶
+              <UndoToolIcon />
             </button>
             <button
               onClick={clearCanvas}
               className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
               title={t("clearAll")}
             >
-              🗑️
+              <DeleteToolIcon />
             </button>
           </div>
         </div>
