@@ -1068,6 +1068,37 @@ async function fileToCompressedDataURL(file, maxDim = 1600, quality = 0.85) {
   return canvas.toDataURL("image/jpeg", quality);
 }
 
+/** ---------- Phone number linkification (mobile only) ---------- */
+const PHONE_RE =
+  /(?:\+1[\s.-]?)?\(\d{3}\)[\s.-]?\d{3}[\s.-]?\d{4}|(?:\+1[\s.-]?)?\d{3}[\s.-]\d{3}[\s.-]\d{4}|\+33[\s.-]?\d[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}|0\d[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}[\s.-]?\d{2}/g;
+
+function linkifyPhoneNumbers(text) {
+  if (!text) return text;
+  PHONE_RE.lastIndex = 0;
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  while ((match = PHONE_RE.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
+    const phone = match[0];
+    const digits = phone.replace(/[\s.()-]/g, "");
+    parts.push(
+      <a
+        key={match.index}
+        href={`tel:${digits}`}
+        className="underline text-blue-600 dark:text-blue-400"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {phone}
+      </a>,
+    );
+    lastIndex = PHONE_RE.lastIndex;
+  }
+  if (parts.length === 0) return text;
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return <>{parts}</>;
+}
+
 /** ---------- Shared UI pieces ---------- */
 function ChecklistRow({
   item,
@@ -1079,6 +1110,8 @@ function ChecklistRow({
   showRemove = false,
   size = "md", // "sm" | "md" | "lg"
 }) {
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 700;
+
   const boxSize =
     size === "lg"
       ? "h-7 w-7 md:h-6 md:w-6"
@@ -1114,7 +1147,7 @@ function ChecklistRow({
         <span
           className={`text-sm ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
         >
-          {item.text}
+          {isMobile ? linkifyPhoneNumbers(item.text) : item.text}
         </span>
       ) : (
         <input
