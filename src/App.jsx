@@ -1136,10 +1136,10 @@ function ChecklistRow({
     : "opacity-0 group-hover:opacity-100";
 
   return (
-    <div className="flex items-start gap-3 md:gap-2 group">
+    <div className="flex items-start gap-3 md:gap-2 group min-w-0">
       <input
         type="checkbox"
-        className={`mt-0.5 ${boxSize} cursor-pointer`}
+        className={`mt-0.5 shrink-0 ${boxSize} cursor-pointer`}
         checked={!!item.done}
         onChange={(e) => {
           e.stopPropagation();
@@ -1150,7 +1150,7 @@ function ChecklistRow({
       />
       {readOnly ? (
         <span
-          className={`text-sm break-words ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
+          className={`text-sm break-words min-w-0 ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
         >
           {isMobile ? linkifyPhoneNumbers(item.text) : item.text}
         </span>
