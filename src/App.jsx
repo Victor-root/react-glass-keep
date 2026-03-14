@@ -989,7 +989,7 @@ html:not(.dark) .note-content pre .code-copy-btn {
 
 .dragging { opacity: 0.5; transform: scale(1.05); }
 .drag-over { outline: 2px dashed rgba(99,102,241,.6); outline-offset: 6px; }
-.masonry-grid { column-gap: 0.75rem; column-count: 1; }
+.masonry-grid { column-gap: 0.75rem; column-count: 2; }
 @media (min-width: 640px) { .masonry-grid { column-count: 2; } }
 @media (min-width: 768px) { .masonry-grid { column-count: 3; } }
 @media (min-width: 1024px) { .masonry-grid { column-count: 4; } }
@@ -998,7 +998,7 @@ html:not(.dark) .note-content pre .code-copy-btn {
 
 /* Pinned cards flex layout */
 .pinned-grid { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-start; }
-.pinned-grid > div { width: 100%; }
+.pinned-grid > div { width: calc(50% - 0.375rem); }
 @media (min-width: 640px) { .pinned-grid > div { width: calc(50% - 0.375rem); } }
 @media (min-width: 768px) { .pinned-grid > div { width: calc(33.333% - 0.5rem); } }
 @media (min-width: 1024px) { .pinned-grid > div { width: calc(25% - 0.5625rem); } }
