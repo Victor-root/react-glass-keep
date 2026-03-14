@@ -1114,6 +1114,7 @@ function ChecklistRow({
   disableToggle = false,
   showRemove = false,
   size = "md", // "sm" | "md" | "lg"
+  preview = false,
 }) {
   const isMobile = typeof window !== "undefined" && window.innerWidth < 700;
 
@@ -1139,20 +1140,20 @@ function ChecklistRow({
     <div className="flex items-start gap-1.5 sm:gap-3 md:gap-2 group min-w-0">
       <input
         type="checkbox"
-        className={`mt-1 sm:mt-0.5 shrink-0 ${boxSize} cursor-pointer`}
+        className={`mt-1 sm:mt-0.5 shrink-0 ${boxSize} ${preview ? "pointer-events-none" : "cursor-pointer"}`}
         checked={!!item.done}
         onChange={(e) => {
           e.stopPropagation();
           onToggle?.(e.target.checked, e);
         }}
         onClick={(e) => e.stopPropagation()}
-        disabled={!!disableToggle}
+        disabled={!!disableToggle || preview}
       />
       {readOnly ? (
         <span
           className={`text-sm break-words min-w-0 ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
         >
-          {isMobile ? linkifyPhoneNumbers(item.text) : item.text}
+          {isMobile && !preview ? linkifyPhoneNumbers(item.text) : item.text}
         </span>
       ) : (
         <input
@@ -1815,10 +1816,7 @@ function NoteCard({
               size="md"
               readOnly={true}
               showRemove={false}
-              onToggle={async (checked, e) => {
-                e?.stopPropagation(); // Prevent opening the note modal
-                await onUpdateChecklistItem?.(n.id, it.id, checked);
-              }}
+              preview={true}
             />
           ))}
           {extraCount > 0 && (
