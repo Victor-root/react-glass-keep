@@ -1150,7 +1150,7 @@ function ChecklistRow({
       />
       {readOnly ? (
         <span
-          className={`text-sm ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
+          className={`text-sm break-words ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
         >
           {isMobile ? linkifyPhoneNumbers(item.text) : item.text}
         </span>
@@ -1647,7 +1647,8 @@ function NoteCard({
     if (a.done === b.done) return 0; // Same status, maintain order
     return a.done ? 1 : -1; // Unchecked (false) comes before checked (true)
   });
-  const visibleItems = sortedItems.slice(0, 8);
+  const maxPreviewItems = (typeof window !== "undefined" && window.innerWidth < 640) ? 4 : 8;
+  const visibleItems = sortedItems.slice(0, maxPreviewItems);
   const extraCount =
     total > visibleItems.length ? total - visibleItems.length : 0;
 
