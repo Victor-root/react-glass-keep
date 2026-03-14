@@ -861,7 +861,7 @@ body {
 /* NEW: Prevent long headings/URLs from overflowing, allow tables/code to scroll */
 .note-content,
 .note-content * { overflow-wrap: anywhere; word-break: break-word; }
-.note-content pre { overflow: auto; }
+.note-content pre { overflow: hidden; white-space: pre-wrap; word-break: break-word; }
 
 /* Make pre relative so copy button can be positioned */
 .note-content pre { position: relative; }
