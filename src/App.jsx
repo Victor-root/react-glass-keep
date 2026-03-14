@@ -1117,6 +1117,7 @@ function ChecklistRow({
   preview = false,
 }) {
   const isMobile = typeof window !== "undefined" && window.innerWidth < 700;
+  const [editing, setEditing] = React.useState(false);
 
   const boxSize =
     size === "lg"
@@ -1149,9 +1150,10 @@ function ChecklistRow({
         onClick={(e) => e.stopPropagation()}
         disabled={!!disableToggle || preview}
       />
-      {readOnly ? (
+      {readOnly || (!editing && !readOnly) ? (
         <span
-          className={`text-sm break-words min-w-0 ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
+          className={`text-sm break-words min-w-0 ${!readOnly ? "cursor-text" : ""} ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
+          onClick={!readOnly ? (e) => { e.stopPropagation(); setEditing(true); } : undefined}
         >
           {isMobile && !preview ? linkifyPhoneNumbers(item.text) : item.text}
         </span>
@@ -1160,6 +1162,8 @@ function ChecklistRow({
           className={`flex-1 bg-transparent text-sm focus:outline-none border-b border-transparent focus:border-[var(--border-light)] pb-0.5 ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
           value={item.text}
           onChange={(e) => onChange?.(e.target.value)}
+          onBlur={() => setEditing(false)}
+          autoFocus
           placeholder={t("listItem")}
         />
       )}
