@@ -4254,20 +4254,21 @@ export default function App() {
   const onToggleViewMode = () => setListView((v) => !v);
 
   // Load user settings from server on login
-  const skipSidebarSyncRef = useRef(true);
+  const sidebarSettingsLoadedRef = useRef(false);
   useEffect(() => {
     if (!token) return;
-    skipSidebarSyncRef.current = true;
+    sidebarSettingsLoadedRef.current = false;
     (async () => {
       try {
         const settings = await api("/user/settings", { token });
         if (settings && typeof settings.alwaysShowSidebarOnWide === "boolean") {
-          skipSidebarSyncRef.current = true;
           setAlwaysShowSidebarOnWide(settings.alwaysShowSidebarOnWide);
           localStorage.setItem("sidebarAlwaysVisible", String(settings.alwaysShowSidebarOnWide));
         }
       } catch (e) {
         // Fall back to localStorage value
+      } finally {
+        sidebarSettingsLoadedRef.current = true;
       }
     })();
   }, [token]);
@@ -4280,11 +4281,8 @@ export default function App() {
         String(alwaysShowSidebarOnWide),
       );
     } catch (e) {}
-    // Skip server sync on initial mount and after server load
-    if (skipSidebarSyncRef.current) {
-      skipSidebarSyncRef.current = false;
-      return;
-    }
+    // Only sync to server after initial load from server is done
+    if (!sidebarSettingsLoadedRef.current) return;
     if (token) {
       api("/user/settings", {
         method: "PATCH",
