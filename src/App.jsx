@@ -4022,7 +4022,11 @@ export default function App() {
   const [alwaysShowSidebarOnWide, setAlwaysShowSidebarOnWide] = useState(() => {
     try {
       const stored = localStorage.getItem("sidebarAlwaysVisible");
-      return stored === null ? true : stored === "true";
+      if (stored !== null) return stored === "true";
+      // No localStorage value: if logged in, wait for server (null = loading)
+      // If not logged in, default to true
+      const hasToken = !!localStorage.getItem("token");
+      return hasToken ? null : true;
     } catch (e) {
       return true;
     }
@@ -4264,9 +4268,13 @@ export default function App() {
         if (settings && typeof settings.alwaysShowSidebarOnWide === "boolean") {
           setAlwaysShowSidebarOnWide(settings.alwaysShowSidebarOnWide);
           localStorage.setItem("sidebarAlwaysVisible", String(settings.alwaysShowSidebarOnWide));
+        } else {
+          // No server setting yet — default to true (new user)
+          setAlwaysShowSidebarOnWide(true);
         }
       } catch (e) {
-        // Fall back to localStorage value
+        // Network error — default to true
+        setAlwaysShowSidebarOnWide((prev) => prev === null ? true : prev);
       } finally {
         sidebarSettingsLoadedRef.current = true;
       }
