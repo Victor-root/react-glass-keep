@@ -4022,13 +4022,10 @@ export default function App() {
   const [alwaysShowSidebarOnWide, setAlwaysShowSidebarOnWide] = useState(() => {
     try {
       const stored = localStorage.getItem("sidebarAlwaysVisible");
-      if (stored !== null) return stored === "true";
-      // No localStorage value: if logged in, wait for server (null = loading)
-      // If not logged in, default to true
-      const hasToken = !!localStorage.getItem("token");
-      return hasToken ? null : true;
+      // Use localStorage value if available, otherwise null (wait for server)
+      return stored !== null ? stored === "true" : null;
     } catch (e) {
-      return true;
+      return null;
     }
   });
   const [sidebarWidth, setSidebarWidth] = useState(() => {
@@ -4262,6 +4259,12 @@ export default function App() {
   useEffect(() => {
     if (!token) return;
     sidebarSettingsLoadedRef.current = false;
+    // Immediately hide sidebar while loading server preference
+    try {
+      if (localStorage.getItem("sidebarAlwaysVisible") === null) {
+        setAlwaysShowSidebarOnWide(null);
+      }
+    } catch (e) {}
     (async () => {
       try {
         const settings = await api("/user/settings", { token });
