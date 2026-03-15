@@ -2106,6 +2106,22 @@ function TagSidebar({
   const isAllNotes = activeTag === null && activeTagFilters.length === 0;
   const isAllImages = activeTag === ALL_IMAGES;
 
+  // Suppress slide animation when sidebar first becomes permanent (server load)
+  const hasBeenPermanentRef = useRef(permanent);
+  const [skipTransition, setSkipTransition] = useState(false);
+  useLayoutEffect(() => {
+    if (permanent && !hasBeenPermanentRef.current) {
+      hasBeenPermanentRef.current = true;
+      setSkipTransition(true);
+    }
+  }, [permanent]);
+  useEffect(() => {
+    if (skipTransition) {
+      // Re-enable transitions after the browser has painted the instant position
+      requestAnimationFrame(() => setSkipTransition(false));
+    }
+  }, [skipTransition]);
+
   return (
     <>
       {open && !permanent && (
@@ -2117,7 +2133,7 @@ function TagSidebar({
         />
       )}
       <aside
-        className={`fixed top-0 left-0 z-40 h-full shadow-2xl transition-transform duration-200 ${permanent || open ? "translate-x-0" : "-translate-x-full"}`}
+        className={`fixed top-0 left-0 z-40 h-full shadow-2xl ${skipTransition ? "" : "transition-transform duration-200 "}${permanent || open ? "translate-x-0" : "-translate-x-full"}`}
         style={{
           width: permanent ? `${width}px` : "288px",
           backgroundColor: dark ? "#222222" : "rgba(255,255,255,0.95)",
