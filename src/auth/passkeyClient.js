@@ -66,6 +66,32 @@ async function getJSON(path, token) {
   return data || {};
 }
 
+// Decode a base64url string to Uint8Array (browser-side only).
+function base64UrlToUint8Array(s) {
+  const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = b64.length % 4 ? "=".repeat(4 - b64.length % 4) : "";
+  return Uint8Array.from(atob(b64 + pad), (c) => c.charCodeAt(0));
+}
+
+// @simplewebauthn/browser v13's startAuthentication just does
+// `{ ...optionsJSON, challenge: decode(…) }` — it never converts
+// extensions. Pass any PRF eval salt as a base64url string in the
+// options JSON and it reaches navigator.credentials.get() still as a
+// string, which the browser rejects ("not ArrayBuffer or ArrayBufferView").
+//
+// This helper converts prf.eval.first/second from base64url strings to
+// Uint8Arrays in-place so that the spread inside startAuthentication
+// produces the correct ArrayBufferView the WebAuthn API requires.
+function preparePrfOptions(optionsJSON) {
+  const eval_ = optionsJSON?.extensions?.prf?.eval;
+  if (!eval_) return optionsJSON;
+  const patched = { ...optionsJSON, extensions: { ...optionsJSON.extensions, prf: { ...optionsJSON.extensions.prf, eval: { ...eval_ } } } };
+  const e = patched.extensions.prf.eval;
+  if (typeof e.first === "string")  e.first  = base64UrlToUint8Array(e.first);
+  if (typeof e.second === "string") e.second = base64UrlToUint8Array(e.second);
+  return patched;
+}
+
 // Pull the PRF "first" output from the assertion's client extension
 // results. Returns base64url-encoded bytes ready for the verify body
 // or null if the authenticator didn't return one.
@@ -201,7 +227,7 @@ export async function enableInstanceUnlock(token, credentialId) {
     {},
     token,
   );
-  const response = await startAuthentication({ optionsJSON: options });
+  const response = await startAuthentication({ optionsJSON: preparePrfOptions(options) });
   const prfOutput = extractPrfOutput(response);
   if (!prfOutput) {
     throw new Error("This passkey did not return a PRF output. Use passphrase or recovery key.");
@@ -228,7 +254,7 @@ export async function unlockInstanceWithPasskey() {
     {},
   );
   if (alreadyUnlocked) return { alreadyUnlocked: true };
-  const response = await startAuthentication({ optionsJSON: options });
+  const response = await startAuthentication({ optionsJSON: preparePrfOptions(options) });
   const prfOutput = extractPrfOutput(response);
   if (!prfOutput) {
     throw new Error("This passkey did not return a PRF output. Use passphrase or recovery key.");
