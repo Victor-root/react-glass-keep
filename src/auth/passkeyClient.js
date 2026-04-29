@@ -69,6 +69,12 @@ async function getJSON(path, token) {
 // Pull the PRF "first" output from the assertion's client extension
 // results. Returns base64url-encoded bytes ready for the verify body
 // or null if the authenticator didn't return one.
+//
+// @simplewebauthn/browser v13 resolves PRF output as an ArrayBuffer
+// inside clientExtensionResults.prf.results.first. However, different
+// platform authenticators and polyfills may hand us a Uint8Array, a
+// DataView, another typed-array view, or (rarely) a base64url string.
+// We normalise all cases rather than returning a false null.
 function extractPrfOutput(assertion) {
   try {
     const ext = assertion.clientExtensionResults
@@ -76,9 +82,29 @@ function extractPrfOutput(assertion) {
             ? assertion.getClientExtensionResults() : null);
     if (!ext) return null;
     const first = ext.prf?.results?.first;
-    if (!first) return null;
-    // ArrayBuffer / Uint8Array → base64url
-    const bytes = first instanceof Uint8Array ? first : new Uint8Array(first);
+    if (first == null) return null;
+
+    let bytes;
+    if (first instanceof Uint8Array) {
+      bytes = first;
+    } else if (first instanceof ArrayBuffer) {
+      bytes = new Uint8Array(first);
+    } else if (ArrayBuffer.isView(first)) {
+      // DataView, Int8Array, Float32Array, etc.
+      bytes = new Uint8Array(first.buffer, first.byteOffset, first.byteLength);
+    } else if (typeof first === "string" && first.length > 0) {
+      // Rare: some environments return the PRF output already base64url-
+      // encoded. Pass it through after normalising padding.
+      const b64 = first.replace(/-/g, "+").replace(/_/g, "/");
+      const pad = b64.length % 4 ? "=".repeat(4 - b64.length % 4) : "";
+      bytes = Uint8Array.from(atob(b64 + pad), (c) => c.charCodeAt(0));
+    } else {
+      return null;
+    }
+
+    if (bytes.length === 0) return null;
+
+    // bytes → base64url
     let bin = "";
     for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
     return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");

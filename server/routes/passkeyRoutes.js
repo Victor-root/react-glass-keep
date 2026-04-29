@@ -125,6 +125,21 @@ function transportOk(req) {
   return isSecureRequest(req) || isLocalhost(req);
 }
 
+// Rate-limiting helpers for the unauthenticated unlock routes (mirrors
+// the pattern used in unlockRoutes.js).
+function clientIdentifier(req) {
+  return isLocalhost(req) ? "localhost" : getClientIp(req);
+}
+
+function setRetryAfter(res, ms) {
+  if (ms > 0) res.setHeader("Retry-After", String(Math.ceil(ms / 1000)));
+}
+
+async function paceFailure(ms) {
+  if (ms <= 0) return;
+  await new Promise((r) => setTimeout(r, ms));
+}
+
 // ── Route attachment ──────────────────────────────────────────────────
 function attachPasskeyRoutes(app, deps) {
   const { db, auth, adminOnly, signToken, getUserById, log = console } = deps;
@@ -174,8 +189,8 @@ function attachPasskeyRoutes(app, deps) {
           transports: p.transports ? JSON.parse(p.transports) : undefined,
         })),
         authenticatorSelection: {
-          residentKey: "preferred",
-          userVerification: "preferred",
+          residentKey: "required",
+          userVerification: "required",
         },
         // PRF: probe support during registration. The authenticator
         // sets clientExtensionResults.prf.enabled = true if it can
@@ -217,7 +232,7 @@ function attachPasskeyRoutes(app, deps) {
         expectedChallenge: entry.challenge,
         expectedOrigin: expectedOrigin(req),
         expectedRPID: rpId(req),
-        requireUserVerification: false,
+        requireUserVerification: true,
       });
     } catch (e) {
       log.warn?.(`[passkey] register verify failed: ${e.message}`);
@@ -298,7 +313,7 @@ function attachPasskeyRoutes(app, deps) {
     try {
       const options = await generateAuthenticationOptions({
         rpID: rpId(req),
-        userVerification: "preferred",
+        userVerification: "required",
         allowCredentials: [],
       });
       const challengeId = challengeStore.issue({
@@ -339,7 +354,7 @@ function attachPasskeyRoutes(app, deps) {
           counter: stored.counter,
           transports: stored.transports ? JSON.parse(stored.transports) : undefined,
         },
-        requireUserVerification: false,
+        requireUserVerification: true,
       });
     } catch (e) {
       log.warn?.(`[passkey] login verify failed: ${e.message}`);
@@ -507,6 +522,15 @@ function attachPasskeyRoutes(app, deps) {
       });
     }
 
+    // Gate challenge issuance on the same per-IP limit the verify route
+    // maintains so an attacker can't farm fresh challenges indefinitely
+    // while locked out.
+    const id = clientIdentifier(req);
+    if (runtime.attemptOverLimit(id)) {
+      setRetryAfter(res, 5 * 60 * 1000);
+      return res.status(429).json({ error: "Too many unlock attempts. Try again later." });
+    }
+
     try {
       const allowed = passkeyVault.listInstanceUnlockCredentialIds(db);
       if (allowed.length === 0) {
@@ -545,12 +569,23 @@ function attachPasskeyRoutes(app, deps) {
     if (!transportOk(req)) {
       return res.status(400).json({ error: "Refusing to accept passkey unlock over plaintext HTTP." });
     }
+
+    const id = clientIdentifier(req);
+    if (runtime.attemptOverLimit(id)) {
+      setRetryAfter(res, 5 * 60 * 1000);
+      return res.status(429).json({ error: "Too many unlock attempts. Try again later." });
+    }
+    const delay = runtime.attemptDelayMs(id);
+    if (delay) await paceFailure(delay);
+
     const { response, challengeId, prfOutput } = req.body || {};
     if (!response || !challengeId || !prfOutput) {
+      runtime.recordAttempt(id, false);
       return res.status(400).json({ error: "Missing fields (PRF output required)" });
     }
     const entry = challengeStore.consume(challengeId);
     if (!entry || entry.kind !== "unlock") {
+      runtime.recordAttempt(id, false);
       return res.status(400).json({ error: "Challenge expired or invalid" });
     }
 
@@ -561,10 +596,12 @@ function attachPasskeyRoutes(app, deps) {
       // that the admin never promoted to instance-unlock. Both cases
       // surface as the same generic error so an attacker can't probe
       // which credentials exist.
+      runtime.recordAttempt(id, false);
       return res.status(401).json({ error: "This passkey is not authorised to unlock the instance" });
     }
     const user = getUserById.get(passkey.user_id);
     if (!user || !user.is_admin) {
+      runtime.recordAttempt(id, false);
       return res.status(403).json({ error: "Only admin passkeys can unlock the instance" });
     }
 
@@ -584,16 +621,26 @@ function attachPasskeyRoutes(app, deps) {
         requireUserVerification: true,
       });
     } catch (e) {
+      runtime.recordAttempt(id, false);
       log.warn?.(`[passkey] unlock verify failed: ${e.message}`);
       return res.status(401).json({ error: "Verification failed" });
     }
-    if (!verification.verified) return res.status(401).json({ error: "Verification failed" });
+    if (!verification.verified) {
+      runtime.recordAttempt(id, false);
+      return res.status(401).json({ error: "Verification failed" });
+    }
 
     const wrap = passkeyVault.getInstanceUnlockWrap(db, credentialId);
-    if (!wrap) return res.status(401).json({ error: "Unlock wrap missing for this passkey" });
+    if (!wrap) {
+      runtime.recordAttempt(id, false);
+      return res.status(401).json({ error: "Unlock wrap missing for this passkey" });
+    }
 
     const prfBuf = base64UrlToBuf(prfOutput);
-    if (prfBuf.length < 32) return res.status(400).json({ error: "PRF output too short" });
+    if (prfBuf.length < 32) {
+      runtime.recordAttempt(id, false);
+      return res.status(400).json({ error: "PRF output too short" });
+    }
 
     let dek;
     try {
@@ -604,6 +651,7 @@ function attachPasskeyRoutes(app, deps) {
         { iv: wrap.wrap_iv, ct: wrap.wrapped_dek, tag: wrap.wrap_tag },
       );
     } catch (e) {
+      runtime.recordAttempt(id, false);
       log.warn?.(`[passkey] unwrap failed credential=${credentialId}: ${e.message}`);
       return res.status(401).json({ error: "Could not unwrap DEK with this passkey" });
     } finally {
@@ -625,6 +673,7 @@ function attachPasskeyRoutes(app, deps) {
         }
       }
     } catch (e) {
+      runtime.recordAttempt(id, false);
       try { dek.fill(0); } catch {}
       log.warn?.(`[passkey] DEK self-check failed credential=${credentialId}: ${e.message}`);
       return res.status(401).json({ error: "DEK self-check failed" });
@@ -634,6 +683,7 @@ function attachPasskeyRoutes(app, deps) {
     vault.markUnlockedNow(db);
     passkeyVault.touchInstanceUnlockWrap(db, credentialId);
     passkeyVault.updateCounter(db, credentialId, verification.authenticationInfo.newCounter);
+    runtime.recordAttempt(id, true);
     try { dek.fill(0); } catch {}
 
     const token = signToken(user);

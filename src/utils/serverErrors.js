@@ -94,6 +94,7 @@ const PATTERNS = [
   ["Missing question",                           "errMissingQuestion"],
 
   // ── Generic ──────────────────────────────────────────────────────
+  ["Unknown credential",                         "errUnknownCredential"],
   ["Admin only",                                 "errAdminOnly"],
 ];
 

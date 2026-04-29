@@ -4,6 +4,7 @@ export const fr = {
   save: "Enregistrer",
   saved: "Sauvegardé",
   delete: "Supprimer",
+  rename: "Renommer",
   cancel: "Annuler",
   confirm: "Confirmer",
   close: "Fermer",
@@ -758,6 +759,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
 
   // Authz
   errAdminOnly: "Réservé aux administrateurs.",
+  errUnknownCredential: "Clé d'accès inconnue. Utilisez une clé d'accès enregistrée.",
 
   // Chiffrement au repos — bannière affichée si le serveur se
   // verrouille pendant qu'un utilisateur est connecté (le cache

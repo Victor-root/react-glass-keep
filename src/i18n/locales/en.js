@@ -759,6 +759,7 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
 
   // Generic / authz
   errAdminOnly: "Admin only.",
+  errUnknownCredential: "Unknown passkey. Please sign in with a registered passkey.",
 
   // At-rest encryption — banner shown when the server gets locked
   // under a logged-in user (local-first cache stays accessible).
