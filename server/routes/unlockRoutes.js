@@ -18,6 +18,7 @@ const vault = require("../encryption/instanceVault");
 const runtime = require("../encryption/runtimeUnlockState");
 const noteCipher = require("../encryption/noteCipher");
 const recoveryKey = require("../encryption/recoveryKey");
+const passkeyVault = require("../encryption/passkeyVault");
 
 // Run after every successful unlock. Two upgrade paths:
 //   - notes encrypted in the v1 format (no AAD) get re-encrypted as
@@ -551,6 +552,17 @@ function attachUnlockRoutes(app, deps) {
     // back in.
     runtime.lock();
     runtime.setEnabled(false);
+
+    // Wipe every passkey-based unlock wrap and the PRF salt. The
+    // wraps reference a DEK that's just been retired; if the admin
+    // re-activates encryption later, a fresh salt forces them to
+    // re-promote each passkey rather than silently re-using stale
+    // wraps that can't be unwrapped against the new DEK anyway.
+    try {
+      passkeyVault.disableAllPasskeyUnlocks(db);
+    } catch (e) {
+      log.warn?.(`[encrypt] could not wipe passkey unlock wraps: ${e.message}`);
+    }
 
     // Same triple-pass as activation: physically rewrite the file so
     // the encrypted ciphertext pages don't linger as freed-but-readable

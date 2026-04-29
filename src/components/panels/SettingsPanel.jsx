@@ -7,6 +7,7 @@ import { SunIcon, MoonIcon, FloatingCardsIcon, SettingsIcon, CloseIcon } from ".
 import TI from "../../icons/editor/index.jsx";
 import { fileToCompressedDataURL } from "../../utils/helpers.js";
 import TypographyModal from "./TypographyModal.jsx";
+import PasskeySettingsSection from "../settings/PasskeySettingsSection.jsx";
 
 // Single leading-icon component used in front of every section header
 // AND every row / button in the settings panel. Same 36 × 36 indigo
@@ -55,6 +56,8 @@ export default function SettingsPanel({
   token,
   onProfileUpdated,
   onChangePassword,
+  encryptionEnabled,
+  instanceUnlocked,
 }) {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [overridePositions, setOverridePositions] = useState(true);
@@ -239,6 +242,28 @@ export default function SettingsPanel({
                 <div className="text-sm text-gray-500">{t("changePasswordDesc")}</div>
               </div>
             </button>
+
+            {/* Passkeys / WebAuthn — register, rename, delete, and (for
+                admins on a PRF-capable, unlocked instance) promote a
+                credential to "can unlock the instance". The section
+                handles its own list-fetching + ceremonies; we just
+                hand it the token and the encryption status. */}
+            <div className="mt-5 px-3 py-3 border border-[var(--border-light)] rounded-lg">
+              <div className="flex items-center gap-3 mb-3">
+                <RowIcon icon={TI.Key} />
+                <div className="min-w-0">
+                  <div className="font-medium">{t("passkeysSectionTitle")}</div>
+                  <div className="text-sm text-gray-500">{t("passkeysSectionSubtitle")}</div>
+                </div>
+              </div>
+              <PasskeySettingsSection
+                token={token}
+                isAdmin={!!currentUser?.is_admin}
+                encryptionEnabled={!!encryptionEnabled}
+                instanceUnlocked={!!instanceUnlocked}
+                showToast={showToast}
+              />
+            </div>
           </div>
 
           <hr className="border-0 h-0.5 my-7 bg-gradient-to-r from-transparent via-gray-400/60 dark:via-white/30 to-transparent" />

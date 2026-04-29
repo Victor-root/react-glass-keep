@@ -310,6 +310,7 @@ const instanceVault = require("./encryption/instanceVault");
 const noteCipher = require("./encryption/noteCipher");
 const runtimeUnlock = require("./encryption/runtimeUnlockState");
 const { attachUnlockRoutes } = require("./routes/unlockRoutes");
+const { attachPasskeyRoutes } = require("./routes/passkeyRoutes");
 const { requireUnlocked } = require("./routes/lockMiddleware");
 
 instanceVault.ensureSchema(db);
@@ -956,8 +957,18 @@ function broadcastNoteUpdated(noteId) {
 // through. See server/encryption/* and server/routes/unlockRoutes.js.
 attachUnlockRoutes(app, { db, auth, adminOnly, log: console, broadcastToAll });
 
+// Passkey schema is created up-front (idempotent) so registration + login
+// work even before encryption is activated. Routes attach next to the
+// unlock routes so /api/passkeys/login/* and /api/instance/unlock-passkey/*
+// can run while the lock gate is active (their paths are allow-listed
+// below alongside /api/instance/*).
+const passkeyVaultModule = require("./encryption/passkeyVault");
+passkeyVaultModule.ensureSchema(db);
+attachPasskeyRoutes(app, { db, auth, adminOnly, signToken, getUserById, log: console });
+
 const LOCK_ALLOW_PATHS = [
   /^\/api\/instance(\/|$)/,
+  /^\/api\/passkeys\/login(\/|$)/,
   /^\/api\/health(\/|$)/,
   /^\/api\/admin\/login-slogan(\/|$)/,
   /^\/api\/admin\/allow-registration(\/|$)/,

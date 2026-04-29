@@ -1,0 +1,198 @@
+// src/auth/passkeyClient.js
+//
+// Thin layer between @simplewebauthn/browser and the GlassKeep API.
+// Owns the conventions specific to this app:
+//
+//   - challenges go round-trip via {options, challengeId} pairs
+//   - PRF output gets serialised as base64url for the verify body
+//   - browser feature detection lives here so the calling components
+//     can short-circuit before opening dialogs
+//
+// Every call is async and throws on failure with a server-safe
+// `error` message (already localized server-side via serverErrors.js
+// — callers should still pass results through localizeServerError).
+
+import {
+  startRegistration,
+  startAuthentication,
+  browserSupportsWebAuthn,
+  platformAuthenticatorIsAvailable,
+} from "@simplewebauthn/browser";
+
+const API = "/api";
+
+function authHeaders(token) {
+  const h = { "Content-Type": "application/json" };
+  if (token) h.Authorization = `Bearer ${token}`;
+  return h;
+}
+
+async function postJSON(path, body, token) {
+  const res = await fetch(`${API}${path}`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(body || {}),
+  });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (!res.ok) {
+    const e = new Error((data && data.error) || `HTTP ${res.status}`);
+    e.status = res.status;
+    throw e;
+  }
+  return data || {};
+}
+
+async function getJSON(path, token) {
+  const res = await fetch(`${API}${path}`, { headers: authHeaders(token) });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (!res.ok) {
+    const e = new Error((data && data.error) || `HTTP ${res.status}`);
+    e.status = res.status;
+    throw e;
+  }
+  return data || {};
+}
+
+// Pull the PRF "first" output from the assertion's client extension
+// results. Returns base64url-encoded bytes ready for the verify body
+// or null if the authenticator didn't return one.
+function extractPrfOutput(assertion) {
+  try {
+    const ext = assertion.clientExtensionResults
+      || (typeof assertion.getClientExtensionResults === "function"
+            ? assertion.getClientExtensionResults() : null);
+    if (!ext) return null;
+    const first = ext.prf?.results?.first;
+    if (!first) return null;
+    // ArrayBuffer / Uint8Array → base64url
+    const bytes = first instanceof Uint8Array ? first : new Uint8Array(first);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  } catch {
+    return null;
+  }
+}
+
+// ── Feature detection ─────────────────────────────────────────────────
+export function isWebAuthnSupported() {
+  try { return browserSupportsWebAuthn(); } catch { return false; }
+}
+
+export async function isPlatformAuthenticatorAvailable() {
+  try { return await platformAuthenticatorIsAvailable(); } catch { return false; }
+}
+
+// ── User passkey list / management ────────────────────────────────────
+export async function listPasskeys(token) {
+  const r = await getJSON("/passkeys", token);
+  return r.passkeys || [];
+}
+
+export async function renamePasskey(token, credentialId, name) {
+  const res = await fetch(`${API}/passkeys/${encodeURIComponent(credentialId)}`, {
+    method: "PATCH",
+    headers: authHeaders(token),
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+}
+
+export async function deletePasskey(token, credentialId) {
+  const res = await fetch(`${API}/passkeys/${encodeURIComponent(credentialId)}`, {
+    method: "DELETE",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+}
+
+// ── Registration ──────────────────────────────────────────────────────
+//
+// Returns the saved metadata so the caller (settings panel) can
+// immediately reflect prfSupported in the UI without re-fetching.
+export async function registerPasskey(token, label) {
+  const { options, challengeId } = await postJSON("/passkeys/register/options", {}, token);
+  const response = await startRegistration({ optionsJSON: options });
+  const verify = await postJSON("/passkeys/register/verify", {
+    response,
+    challengeId,
+    name: label || null,
+  }, token);
+  return verify; // { ok, credentialId, prfSupported, backedUp }
+}
+
+// ── Login ─────────────────────────────────────────────────────────────
+//
+// Returns { token, user, must_change_password } on success, mirroring
+// /api/login's response shape so App.jsx's existing session-store
+// helper can consume it unchanged.
+export async function loginWithPasskey() {
+  const { options, challengeId } = await postJSON("/passkeys/login/options", {});
+  const response = await startAuthentication({ optionsJSON: options });
+  const verify = await postJSON("/passkeys/login/verify", { response, challengeId });
+  return verify;
+}
+
+// ── Promote passkey to instance unlock ────────────────────────────────
+//
+// Two ceremonies in one helper:
+//   1. ask the server for an authentication options blob with the PRF
+//      eval extension on
+//   2. drive startAuthentication() — the authenticator returns an
+//      assertion AND the PRF output as an extension result
+//   3. ship both to /verify so the server can wrap the live DEK
+//
+// If the authenticator silently dropped the PRF output (rare but
+// happens with some hardware keys that advertised support but don't
+// actually evaluate it), we surface a clear error rather than letting
+// the server return an opaque "PRF output too short".
+export async function enableInstanceUnlock(token, credentialId) {
+  const { options, challengeId } = await postJSON(
+    `/passkeys/${encodeURIComponent(credentialId)}/instance-unlock/options`,
+    {},
+    token,
+  );
+  const response = await startAuthentication({ optionsJSON: options });
+  const prfOutput = extractPrfOutput(response);
+  if (!prfOutput) {
+    throw new Error("This passkey did not return a PRF output. Use passphrase or recovery key.");
+  }
+  return await postJSON(
+    `/passkeys/${encodeURIComponent(credentialId)}/instance-unlock/verify`,
+    { response, challengeId, prfOutput },
+    token,
+  );
+}
+
+export async function disableInstanceUnlock(token, credentialId) {
+  return await postJSON(
+    `/passkeys/${encodeURIComponent(credentialId)}/instance-unlock/disable`,
+    {},
+    token,
+  );
+}
+
+// ── Unlock instance via passkey (no auth, returns admin session) ──────
+export async function unlockInstanceWithPasskey() {
+  const { options, challengeId, alreadyUnlocked } = await postJSON(
+    "/instance/unlock-passkey/options",
+    {},
+  );
+  if (alreadyUnlocked) return { ok: true, alreadyUnlocked: true };
+  const response = await startAuthentication({ optionsJSON: options });
+  const prfOutput = extractPrfOutput(response);
+  if (!prfOutput) {
+    throw new Error("This passkey did not return a PRF output. Use passphrase or recovery key.");
+  }
+  return await postJSON("/instance/unlock-passkey/verify", {
+    response, challengeId, prfOutput,
+  });
+}

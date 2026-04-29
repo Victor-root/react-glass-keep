@@ -4571,7 +4571,7 @@ export default function App() {
       <InstanceUnlockScreen
         dark={dark}
         onToggleDark={toggleDark}
-        onUnlocked={() => {
+        onUnlocked={(payload) => {
           // Optimistically hide the banner the moment the unlock
           // request succeeds. Without this the banner lingers for the
           // ~500 ms it takes refreshLockStatus to round-trip — long
@@ -4583,6 +4583,15 @@ export default function App() {
           setLockBannerDismissed(true);
           setLockOverlayOpen(false);
           refreshLockStatus();
+          // Passkey unlock returns { ok, token, user, ... } — when the
+          // server signs the admin in alongside the unlock, install
+          // the session through the same path password login uses so
+          // the user lands on /notes already authenticated. The
+          // passphrase / recovery-key flows return only { ok } and
+          // skip this branch.
+          if (payload && payload.token && payload.user) {
+            completeLogin(payload);
+          }
         }}
         onBackToOffline={canGoBackToOffline ? () => setLockOverlayOpen(false) : undefined}
       />
@@ -4655,6 +4664,7 @@ export default function App() {
         onToggleDark={toggleDark}
         onLogin={signIn}
         onLoginById={signInById}
+        onPasskeyLogin={completeLogin}
         goRegister={() => navigate("#/register")}
         goSecret={() => navigate("#/login-secret")}
         allowRegistration={allowRegistration}
@@ -4735,6 +4745,8 @@ export default function App() {
         open={settingsPanelOpen}
         onClose={() => setSettingsPanelOpen(false)}
         dark={dark}
+        encryptionEnabled={!!instanceLockStatus?.enabled}
+        instanceUnlocked={!!instanceLockStatus?.unlocked}
         onExportAll={exportAll}
         onImportAll={() => importFileRef.current?.click()}
         onImportGKeep={() => gkeepFileRef.current?.click()}

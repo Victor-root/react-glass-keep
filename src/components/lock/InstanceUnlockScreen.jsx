@@ -12,6 +12,7 @@ import AuthShell from "../auth/AuthShell.jsx";
 import { api } from "../../utils/api.js";
 import { t } from "../../i18n";
 import { localizeServerError } from "../../utils/serverErrors.js";
+import PasskeyUnlockPanel from "./PasskeyUnlockPanel.jsx";
 
 // onBackToOffline (optional): when set, render a "back to my offline
 // notes" link at the bottom of the screen. App.jsx only passes it when
@@ -19,7 +20,7 @@ import { localizeServerError } from "../../utils/serverErrors.js";
 // landed here from the LockedBanner CTA, not from a cold first-visit
 // flow that has no notes to fall back to).
 export default function InstanceUnlockScreen({ dark, onToggleDark, onUnlocked, onBackToOffline }) {
-  const [mode, setMode] = useState("passphrase"); // "passphrase" | "recovery"
+  const [mode, setMode] = useState("passphrase"); // "passphrase" | "recovery" | "passkey"
   const [passphrase, setPassphrase] = useState("");
   const [recoveryKey, setRecoveryKey] = useState("");
   const [loading, setLoading] = useState(false);
@@ -83,8 +84,23 @@ export default function InstanceUnlockScreen({ dark, onToggleDark, onUnlocked, o
               : "bg-black/5 dark:bg-white/10 text-gray-700 dark:text-gray-200 hover:bg-black/10 dark:hover:bg-white/15"
           }`}
         >{t("instanceLockedTabRecovery")}</button>
+        <button
+          type="button"
+          onClick={() => { setMode("passkey"); setErr(""); }}
+          className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            mode === "passkey"
+              ? "bg-indigo-500 text-white"
+              : "bg-black/5 dark:bg-white/10 text-gray-700 dark:text-gray-200 hover:bg-black/10 dark:hover:bg-white/15"
+          }`}
+        >{t("instanceLockedTabPasskey")}</button>
       </div>
 
+      {mode === "passkey" ? (
+        // The passkey panel hands a full session ({ token, user, ... })
+        // back through onUnlocked when the ceremony succeeds — App.jsx
+        // installs the JWT in the same flow as a password login.
+        <PasskeyUnlockPanel onUnlocked={onUnlocked} />
+      ) : (
       <form onSubmit={submit} className="space-y-3">
         {mode === "passphrase" ? (
           <input
@@ -123,6 +139,7 @@ export default function InstanceUnlockScreen({ dark, onToggleDark, onUnlocked, o
           {loading ? t("instanceLockedUnlocking") : t("instanceLockedUnlockCta")}
         </button>
       </form>
+      )}
 
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
         {t("instanceLockedCliHint")}
