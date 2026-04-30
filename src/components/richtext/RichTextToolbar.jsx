@@ -588,6 +588,12 @@ export default function RichTextToolbar({ editor, compact = false, mode = "simpl
               </button>
               <LinkPopover editor={editor} anchorRef={linkBtnRef} open={openMenu === "link"} onClose={closeMenu} />
             </div>
+
+            <span className="rt-sep" aria-hidden="true" />
+
+            <ToolbarButton title={t("fmtSeparator")} onClick={() => chain().setHorizontalRule().run()}>
+              <RichIcons.HR />
+            </ToolbarButton>
           </div>
         </div>
       </div>
