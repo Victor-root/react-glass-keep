@@ -238,7 +238,7 @@ export default function PasskeySettingsSection({
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {/* Instance-unlock toggle (admins, PRF-capable, unlocked vault) */}
                 {isAdmin && encryptionEnabled && p.prfSupported && (
                   <button
