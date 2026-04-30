@@ -178,13 +178,14 @@ export default function PasskeySettingsSection({
     return (
       <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
         <p>{t("passkeyWebViewUnavailable")}</p>
-        <button
-          type="button"
-          onClick={() => window.open(window.location.origin, '_blank')}
-          className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+        <a
+          href="/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium inline-block"
         >
           {t("passkeyWebViewOpenBrowser")}
-        </button>
+        </a>
       </div>
     );
   }
