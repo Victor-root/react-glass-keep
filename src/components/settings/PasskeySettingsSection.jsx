@@ -176,8 +176,15 @@ export default function PasskeySettingsSection({
 
   if (isWebView) {
     return (
-      <div className="text-sm text-gray-500 dark:text-gray-400">
-        {t("passkeyWebViewUnsupported")}
+      <div className="text-sm text-gray-500 dark:text-gray-400 space-y-2">
+        <p>Les clés d'accès ne sont pas disponibles dans l'application.</p>
+        <button
+          type="button"
+          onClick={() => window.open(window.location.origin, '_blank')}
+          className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+        >
+          Ouvrir GlassKeep dans votre navigateur →
+        </button>
       </div>
     );
   }
