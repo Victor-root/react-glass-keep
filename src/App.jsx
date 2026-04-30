@@ -4775,6 +4775,7 @@ export default function App() {
         setTypographyModalOpen={setTypographyModalOpen}
         showGenericConfirm={showGenericConfirm}
         showToast={showToast}
+        isWebView={isWebView}
         onResetNoteOrder={resetNoteOrder}
         currentUser={currentUser}
         token={token}

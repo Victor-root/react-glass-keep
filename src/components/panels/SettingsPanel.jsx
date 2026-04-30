@@ -51,6 +51,7 @@ export default function SettingsPanel({
   setTypographyModalOpen,
   showGenericConfirm,
   showToast,
+  isWebView,
   onResetNoteOrder,
   currentUser,
   token,
@@ -262,6 +263,7 @@ export default function SettingsPanel({
                 encryptionEnabled={!!encryptionEnabled}
                 instanceUnlocked={!!instanceUnlocked}
                 showToast={showToast}
+                isWebView={!!isWebView}
               />
             </div>
           </div>

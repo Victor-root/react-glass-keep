@@ -36,6 +36,7 @@ export default function PasskeySettingsSection({
   encryptionEnabled,   // boolean — passed in from the parent settings panel
   instanceUnlocked,    // boolean — same
   showToast,
+  isWebView,
 }) {
   const [supported, setSupported] = useState(false);
   const [list, setList] = useState([]);
@@ -172,6 +173,14 @@ export default function PasskeySettingsSection({
       setBusyId(null);
     }
   };
+
+  if (isWebView) {
+    return (
+      <div className="text-sm text-gray-500 dark:text-gray-400">
+        {t("passkeyWebViewUnsupported")}
+      </div>
+    );
+  }
 
   if (!supported) {
     return (
