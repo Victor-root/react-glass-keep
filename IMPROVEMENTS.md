@@ -480,6 +480,66 @@ Google doesn't offer a download button from the Keep web app — Keep notes ship
 
 ---
 
+## 🔐 24) Server-side encryption & WebAuthn passkeys
+
+A major security addition focused on protecting notes at rest and providing modern passwordless authentication.
+
+### End-to-end encryption
+- **server-side encryption**: all user notes, settings, and metadata are encrypted at rest using AES-256-GCM
+- **per-user keys**: encryption keys are derived from the user's password (PBKDF2) so each user's data is independently encrypted
+- **transparent operation**: encryption/decryption happens automatically on the server; the browser sends and receives encrypted payloads
+- **admin configuration**: admins can enable or disable encryption globally from the admin panel
+- **recovery**: if encryption is enabled, the "Recovery Secret Key" serves as a backup access method
+
+### WebAuthn passkeys
+- **passwordless registration & login**: users can register passkeys (biometrics, security keys, synced credentials) directly from the settings panel
+- **passkey management**: view all registered passkeys, rename them, delete ones no longer in use, and test them
+- **real-time sync**: passkey properties (name, creation date, synced status) are visible at a glance
+- **instance unlock via passkey**: admins on encryption-enabled, unlocked instances can promote a passkey to unlock the instance using PRF (Platform Resident Function) — the authenticator generates a PRF output used to wrap the instance encryption key
+- **platform compatibility**: works across modern browsers (Chrome, Firefox, Safari, Edge) and Android via WebAuthn API
+
+### Implementation details
+
+#### Encryption layer (`server/encryption/`)
+- **key derivation**: PBKDF2 with 310,000 iterations (OWASP current recommendation) to derive encryption keys from passwords
+- **encryption**: AES-256-GCM with per-operation IVs (initialization vectors) ensures even identical plaintext produces different ciphertexts
+- **metadata**: encrypted payloads include a version number and are stored as base64url so they play nicely with JSON APIs and databases
+- **unlocking**: decryption requires the plaintext password; the server compares a hash of the password against a stored hash (not the password itself)
+
+#### Passkey routes (`server/routes/passkeyRoutes.js`)
+- **registration**: user initiates passkey setup → server generates WebAuthn challenge options → browser collects credential → server verifies and stores
+- **login**: user initiates passkey login → server generates authentication options → browser performs assertion → server verifies counter and stores result
+- **testing**: users can test a passkey to ensure it still works (counter is incremented, timestamp updated)
+- **instance unlock**: special 3-way ceremony where the server requests PRF eval, captures the output, and uses it to wrap the live DEK
+- **counter verification**: prevents cloned authenticators by checking that the counter increases monotonically
+
+#### Frontend components
+- **settings**: `PasskeySettingsSection` displays registered passkeys with badges (Login, Unlock, Synced) and controls to add, rename, delete, or test each one
+- **login views**: `PasskeyLoginView` and `SecretLoginView` provide passwordless sign-in options; if the instance is locked, passkeys are the unlock path
+- **UX messaging**: clear error messages guide users when WebAuthn is unavailable (non-HTTPS context, browser unsupport, Android WebView) — HTTP shows "HTTPS required", WebView shows "use your browser"
+- **toast durations**: passkey success messages remain visible for 5 seconds; "no PRF support" warnings stay for 10 seconds so users understand limitations
+
+### Security considerations
+- **HTTPS requirement**: WebAuthn only works over HTTPS (or localhost), enforced by the browser — Docker deployments must use a reverse proxy with HTTPS
+- **RP ID / origin validation**: the server validates that the passkey origin matches the configured domain (`WEBAUTHN_RP_ID` / `WEBAUTHN_ORIGIN` env vars or auto-detected from headers with trust-proxy enabled)
+- **counter attacks**: authenticator counter is checked on each assertion to detect cloning attempts
+- **password strength**: even with passkeys enabled, password-based login remains available; passwords are still hashed (bcrypt) and optional passkeys are additive, not mandatory
+- **recovery key**: users without passkeys must keep the recovery secret key safe — it's the only way to unlock the vault if they lose access
+
+### Configuration for deployments
+
+#### Native installation (`install.sh`)
+- encryption and passkeys are available automatically; no special setup needed
+- HTTPS is configured by the installer (reverse proxy, self-signed cert, or custom cert)
+
+#### Docker
+- passkeys work out-of-the-box on HTTPS deployments (behind a reverse proxy like Caddy, Nginx, Traefik)
+- encryption keys are stored in the SQLite database (`/data/notes.db`), which is persisted in a Docker volume
+- if the reverse proxy doesn't pass `X-Forwarded-Host` and `X-Forwarded-Proto` correctly, set `WEBAUTHN_RP_ID` and `WEBAUTHN_ORIGIN` manually in the `docker-compose.yml`
+- certificate options: Let's Encrypt (automatic via Caddy), self-signed (works with browsers once accepted), or your own
+
+---
+
 ## 📌 Global summary
 
 In practice, this fork mainly moves Glass Keep further in seven big directions:

@@ -126,6 +126,13 @@ Compared to the original project, this fork puts more emphasis on:
 - wider drawer on tablet / desktop, controls right-aligned and stacked under labels on mobile so longer translations never crush the description
 - duplicate the open note in one click from the modal kebab menu
 
+### 🔐 Server-side encryption & passkeys
+- **end-to-end encryption**: notes and settings are encrypted server-side with keys derived from the user's password
+- **passkeys authentication**: register and sign in using WebAuthn passkeys (fingerprint, face, hardware keys) for passwordless login
+- encrypted data persists even if the server is compromised
+- passkey registration and management available in the settings panel
+- admin users can enable passkeys for instance-level unlock on encryption-enabled deployments
+
 ### 🛠️ Easier self-hosting
 - native install script for Debian / Ubuntu / Proxmox LXC
 - install / update / uninstall support
@@ -250,7 +257,6 @@ Missing keys will automatically fall back to English.
 ## 🗺️ Roadmap
 
 ### 🗓️ Planned
-- Server-side encryption to better protect data in case the server or its drives are stolen
 - More translations with better RTL language support
 - Make the Android app available on **F-Droid**
 - **In-app update notifications** when a new release is available, so a self-hosted instance prompts the user to refresh / pull instead of staying silent
