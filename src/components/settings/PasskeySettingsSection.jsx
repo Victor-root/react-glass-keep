@@ -182,6 +182,14 @@ export default function PasskeySettingsSection({
     );
   }
 
+  if (!window.isSecureContext) {
+    return (
+      <div className="text-sm text-gray-500 dark:text-gray-400">
+        {t("passkeyHttpsRequired")}
+      </div>
+    );
+  }
+
   if (!supported) {
     return (
       <div className="text-sm text-gray-500 dark:text-gray-400">

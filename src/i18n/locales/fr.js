@@ -611,6 +611,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   passkeyUnlockToggleDisabledHint: "L'instance doit être déverrouillée et le chiffrement activé pour modifier ce réglage.",
   passkeyNoPrfNotice: "Cette clé d'accès vous permet de vous connecter, mais ne peut pas déverrouiller l'instance chiffrée sur cet appareil (le facteur PRF n'est pas disponible).",
   passkeyNoPrfRow: "Sans support PRF — utilisable uniquement pour la connexion.",
+  passkeyHttpsRequired: "Les clés d'accès nécessitent une connexion HTTPS sécurisée. Configurez un reverse proxy HTTPS pour activer cette fonctionnalité.",
   passkeyBrowserUnsupported: "Votre navigateur ne prend pas en charge les clés d'accès (WebAuthn).",
   passkeyWebViewUnavailable: "Les clés d'accès ne sont pas disponibles dans l'application. Utilisez votre navigateur pour les gérer.",
   passkeySignIn: "Se connecter avec une clé d'accès",
