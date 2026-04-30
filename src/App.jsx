@@ -301,7 +301,11 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
   const toastIdRef = useRef(0);
 
-  const showToast = (message, type = "success", duration = 3000) => {
+  const showToast = (message, type = "success", duration) => {
+    // Default durations: success/error 5s, info 10s
+    if (duration === undefined) {
+      duration = type === "info" ? 10000 : 5000;
+    }
     const id = ++toastIdRef.current;
     const toast = { id, message, type };
     setToasts((prev) => [...prev, toast]);
