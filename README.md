@@ -30,7 +30,7 @@
   <tr>
     <td><img src="https://github.com/user-attachments/assets/ac5b70c7-5577-4deb-88ee-8bcf2b81eb98" width="240" /></td>
     <td><img src="https://github.com/user-attachments/assets/e4fbff5b-c154-4b12-b0dc-d96fac9d1eb3" width="240" /></td>
-    <td><img src="https://github.com/user-attachments/assets/422068dc-4d0b-408e-b950-9c6df9a3044b" width="240" /></td>
+    <td><img src="https://github.com/user-attachments/assets/c1b257f2-f9e9-4554-bf6f-c892f24b0742" width="240" /></td>
   </tr>
 </table>
 
@@ -62,6 +62,7 @@ Compared to the original project, this fork puts more emphasis on:
 - **🛠️ simpler self-hosting**
 - **✨ a broad polish / stability pass**
 - **🎨 a deeper overhaul of the drawing mode**
+- **🔐 Server-side encryption & passkeys**
 
 ---
 
@@ -125,6 +126,13 @@ Compared to the original project, this fork puts more emphasis on:
 - every section header and every option now carries a Tabler icon for at-a-glance navigation
 - wider drawer on tablet / desktop, controls right-aligned and stacked under labels on mobile so longer translations never crush the description
 - duplicate the open note in one click from the modal kebab menu
+
+### 🔐 Server-side encryption & passkeys
+- **end-to-end encryption**: notes and settings are encrypted server-side with keys derived from a dedicated admin passphrase (separate from user login passwords)
+- **passkeys authentication**: register and sign in using WebAuthn passkeys (fingerprint, face, hardware keys) for passwordless login
+- encrypted data persists even if the server is compromised
+- passkey registration and management available in the settings panel
+- admin users can enable passkeys for instance-level unlock on encryption-enabled deployments
 
 ### 🛠️ Easier self-hosting
 - native install script for Debian / Ubuntu / Proxmox LXC
@@ -191,6 +199,7 @@ The script is designed to make installation as simple as possible:
   - **reverse proxy**
   - **self-signed certificate**
   - **custom SSL certificate**
+- it optionally sets up **at-rest encryption** to protect notes in the database (you can enable it later from the admin panel if you prefer)
 
 > This is the main installation method recommended for this fork.
 
@@ -250,7 +259,6 @@ Missing keys will automatically fall back to English.
 ## 🗺️ Roadmap
 
 ### 🗓️ Planned
-- Server-side encryption to better protect data in case the server or its drives are stolen
 - More translations with better RTL language support
 - Make the Android app available on **F-Droid**
 - **In-app update notifications** when a new release is available, so a self-hosted instance prompts the user to refresh / pull instead of staying silent

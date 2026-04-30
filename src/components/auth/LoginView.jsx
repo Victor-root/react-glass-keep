@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { t } from "../../i18n";
 import AuthShell from "./AuthShell.jsx";
 import UserAvatar from "../common/UserAvatar.jsx";
+import { localizeServerError } from "../../utils/serverErrors.js";
+import PasskeyLoginButton from "./PasskeyLoginButton.jsx";
 
 export default function LoginView({
   dark,
@@ -14,6 +16,7 @@ export default function LoginView({
   floatingCardsEnabled,
   loginSlogan,
   loginProfiles,
+  onPasskeyLogin,
 }) {
   const [mode, setMode] = useState("profiles"); // "profiles" | "password" | "manual"
   const [selectedProfile, setSelectedProfile] = useState(null);
@@ -24,17 +27,19 @@ export default function LoginView({
   // If no visible profiles, show manual login directly
   const hasProfiles = loginProfiles && loginProfiles.length > 0;
 
-  const loginErrorMessage = (er) =>
-    er && (er.status || er.isNetworkError) && er.message
-      ? er.message
-      : t("loginUnexpectedError");
+  const loginErrorMessage = (er) => {
+    if (er && (er.status || er.isNetworkError) && er.message) {
+      return localizeServerError(er.message, "loginUnexpectedError");
+    }
+    return t("loginUnexpectedError");
+  };
 
   const handleManualSubmit = async (e) => {
     e.preventDefault();
     setErr("");
     try {
       const res = await onLogin(email.trim(), pw);
-      if (!res.ok) setErr(res.error || t("loginFailed"));
+      if (!res.ok) setErr(localizeServerError(res.error, "loginFailed"));
     } catch (er) {
       setErr(loginErrorMessage(er));
     }
@@ -45,7 +50,7 @@ export default function LoginView({
     setErr("");
     try {
       const res = await onLoginById(selectedProfile.id, pw);
-      if (!res.ok) setErr(res.error || t("loginFailed"));
+      if (!res.ok) setErr(localizeServerError(res.error, "loginFailed"));
     } catch (er) {
       setErr(loginErrorMessage(er));
     }
@@ -133,6 +138,7 @@ export default function LoginView({
             className="w-full px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
           >{t("signIn")}</button>
         </form>
+        <PasskeyLoginButton onLoggedIn={onPasskeyLogin} dark={dark} />
         <div className="mt-4 text-sm text-center flex justify-center gap-4">
           {hasProfiles && (
             <button
@@ -182,6 +188,8 @@ export default function LoginView({
           className="w-full px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
         >{t("signIn")}</button>
       </form>
+
+      <PasskeyLoginButton onLoggedIn={onPasskeyLogin} dark={dark} />
 
       <div className="mt-4 text-sm flex justify-between items-center">
         {hasProfiles && (

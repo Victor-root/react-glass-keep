@@ -85,6 +85,24 @@ const JWT_SECRET = (() => {
 app.use(express.json({ limit: "20mb" }));
 app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
+// Trust proxy headers (X-Forwarded-Proto / X-Forwarded-For) when:
+//   - the operator explicitly set TRUST_PROXY=true, OR
+//   - HTTPS is disabled at the Node level (HTTPS_ENABLED=false), which
+//     means TLS is necessarily terminated at an upstream reverse proxy.
+// Without this, req.secure stays false on a perfectly-fine HTTPS request
+// forwarded by Nginx/Caddy/Traefik, and the at-rest unlock endpoint
+// would refuse the request as "plaintext HTTP".
+const TRUST_PROXY = process.env.TRUST_PROXY === "true"
+  || process.env.HTTPS_ENABLED === "false";
+if (TRUST_PROXY) {
+  app.set("trust proxy", true);
+  console.log(
+    "[boot] trust proxy enabled (TRUST_PROXY=" + (process.env.TRUST_PROXY || "(unset)")
+    + ", HTTPS_ENABLED=" + (process.env.HTTPS_ENABLED || "(unset)")
+    + "); TLS termination is the operator's responsibility upstream of Node.",
+  );
+}
+
 // ---------- CORS (dev only) ----------
 if (NODE_ENV !== "production") {
   app.use(
@@ -284,6 +302,29 @@ CREATE TABLE IF NOT EXISTS pending_users (
   }
 })();
 
+// ---------- At-rest encryption (server-side, app-level unlock) ----------
+// Sensitive fields of every note can be stored encrypted on disk. The
+// data-encryption key (DEK) lives only in RAM after an admin unlocks
+// the instance. See server/encryption/* for the full design.
+const instanceVault = require("./encryption/instanceVault");
+const noteCipher = require("./encryption/noteCipher");
+const runtimeUnlock = require("./encryption/runtimeUnlockState");
+const { attachUnlockRoutes } = require("./routes/unlockRoutes");
+const { attachPasskeyRoutes } = require("./routes/passkeyRoutes");
+const { requireUnlocked } = require("./routes/lockMiddleware");
+
+instanceVault.ensureSchema(db);
+{
+  const row = instanceVault.getStatusRow(db);
+  if (row && row.enabled) {
+    runtimeUnlock.setEnabled(true);
+    console.log("[encrypt] At-rest encryption is ENABLED. Instance starts LOCKED — admin must unlock.");
+  } else {
+    runtimeUnlock.setEnabled(false);
+    console.log("[encrypt] At-rest encryption is disabled.");
+  }
+}
+
 // Optionally promote admins from env (comma-separated)
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
   .split(",")
@@ -465,7 +506,19 @@ const insertUser = db.prepare(
 // login/register endpoints will be the only way to create users.
 // The install.sh script handles initial admin creation at install time.
 const getUserById = db.prepare("SELECT * FROM users WHERE id = ?");
-const getNoteById = db.prepare("SELECT * FROM notes WHERE id = ?");
+
+// Defined here (instead of next to /api/admin routes) so the unlock
+// routes registered before the bulk of the API can also rely on it.
+function adminOnly(req, res, next) {
+  const row = getUserById.get(req.user.id);
+  if (!row || !row.is_admin) return res.status(403).json({ error: "Admin only" });
+  next();
+}
+
+// getNoteById is wrapped further down once `noteCipher` and the read
+// helper have been declared. This raw handle is only used for the
+// initial migration check below; runtime code uses the wrapped version.
+const getNoteByIdRaw = db.prepare("SELECT * FROM notes WHERE id = ?");
 const getUserSettings = db.prepare("SELECT settings_json FROM user_settings WHERE user_id = ?");
 const upsertUserSettings = db.prepare(
   `INSERT INTO user_settings (user_id, settings_json) VALUES (?, ?)
@@ -473,76 +526,177 @@ const upsertUserSettings = db.prepare(
 );
 
 // Notes statements
-const listNotes = db.prepare(
+// Reads are wrapped with `wrapNoteRead*` so encrypted rows come back as
+// plaintext to the rest of the app. Writes go through `runInsertNote`
+// and `runUpdateNoteFullCollab` / `runPatchNoteSensitiveCollab` so the
+// sensitive columns are encrypted at rest when the instance is unlocked.
+function wrapNoteReadStmt(stmt) {
+  return {
+    get: (...args) => noteCipher.decryptRowInPlace(stmt.get(...args)),
+    all: (...args) => stmt.all(...args).map(noteCipher.decryptRowInPlace),
+    raw: stmt,
+  };
+}
+function decryptRows(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map(noteCipher.decryptRowInPlace);
+}
+
+const listNotes = wrapNoteReadStmt(db.prepare(
   `SELECT * FROM notes WHERE user_id = ? AND archived = 0 AND trashed = 0 ORDER BY pinned DESC, position DESC, timestamp DESC`
-);
-const listArchivedNotes = db.prepare(
+));
+const listArchivedNotes = wrapNoteReadStmt(db.prepare(
   `SELECT * FROM notes WHERE user_id = ? AND archived = 1 AND trashed = 0 ORDER BY timestamp DESC`
-);
-const listTrashedNotes = db.prepare(
+));
+const listTrashedNotes = wrapNoteReadStmt(db.prepare(
   `SELECT * FROM notes WHERE user_id = ? AND trashed = 1 ORDER BY timestamp DESC`
-);
-const listNotesPage = db.prepare(
+));
+const listNotesPage = wrapNoteReadStmt(db.prepare(
   `SELECT * FROM notes WHERE user_id = ? ORDER BY pinned DESC, position DESC, timestamp DESC LIMIT ? OFFSET ?`
-);
-const getNote = db.prepare("SELECT * FROM notes WHERE id = ? AND user_id = ?");
-const getNoteWithCollaboration = db.prepare(`
+));
+const getNoteById = wrapNoteReadStmt(getNoteByIdRaw);
+const getNote = wrapNoteReadStmt(db.prepare("SELECT * FROM notes WHERE id = ? AND user_id = ?"));
+const getNoteWithCollaboration = wrapNoteReadStmt(db.prepare(`
   SELECT n.* FROM notes n
   LEFT JOIN note_collaborators nc ON n.id = nc.note_id AND nc.user_id = ?
   WHERE n.id = ? AND (n.user_id = ? OR nc.user_id IS NOT NULL)
+`));
+
+const insertNoteStmt = db.prepare(`
+  INSERT INTO notes (id,user_id,type,title,content,items_json,tags_json,images_json,color,pinned,position,timestamp,archived,trashed,client_updated_at,is_server_encrypted,enc_version,enc_payload)
+  VALUES (@id,@user_id,@type,@title,@content,@items_json,@tags_json,@images_json,@color,@pinned,@position,@timestamp,0,0,@client_updated_at,@is_server_encrypted,@enc_version,@enc_payload)
 `);
-const insertNote = db.prepare(`
-  INSERT INTO notes (id,user_id,type,title,content,items_json,tags_json,images_json,color,pinned,position,timestamp,archived,trashed,client_updated_at)
-  VALUES (@id,@user_id,@type,@title,@content,@items_json,@tags_json,@images_json,@color,@pinned,@position,@timestamp,0,0,@client_updated_at)
-`);
-const insertNoteIdempotent = db.prepare(`
-  INSERT OR IGNORE INTO notes (id,user_id,type,title,content,items_json,tags_json,images_json,color,pinned,position,timestamp,archived,trashed,client_updated_at)
-  VALUES (@id,@user_id,@type,@title,@content,@items_json,@tags_json,@images_json,@color,@pinned,@position,@timestamp,0,0,@client_updated_at)
-`);
-const updateNote = db.prepare(`
+const updateNoteFullCollabStmt = db.prepare(`
   UPDATE notes SET
     type=@type, title=@title, content=@content, items_json=@items_json, tags_json=@tags_json,
     images_json=@images_json, color=@color, pinned=@pinned, position=@position, timestamp=@timestamp,
-    client_updated_at=@client_updated_at
-  WHERE id=@id AND user_id=@user_id
-`);
-const updateNoteWithCollaboration = db.prepare(`
-  UPDATE notes SET
-    type=@type, title=@title, content=@content, items_json=@items_json, tags_json=@tags_json,
-    images_json=@images_json, color=@color, pinned=@pinned, position=@position, timestamp=@timestamp,
-    client_updated_at=@client_updated_at
+    client_updated_at=@client_updated_at,
+    is_server_encrypted=@is_server_encrypted, enc_version=@enc_version, enc_payload=@enc_payload
   WHERE id=@id AND (user_id=@user_id OR EXISTS(
     SELECT 1 FROM note_collaborators nc
     WHERE nc.note_id=@id AND nc.user_id=@user_id
   ))
 `);
-const patchPartial = db.prepare(`
-  UPDATE notes SET title=COALESCE(@title,title),
-                   content=COALESCE(@content,content),
-                   items_json=COALESCE(@items_json,items_json),
-                   tags_json=COALESCE(@tags_json,tags_json),
-                   images_json=COALESCE(@images_json,images_json),
-                   color=COALESCE(@color,color),
-                   pinned=COALESCE(@pinned,pinned),
-                   timestamp=COALESCE(@timestamp,timestamp),
-                   client_updated_at=COALESCE(@client_updated_at,client_updated_at)
-  WHERE id=@id AND user_id=@user_id
-`);
-const patchPartialWithCollaboration = db.prepare(`
-  UPDATE notes SET title=COALESCE(@title,title),
-                   content=COALESCE(@content,content),
-                   items_json=COALESCE(@items_json,items_json),
-                   tags_json=COALESCE(@tags_json,tags_json),
-                   images_json=COALESCE(@images_json,images_json),
-                   color=COALESCE(@color,color),
-                   pinned=COALESCE(@pinned,pinned),
-                   timestamp=COALESCE(@timestamp,timestamp),
-                   client_updated_at=COALESCE(@client_updated_at,client_updated_at)
+const patchNoteSensitiveCollabStmt = db.prepare(`
+  UPDATE notes SET
+    title=@title, content=@content, items_json=@items_json, tags_json=@tags_json,
+    images_json=@images_json, color=@color,
+    pinned=COALESCE(@pinned,pinned),
+    timestamp=COALESCE(@timestamp,timestamp),
+    client_updated_at=COALESCE(@client_updated_at,client_updated_at),
+    is_server_encrypted=@is_server_encrypted, enc_version=@enc_version, enc_payload=@enc_payload
   WHERE id=@id AND (user_id=@user_id OR EXISTS(
     SELECT 1 FROM note_collaborators nc
     WHERE nc.note_id=@id AND nc.user_id=@user_id
   ))
 `);
+
+// Build a row that's safe to feed to insertNoteStmt: encrypts the
+// sensitive fields if the instance is unlocked, leaves them in the
+// clear with is_server_encrypted=0 otherwise.
+//
+// The AAD context (noteId, ownerUserId) is what binds a v2 ciphertext
+// to its row; without it a thief could swap one note's enc_payload
+// onto another row and the swap would be undetectable. The owner's
+// user_id, NOT the requester's, is used so a collaborator's edit
+// produces a payload that the owner can still read.
+function buildWriteRow(fields, ctx) {
+  return noteCipher.prepareRowForWrite({
+    title: fields.title ?? "",
+    content: fields.content ?? "",
+    items_json: fields.items_json ?? "[]",
+    tags_json: fields.tags_json ?? "[]",
+    images_json: fields.images_json ?? "[]",
+    color: fields.color ?? "default",
+  }, ctx);
+}
+
+function runInsertNote(n) {
+  const w = buildWriteRow(n, { noteId: n.id, userId: n.user_id });
+  return insertNoteStmt.run({
+    id: n.id,
+    user_id: n.user_id,
+    type: n.type,
+    title: w.title,
+    content: w.content,
+    items_json: w.items_json,
+    tags_json: w.tags_json,
+    images_json: w.images_json,
+    color: w.color,
+    pinned: n.pinned,
+    position: n.position,
+    timestamp: n.timestamp,
+    client_updated_at: n.client_updated_at,
+    is_server_encrypted: w.is_server_encrypted,
+    enc_version: w.enc_version,
+    enc_payload: w.enc_payload,
+  });
+}
+
+// `ownerUserId` is the user_id of the row that gets updated, taken
+// from the existing row (NOT from the requester) so a collaborator
+// edit re-encrypts under the owner's AAD and the owner can still
+// read the result.
+function runUpdateNoteFullCollab(updated, ownerUserId) {
+  const w = buildWriteRow(updated, { noteId: updated.id, userId: ownerUserId });
+  return updateNoteFullCollabStmt.run({
+    id: updated.id,
+    user_id: updated.user_id,
+    type: updated.type,
+    title: w.title,
+    content: w.content,
+    items_json: w.items_json,
+    tags_json: w.tags_json,
+    images_json: w.images_json,
+    color: w.color,
+    pinned: updated.pinned,
+    position: updated.position,
+    timestamp: updated.timestamp,
+    client_updated_at: updated.client_updated_at,
+    is_server_encrypted: w.is_server_encrypted,
+    enc_version: w.enc_version,
+    enc_payload: w.enc_payload,
+  });
+}
+
+// Read-merge-write pattern: with encryption on, partial PATCH on a
+// sensitive column is impossible at the SQL layer because the entire
+// payload is encrypted as a single blob. We merge the partial fields
+// with the (already-decrypted) existing row and rewrite the blob.
+// With encryption off, we still go through the same merge so the
+// behaviour is identical from the route's perspective.
+function runPatchNoteSensitiveCollab(id, userId, partial) {
+  const existing = getNoteWithCollaboration.get(userId, id, userId);
+  if (!existing) return { changes: 0 };
+  const merged = {
+    title: partial.title != null ? partial.title : (existing.title ?? ""),
+    content: partial.content != null ? partial.content : (existing.content ?? ""),
+    items_json: partial.items_json != null ? partial.items_json : (existing.items_json ?? "[]"),
+    tags_json: partial.tags_json != null ? partial.tags_json : (existing.tags_json ?? "[]"),
+    images_json: partial.images_json != null ? partial.images_json : (existing.images_json ?? "[]"),
+    color: partial.color != null ? partial.color : (existing.color ?? "default"),
+  };
+  // existing.user_id is the OWNER (not the requesting userId, which
+  // can be a collaborator). The AAD must be tied to the owner so the
+  // re-encrypted blob still verifies for the owner on read.
+  const w = buildWriteRow(merged, { noteId: id, userId: existing.user_id });
+  return patchNoteSensitiveCollabStmt.run({
+    id,
+    user_id: userId,
+    title: w.title,
+    content: w.content,
+    items_json: w.items_json,
+    tags_json: w.tags_json,
+    images_json: w.images_json,
+    color: w.color,
+    pinned: partial.pinned ?? null,
+    timestamp: partial.timestamp ?? null,
+    client_updated_at: partial.client_updated_at ?? null,
+    is_server_encrypted: w.is_server_encrypted,
+    enc_version: w.enc_version,
+    enc_payload: w.enc_payload,
+  });
+}
 const getLastReorderAt = db.prepare("SELECT last_reorder_at FROM user_reorder_state WHERE user_id = ?");
 const upsertReorderAt = db.prepare(`
   INSERT INTO user_reorder_state (user_id, last_reorder_at) VALUES (?, ?)
@@ -572,17 +726,58 @@ const updateNoteWithEditor = db.prepare(`
 `);
 
 // Per-user tags
-const getUserTagsForNote = db.prepare(
-  "SELECT tags_json FROM note_user_tags WHERE note_id = ? AND user_id = ?"
+// Schema also carries (is_encrypted, enc_payload) so the rows can be
+// stored encrypted at rest. The plaintext tags_json column is kept as
+// a placeholder ("[]") on encrypted rows to satisfy the NOT NULL
+// default and to keep any reader outside these helpers from seeing
+// real tag names.
+const getUserTagsRowStmt = db.prepare(
+  "SELECT tags_json, is_encrypted, enc_payload FROM note_user_tags WHERE note_id = ? AND user_id = ?"
 );
-const upsertUserTags = db.prepare(
-  `INSERT INTO note_user_tags (note_id, user_id, tags_json) VALUES (?, ?, ?)
-   ON CONFLICT(note_id, user_id) DO UPDATE SET tags_json = excluded.tags_json`
+const upsertUserTagsPlainStmt = db.prepare(
+  `INSERT INTO note_user_tags (note_id, user_id, tags_json, is_encrypted, enc_payload)
+   VALUES (?, ?, ?, 0, NULL)
+   ON CONFLICT(note_id, user_id) DO UPDATE SET
+     tags_json = excluded.tags_json,
+     is_encrypted = 0,
+     enc_payload = NULL`
+);
+const upsertUserTagsEncStmt = db.prepare(
+  `INSERT INTO note_user_tags (note_id, user_id, tags_json, is_encrypted, enc_payload)
+   VALUES (?, ?, '[]', 1, ?)
+   ON CONFLICT(note_id, user_id) DO UPDATE SET
+     tags_json = '[]',
+     is_encrypted = 1,
+     enc_payload = excluded.enc_payload`
 );
 
+// Read the per-user tag list for (noteId, userId) — transparently
+// decrypts when the row is stored encrypted. Returns '[]' when no row
+// exists or when decryption fails (the latter is logged so a corrupted
+// AAD is investigable instead of silently swallowed).
 function getUserTags(noteId, userId) {
-  const row = getUserTagsForNote.get(noteId, userId);
-  return row ? row.tags_json : "[]";
+  const row = getUserTagsRowStmt.get(noteId, userId);
+  if (!row) return "[]";
+  if (!row.is_encrypted) return row.tags_json || "[]";
+  if (!row.enc_payload) return "[]";
+  try {
+    return noteCipher.decryptTagsPayload(row.enc_payload, { noteId, userId });
+  } catch (e) {
+    console.warn(`[encrypt] failed to decrypt tags for note=${noteId} user=${userId}: ${e.message}`);
+    return "[]";
+  }
+}
+
+// Persist the per-user tag list for (noteId, userId). Uses the
+// encrypted statement when the instance is unlocked and encryption is
+// active; falls back to the plaintext statement otherwise.
+function runUpsertUserTags(noteId, userId, tagsJson) {
+  if (noteCipher.isActive()) {
+    const enc = noteCipher.encryptTagsJson(tagsJson, { noteId, userId });
+    upsertUserTagsEncStmt.run(noteId, userId, enc);
+  } else {
+    upsertUserTagsPlainStmt.run(noteId, userId, tagsJson);
+  }
 }
 
 // Per-user position/pinned override for shared notes.
@@ -726,6 +921,16 @@ function broadcastToAdmins(event) {
   }
 }
 
+// Push an event to every connected SSE client, regardless of user.
+// Used by the lock route so other admins/users who are currently
+// online drop straight to the unlock screen instead of finding out at
+// the next request or the next 30-second status poll.
+function broadcastToAll(event) {
+  for (const userId of sseClients.keys()) {
+    sendEventToUser(userId, event);
+  }
+}
+
 function getCollaboratorUserIdsForNote(noteId) {
   try {
     const rows = getNoteCollaborators.all(noteId) || [];
@@ -744,6 +949,43 @@ function broadcastNoteUpdated(noteId) {
     for (const uid of recipientIds) sendEventToUser(uid, evt);
   } catch { }
 }
+
+// ---------- At-rest encryption: unlock routes + lock gate ----------
+// These have to be registered BEFORE the bulk of the API so the lock
+// middleware can short-circuit everything else with HTTP 423 while
+// still letting unlock attempts and the public lock-status endpoint
+// through. See server/encryption/* and server/routes/unlockRoutes.js.
+attachUnlockRoutes(app, { db, auth, adminOnly, log: console, broadcastToAll });
+
+// Passkey schema is created up-front (idempotent) so registration + login
+// work even before encryption is activated. Routes attach next to the
+// unlock routes so /api/passkeys/login/* and /api/instance/unlock-passkey/*
+// can run while the lock gate is active (their paths are allow-listed
+// below alongside /api/instance/*).
+const passkeyVaultModule = require("./encryption/passkeyVault");
+passkeyVaultModule.ensureSchema(db);
+attachPasskeyRoutes(app, { db, auth, adminOnly, signToken, getUserById, log: console });
+
+const LOCK_ALLOW_PATHS = [
+  /^\/api\/instance(\/|$)/,
+  /^\/api\/passkeys\/login(\/|$)/,
+  /^\/api\/health(\/|$)/,
+  /^\/api\/admin\/login-slogan(\/|$)/,
+  /^\/api\/admin\/allow-registration(\/|$)/,
+  /^\/api\/login\/profiles(\/|$)/,
+];
+
+app.use((req, res, next) => {
+  if (!runtimeUnlock.isEnabled()) return next();
+  if (runtimeUnlock.isUnlocked()) return next();
+  if (!req.path.startsWith("/api/")) return next();
+  for (const r of LOCK_ALLOW_PATHS) if (r.test(req.path)) return next();
+  return res.status(423).json({
+    error: "Instance is locked",
+    locked: true,
+    enabled: true,
+  });
+});
 
 app.get("/api/events", authFromQueryOrHeader, (req, res) => {
   // SSE headers
@@ -1015,9 +1257,9 @@ app.get("/api/notes", auth, (req, res) => {
     LIMIT ? OFFSET ?
   `);
 
-  const rows = usePaging
+  const rows = decryptRows(usePaging
     ? allNotesWithPagingQuery.all(req.user.id, req.user.id, req.user.id, lim, off)
-    : allNotesQuery.all(req.user.id, req.user.id, req.user.id);
+    : allNotesQuery.all(req.user.id, req.user.id, req.user.id));
 
   res.json(
     rows.map((r) => ({
@@ -1075,8 +1317,8 @@ app.post("/api/notes", auth, (req, res) => {
     }
   }
 
-  insertNote.run(n);
-  if (userTags !== "[]") upsertUserTags.run(noteId, req.user.id, userTags);
+  runInsertNote(n);
+  if (userTags !== "[]") runUpsertUserTags(noteId, req.user.id, userTags);
   updateNoteWithEditor.run(nowISO(), req.user.name || req.user.email, nowISO(), n.id);
   broadcastNoteUpdated(n.id);
   // Re-read to get updated_at/last_edited_* set by updateNoteWithEditor
@@ -1105,7 +1347,7 @@ app.put("/api/notes/:id", auth, (req, res) => {
 
   // Save tags to per-user table (not on the note itself)
   if (Array.isArray(b.tags)) {
-    upsertUserTags.run(id, req.user.id, JSON.stringify(b.tags));
+    runUpsertUserTags(id, req.user.id, JSON.stringify(b.tags));
   }
   const updated = {
     id,
@@ -1124,7 +1366,9 @@ app.put("/api/notes/:id", auth, (req, res) => {
     timestamp: b.timestamp || existing.timestamp,
     client_updated_at: tsResult.iso,
   };
-  const result = updateNoteWithCollaboration.run(updated);
+  // existing.user_id is the note's owner — it doesn't change on edit,
+  // even when the editor is a collaborator. AAD binds to the owner.
+  const result = runUpdateNoteFullCollab(updated, existing.user_id);
 
   if (result.changes === 0) {
     return res.status(404).json({ error: "Note not found or access denied" });
@@ -1182,7 +1426,7 @@ app.patch("/api/notes/:id", auth, (req, res) => {
 
   // Save tags to per-user table (not on the note itself)
   if (Array.isArray(req.body.tags)) {
-    upsertUserTags.run(id, req.user.id, JSON.stringify(req.body.tags));
+    runUpsertUserTags(id, req.user.id, JSON.stringify(req.body.tags));
   }
   const p = {
     id,
@@ -1199,7 +1443,7 @@ app.patch("/api/notes/:id", auth, (req, res) => {
     timestamp: req.body.timestamp || null,
     client_updated_at: tsResult.iso,
   };
-  const result = patchPartialWithCollaboration.run(p);
+  const result = runPatchNoteSensitiveCollab(id, req.user.id, p);
 
   if (result.changes === 0) {
     return res.status(404).json({ error: "Note not found or access denied" });
@@ -1425,7 +1669,7 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
     // Preserve the removed user's own per-user tags on the copy instead of
     // inheriting the shared default — those tags are personal to them.
     const userTagsJson = getUserTags(noteId, userIdToRemove);
-    insertNote.run({
+    runInsertNote({
       id: copyNoteId,
       user_id: userIdToRemove,
       type: note.type,
@@ -1486,7 +1730,7 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
 });
 
 app.get("/api/notes/collaborated", auth, (req, res) => {
-  const rows = db.prepare(`
+  const rows = decryptRows(db.prepare(`
     SELECT n.*,
       COALESCE(nup.pinned, n.pinned) AS eff_pinned,
       COALESCE(nup.position, n.position) AS eff_position
@@ -1496,7 +1740,7 @@ app.get("/api/notes/collaborated", auth, (req, res) => {
       ON nup.note_id = n.id AND nup.user_id = ?
     WHERE nc.user_id = ? AND n.trashed = 0
     ORDER BY eff_pinned DESC, eff_position DESC, n.timestamp DESC
-  `).all(req.user.id, req.user.id);
+  `).all(req.user.id, req.user.id));
   res.json(rows.map((r) => serializeNote(r, req.user.id)));
 });
 
@@ -1570,12 +1814,41 @@ app.post("/api/notes/:id/trash", auth, (req, res) => {
     if (mode === "delete_for_all") {
       return res.status(403).json({ error: "Only owner can delete for all collaborators" });
     }
-    // Collaborator "delete" = leave the collaboration
+    // Collaborator "delete" — mirror the owner branch below: the user
+    // gets a personal, trashed copy of the note in their own corbeille,
+    // and the collaboration row is dropped so the live shared note is
+    // no longer in their active view. Without the personal copy, the
+    // note would just vanish without any restore path — which is what
+    // the user reported as "supprimée définitivement" instead of
+    // "envoyée à la corbeille".
+    const userTagsJson = getUserTags(id, req.user.id);
+    const trashedCopyId = uid();
+    runInsertNote({
+      id: trashedCopyId,
+      user_id: req.user.id,
+      type: collabNote.type,
+      title: collabNote.title,
+      content: collabNote.content,
+      items_json: collabNote.items_json,
+      tags_json: userTagsJson,
+      images_json: collabNote.images_json,
+      color: collabNote.color,
+      pinned: 0,
+      position: collabNote.position,
+      timestamp: collabNote.timestamp,
+      client_updated_at: tsResult.iso,
+    });
+    db.prepare("UPDATE notes SET trashed = 1 WHERE id = ?").run(trashedCopyId);
     db.prepare("DELETE FROM note_collaborators WHERE note_id = ? AND user_id = ?").run(id, req.user.id);
     db.prepare("DELETE FROM note_user_tags WHERE note_id = ? AND user_id = ?").run(id, req.user.id);
     db.prepare("DELETE FROM note_user_positions WHERE note_id = ? AND user_id = ?").run(id, req.user.id);
     broadcastNoteUpdated(id);
-    return res.json({ ok: true, left: true });
+    const trashedCopy = getNoteById.get(trashedCopyId);
+    return res.json({
+      ok: true,
+      left: true,
+      trashedCopy: trashedCopy ? serializeNote(trashedCopy, req.user.id) : null,
+    });
   }
 
   // Owner: check if the note has collaborators
@@ -1604,7 +1877,7 @@ app.post("/api/notes/:id/trash", auth, (req, res) => {
     // is handed over to the first collaborator so it stays available for
     // remaining participants.
     const trashedCopyId = uid();
-    insertNote.run({
+    runInsertNote({
       id: trashedCopyId,
       user_id: req.user.id,
       type: existing.type,
@@ -1851,9 +2124,11 @@ app.post("/api/notes/import", auth, (req, res) => {
   //     image-only note (no title, no body) had an empty fingerprint
   //     `text||` and only the FIRST one survived — typical Google
   //     Keep import case.
-  const userRows = db.prepare(
-    "SELECT type, title, content, items_json, images_json FROM notes WHERE user_id = ?",
-  ).all(req.user.id);
+  // Pull all columns so the decryptRows() helper can transparently
+  // decrypt rows when at-rest encryption is unlocked.
+  const userRows = decryptRows(
+    db.prepare("SELECT * FROM notes WHERE user_id = ?").all(req.user.id),
+  );
   const sha1Short = (s) =>
     crypto.createHash("sha1").update(s || "").digest("base64").slice(0, 22);
   const normItems = (jsonOrArr) => {
@@ -1916,7 +2191,7 @@ app.post("/api/notes/import", auth, (req, res) => {
         const id = existing.has(String(n.id)) ? uid() : String(n.id);
         existing.add(id);
         const importedTags = JSON.stringify(Array.isArray(n.tags) ? n.tags : []);
-        insertNote.run({
+        runInsertNote({
           id,
           user_id: req.user.id,
           type: n.type === "checklist" ? "checklist" : n.type === "draw" ? "draw" : "text",
@@ -1931,7 +2206,7 @@ app.post("/api/notes/import", auth, (req, res) => {
           timestamp: n.timestamp || nowISO(),
           client_updated_at: (parseIsoTimestamp(n.client_updated_at || n.timestamp) || {}).iso || nowISO(),
         });
-        if (importedTags !== "[]") upsertUserTags.run(id, req.user.id, importedTags);
+        if (importedTags !== "[]") runUpsertUserTags(id, req.user.id, importedTags);
         imported++;
       }
     });
@@ -1963,11 +2238,7 @@ app.patch("/api/user/settings", auth, (req, res) => {
 });
 
 // ---------- Admin ----------
-function adminOnly(req, res, next) {
-  const row = getUserById.get(req.user.id);
-  if (!row || !row.is_admin) return res.status(403).json({ error: "Admin only" });
-  next();
-}
+// adminOnly() lives near auth() (above) so unlock-routes can use it too.
 
 // Admin settings storage (in-memory for now, could be moved to DB)
 let adminSettings = {
@@ -2021,7 +2292,8 @@ const listAllUsers = db.prepare(`
       COALESCE(LENGTH(n.content),0) +
       COALESCE(LENGTH(n.items_json),0) +
       COALESCE(LENGTH(n.tags_json),0) +
-      COALESCE(LENGTH(n.images_json),0)
+      COALESCE(LENGTH(n.images_json),0) +
+      COALESCE(LENGTH(n.enc_payload),0)
     ), 0) AS storage_bytes
   FROM users u
   LEFT JOIN notes n ON n.user_id = u.id

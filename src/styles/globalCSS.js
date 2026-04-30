@@ -17,9 +17,30 @@ html.dark {
   --border-light: var(--border-dark);
 }
 button, [role="button"] { cursor: pointer; }
-/* Prevent blinking caret on non-editable elements */
-body { -webkit-user-select: none; user-select: none; }
-input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; }
+/* Selection rules:
+ *  - Body allows text selection so users can copy titles, error
+ *    messages, slogans, recovery keys, etc. with the mouse.
+ *  - Buttons opt back to user-select:none so a click doesn't drag-
+ *    select the label. .note-card already has user-select:none
+ *    defined further down in this file.
+ *  - We deliberately do NOT touch caret-color anymore: browsers only
+ *    paint the blinking caret on real editable elements (input,
+ *    textarea, contenteditable=true), which is exactly the behaviour
+ *    we want. Forcing caret-color: transparent on everything broke
+ *    the Tiptap rich-text editor because caret-color is inherited —
+ *    the rule cascaded into the editor's child <p> elements where
+ *    the caret actually lives, hiding it in edit mode. (Carets on
+ *    non-editable elements via F7 caret-browsing are an explicit
+ *    accessibility opt-in by the user; we don't override it.) */
+body { -webkit-user-select: text; user-select: text; }
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+button, [role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
 body {
   background-color: #f0e8ff;
   background-image: linear-gradient(135deg, #f0e8ff 0%, #e8f4fd 50%, #fde8f0 100%);

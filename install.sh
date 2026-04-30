@@ -9,15 +9,33 @@
 
 set -euo pipefail
 
-# ── Colors ────────────────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
+# ── Visual palette ────────────────────────────────────────────────────────────
+# Semantic colours, kept consistent across the script:
+#   INDIGO/VIOLET → brand accent (matches the app's indigo→violet UI)
+#   GREEN         → success
+#   AMBER         → warning + sensitive info
+#   RED           → error + destructive
+#   GRAY          → muted / secondary text
+#   CYAN          → command snippets the user can copy
+INDIGO='\033[38;5;105m'
+VIOLET='\033[38;5;141m'
+PINK='\033[38;5;213m'
+TEAL='\033[38;5;79m'
+GREEN='\033[38;5;71m'
+GREEN_BRIGHT='\033[38;5;120m'
+AMBER='\033[38;5;214m'
+RED='\033[38;5;203m'
+CYAN='\033[38;5;117m'
+GRAY='\033[38;5;245m'
 WHITE='\033[1;37m'
 BOLD='\033[1m'
+DIM='\033[2m'
+ITALIC='\033[3m'
 RESET='\033[0m'
+# Legacy aliases so older string templates ($BLUE / $YELLOW) keep
+# rendering until they're swept away by the helpers below.
+BLUE=$INDIGO
+YELLOW=$AMBER
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/Victor-root/glasskeep-enhanced.git"
@@ -70,6 +88,7 @@ setup_i18n() {
         MSG_WARN_DIR_EXISTS="Le dossier %s existe déjà. Suppression avant réinstallation..."
         MSG_STEP_NPM="Installation des dépendances npm"
         MSG_STEP_BUILD="Build de l'application (Vite)"
+        MSG_HINT_LONG="Cette étape peut prendre plusieurs minutes selon la RAM disponible — c'est normal."
         MSG_ENV_CREATED="Fichier de configuration créé : %s"
         MSG_STEP_SSL="Génération du certificat SSL auto-signé"
         MSG_HTTPS_MENU_TITLE="Comment souhaitez-vous configurer le HTTPS ?"
@@ -85,7 +104,7 @@ setup_i18n() {
         MSG_PRESS_KEY="Appuyez sur une touche pour lancer l'installation..."
         MSG_PRESS_KEY_UPDATE="Appuyez sur une touche pour lancer la mise à jour..."
         MSG_PROXY_YES_INFO="  → HTTPS désactivé côté GlassKeep : votre reverse proxy gère le chiffrement."
-        MSG_PROXY_NO_INFO="  → Un certificat SSL auto-signé va être généré.\n     Ce certificat chiffre les échanges entre votre navigateur et GlassKeep,\n     protégeant vos données (mot de passe, notes) sur le réseau.\n     Votre navigateur affichera un avertissement \"site non sécurisé\" : c'est normal\n     pour un certificat auto-signé, cliquez sur \"Continuer quand même\".\n     Pour modifier ce réglage plus tard, relancez ce script et choisissez\n     \"2) ${MSG_OPT_UPDATE}\"."
+        MSG_PROXY_NO_INFO="  → Un certificat SSL auto-signé va être généré.\n\n     ${BOLD}${TEAL}Votre connexion sera bien chiffrée${RESET} : les mots de passe et les notes\n     ne circuleront pas en clair sur le réseau.\n\n     Votre navigateur affichera quand même un avertissement du type\n     ${BOLD}\"site non sécurisé\"${RESET}. C'est normal avec un certificat auto-signé :\n     le navigateur ne connaît pas encore ce certificat, donc il ne peut\n     pas confirmer automatiquement que le serveur est bien le vôtre.\n\n     Si vous installez GlassKeep sur votre propre serveur et que vous\n     reconnaissez son adresse, vous pouvez cliquer sur ${BOLD}\"Continuer quand même\"${RESET}."
         MSG_HTTPS_OPT3_INFO="  → Votre certificat sera utilisé directement.\n     Assurez-vous que les fichiers restent accessibles par le service.\n     Pour modifier ce réglage plus tard, relancez ce script et choisissez\n     \"2) ${MSG_OPT_UPDATE}\"."
         MSG_STEP_DAEMON="Rechargement de systemd"
         MSG_STEP_SERVICE="Activation et démarrage du service %s"
@@ -116,6 +135,8 @@ setup_i18n() {
         MSG_ACCESS_TITLE="GlassKeep est opérationnel !"
         MSG_ACCESS_LOCAL="Accès local     : "
         MSG_ACCESS_NET="Accès réseau    : "
+        MSG_ACCESS_WAN="Accès WAN       : "
+        MSG_ACCESS_PORT_FORWARD="N'oubliez pas d'ouvrir le port %s sur votre routeur / pare-feu pour rendre GlassKeep accessible depuis Internet."
         MSG_ADMIN_SETUP_TITLE="Création du compte administrateur"
         MSG_ADMIN_NAME_PROMPT="Nom affiché : "
         MSG_ADMIN_LOGIN_PROMPT="Nom d'utilisateur / login [%s] : "
@@ -137,6 +158,32 @@ setup_i18n() {
         MSG_ERR_OS="Impossible de détecter l'OS. Debian/Ubuntu requis."
         MSG_WARN_OS="OS détecté : %s. Ce script est optimisé pour Debian/Ubuntu."
         MSG_STEP_FAIL="Étape échouée : %s"
+
+        MSG_ENC_TITLE="Chiffrement des données au repos (côté serveur)"
+        MSG_ENC_INTRO="Cette option chiffre le contenu des notes dans la base de données.\n  ${BOLD}${TEAL}Protège contre${RESET} : vol du serveur, du disque, de la base SQLite, des sauvegardes.\n  ${BOLD}${AMBER}Ne protège PAS contre${RESET} : l'administrateur du serveur, ou un serveur déjà déverrouillé qui serait compromis.\n  À chaque redémarrage du service GlassKeep (mise à jour, reboot, etc.), un administrateur devra déverrouiller l'instance avec la ${CYAN}passphrase${RESET} ou la ${CYAN}recovery key${RESET}. Une fois l'instance déverrouillée, les utilisateurs se connectent normalement comme d'habitude.\n  Si vous perdez à la fois la ${CYAN}passphrase${RESET} ET la ${CYAN}recovery key${RESET}, les notes chiffrées seront ${BOLD}${RED}irrécupérables${RESET}.\n\n  ${YELLOW}Déconseillé si vous débutez en self-hosting${RESET} : la gestion des secrets (${CYAN}passphrase${RESET} + ${CYAN}recovery key${RESET}) demande de la rigueur. En cas d'oubli des deux, les données sont ${BOLD}${RED}définitivement perdues${RESET}.\n  Vous pouvez répondre ${BOLD}non${RESET} maintenant et activer la protection plus tard depuis l'interface admin (panneau ${BOLD}Administration${RESET} → section \"${BOLD}Chiffrement au repos${RESET}\")."
+        MSG_ENC_PROMPT="Activer la protection des données au repos ? [oui/non] (par défaut : non) : "
+        MSG_ENC_PASS_PROMPT="Passphrase de l'instance (min. 8 caractères) : "
+        MSG_ENC_PASS_CONFIRM="Confirmer la passphrase : "
+        MSG_ENC_PASS_TOO_SHORT="La passphrase doit contenir au moins 8 caractères."
+        MSG_ENC_PASS_MISMATCH="Les passphrases ne correspondent pas."
+        MSG_ENC_RECOVERY_TITLE="Recovery key (à noter MAINTENANT — affichée une seule fois)"
+        MSG_ENC_RECOVERY_WARN="Cette recovery key permet de déverrouiller l'instance si la passphrase est perdue. Si vous perdez les deux, les notes chiffrées seront irrécupérables."
+        MSG_ENC_RECOVERY_ACK="Saisissez \"oui\" une fois la recovery key sauvegardée : "
+        MSG_ENC_ACTIVATING="Activation du chiffrement au repos"
+        MSG_ENC_DONE="Chiffrement au repos activé."
+
+        MSG_SUMMARY_TITLE="Résumé de l'installation"
+        MSG_SUMMARY_NODE="Node.js"
+        MSG_SUMMARY_APP="Application"
+        MSG_SUMMARY_BUNDLE="Bundle web"
+        MSG_SUMMARY_SERVICE="Service systemd"
+        MSG_SUMMARY_ENC="Chiffrement au repos"
+        MSG_SUMMARY_HTTPS="HTTPS"
+        MSG_SUMMARY_ENC_ON="activé"
+        MSG_SUMMARY_ENC_OFF="désactivé"
+        MSG_SUMMARY_HTTPS_PROXY="reverse proxy"
+        MSG_SUMMARY_HTTPS_SELF="certificat auto-signé"
+        MSG_SUMMARY_HTTPS_CUSTOM="certificat personnalisé"
     else
         # ── English strings (default) ───────────────────────────────────────
         MSG_SUBTITLE="Note Manager"
@@ -169,6 +216,7 @@ setup_i18n() {
         MSG_WARN_DIR_EXISTS="Directory %s already exists. Removing before reinstall..."
         MSG_STEP_NPM="Installing npm dependencies"
         MSG_STEP_BUILD="Building the application (Vite)"
+        MSG_HINT_LONG="This step can take several minutes depending on available RAM — that's normal."
         MSG_ENV_CREATED="Configuration file created: %s"
         MSG_STEP_SSL="Generating self-signed SSL certificate"
         MSG_HTTPS_MENU_TITLE="How do you want to configure HTTPS?"
@@ -184,7 +232,7 @@ setup_i18n() {
         MSG_PRESS_KEY="Press any key to start the installation..."
         MSG_PRESS_KEY_UPDATE="Press any key to start the update..."
         MSG_PROXY_YES_INFO="  → HTTPS disabled on the GlassKeep side: your reverse proxy handles encryption."
-        MSG_PROXY_NO_INFO="  → A self-signed SSL certificate will be generated.\n     This certificate encrypts traffic between your browser and GlassKeep,\n     protecting your data (password, notes) on the network.\n     Your browser will show a \"not secure\" warning: this is normal for\n     a self-signed certificate, just click \"Proceed anyway\".\n     To change this setting later, re-run this script and choose\n     \"2) ${MSG_OPT_UPDATE}\"."
+        MSG_PROXY_NO_INFO="  → A self-signed SSL certificate will be generated.\n\n     ${BOLD}${TEAL}Your connection will still be encrypted${RESET}: passwords and notes\n     won't travel in plaintext over the network.\n\n     Your browser will still show a warning like ${BOLD}\"not secure\"${RESET}. That's\n     normal with a self-signed certificate: the browser doesn't yet\n     know this certificate, so it can't automatically confirm that\n     this server is really yours.\n\n     If you're installing GlassKeep on your own server and you recognise\n     its address, you can click ${BOLD}\"Proceed anyway\"${RESET}."
         MSG_HTTPS_OPT3_INFO="  → Your certificate will be used directly.\n     Make sure these files remain accessible by the service.\n     To change this setting later, re-run this script and choose\n     \"2) ${MSG_OPT_UPDATE}\"."
         MSG_STEP_DAEMON="Reloading systemd"
         MSG_STEP_SERVICE="Enabling and starting service %s"
@@ -215,6 +263,8 @@ setup_i18n() {
         MSG_ACCESS_TITLE="GlassKeep is up and running!"
         MSG_ACCESS_LOCAL="Local access    : "
         MSG_ACCESS_NET="Network access  : "
+        MSG_ACCESS_WAN="External access : "
+        MSG_ACCESS_PORT_FORWARD="Don't forget to open port %s on your router / firewall to expose GlassKeep on the Internet."
         MSG_ADMIN_SETUP_TITLE="Admin account setup"
         MSG_ADMIN_NAME_PROMPT="Display name: "
         MSG_ADMIN_LOGIN_PROMPT="Username / login [%s]: "
@@ -236,6 +286,32 @@ setup_i18n() {
         MSG_ERR_OS="Unable to detect OS. Debian/Ubuntu required."
         MSG_WARN_OS="Detected OS: %s. This script is optimized for Debian/Ubuntu."
         MSG_STEP_FAIL="Step failed: %s"
+
+        MSG_ENC_TITLE="At-rest encryption (server-side)"
+        MSG_ENC_INTRO="This option encrypts note contents in the database.\n  ${BOLD}${TEAL}Protects against${RESET}: theft of the server, the disk, the SQLite file, backups.\n  ${BOLD}${AMBER}Does NOT protect against${RESET}: the server administrator, or an already-unlocked, compromised server.\n  Whenever the GlassKeep service restarts (update, reboot, etc.), an administrator must unlock the instance with the ${CYAN}passphrase${RESET} or ${CYAN}recovery key${RESET}. Once the instance is unlocked, regular users sign in as usual.\n  If you lose BOTH the ${CYAN}passphrase${RESET} AND the ${CYAN}recovery key${RESET}, encrypted notes are ${BOLD}${RED}unrecoverable${RESET}.\n\n  ${YELLOW}Not recommended if you are new to self-hosting${RESET}: managing the secrets (${CYAN}passphrase${RESET} + ${CYAN}recovery key${RESET}) requires discipline. If both are ever lost, the data is ${BOLD}${RED}gone for good${RESET}.\n  You can answer ${BOLD}no${RESET} now and turn protection on later from the admin UI (${BOLD}Admin${RESET} panel → \"${BOLD}At-rest encryption${RESET}\" section)."
+        MSG_ENC_PROMPT="Enable at-rest data protection? [yes/no] (default: no): "
+        MSG_ENC_PASS_PROMPT="Instance passphrase (min. 8 characters): "
+        MSG_ENC_PASS_CONFIRM="Confirm passphrase: "
+        MSG_ENC_PASS_TOO_SHORT="Passphrase must be at least 8 characters."
+        MSG_ENC_PASS_MISMATCH="Passphrases do not match."
+        MSG_ENC_RECOVERY_TITLE="Recovery key (write this down NOW — shown only once)"
+        MSG_ENC_RECOVERY_WARN="This recovery key lets you unlock the instance if the passphrase is lost. If you lose both, encrypted notes are unrecoverable."
+        MSG_ENC_RECOVERY_ACK="Type \"yes\" once you have saved the recovery key: "
+        MSG_ENC_ACTIVATING="Activating at-rest encryption"
+        MSG_ENC_DONE="At-rest encryption enabled."
+
+        MSG_SUMMARY_TITLE="Install summary"
+        MSG_SUMMARY_NODE="Node.js"
+        MSG_SUMMARY_APP="Application"
+        MSG_SUMMARY_BUNDLE="Web bundle"
+        MSG_SUMMARY_SERVICE="Systemd service"
+        MSG_SUMMARY_ENC="At-rest encryption"
+        MSG_SUMMARY_HTTPS="HTTPS"
+        MSG_SUMMARY_ENC_ON="enabled"
+        MSG_SUMMARY_ENC_OFF="disabled"
+        MSG_SUMMARY_HTTPS_PROXY="reverse proxy"
+        MSG_SUMMARY_HTTPS_SELF="self-signed certificate"
+        MSG_SUMMARY_HTTPS_CUSTOM="custom certificate"
     fi
 
     # Export detected lang code for use in .env
@@ -243,25 +319,195 @@ setup_i18n() {
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-info()    { echo -e "${BLUE}[INFO]${RESET}  $*"; }
-success() { echo -e "${GREEN}[OK]${RESET}    $*"; }
-warn()    { echo -e "${YELLOW}[WARN]${RESET}  $*"; }
-error()   { echo -e "${RED}[ERROR]${RESET} $*" >&2; }
+# All output flows through these helpers so the script keeps a single
+# visual identity. Glyphs:
+#   ›  info       (gray, dim)
+#   ✓  success    (green)
+#   ⚠  warning    (amber)
+#   ✗  error      (red)
+#   ▸  step start (indigo)
+info()    { printf "${TEAL}›${RESET} %b\n" "$*"; }
+success() { printf "${GREEN}✓${RESET} %b\n" "$*"; }
+warn()    { printf "${AMBER}⚠${RESET} %b\n" "$*"; }
+error()   { printf "${RED}✗${RESET} %b\n" "$*" >&2; }
+
+# Render a multi-line info block (e.g. the SSL mode echos) where every
+# "→" arrow gets pinked and "GlassKeep" gets violet — keeps the body
+# readable in default colour while the eye-catchy bits pop. Input is
+# expected to use \n for line breaks (echo -e style).
+#
+# Why %b on the final printf: the substitution above injects literal
+# "\033[…]" escape sequences from $PINK / $VIOLET (which were assigned
+# in single quotes, so the backslashes are still raw). %b makes printf
+# interpret them as real ANSI escapes — %s would print the raw codes.
+_print_info_block() {
+    local msg
+    msg=$(echo -e "$1")
+    msg="${msg//→/${PINK}→${RESET}}"
+    msg="${msg//GlassKeep/${VIOLET}GlassKeep${RESET}}"
+    printf "%b\n" "$msg"
+}
 
 die() {
     error "$*"
     exit 1
 }
 
-# Run a command with a status label, abort on failure
+# A horizontal rule that adapts to the terminal width (capped at 78
+# cols so the result stays readable on wide terminals too).
+_term_width() {
+    local cols
+    cols=$(tput cols 2>/dev/null || echo 80)
+    [[ -z "$cols" || "$cols" -lt 50 ]] && cols=80
+    [[ "$cols" -gt 78 ]] && cols=78
+    echo "$cols"
+}
+hr() {
+    local color="${1:-$INDIGO}"
+    local cols; cols=$(_term_width)
+    printf "${color}"
+    for ((i=0; i<cols; i++)); do printf "─"; done
+    printf "${RESET}\n"
+}
+
+# Section header — used at the start of each logical phase.
+# Renders as a top rule + an indigo arrow + the title in bold + an
+# optional one-line subtitle in gray.
+section() {
+    local title="$1"
+    local subtitle="${2:-}"
+    echo
+    hr "$INDIGO"
+    printf "  ${BOLD}${INDIGO}▸${RESET}  ${BOLD}%s${RESET}\n" "$title"
+    if [[ -n "$subtitle" ]]; then
+        # Cyan instead of gray so the lead-in question feels live, not
+        # like a muted hint. Italic kept off — these subtitles are
+        # actual instructions, not parenthetical asides.
+        printf "     ${CYAN}%s${RESET}\n" "$subtitle"
+    fi
+    hr "$INDIGO"
+}
+
+# Status panel — left accent bar + lines. Auto-sizes to whatever you
+# put in it, no overflow possible. First arg is the colour (one of
+# $GREEN, $AMBER, $RED, $INDIGO); subsequent args are the body lines.
+panel() {
+    local color="$1"; shift
+    local title="$1"; shift
+    echo
+    printf "${color}┌${RESET} ${BOLD}${color}%s${RESET}\n" "$title"
+    while (( $# )); do
+        printf "${color}│${RESET} %b\n" "$1"
+        shift
+    done
+    printf "${color}└${RESET}\n"
+}
+
+# Run a command quietly with an animated braille spinner. The
+# command's stdout + stderr are captured to a temp log; the user only
+# sees a single moving line per step. On success the line collapses to
+# a green ✓; on failure it collapses to a red ✗ and the captured log
+# is dumped so the operator can diagnose what blew up.
+#
+# Falls back to a non-animated "▸ … ✓" pair when stdout isn't a TTY
+# (piped output, CI, log redirection) so the script still produces
+# something sensible in non-interactive contexts.
+#
+# Why background + wait: keeping the spinner inside the foreground
+# would block on the command. We fork the work, animate while
+# `kill -0 $pid` says it's alive, then `wait $pid` to retrieve the
+# real exit code (set -e doesn't kill backgrounded children — that's
+# what makes capturing rc safe).
+SPINNER_FRAMES=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏")
 step() {
     local label="$1"; shift
-    echo -e "\n${CYAN}▶ ${label}${RESET}"
-    if ! "$@"; then
+    local log; log=$(mktemp)
+    local rc=0
+
+    if [[ -t 1 ]] && [[ "${INSTALL_VERBOSE:-0}" != "1" ]]; then
+        ( "$@" >"$log" 2>&1 ) &
+        local pid=$!
+
+        local i=0
+        while kill -0 "$pid" 2>/dev/null; do
+            printf "\r${VIOLET}%s${RESET}  ${DIM}%s…${RESET}" \
+                "${SPINNER_FRAMES[i]}" "$label"
+            i=$(( (i + 1) % ${#SPINNER_FRAMES[@]} ))
+            sleep 0.08
+        done
+        wait "$pid" || rc=$?
+
+        # \033[2K clears the entire current line; \r returns the cursor
+        # to column 0 so the next printf overwrites the spinner cleanly.
+        if [[ $rc -eq 0 ]]; then
+            printf "\r\033[2K${GREEN}✓${RESET}  %s\n" "$label"
+        else
+            printf "\r\033[2K${RED}✗${RESET}  %s\n" "$label"
+        fi
+    else
+        printf "${INDIGO}▸${RESET}  ${BOLD}%s${RESET}\n" "$label"
+        if "$@" >"$log" 2>&1; then rc=0; else rc=$?; fi
+        if [[ $rc -eq 0 ]]; then
+            printf "${GREEN}✓${RESET}  ${DIM}%s${RESET}\n" "$label"
+        else
+            printf "${RED}✗${RESET}  %s\n" "$label"
+        fi
+    fi
+
+    if [[ $rc -ne 0 ]]; then
+        echo
+        error "Sortie de la commande / Command output:"
+        echo
+        sed -e 's/^/    /' "$log" >&2
+        rm -f "$log"
         # shellcheck disable=SC2059
         die "$(printf "$MSG_STEP_FAIL" "$label")"
     fi
-    success "${label}"
+    rm -f "$log"
+}
+
+# Inline numbered choice. Used in menus + the SSL choice prompt.
+# Args: <number> <colour> <title> <description>
+# Note the explicit `if/fi` rather than `[[ -n "$desc" ]] && printf`:
+# under `set -e`, a false `[[ ]]` would make the whole compound
+# statement non-zero and kill the script — silently truncating the
+# menu after the first item.
+menu_item() {
+    local num="$1" color="$2" title="$3" desc="${4:-}"
+    # If the title contains an em/en-dash separator (" — "), split it
+    # in two: the part before stays bold (the option name), the part
+    # after renders teal+italic (the supporting explanation). Gives a
+    # clear heading-vs-aside hierarchy without needing a second arg at
+    # every call site. Falls through to the simple bold render when
+    # no separator is found (e.g. main install/update/uninstall menu).
+    if [[ "$title" == *" — "* ]]; then
+        local head="${title% — *}"
+        local tail="${title#* — }"
+        printf "  ${color}${BOLD}%s${RESET}  ${BOLD}%s${RESET} ${GRAY}—${RESET} ${TEAL}${ITALIC}%s${RESET}\n" "$num" "$head" "$tail"
+    else
+        printf "  ${color}${BOLD}%s${RESET}  ${BOLD}%s${RESET}\n" "$num" "$title"
+    fi
+    if [[ -n "$desc" ]]; then
+        printf "     ${GRAY}%s${RESET}\n" "$desc"
+    fi
+}
+
+# Prompt with a leading glyph — produces the string that bash's
+# `read -p` should display. Trims any trailing ' :' / ': ' / ' ' from
+# the message string so it composes cleanly with the trailing › glyph
+# (a lot of MSG_* values were authored with their own ': ' suffix).
+prompt_text() {
+    local s="$1"
+    # Strip trailing whitespace + colons (handles "... : " / "... :" /
+    # "...:" / "... " — every MSG_* shape used in this script).
+    while [[ "$s" =~ [[:space:]:]$ ]]; do s="${s::-1}"; done
+    # %b (not %s) so any colour codes the caller embedded in the
+    # message string get interpreted — otherwise the user sees the
+    # raw \033[38;5;214m escapes when we composed an AMBER prompt.
+    # Indigo ❯ on the left keeps the brand frame, pink › on the right
+    # adds a small touch of colour that visually separates the question
+    # from where the user types.
+    printf "${BOLD}${INDIGO}❯${RESET} %b ${PINK}›${RESET} " "$s"
 }
 
 require_root() {
@@ -291,44 +537,249 @@ SSL_MODE=""          # "proxy" | "selfsigned" | "custom"
 CUSTOM_CERT_PATH=""
 CUSTOM_KEY_PATH=""
 
+# Variables set by ask_encryption_config
+ENC_ENABLE="no"
+ENC_PASSPHRASE=""
+
+ask_encryption_config() {
+    section "$MSG_ENC_TITLE"
+    printf "  %s\n\n" "$(echo -e "$MSG_ENC_INTRO")"
+    local ans
+    while true; do
+        read -rp "$(prompt_text "$MSG_ENC_PROMPT")" ans </dev/tty
+        # Empty answer (just Enter) defaults to "no" — matches the
+        # safer fallback advertised in the prompt and avoids forcing
+        # someone unsure into a key-management commitment.
+        case "${ans,,}" in
+            y|yes|o|oui)
+                ENC_ENABLE="yes"
+                break ;;
+            ""|n|no|non)
+                ENC_ENABLE="no"
+                return 0 ;;
+            *)
+                warn "$MSG_PROXY_INVALID" ;;
+        esac
+    done
+
+    local pass1 pass2
+    while true; do
+        read -rsp "$(prompt_text "$MSG_ENC_PASS_PROMPT")" pass1 </dev/tty
+        echo
+        if [[ ${#pass1} -lt 8 ]]; then
+            warn "$MSG_ENC_PASS_TOO_SHORT"
+            continue
+        fi
+        read -rsp "$(prompt_text "$MSG_ENC_PASS_CONFIRM")" pass2 </dev/tty
+        echo
+        if [[ "$pass1" != "$pass2" ]]; then
+            warn "$MSG_ENC_PASS_MISMATCH"
+            continue
+        fi
+        break
+    done
+    ENC_PASSPHRASE="$pass1"
+}
+
+# Initialise the at-rest vault from the install script. Generates the
+# DEK, wraps it under (passphrase, recovery key), encrypts every
+# pre-existing note (typically none on a fresh install), and prints
+# the recovery key once on stdout for the admin to save.
+activate_encryption() {
+    local db_file="$1"
+    local passphrase="$2"
+    local script="${INSTALL_DIR}/server/encryption/_install_activate.js"
+
+    cat > "$script" <<'NODESCRIPT'
+const Database = require("better-sqlite3");
+const vault = require("./instanceVault");
+const noteCipher = require("./noteCipher");
+const runtime = require("./runtimeUnlockState");
+
+const dbFile = process.argv[2];
+const passphrase = process.argv[3];
+if (!dbFile || !passphrase) {
+  console.error("usage: node _install_activate.js <dbFile> <passphrase>");
+  process.exit(1);
+}
+
+const db = new Database(dbFile);
+db.pragma("journal_mode = WAL");
+db.pragma("foreign_keys = ON");
+// Make sure the notes table has the encryption columns even if this
+// is a brand-new database (in which case there are no rows to encrypt).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS notes (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    items_json TEXT NOT NULL,
+    tags_json TEXT NOT NULL,
+    images_json TEXT NOT NULL,
+    color TEXT NOT NULL,
+    pinned INTEGER NOT NULL DEFAULT 0,
+    position REAL NOT NULL DEFAULT 0,
+    timestamp TEXT NOT NULL,
+    archived INTEGER NOT NULL DEFAULT 0,
+    trashed INTEGER NOT NULL DEFAULT 0,
+    client_updated_at TEXT,
+    updated_at TEXT,
+    last_edited_by TEXT,
+    last_edited_at TEXT
+  )
+`);
+// note_user_tags is the per-user tag table the encryption layer also
+// touches. Create it here so the activation transaction (which
+// iterates note_user_tags to encrypt any plaintext rows) doesn't
+// blow up on a fresh install where the server hasn't booted yet.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS note_user_tags (
+    note_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
+    tags_json TEXT NOT NULL DEFAULT '[]',
+    PRIMARY KEY (note_id, user_id)
+  )
+`);
+vault.ensureSchema(db);
+
+const init = vault.initialize(db, passphrase);
+runtime.setEnabled(true);
+runtime.unlockWithDek(init.dek);
+
+const tx = db.transaction(() => {
+  const rows = db.prepare("SELECT * FROM notes").all();
+  const upd = db.prepare(`
+    UPDATE notes SET
+      title = @title, content = @content,
+      items_json = @items_json, tags_json = @tags_json,
+      images_json = @images_json, color = @color,
+      is_server_encrypted = @is_server_encrypted,
+      enc_version = @enc_version,
+      enc_payload = @enc_payload
+    WHERE id = @id
+  `);
+  for (const row of rows) {
+    if (row.is_server_encrypted) continue;
+    const prepared = noteCipher.prepareRowForWrite({
+      title: row.title,
+      content: row.content,
+      items_json: row.items_json,
+      tags_json: row.tags_json,
+      images_json: row.images_json,
+      color: row.color,
+    }, { noteId: row.id, userId: row.user_id });
+    upd.run({
+      id: row.id,
+      title: prepared.title,
+      content: prepared.content,
+      items_json: prepared.items_json,
+      tags_json: prepared.tags_json,
+      images_json: prepared.images_json,
+      color: prepared.color,
+      is_server_encrypted: prepared.is_server_encrypted,
+      enc_version: prepared.enc_version,
+      enc_payload: prepared.enc_payload,
+    });
+  }
+  // Encrypt per-user tag rows in the same transaction so the install
+  // never leaves readable tags on disk after activation.
+  try {
+    const tagRows = db.prepare(
+      "SELECT note_id, user_id, tags_json FROM note_user_tags WHERE is_encrypted = 0"
+    ).all();
+    const updTag = db.prepare(
+      "UPDATE note_user_tags SET tags_json = '[]', is_encrypted = 1, enc_payload = ? WHERE note_id = ? AND user_id = ?"
+    );
+    for (const r of tagRows) {
+      if (!r.tags_json || r.tags_json === "[]") continue;
+      const enc = noteCipher.encryptTagsJson(r.tags_json, {
+        noteId: r.note_id, userId: r.user_id,
+      });
+      updTag.run(enc, r.note_id, r.user_id);
+    }
+  } catch (e) {
+    process.stderr.write("tag encryption skipped: " + e.message + "\n");
+  }
+  vault.markMigrated(db);
+});
+tx();
+
+// Critical: physically purge plaintext residue. SQLite UPDATE only
+// marks old pages as free without zeroing them; VACUUM rewrites the
+// file dropping freed pages, and we bracket it with two truncating
+// WAL checkpoints so neither the main file nor the WAL keep stale
+// pre-encryption bytes around. Without this an attacker reading the
+// raw .db file can still grep the original note contents.
+try {
+  db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+  db.exec("VACUUM");
+  db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+} catch (e) {
+  process.stderr.write("VACUUM failed: " + e.message + "\n");
+}
+
+// Output exactly: "OK <recoveryKey>" so the bash caller can pluck the
+// key without parsing JSON.
+process.stdout.write("OK " + init.recoveryKey + "\n");
+db.close();
+NODESCRIPT
+
+    # Capture both stdout and stderr so any warning shows up in the
+    # error report when something fails. We then extract the recovery
+    # key from anywhere in the output via grep — robust to a stray
+    # stderr line landing before the "OK <key>" stdout marker.
+    local out
+    out=$(cd "$INSTALL_DIR" && node "$script" "$db_file" "$passphrase" 2>&1)
+    local code=$?
+    rm -f "$script"
+    local key
+    key=$(printf '%s\n' "$out" | grep -oE 'OK GKRV-[A-Z0-9-]+' | tail -1 | sed 's/^OK //')
+    if [[ $code -ne 0 ]] || [[ -z "$key" ]]; then
+        error "Encryption activation failed: $out"
+        return 1
+    fi
+    GLASSKEEP_RECOVERY_KEY="$key"
+    return 0
+}
+
 ask_ssl_config() {
-    echo ""
-    echo -e "${BOLD}${CYAN}▶ HTTPS / SSL${RESET}"
-    echo -e "  ${MSG_HTTPS_MENU_TITLE}"
-    echo ""
-    echo -e "  ${GREEN}1)${RESET} ${MSG_HTTPS_OPT1}"
-    echo -e "  ${GREEN}2)${RESET} ${MSG_HTTPS_OPT2}"
-    echo -e "  ${GREEN}3)${RESET} ${MSG_HTTPS_OPT3}"
-    echo ""
+    section "HTTPS / SSL" "$MSG_HTTPS_MENU_TITLE"
+    echo
+    menu_item "1" "$INDIGO" "$MSG_HTTPS_OPT1"
+    menu_item "2" "$INDIGO" "$MSG_HTTPS_OPT2"
+    menu_item "3" "$INDIGO" "$MSG_HTTPS_OPT3"
+    echo
     local choice
     while true; do
-        read -rp "$(echo -e "${YELLOW}${MSG_HTTPS_PROMPT}${RESET}")" choice </dev/tty
+        read -rp "$(prompt_text "$MSG_HTTPS_PROMPT")" choice </dev/tty
         case "$choice" in
             1)
                 SSL_MODE="proxy"
-                echo -e "${MSG_PROXY_YES_INFO}"
+                _print_info_block "$MSG_PROXY_YES_INFO"
                 break ;;
             2)
                 SSL_MODE="selfsigned"
-                echo -e "$(echo -e "$MSG_PROXY_NO_INFO")"
+                _print_info_block "$MSG_PROXY_NO_INFO"
                 break ;;
             3)
                 SSL_MODE="custom"
                 while true; do
-                    read -rp "$(echo -e "${YELLOW}${MSG_CERT_PATH_PROMPT}${RESET}")" CUSTOM_CERT_PATH </dev/tty
+                    read -rp "$(prompt_text "$MSG_CERT_PATH_PROMPT")" CUSTOM_CERT_PATH </dev/tty
                     CUSTOM_CERT_PATH="${CUSTOM_CERT_PATH/#\~/$HOME}"
                     [[ -f "$CUSTOM_CERT_PATH" ]] && break
                     # shellcheck disable=SC2059
                     warn "$(printf "$MSG_CERT_NOT_FOUND" "$CUSTOM_CERT_PATH")"
                 done
                 while true; do
-                    read -rp "$(echo -e "${YELLOW}${MSG_KEY_PATH_PROMPT}${RESET}")" CUSTOM_KEY_PATH </dev/tty
+                    read -rp "$(prompt_text "$MSG_KEY_PATH_PROMPT")" CUSTOM_KEY_PATH </dev/tty
                     CUSTOM_KEY_PATH="${CUSTOM_KEY_PATH/#\~/$HOME}"
                     [[ -f "$CUSTOM_KEY_PATH" ]] && break
                     # shellcheck disable=SC2059
                     warn "$(printf "$MSG_CERT_NOT_FOUND" "$CUSTOM_KEY_PATH")"
                 done
-                echo -e "$(echo -e "$MSG_HTTPS_OPT3_INFO")"
+                _print_info_block "$MSG_HTTPS_OPT3_INFO"
                 break ;;
             *)
                 warn "$MSG_HTTPS_INVALID" ;;
@@ -357,17 +808,24 @@ apply_ssl_to_env() {
     case "$SSL_MODE" in
         proxy)
             set_env_var "HTTPS_ENABLED" "false" "$ENV_FILE"
+            # Required so req.secure / X-Forwarded-Proto from the
+            # upstream proxy are trusted. Without this the at-rest
+            # unlock endpoint refuses to accept the secret because it
+            # still sees a "plaintext HTTP" socket from Node's POV.
+            set_env_var "TRUST_PROXY"   "true"  "$ENV_FILE"
             ;;
         selfsigned)
             generate_selfsigned_cert
             set_env_var "HTTPS_ENABLED" "true"              "$ENV_FILE"
             set_env_var "SSL_CERT"      "${ssl_dir}/cert.pem" "$ENV_FILE"
             set_env_var "SSL_KEY"       "${ssl_dir}/key.pem"  "$ENV_FILE"
+            set_env_var "TRUST_PROXY"   "false"             "$ENV_FILE"
             ;;
         custom)
             set_env_var "HTTPS_ENABLED" "true"              "$ENV_FILE"
             set_env_var "SSL_CERT"      "$CUSTOM_CERT_PATH" "$ENV_FILE"
             set_env_var "SSL_KEY"       "$CUSTOM_KEY_PATH"  "$ENV_FILE"
+            set_env_var "TRUST_PROXY"   "false"             "$ENV_FILE"
             ;;
     esac
 }
@@ -399,13 +857,15 @@ install_nodejs() {
         return
     fi
 
+    # Wrap the apt + nodesource bootstrap in a single step so it gets
+    # the spinner + log-capture treatment instead of dumping nodesource
+    # script output and apt's package list to the user's terminal.
     # shellcheck disable=SC2059
-    info "$(printf "$MSG_NODE_INSTALLING" "$NODE_MAJOR")"
-    apt-get install -y curl gnupg ca-certificates &>/dev/null
-    curl -fsSL "https://deb.nodesource.com/setup_${NODE_MAJOR}.x" | bash - &>/dev/null
-    apt-get install -y nodejs &>/dev/null
-    # shellcheck disable=SC2059
-    success "$(printf "$MSG_NODE_DONE" "$(node --version)")"
+    step "$(printf "$MSG_NODE_INSTALLING" "$NODE_MAJOR")" bash -c "
+        apt-get install -y curl gnupg ca-certificates
+        curl -fsSL 'https://deb.nodesource.com/setup_${NODE_MAJOR}.x' | bash -
+        apt-get install -y nodejs
+    "
 }
 
 # ── Admin account setup ───────────────────────────────────────────────────────
@@ -513,13 +973,11 @@ NODESCRIPT
 
 # ── Actions ───────────────────────────────────────────────────────────────────
 action_install() {
-    echo -e "\n${BOLD}═══════════════════════════════════════${RESET}"
-    echo -e "${BOLD}  ${MSG_HDR_INSTALL}${RESET}"
-    echo -e "${BOLD}═══════════════════════════════════════${RESET}"
+    section "$MSG_HDR_INSTALL"
 
     # Ask port
     local port
-    read -rp "$(echo -e "${YELLOW}${MSG_PROMPT_PORT}${RESET}")" port </dev/tty
+    read -rp "$(prompt_text "$MSG_PROMPT_PORT")" port </dev/tty
     port="${port:-8080}"
 
     if ! [[ "$port" =~ ^[0-9]+$ ]] || [[ "$port" -lt 1 || "$port" -gt 65535 ]]; then
@@ -531,13 +989,12 @@ action_install() {
     local admin_name="" admin_login="" admin_pass=""
 
     if [[ ! -f "${DATA_DIR}/notes.db" ]]; then
-        echo ""
-        echo -e "${BOLD}${CYAN}▶ ${MSG_ADMIN_SETUP_TITLE}${RESET}"
-        echo ""
+        section "$MSG_ADMIN_SETUP_TITLE"
+        echo
 
         local admin_pass2
         while true; do
-            read -rp "$(echo -e "${YELLOW}${MSG_ADMIN_NAME_PROMPT}${RESET}")" admin_name </dev/tty
+            read -rp "$(prompt_text "$MSG_ADMIN_NAME_PROMPT")" admin_name </dev/tty
             admin_name="$(echo -e "${admin_name}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
 
             if [[ -z "$admin_name" ]]; then
@@ -550,7 +1007,7 @@ action_install() {
             fi
 
             # shellcheck disable=SC2059
-            read -rp "$(echo -e "${YELLOW}$(printf "$MSG_ADMIN_LOGIN_PROMPT" "$admin_name")${RESET}")" admin_login </dev/tty
+            read -rp "$(prompt_text "$(printf "$MSG_ADMIN_LOGIN_PROMPT" "$admin_name")")" admin_login </dev/tty
             admin_login="$(echo -e "${admin_login}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
             admin_login="${admin_login:-$admin_name}"
 
@@ -559,10 +1016,10 @@ action_install() {
                 continue
             fi
 
-            read -rsp "$(echo -e "${YELLOW}${MSG_ADMIN_PASS_PROMPT}${RESET}")" admin_pass </dev/tty
-            echo ""
-            read -rsp "$(echo -e "${YELLOW}${MSG_ADMIN_PASS_CONFIRM}${RESET}")" admin_pass2 </dev/tty
-            echo ""
+            read -rsp "$(prompt_text "$MSG_ADMIN_PASS_PROMPT")" admin_pass </dev/tty
+            echo
+            read -rsp "$(prompt_text "$MSG_ADMIN_PASS_CONFIRM")" admin_pass2 </dev/tty
+            echo
 
             if [[ -z "$admin_pass" ]]; then
                 warn "$MSG_ADMIN_EMPTY_PASS"
@@ -581,18 +1038,21 @@ action_install() {
         done
     fi
 
+    # Offer at-rest encryption (asked here so all answers are collected
+    # up-front; activation itself runs after the DB has been created).
+    ask_encryption_config
+
     # Ask SSL config (last question, before installation starts)
     ask_ssl_config
 
-    echo ""
-    read -rsn1 -p "$(echo -e "${BOLD}${MSG_PRESS_KEY}${RESET}")" </dev/tty
-    echo ""
+    echo
+    read -rsn1 -p "$(printf "${DIM}${CYAN}${MSG_PRESS_KEY}${RESET}")" </dev/tty
+    echo
 
-    echo ""
-    info "${MSG_INFO_DIR}${INSTALL_DIR}"
-    info "${MSG_INFO_PORT}${port}"
-    info "${MSG_INFO_SERVICE}${SERVICE_NAME}"
-    echo ""
+    panel "$INDIGO" "$MSG_HDR_INSTALL" \
+        "${TEAL}${MSG_INFO_DIR}${RESET}${BOLD}${INSTALL_DIR}${RESET}" \
+        "${TEAL}${MSG_INFO_PORT}${RESET}${BOLD}${port}${RESET}" \
+        "${TEAL}${MSG_INFO_SERVICE}${RESET}${BOLD}${SERVICE_NAME}${RESET}"
 
     step "$MSG_STEP_APT"     apt-get update -qq
     step "$MSG_STEP_PREREQ"  apt-get install -y git curl gnupg ca-certificates
@@ -607,11 +1067,13 @@ action_install() {
 
     # shellcheck disable=SC2059
     step "$(printf "$MSG_STEP_CLONE" "$INSTALL_DIR")" \
-        git clone --depth=1 "$REPO_URL" "$INSTALL_DIR"
+        git clone --depth=1 --no-single-branch "$REPO_URL" "$INSTALL_DIR"
 
+    info "${DIM}${MSG_HINT_LONG}${RESET}"
     step "$MSG_STEP_NPM" \
         bash -c "cd '${INSTALL_DIR}' && npm install --silent"
 
+    info "${DIM}${MSG_HINT_LONG}${RESET}"
     step "$MSG_STEP_BUILD" \
         bash -c "cd '${INSTALL_DIR}' && npm run build"
 
@@ -619,6 +1081,14 @@ action_install() {
 
     GLASSKEEP_ADMIN_LOGIN=""
     setup_admin "${DATA_DIR}/notes.db" "$admin_name" "$admin_login" "$admin_pass"
+
+    GLASSKEEP_RECOVERY_KEY=""
+    if [[ "$ENC_ENABLE" == "yes" ]]; then
+        step "$MSG_ENC_ACTIVATING" \
+            activate_encryption "${DATA_DIR}/notes.db" "$ENC_PASSPHRASE"
+    fi
+    # Wipe the passphrase from this shell as soon as we're done with it.
+    ENC_PASSPHRASE=""
 
     local jwt_secret
     jwt_secret=$(openssl rand -hex 32 2>/dev/null || cat /proc/sys/kernel/random/uuid | tr -d '-' | head -c 64)
@@ -634,6 +1104,7 @@ DB_FILE=${DATA_DIR}/notes.db
 ADMIN_EMAILS=${GLASSKEEP_ADMIN_LOGIN}
 ALLOW_REGISTRATION=false
 HTTPS_ENABLED=$([[ "$SSL_MODE" == "proxy" ]] && echo "false" || echo "true")
+TRUST_PROXY=$([[ "$SSL_MODE" == "proxy" ]] && echo "true" || echo "false")
 EOF
     case "$SSL_MODE" in
         selfsigned) printf 'SSL_CERT=%s/cert.pem\nSSL_KEY=%s/key.pem\n' "$ssl_dir" "$ssl_dir" >> "$ENV_FILE" ;;
@@ -669,17 +1140,37 @@ EOF
 
     sleep 2
     if systemctl is-active --quiet "$SERVICE_NAME"; then
+        # If we activated encryption, surface the recovery key now —
+        # before the access-info banner — and force the admin to
+        # acknowledge they have written it down.
+        if [[ -n "$GLASSKEEP_RECOVERY_KEY" ]]; then
+            panel "$AMBER" "$MSG_ENC_RECOVERY_TITLE" \
+                "" \
+                "  ${BOLD}${WHITE}${GLASSKEEP_RECOVERY_KEY}${RESET}" \
+                "" \
+                "${AMBER}${MSG_ENC_RECOVERY_WARN}${RESET}"
+            local ack
+            while true; do
+                read -rp "$(prompt_text "${AMBER}${MSG_ENC_RECOVERY_ACK}${RESET}")" ack </dev/tty
+                case "${ack,,}" in
+                    y|yes|o|oui) break ;;
+                esac
+            done
+            success "$MSG_ENC_DONE"
+            # Clear the variable from the shell so the recovery key is
+            # not retrievable from a `set` dump or environment crawl.
+            GLASSKEEP_RECOVERY_KEY=""
+        fi
+        show_install_summary
         show_access_info "$port"
     else
         warn "$MSG_WARN_SERVICE"
-        echo -e "  ${CYAN}journalctl -u ${SERVICE_NAME} -n 30 --no-pager${RESET}"
+        info "${CYAN}journalctl -u ${SERVICE_NAME} -n 30 --no-pager${RESET}"
     fi
 }
 
 action_update() {
-    echo -e "\n${BOLD}═══════════════════════════════════════${RESET}"
-    echo -e "${BOLD}  ${MSG_HDR_UPDATE}${RESET}"
-    echo -e "${BOLD}═══════════════════════════════════════${RESET}\n"
+    section "$MSG_HDR_UPDATE"
 
     if ! is_installed; then
         # shellcheck disable=SC2059
@@ -694,9 +1185,9 @@ action_update() {
     # Ask SSL config (allow changing the setting)
     ask_ssl_config
 
-    echo ""
-    read -rsn1 -p "$(echo -e "${BOLD}${MSG_PRESS_KEY_UPDATE}${RESET}")" </dev/tty
-    echo ""
+    echo
+    read -rsn1 -p "$(printf "${DIM}${CYAN}${MSG_PRESS_KEY_UPDATE}${RESET}")" </dev/tty
+    echo
 
     # shellcheck disable=SC2059
     step "$(printf "$MSG_STEP_STOP" "$SERVICE_NAME")" \
@@ -705,9 +1196,11 @@ action_update() {
     step "$MSG_STEP_PULL" \
         bash -c "cd '${INSTALL_DIR}' && git pull origin main"
 
+    info "${DIM}${MSG_HINT_LONG}${RESET}"
     step "$MSG_STEP_NPM_UPDATE" \
         bash -c "cd '${INSTALL_DIR}' && npm install --silent"
 
+    info "${DIM}${MSG_HINT_LONG}${RESET}"
     step "$MSG_STEP_REBUILD" \
         bash -c "cd '${INSTALL_DIR}' && npm run build"
 
@@ -720,30 +1213,28 @@ action_update() {
 
     sleep 2
     if systemctl is-active --quiet "$SERVICE_NAME"; then
+        show_install_summary
         show_access_info "$port"
     else
         warn "$MSG_WARN_SERVICE"
-        echo -e "  ${CYAN}journalctl -u ${SERVICE_NAME} -n 30 --no-pager${RESET}"
+        info "${CYAN}journalctl -u ${SERVICE_NAME} -n 30 --no-pager${RESET}"
     fi
 }
 
 action_uninstall() {
-    echo -e "\n${BOLD}═══════════════════════════════════════${RESET}"
-    echo -e "${BOLD}  ${MSG_HDR_UNINSTALL}${RESET}"
-    echo -e "${BOLD}═══════════════════════════════════════${RESET}\n"
+    section "$MSG_HDR_UNINSTALL"
 
     if ! is_installed; then
         warn "$MSG_NOT_INSTALLED_WARN"
     fi
 
-    echo -e "${RED}${BOLD}${MSG_UNINSTALL_WARN}${RESET}"
-    echo -e "  ${MSG_UNINSTALL_SVC}${SERVICE_FILE}"
-    echo -e "  ${MSG_UNINSTALL_APP}${INSTALL_DIR}"
-    echo -e "  ${MSG_UNINSTALL_DATA}${DATA_DIR}"
-    echo -e "  ${MSG_UNINSTALL_CFG}${ENV_FILE}"
-    echo ""
+    panel "$RED" "$MSG_UNINSTALL_WARN" \
+        "${MSG_UNINSTALL_SVC}${BOLD}${SERVICE_FILE}${RESET}" \
+        "${MSG_UNINSTALL_APP}${BOLD}${INSTALL_DIR}${RESET}" \
+        "${MSG_UNINSTALL_DATA}${BOLD}${DATA_DIR}${RESET}" \
+        "${MSG_UNINSTALL_CFG}${BOLD}${ENV_FILE}${RESET}"
     local confirm
-    read -rp "$(echo -e "${YELLOW}${MSG_PROMPT_CONFIRM}${RESET}")" confirm </dev/tty
+    read -rp "$(prompt_text "$MSG_PROMPT_CONFIRM")" confirm </dev/tty
     if [[ "${confirm,,}" != "${MSG_CONFIRM_WORD}" ]]; then
         info "$MSG_UNINSTALL_CANCEL"
         exit 0
@@ -777,29 +1268,143 @@ action_uninstall() {
     success "$MSG_UNINSTALL_DONE"
 }
 
+# Single-glance summary of what just got installed/updated. Pulled
+# straight from the live filesystem (Node version, bundle size, git
+# commit) rather than buffered side-channels so it always reflects
+# reality even when re-run on an existing install.
+#
+# Encryption status comes from the SQLite vault (presence of a row in
+# instance_encryption) rather than $ENC_ENABLE — that local flag is
+# only set when the install path turned encryption on, and the summary
+# also runs after `update`, where the flag is empty.
+show_install_summary() {
+    local node_ver bundle commit enc_status https_label
+
+    node_ver=$(node --version 2>/dev/null || echo "—")
+
+    if [[ -d "${INSTALL_DIR}/dist/assets" ]]; then
+        bundle=$(du -sh "${INSTALL_DIR}/dist/assets" 2>/dev/null | awk '{print $1}')
+    else
+        bundle="—"
+    fi
+
+    commit="—"
+    if [[ -d "${INSTALL_DIR}/.git" ]]; then
+        commit=$(git -C "${INSTALL_DIR}" rev-parse --short HEAD 2>/dev/null || echo "—")
+    fi
+
+    enc_status="${GRAY}${MSG_SUMMARY_ENC_OFF}${RESET}"
+    if [[ -f "${DATA_DIR}/notes.db" ]] && [[ -d "${INSTALL_DIR}/node_modules/better-sqlite3" ]]; then
+        local active
+        active=$(node -e "
+            try {
+              const Database = require('${INSTALL_DIR}/node_modules/better-sqlite3');
+              const db = new Database('${DATA_DIR}/notes.db', { readonly: true, fileMustExist: true });
+              const row = db.prepare('SELECT 1 FROM instance_encryption LIMIT 1').get();
+              process.stdout.write(row ? 'yes' : 'no');
+              db.close();
+            } catch(e) { process.stdout.write('no'); }
+        " 2>/dev/null || echo "no")
+        if [[ "$active" == "yes" ]]; then
+            enc_status="${GREEN}${MSG_SUMMARY_ENC_ON}${RESET}"
+        fi
+    fi
+
+    https_label="—"
+    local https_val trust_val
+    https_val=$(grep -E '^HTTPS_ENABLED=' "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+    trust_val=$(grep -E '^TRUST_PROXY='   "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+    if [[ "$https_val" == "false" && "$trust_val" == "true" ]]; then
+        https_label="$MSG_SUMMARY_HTTPS_PROXY"
+    elif [[ "$https_val" == "true" ]]; then
+        # Self-signed certs live under /opt/glass-keep/ssl; anything
+        # else points at a user-supplied path.
+        local cert
+        cert=$(grep -E '^SSL_CERT=' "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+        if [[ "$cert" == /opt/glass-keep/ssl/* ]]; then
+            https_label="$MSG_SUMMARY_HTTPS_SELF"
+        else
+            https_label="$MSG_SUMMARY_HTTPS_CUSTOM"
+        fi
+    fi
+
+    panel "$INDIGO" "$MSG_SUMMARY_TITLE" \
+        "${TEAL}${MSG_SUMMARY_NODE}${RESET}        ${BOLD}${node_ver}${RESET}" \
+        "${TEAL}${MSG_SUMMARY_APP}${RESET}     ${BOLD}${INSTALL_DIR}${RESET} ${GRAY}(${commit})${RESET}" \
+        "${TEAL}${MSG_SUMMARY_BUNDLE}${RESET}      ${BOLD}${bundle}${RESET}" \
+        "${TEAL}${MSG_SUMMARY_SERVICE}${RESET} ${BOLD}${SERVICE_NAME}${RESET}" \
+        "${TEAL}${MSG_SUMMARY_ENC}${RESET} ${enc_status}" \
+        "${TEAL}${MSG_SUMMARY_HTTPS}${RESET}            ${BOLD}${https_label}${RESET}"
+}
+
+# Pull a hostname out of a PEM-encoded certificate. Tries the SAN
+# (Subject Alternative Name) DNS entries first since modern browsers
+# only consult those, then falls back to the legacy CN field if no SAN
+# DNS is present. Returns the first usable hostname or empty string.
+_cert_hostname() {
+    local cert="$1"
+    [[ -f "$cert" ]] || return 1
+    command -v openssl &>/dev/null || return 1
+
+    local san
+    san=$(openssl x509 -in "$cert" -noout -ext subjectAltName 2>/dev/null \
+        | grep -oE 'DNS:[^,[:space:]]+' | head -1 | cut -d: -f2)
+    if [[ -n "$san" ]]; then
+        printf '%s' "$san"
+        return 0
+    fi
+
+    local cn
+    cn=$(openssl x509 -in "$cert" -noout -subject 2>/dev/null \
+        | sed -nE 's/.*CN[[:space:]]*=[[:space:]]*([^,/]+).*/\1/p' \
+        | tr -d '[:space:]')
+    [[ -n "$cn" ]] && printf '%s' "$cn"
+}
+
 show_access_info() {
     local port="$1"
     local ip
     ip=$(get_server_ip)
 
     local proto="http"
-    local https_val
+    local https_val cert_path trust_val
     https_val=$(grep -E '^HTTPS_ENABLED=' "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+    cert_path=$(grep -E '^SSL_CERT='     "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
+    trust_val=$(grep -E '^TRUST_PROXY='  "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '[:space:]')
     [[ "$https_val" == "true" ]] && proto="https"
 
-    echo ""
-    echo -e "${GREEN}${BOLD}╔═══════════════════════════════════════════╗${RESET}"
-    echo -e "${GREEN}${BOLD}║   ${MSG_ACCESS_TITLE}${RESET}"
-    echo -e "${GREEN}${BOLD}╚═══════════════════════════════════════════╝${RESET}"
-    echo ""
-    echo -e "  ${BOLD}${MSG_ACCESS_LOCAL}${RESET} ${proto}://localhost:${port}"
-    echo -e "  ${BOLD}${MSG_ACCESS_NET}${RESET} ${proto}://${ip}:${port}"
-    echo ""
-    echo -e "  ${BOLD}${MSG_ACCESS_CREDS}${RESET}"
-    echo ""
-    echo -e "  ${CYAN}${MSG_ACCESS_LOGS}${RESET} journalctl -u ${SERVICE_NAME} -f"
-    echo -e "  ${CYAN}${MSG_ACCESS_STATUS}${RESET} systemctl status ${SERVICE_NAME}"
-    echo ""
+    # Detect a custom (user-supplied) certificate: HTTPS is enabled,
+    # not behind a reverse proxy, and the cert is NOT the auto-generated
+    # one we drop under /opt/glass-keep/ssl. In that case pull the
+    # hostname out of the cert and surface a WAN line + a port-forward
+    # reminder, since the typical reason to bring a custom cert is
+    # serving GlassKeep on a public domain.
+    local wan_lines=()
+    if [[ "$https_val" == "true" ]] \
+        && [[ "$trust_val" != "true" ]] \
+        && [[ -n "$cert_path" ]] \
+        && [[ "$cert_path" != /opt/glass-keep/ssl/* ]]; then
+        local cert_host
+        cert_host=$(_cert_hostname "$cert_path" 2>/dev/null || true)
+        if [[ -n "$cert_host" ]]; then
+            wan_lines+=("${BOLD}${MSG_ACCESS_WAN}${RESET} ${CYAN}${proto}://${cert_host}:${port}${RESET}")
+            # shellcheck disable=SC2059
+            wan_lines+=("")
+            # shellcheck disable=SC2059
+            wan_lines+=("${AMBER}⚠ $(printf "$MSG_ACCESS_PORT_FORWARD" "$port")${RESET}")
+        fi
+    fi
+
+    panel "$GREEN" "$MSG_ACCESS_TITLE" \
+        "" \
+        "${BOLD}${MSG_ACCESS_LOCAL}${RESET} ${CYAN}${proto}://localhost:${port}${RESET}" \
+        "${BOLD}${MSG_ACCESS_NET}${RESET} ${CYAN}${proto}://${ip}:${port}${RESET}" \
+        "${wan_lines[@]}" \
+        "" \
+        "${MSG_ACCESS_CREDS}" \
+        "" \
+        "${GRAY}${MSG_ACCESS_LOGS}${RESET}   ${CYAN}journalctl -u ${SERVICE_NAME} -f${RESET}" \
+        "${GRAY}${MSG_ACCESS_STATUS}${RESET}  ${CYAN}systemctl status ${SERVICE_NAME}${RESET}"
 }
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -808,31 +1413,36 @@ main() {
     require_root
     check_os
 
-    echo ""
-    echo -e "${BOLD}${CYAN}"
+    echo
+    # Logo: GLASS KEEP rendered in indigo→violet for brand cohesion
+    # with the app's gradient buttons. Subtitle in gray for hierarchy.
+    printf "${BOLD}${INDIGO}"
     echo "   ██████╗ ██╗      █████╗ ███████╗███████╗"
     echo "  ██╔════╝ ██║     ██╔══██╗██╔════╝██╔════╝"
     echo "  ██║  ███╗██║     ███████║███████╗███████╗"
+    printf "${BOLD}${VIOLET}"
     echo "  ██║   ██║██║     ██╔══██║╚════██║╚════██║"
     echo "  ╚██████╔╝███████╗██║  ██║███████║███████║"
     echo "   ╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝╚══════╝"
-    echo -e "           ${BOLD}K E E P${RESET}${CYAN}  —  ${MSG_SUBTITLE}${RESET}"
-    echo ""
+    printf "${RESET}"
+    printf "          ${BOLD}K E E P${RESET}  ${GRAY}·  %s${RESET}\n" "$MSG_SUBTITLE"
+    echo
 
     if is_installed; then
-        info "${MSG_EXISTING} ${INSTALL_DIR}"
+        info "${MSG_EXISTING} ${BOLD}${INSTALL_DIR}${RESET}"
     else
-        info "$MSG_NO_INSTALL"
+        info "${MSG_NO_INSTALL}"
     fi
 
-    echo ""
-    echo -e "${BOLD}${MSG_MENU_TITLE}${RESET}"
-    echo -e "  ${GREEN}1)${RESET} ${MSG_OPT_INSTALL}"
-    echo -e "  ${YELLOW}2)${RESET} ${MSG_OPT_UPDATE}"
-    echo -e "  ${RED}3)${RESET} ${MSG_OPT_UNINSTALL}"
-    echo ""
+    echo
+    printf "${BOLD}%s${RESET}\n" "$MSG_MENU_TITLE"
+    echo
+    menu_item "1" "$GREEN"  "$MSG_OPT_INSTALL"   ""
+    menu_item "2" "$AMBER"  "$MSG_OPT_UPDATE"    ""
+    menu_item "3" "$RED"    "$MSG_OPT_UNINSTALL" ""
+    echo
     local choice
-    read -rp "$(echo -e "${BOLD}${MSG_PROMPT_CHOICE}${RESET}")" choice </dev/tty
+    read -rp "$(prompt_text "$MSG_PROMPT_CHOICE")" choice </dev/tty
 
     case "$choice" in
         1) action_install   ;;

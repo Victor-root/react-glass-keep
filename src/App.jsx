@@ -25,6 +25,7 @@ import {
   purgeQueueForNote as idbPurgeQueueForNote,
 } from "./sync/localDb.js";
 import { api, getAuth, setAuth, AUTH_KEY } from "./utils/api.js";
+import { localizeServerError } from "./utils/serverErrors.js";
 import { mdForDownload } from "./utils/markdown.jsx";
 import { uid, sanitizeFilename, downloadText, triggerBlobDownload, ensureJSZip, imageExtFromDataURL, fileToCompressedDataURL, setThemeColor } from "./utils/helpers.js";
 import { textToChecklistItems, checklistItemsToText } from "./utils/noteConversion.js";
@@ -63,6 +64,9 @@ import useAdminActions from "./hooks/useAdminActions.js";
 import useImportExport from "./hooks/useImportExport.js";
 import useCollaboration from "./hooks/useCollaboration.js";
 import useFormatting from "./hooks/useFormatting.js";
+import useInstanceLockStatus from "./hooks/useInstanceLockStatus.js";
+import InstanceUnlockScreen from "./components/lock/InstanceUnlockScreen.jsx";
+import LockedBanner from "./components/lock/LockedBanner.jsx";
 
 /** ---------- App ---------- */
 export default function App() {
@@ -295,9 +299,14 @@ export default function App() {
 
   // Toast notification system
   const [toasts, setToasts] = useState([]);
+  const toastIdRef = useRef(0);
 
-  const showToast = (message, type = "success", duration = 3000) => {
-    const id = Date.now();
+  const showToast = (message, type = "success", duration) => {
+    // Default durations: success/error 5s, info 10s
+    if (duration === undefined) {
+      duration = type === "info" ? 10000 : 5000;
+    }
+    const id = ++toastIdRef.current;
     const toast = { id, message, type };
     setToasts((prev) => [...prev, toast]);
 
@@ -924,7 +933,7 @@ export default function App() {
       const ts = new Date().toISOString().replace(/[:.]/g, "-");
       await triggerBlobDownload(`glass-keep-selected-${ts}.zip`, blob);
     } catch (e) {
-      alert(e.message || t("zipDownloadFailed"));
+      alert(localizeServerError(e.message, "zipDownloadFailed"));
     }
   };
 
@@ -950,6 +959,35 @@ export default function App() {
   const [allowRegistration, setAllowRegistration] = useState(true);
   const [loginSlogan, setLoginSlogan] = useState("");
   const [loginProfiles, setLoginProfiles] = useState([]);
+
+  // At-rest encryption: when the server reports `enabled && locked`,
+  // an unauthenticated visitor goes to the full unlock screen. An
+  // already-logged-in user gets a non-intrusive banner over their app
+  // instead so they keep reading their local-first cache while sync
+  // is paused; clicking the banner's unlock CTA opens the unlock
+  // screen as an overlay. The `refresh` callback is passed to the
+  // unlock screen so it can flip the UI back without waiting for the
+  // next poll tick.
+  const { status: instanceLockStatus, refresh: refreshLockStatus } = useInstanceLockStatus();
+  // Banner-level dismiss flag: starts off as "show banner". The user
+  // can hide it manually; it comes back on every fresh lock event so
+  // they see the heads-up after a service-side re-lock.
+  const [lockBannerDismissed, setLockBannerDismissed] = useState(false);
+  // Overlay flag: when true, render the unlock screen on top of the
+  // logged-in app instead of the banner.
+  const [lockOverlayOpen, setLockOverlayOpen] = useState(false);
+  // Reset banner-dismissed + close overlay whenever the server flips
+  // back to unlocked (e.g. another tab unlocked, or this tab did).
+  useEffect(() => {
+    if (instanceLockStatus && !instanceLockStatus.locked) {
+      setLockBannerDismissed(false);
+      setLockOverlayOpen(false);
+    }
+    // Re-arm the banner when a fresh lock is detected.
+    if (instanceLockStatus && instanceLockStatus.locked) {
+      setLockBannerDismissed(false);
+    }
+  }, [instanceLockStatus?.locked]);
 
   // Settings panel state
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
@@ -2090,7 +2128,14 @@ export default function App() {
               syncEngineRef.current.notifyServerReachable();
             }
             const msg = JSON.parse(e.data || "{}");
-            if (msg && msg.type === "note_updated" && msg.noteId) {
+            if (msg && msg.type === "instance_locked") {
+              // Another admin (or the CLI) locked the instance. Drop
+              // the user straight onto the unlock screen instead of
+              // waiting for the next status poll. The api wrapper
+              // already fires `instance-locked` on a 423 response;
+              // this just makes the redirect immediate.
+              window.dispatchEvent(new CustomEvent("instance-locked"));
+            } else if (msg && msg.type === "note_updated" && msg.noteId) {
               debouncedPatch(msg.noteId);
             } else if (msg && msg.type === "notes_reordered") {
               // Another session reordered notes — reload the full list once
@@ -3470,7 +3515,7 @@ export default function App() {
         setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
         invalidateNotesCache();
         invalidateTrashedNotesCache();
-        showToast(t("emptyNoteDeleted"), "info");
+        showToast(t("emptyNoteDeleted"), "info", 3000);
         freshlyCreatedNoteRef.current = null;
         (async () => {
           try {
@@ -3760,13 +3805,19 @@ export default function App() {
       const leaseId = acquireLocalLease(nid);
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: new Date().toISOString(), mode: "remove_self" } }, leaseId);
     } else if (!isOwner) {
-      // Collaborator leaves the shared note. Nothing to put in their trash —
-      // they lose access cleanly, matching the original spec.
+      // Collaborator "trash" — symmetric with the owner-leaves-shared
+      // case below: they get a personal copy in their corbeille so
+      // the action is recoverable. Without this, the previous spec
+      // ("leave the collaboration cleanly, no recovery") read like a
+      // permanent delete from the user's POV. The trashed copy is
+      // created server-side and the next /notes/trashed fetch picks
+      // it up.
       try { await idbDeleteNote(nid, currentUser?.id, sessionId); } catch (e) { console.error(e); }
       invalidateNotesCache();
+      invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("leftCollaboration"), "success");
+      showToast(t("noteMovedToTrash"), "success");
       const leaseId = acquireLocalLease(nid);
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: new Date().toISOString(), mode: "remove_self" } }, leaseId);
     } else {
@@ -4503,6 +4554,55 @@ export default function App() {
   }, [open]);
 
   // ---- Routing ----
+  // Lock handling has two flavours:
+  //  - Unauthenticated visitor on a locked server → full unlock
+  //    screen. They have no local cache to fall back on and no
+  //    session to keep.
+  //  - Logged-in user whose server got re-locked under them → keep
+  //    the app rendered with a non-intrusive banner (added later in
+  //    the JSX tree). They can keep reading their local-first cache
+  //    and queue edits; the banner offers a one-click unlock.
+  //  - Logged-in user who explicitly clicked the banner's unlock CTA
+  //    → render the unlock screen as a full overlay (lockOverlayOpen).
+  const isLocked = !!(instanceLockStatus && instanceLockStatus.enabled && instanceLockStatus.locked);
+  if (isLocked && (!currentUser?.email || lockOverlayOpen)) {
+    // The "back to offline notes" escape hatch only makes sense when
+    // the user has a session AND they reached this screen by clicking
+    // the LockedBanner CTA (lockOverlayOpen). A cold first-visitor who
+    // has no local-first cache lands here with currentUser unset, and
+    // there's no offline state to fall back to in that case.
+    const canGoBackToOffline = !!currentUser?.email && lockOverlayOpen;
+    return (
+      <InstanceUnlockScreen
+        dark={dark}
+        onToggleDark={toggleDark}
+        onUnlocked={(payload) => {
+          // Optimistically hide the banner the moment the unlock
+          // request succeeds. Without this the banner lingers for the
+          // ~500 ms it takes refreshLockStatus to round-trip — long
+          // enough for the user to wonder if anything actually
+          // happened. The next status fetch will reset
+          // lockBannerDismissed back to false in the effect above
+          // (since the server reports locked=false), so the banner
+          // is ready to show again the next time the server locks.
+          setLockBannerDismissed(true);
+          setLockOverlayOpen(false);
+          refreshLockStatus();
+          // Passkey unlock returns { ok, token, user, ... } — when the
+          // server signs the admin in alongside the unlock, install
+          // the session through the same path password login uses so
+          // the user lands on /notes already authenticated. The
+          // passphrase / recovery-key flows return only { ok } and
+          // skip this branch.
+          if (payload && payload.token && payload.user) {
+            completeLogin(payload);
+          }
+        }}
+        onBackToOffline={canGoBackToOffline ? () => setLockOverlayOpen(false) : undefined}
+      />
+    );
+  }
+
   if (route === "#/admin") {
     if (!currentUser?.email) {
       return (
@@ -4569,6 +4669,7 @@ export default function App() {
         onToggleDark={toggleDark}
         onLogin={signIn}
         onLoginById={signInById}
+        onPasskeyLogin={completeLogin}
         goRegister={() => navigate("#/register")}
         goSecret={() => navigate("#/login-secret")}
         allowRegistration={allowRegistration}
@@ -4582,6 +4683,26 @@ export default function App() {
   return (
     <>
       <TooltipPortal />
+      {/* Server is at-rest-locked under the user's feet. Render a
+          non-intrusive banner instead of yanking them off their
+          local cache; they can keep reading and queueing edits, and
+          one click on the CTA opens the full unlock screen.
+          The banner is rendered in normal flow so it pushes the
+          header down (no overlap) and scrolls away with the page.
+          When the permanent sidebar is pinned we offset the banner
+          by sidebarWidth so it starts at the right edge of the
+          sidebar — same horizontal alignment as the main content. */}
+      {isLocked && currentUser?.email && !lockBannerDismissed && !lockOverlayOpen && (
+        <LockedBanner
+          onUnlock={() => setLockOverlayOpen(true)}
+          onDismiss={() => setLockBannerDismissed(true)}
+          sidebarOffset={
+            alwaysShowSidebarOnWide && windowWidth >= 700 && !isMobileDevice && !desktopSidebarHidden
+              ? sidebarWidth
+              : 0
+          }
+        />
+      )}
       {floatingCardsEnabled && <FloatingCardsBackground />}
       {/* Tag Sidebar / Drawer */}
       <TagSidebar
@@ -4629,6 +4750,8 @@ export default function App() {
         open={settingsPanelOpen}
         onClose={() => setSettingsPanelOpen(false)}
         dark={dark}
+        encryptionEnabled={!!instanceLockStatus?.enabled}
+        instanceUnlocked={!!instanceLockStatus?.unlocked}
         onExportAll={exportAll}
         onImportAll={() => importFileRef.current?.click()}
         onImportGKeep={() => gkeepFileRef.current?.click()}
@@ -4652,6 +4775,7 @@ export default function App() {
         setTypographyModalOpen={setTypographyModalOpen}
         showGenericConfirm={showGenericConfirm}
         showToast={showToast}
+        isWebView={isWebView}
         onResetNoteOrder={resetNoteOrder}
         currentUser={currentUser}
         token={token}
@@ -4682,11 +4806,13 @@ export default function App() {
         currentUser={currentUser}
         showGenericConfirm={showGenericConfirm}
         showToast={showToast}
+        authToken={token}
       />
 
       <NotesUI
         currentUser={currentUser}
         dark={dark}
+        instanceLocked={isLocked}
         toggleDark={toggleDark}
         signOut={signOut}
         search={search}

@@ -61,6 +61,16 @@ const WarningIcon = ({ className }) => (
   </svg>
 );
 
+// Solid red padlock used both as a badge over the cloud icon and
+// inline in the sync dropdown. We render the body and shackle filled
+// so it stays readable at small sizes without a background ring.
+const LockBadge = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V8a4 4 0 1 1 8 0v3" fill="none" strokeWidth="2.5" />
+  </svg>
+);
+
 const MAX_RETRIES = 5; // must match syncEngine.js
 
 // ─── Status config ───
@@ -154,7 +164,7 @@ function formatTimeAgo(ts) {
 
 // ─── Component ───
 
-export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdownOpen, setSyncDropdownOpen }) {
+export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdownOpen, setSyncDropdownOpen, instanceLocked = false }) {
   const open = syncDropdownOpen;
   const setOpen = setSyncDropdownOpen;
   const [forceSyncing, setForceSyncing] = useState(false);
@@ -243,10 +253,18 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
       >
         <Icon className="w-5 h-5" />
         {/* Badge for pending count */}
-        {total > 0 && syncState !== "synced" && (
+        {total > 0 && syncState !== "synced" && !instanceLocked && (
           <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-amber-500 text-white text-[10px] font-bold px-1 leading-none">
             {total}
           </span>
+        )}
+        {/* Lock badge — server reachable but at-rest-locked. Solid red
+            padlock right at the top-right of the cloud, no ring. We
+            also drop the pending-count badge when locked because
+            nothing's going to sync anyway and the operator's
+            attention should go to the lock state. */}
+        {instanceLocked && (
+          <LockBadge className="absolute top-0 right-0 w-3.5 h-3.5 text-red-600" />
         )}
       </button>
 
@@ -285,6 +303,16 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
                   </span>
                 )}
               </div>
+
+              {/* Instance lock state — separate line so the user can
+                  see at a glance that the server is up AND that the
+                  encryption layer is gating writes. */}
+              {instanceLocked && (
+                <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${dark ? "text-red-400" : "text-red-600"}`}>
+                  <LockBadge className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span className="leading-snug">{t("syncInstanceLocked")}</span>
+                </div>
+              )}
 
               {/* Error detail when server is down */}
               {serverReachable === false && lastSyncError && lastSyncError !== "Server unreachable" && lastSyncError !== "Browser offline" && (

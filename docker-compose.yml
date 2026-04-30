@@ -48,7 +48,19 @@ services:
       #   openssl rand -hex 32
       # JWT_SECRET: ""
 
-    volumes:
+      # --- Passkeys & encryption -------------------------------------------
+      # Passkeys and encryption are supported on Docker. Requirements:
+      #   1. Set up a reverse proxy with HTTPS (Nginx, Caddy, Traefik, etc.)
+      #   2. The reverse proxy MUST pass X-Forwarded-Host and X-Forwarded-Proto
+      #      headers so the server can auto-detect your domain.
+      #   3. Users access via HTTPS only (WebAuthn does not work over HTTP).
+      #
+      # If auto-detection fails (wrong RP_ID), set these explicitly:
+      # WEBAUTHN_RP_ID: "example.com"
+      # WEBAUTHN_ORIGIN: "https://example.com"
+      #
+      # Encryption keys are stored in the database (/data/notes.db) and
+      # are generated automatically — no additional setup needed.    volumes:
       # Persistent data: SQLite DB + auto-generated JWT secret.
       # Back this directory up to preserve your notes.
       - ./data:/data
