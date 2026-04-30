@@ -301,6 +301,7 @@ export default function App() {
   const [toasts, setToasts] = useState([]);
 
   const showToast = (message, type = "success", duration = 3000) => {
+    console.log("[showToast]", { message, type, duration });
     const id = Date.now();
     const toast = { id, message, type };
     setToasts((prev) => [...prev, toast]);
