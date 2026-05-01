@@ -45,6 +45,7 @@ export default function ChecklistEditor({
   syncEntries,
   insertPosition = "bottom",
   removeSectionBehavior = "cascade",
+  noteId,
 }) {
   const items = React.useMemo(() => normalizeItems(entries), [entries]);
   const sections = React.useMemo(() => getSections(items), [items]);
@@ -53,8 +54,28 @@ export default function ChecklistEditor({
   const [focusToken, setFocusToken] = React.useState(0);
   const [focusItemId, setFocusItemId] = React.useState(null);
   const [focusCaret, setFocusCaret] = React.useState("end");
-  const [doneCollapsed, setDoneCollapsed] = React.useState(false);
-  const [collapsedSections, setCollapsedSections] = React.useState(new Set());
+
+  const [doneCollapsed, setDoneCollapsed] = React.useState(() => {
+    if (!noteId) return false;
+    try { return localStorage.getItem(`ck-done-${noteId}`) === "1"; } catch { return false; }
+  });
+  const [collapsedSections, setCollapsedSections] = React.useState(() => {
+    if (!noteId) return new Set();
+    try {
+      const stored = localStorage.getItem(`ck-sec-${noteId}`);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  React.useEffect(() => {
+    if (!noteId) return;
+    try { localStorage.setItem(`ck-done-${noteId}`, doneCollapsed ? "1" : "0"); } catch {}
+  }, [doneCollapsed, noteId]);
+
+  React.useEffect(() => {
+    if (!noteId) return;
+    try { localStorage.setItem(`ck-sec-${noteId}`, JSON.stringify([...collapsedSections])); } catch {}
+  }, [collapsedSections, noteId]);
 
   const toggleSectionCollapse = React.useCallback((id) => {
     setCollapsedSections((prev) => {
@@ -250,7 +271,7 @@ export default function ChecklistEditor({
     <div className="space-y-4 md:space-y-2 max-sm:-mx-4">
       {items.length > 0 ? (
         <div className="space-y-6 md:space-y-4">
-          {sections.map((section, sectionIndex) => {
+          {sections.map((section) => {
             const uncheckedInSection = section.items.filter((it) => !it.done);
             const isDefault = section.id === DEFAULT_SECTION_ID;
             const isCollapsed = !isDefault && collapsedSections.has(section.id);
@@ -259,31 +280,25 @@ export default function ChecklistEditor({
             const colorHex = colorKey
               ? (SECTION_COLORS.find((c) => c.key === colorKey) || SECTION_COLORS[1]).hex
               : null;
+            const accentBorder = colorHex
+              ? { borderLeft: `3px solid ${hexAlpha(colorHex, 0.6)}`, paddingLeft: "0.75rem" }
+              : undefined;
 
-            const sectionAddBtn = !isDefault ? (
-              <button
-                type="button"
-                data-checklist-row
-                className="flex items-center gap-2 pl-4 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                onClick={() => addItemToSection(section.id)}
-              >
-                <span className="leading-none">+</span>
-                <span>{t("addToSectionEllipsis")}</span>
-              </button>
-            ) : null;
-            const addBtn = isDefault ? topAddRow : sectionAddBtn;
+            if (isDefault) {
+              return (
+                <div key={section.id} data-section-block={section.id} className="space-y-2 md:space-y-1">
+                  {insertPosition === "top" && topAddRow}
+                  <div>{uncheckedInSection.map(renderItemRow)}</div>
+                  {insertPosition === "bottom" && topAddRow}
+                </div>
+              );
+            }
+
             return (
-              <div
-                key={section.id}
-                data-section-block={section.id}
-                className={isDefault ? "space-y-2 md:space-y-1" : "space-y-1 pl-3"}
-                style={colorHex ? { borderLeft: `3px solid ${hexAlpha(colorHex, 0.6)}` } : undefined}
-              >
-                {!isDefault && (
-                  <div
-                    data-checklist-row
-                    data-section-header={section.id}
-                  >
+              <div key={section.id} data-section-block={section.id} className="space-y-1">
+                {/* Left-bordered wrapper: header + items only (not add button) */}
+                <div style={accentBorder} className="space-y-1">
+                  <div data-checklist-row data-section-header={section.id}>
                     <SectionHeader
                       section={section}
                       onRename={(title) => renameSection(section.id, title)}
@@ -299,15 +314,23 @@ export default function ChecklistEditor({
                       count={uncheckedInSection.length}
                     />
                   </div>
-                )}
-                {!isCollapsed && (
-                  <>
-                    {insertPosition === "top" && addBtn}
-                    <div className={!isDefault ? "pl-3" : ""}>
+                  {!isCollapsed && uncheckedInSection.length > 0 && (
+                    <div className="pl-3 space-y-1">
                       {uncheckedInSection.map(renderItemRow)}
                     </div>
-                    {insertPosition === "bottom" && addBtn}
-                  </>
+                  )}
+                </div>
+                {/* Add button outside border so bar doesn't extend into empty space */}
+                {!isCollapsed && (
+                  <button
+                    type="button"
+                    data-checklist-row
+                    className="flex items-center gap-2 pl-4 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    onClick={() => addItemToSection(section.id)}
+                  >
+                    <span className="leading-none">+</span>
+                    <span>{t("addToSectionEllipsis")}</span>
+                  </button>
                 )}
               </div>
             );

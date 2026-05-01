@@ -546,6 +546,7 @@ export default function NoteModal({
                     syncEntries={syncChecklistItems}
                     insertPosition={checklistInsertPosition}
                     removeSectionBehavior={checklistRemoveSectionBehavior}
+                    noteId={activeNoteObj?.id}
                   />
                 </div>
               ) : drawMode === 'draw' ? (
