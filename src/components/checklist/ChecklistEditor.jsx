@@ -299,7 +299,6 @@ export default function ChecklistEditor({
 
             return (
               <div key={section.id} data-section-block={section.id} className="space-y-1 max-sm:-ml-2 max-sm:-mr-2">
-                {/* Left-bordered wrapper: header + items only (not add button) */}
                 <div style={accentBorder}>
                   <div data-checklist-row data-section-header={section.id}>
                     <SectionHeader
@@ -330,24 +329,25 @@ export default function ChecklistEditor({
                       count={uncheckedInSection.length}
                     />
                   </div>
-                  {!isCollapsed && uncheckedInSection.length > 0 && (
-                    <div className="pl-3 space-y-3 pt-1 pb-2" style={itemsAreaStyle}>
-                      {uncheckedInSection.map(renderItemRow)}
+                  {!isCollapsed && (
+                    <div style={itemsAreaStyle}>
+                      {uncheckedInSection.length > 0 && (
+                        <div className="pl-3 space-y-3 pt-1 pb-1">
+                          {uncheckedInSection.map(renderItemRow)}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        data-checklist-row
+                        className="flex items-center gap-2 pl-4 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                        onClick={() => addItemToSection(section.id)}
+                      >
+                        <span className="leading-none">+</span>
+                        <span>{t("addToSectionEllipsis")}</span>
+                      </button>
                     </div>
                   )}
                 </div>
-                {/* Add button outside border so bar doesn't extend into empty space */}
-                {!isCollapsed && (
-                  <button
-                    type="button"
-                    data-checklist-row
-                    className="flex items-center gap-2 pl-4 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                    onClick={() => addItemToSection(section.id)}
-                  >
-                    <span className="leading-none">+</span>
-                    <span>{t("addToSectionEllipsis")}</span>
-                  </button>
-                )}
               </div>
             );
           })}
