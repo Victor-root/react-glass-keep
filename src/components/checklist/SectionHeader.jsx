@@ -35,19 +35,19 @@ function ColorPicker({ colorKey, onChange, onClose, onOutsideClose, triggerRef }
   }, [onOutsideClose, triggerRef]);
 
   return (
-    <div ref={ref} className="absolute z-50 top-full left-0 mt-1 p-1.5 rounded-lg shadow-lg bg-white dark:bg-gray-800 border border-[var(--border-light)] flex gap-1">
+    <div ref={ref} className="absolute z-50 top-full left-0 mt-1 p-2 sm:p-1.5 rounded-lg shadow-lg bg-white dark:bg-gray-800 border border-[var(--border-light)] flex gap-2 sm:gap-1">
 
       {/* No-color option */}
       <button
         type="button"
         aria-label="No color"
         onClick={() => { onChange("none"); onClose(); }}
-        className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-gray-500 flex items-center justify-center transition-transform hover:scale-110 focus:outline-none flex-shrink-0"
+        className="w-8 h-8 sm:w-5 sm:h-5 rounded-full border-2 border-gray-300 dark:border-gray-500 flex items-center justify-center transition-transform hover:scale-110 focus:outline-none flex-shrink-0"
         style={{
           boxShadow: colorKey === "none" ? "0 0 0 2px white, 0 0 0 3.5px #94a3b8" : "none",
         }}
       >
-        <svg viewBox="0 0 8 8" className="w-2.5 h-2.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg viewBox="0 0 8 8" className="w-3.5 h-3.5 sm:w-2.5 sm:h-2.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth="2">
           <line x1="1" y1="4" x2="7" y2="4" />
         </svg>
       </button>
@@ -57,7 +57,7 @@ function ColorPicker({ colorKey, onChange, onClose, onOutsideClose, triggerRef }
           type="button"
           aria-label={c.key}
           onClick={() => { onChange(c.key); onClose(); }}
-          className="w-5 h-5 rounded-full transition-transform hover:scale-110 focus:outline-none"
+          className="w-8 h-8 sm:w-5 sm:h-5 rounded-full transition-transform hover:scale-110 focus:outline-none"
           style={{
             background: c.hex,
             boxShadow: c.key === colorKey ? `0 0 0 2px white, 0 0 0 3.5px ${c.hex}` : "none",
@@ -210,13 +210,13 @@ export default function SectionHeader({
             ref={triggerBtnRef}
             type="button"
             onClick={() => setPickerOpen((o) => !o)}
-            className={`w-3.5 h-3.5 rounded-full transition-transform hover:scale-110 focus:outline-none flex-shrink-0 flex items-center justify-center${colorHex ? "" : " border-2 border-gray-300 dark:border-gray-500"}`}
+            className={`w-5 h-5 sm:w-3.5 sm:h-3.5 rounded-full transition-transform hover:scale-110 focus:outline-none flex-shrink-0 flex items-center justify-center${colorHex ? "" : " border-2 border-gray-300 dark:border-gray-500"}`}
             style={colorHex ? { background: colorHex } : undefined}
             aria-label={t("sectionColor")}
             data-tooltip={t("sectionColor")}
           >
             {!colorHex && (
-              <svg viewBox="0 0 8 8" className="w-2 h-2 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 8 8" className="w-2.5 h-2.5 sm:w-2 sm:h-2 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="1" y1="4" x2="7" y2="4" />
               </svg>
             )}
