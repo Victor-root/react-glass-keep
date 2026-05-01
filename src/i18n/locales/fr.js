@@ -785,4 +785,5 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   // Section checklist
   collapseSection: "Replier la section",
   expandSection: "Déplier la section",
+  sectionColor: "Couleur de la section",
 };

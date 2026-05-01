@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "../../i18n";
 import ChecklistRow from "../common/ChecklistRow.jsx";
-import SectionHeader from "./SectionHeader.jsx";
+import SectionHeader, { SECTION_COLORS, DEFAULT_SECTION_COLOR, hexAlpha } from "./SectionHeader.jsx";
 import useChecklistDrag from "../../hooks/useChecklistDrag.js";
 import {
   DEFAULT_SECTION_ID,
@@ -156,6 +156,10 @@ export default function ChecklistEditor({
     commit(updateEntry(items, id, { title }));
   };
 
+  const changeColor = (id, colorKey) => {
+    commit(updateEntry(items, id, { color: colorKey }));
+  };
+
   const removeSection = (id) => {
     // Two behaviours, controlled by the user setting:
     //   "cascade" → drop the section marker AND every item it owns.
@@ -250,6 +254,12 @@ export default function ChecklistEditor({
             const uncheckedInSection = section.items.filter((it) => !it.done);
             const isDefault = section.id === DEFAULT_SECTION_ID;
             const isCollapsed = !isDefault && collapsedSections.has(section.id);
+
+            const colorKey = !isDefault ? (section.color || DEFAULT_SECTION_COLOR) : null;
+            const colorHex = colorKey
+              ? (SECTION_COLORS.find((c) => c.key === colorKey) || SECTION_COLORS[1]).hex
+              : null;
+
             const sectionAddBtn = !isDefault ? (
               <button
                 type="button"
@@ -266,13 +276,8 @@ export default function ChecklistEditor({
               <div
                 key={section.id}
                 data-section-block={section.id}
-                className={
-                  isDefault
-                    ? "space-y-2 md:space-y-1"
-                    // Left bar: the main visual differentiator for named sections.
-                    // Change border-indigo-400/60 or border-l-[3px] to adjust color/thickness.
-                    : "space-y-1 border-l-[3px] border-indigo-400/60 dark:border-indigo-400/40 pl-3"
-                }
+                className={isDefault ? "space-y-2 md:space-y-1" : "space-y-1 pl-3"}
+                style={colorHex ? { borderLeft: `3px solid ${hexAlpha(colorHex, 0.6)}` } : undefined}
               >
                 {!isDefault && (
                   <div
@@ -284,6 +289,7 @@ export default function ChecklistEditor({
                       onRename={(title) => renameSection(section.id, title)}
                       onRemove={() => removeSection(section.id)}
                       onEnter={() => addItemToSection(section.id)}
+                      onColorChange={(colorKey) => changeColor(section.id, colorKey)}
                       onHandlePointerDown={handleSectionPointerDown}
                       onHandlePointerMove={handleSectionPointerMove}
                       onHandlePointerUp={handleSectionPointerUp}
@@ -322,15 +328,27 @@ export default function ChecklistEditor({
               <button
                 type="button"
                 onClick={() => setDoneCollapsed((c) => !c)}
-                className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mb-3 w-full text-left"
+                className="flex items-center gap-1.5 w-full text-left px-2 py-1.5 -mx-2 rounded-sm mb-3 transition-colors"
+                style={{
+                  background: hexAlpha("#64748b", 0.08),
+                  borderBottom: `1px solid ${hexAlpha("#64748b", 0.18)}`,
+                }}
               >
                 <svg
-                  className={`w-4 h-4 flex-shrink-0 transition-transform duration-200${doneCollapsed ? " -rotate-90" : ""}`}
-                  fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                  className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 text-gray-400 dark:text-gray-500${doneCollapsed ? " -rotate-90" : ""}`}
+                  fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
-                {t("done")} ({checkedItems.length})
+                <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">
+                  {t("done")}
+                </span>
+                <span
+                  className="text-xs font-medium tabular-nums px-1.5 py-0.5 rounded-full ml-0.5"
+                  style={{ background: hexAlpha("#64748b", 0.14), color: "#64748b" }}
+                >
+                  {checkedItems.length}
+                </span>
               </button>
               {!doneCollapsed && (
                 showSectionBreaks ? (

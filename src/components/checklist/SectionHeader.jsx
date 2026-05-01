@@ -1,23 +1,67 @@
 import React from "react";
 import { t } from "../../i18n";
 
+export const SECTION_COLORS = [
+  { key: "slate",   hex: "#64748b" },
+  { key: "indigo",  hex: "#6366f1" },
+  { key: "violet",  hex: "#8b5cf6" },
+  { key: "sky",     hex: "#0ea5e9" },
+  { key: "teal",    hex: "#0d9488" },
+  { key: "emerald", hex: "#10b981" },
+  { key: "amber",   hex: "#f59e0b" },
+  { key: "rose",    hex: "#f43f5e" },
+];
+export const DEFAULT_SECTION_COLOR = "indigo";
+
+export function hexAlpha(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function ColorPicker({ colorKey, onChange, onClose }) {
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener("pointerdown", handler, true);
+    return () => document.removeEventListener("pointerdown", handler, true);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={ref}
+      className="absolute z-50 top-full left-0 mt-1 p-1.5 rounded-lg shadow-lg bg-white dark:bg-gray-800 border border-[var(--border-light)] flex gap-1"
+    >
+      {SECTION_COLORS.map((c) => (
+        <button
+          key={c.key}
+          type="button"
+          aria-label={c.key}
+          onClick={() => { onChange(c.key); onClose(); }}
+          className="w-5 h-5 rounded-full transition-transform hover:scale-110 focus:outline-none"
+          style={{
+            background: c.hex,
+            boxShadow: c.key === colorKey ? `0 0 0 2px white, 0 0 0 3.5px ${c.hex}` : "none",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 /**
- * Inline-editable section header with a drag handle.
- * - Click the title → edit it inline. Enter commits + advances to the
- *   first item of the section (via onEnter).
- * - Drag handle (six dots) → move the whole section block (wired in
- *   ChecklistEditor through onHandlePointerDown).
- * - Trash button → two-step delete confirmation: first click swaps the
- *   icon to a red check; second click confirms and triggers onRemove.
- *   The pending state cancels on blur-out (click anywhere else) after
- *   a short delay so the section isn't accidentally removed.
- * - Chevron → collapse / expand the section body.
+ * Inline-editable section header with color picker, drag handle, collapse, and delete.
  */
 export default function SectionHeader({
   section,
   onRename,
   onRemove,
   onEnter,
+  onColorChange,
   onHandlePointerDown,
   onHandlePointerMove,
   onHandlePointerUp,
@@ -28,8 +72,12 @@ export default function SectionHeader({
 }) {
   const [editing, setEditing] = React.useState(!section.title);
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
+  const [pickerOpen, setPickerOpen] = React.useState(false);
   const inputRef = React.useRef(null);
   const confirmTimerRef = React.useRef(null);
+
+  const colorKey = section.color || DEFAULT_SECTION_COLOR;
+  const colorHex = (SECTION_COLORS.find((c) => c.key === colorKey) || SECTION_COLORS[1]).hex;
 
   React.useEffect(() => {
     if (editing && inputRef.current) {
@@ -38,38 +86,41 @@ export default function SectionHeader({
     }
   }, [editing]);
 
-  // Auto-cancel pending confirmation after 3 s of inaction.
   React.useEffect(() => {
     if (!confirmingDelete) return;
-    confirmTimerRef.current = setTimeout(() => {
-      setConfirmingDelete(false);
-    }, 3000);
+    confirmTimerRef.current = setTimeout(() => setConfirmingDelete(false), 3000);
     return () => {
-      if (confirmTimerRef.current) {
-        clearTimeout(confirmTimerRef.current);
-        confirmTimerRef.current = null;
-      }
+      if (confirmTimerRef.current) { clearTimeout(confirmTimerRef.current); confirmTimerRef.current = null; }
     };
   }, [confirmingDelete]);
 
   const commit = (value) => {
-    const next = (value ?? "").trim();
-    onRename(next);
+    onRename((value ?? "").trim());
     setEditing(false);
   };
 
   const handleDeleteClick = (e) => {
     e.stopPropagation();
-    if (!confirmingDelete) {
-      setConfirmingDelete(true);
-      return;
-    }
+    if (!confirmingDelete) { setConfirmingDelete(true); return; }
     setConfirmingDelete(false);
     onRemove?.();
   };
 
+  const headerStyle = {
+    background: hexAlpha(colorHex, 0.08),
+    borderBottom: `1px solid ${hexAlpha(colorHex, 0.18)}`,
+  };
+
+  const countStyle = {
+    background: hexAlpha(colorHex, 0.14),
+    color: colorHex,
+  };
+
   return (
-    <div className="flex items-center gap-1.5 group pt-2 pb-1">
+    <div
+      className="flex items-center gap-1 px-2 py-1.5 -mx-2 rounded-sm"
+      style={headerStyle}
+    >
       {/* Drag handle */}
       {onHandlePointerDown && (
         <div
@@ -77,17 +128,14 @@ export default function SectionHeader({
           onPointerMove={onHandlePointerMove}
           onPointerUp={onHandlePointerUp}
           onPointerCancel={onHandlePointerCancel}
-          className="flex items-center justify-center px-1 checklist-grab-handle opacity-40 group-hover:opacity-70 transition-opacity cursor-grab"
+          className="flex items-center justify-center px-0.5 checklist-grab-handle opacity-40 hover:opacity-70 transition-opacity cursor-grab flex-shrink-0"
           style={{ touchAction: "none" }}
           data-tooltip={t("moveSection")}
         >
           <div className="grid grid-cols-2 gap-0.5">
-            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-300 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-300 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-300 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-300 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-300 rounded-full"></div>
-            <div className="w-1 h-1 bg-gray-400 dark:bg-gray-300 rounded-full"></div>
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="w-1 h-1 bg-gray-400 dark:bg-gray-300 rounded-full" />
+            ))}
           </div>
         </div>
       )}
@@ -109,38 +157,56 @@ export default function SectionHeader({
         </button>
       )}
 
+      {/* Color picker trigger */}
+      {onColorChange && (
+        <div className="relative flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setPickerOpen((o) => !o)}
+            className="w-3.5 h-3.5 rounded-full transition-transform hover:scale-110 focus:outline-none flex-shrink-0"
+            style={{ background: colorHex }}
+            aria-label={t("sectionColor")}
+            data-tooltip={t("sectionColor")}
+          />
+          {pickerOpen && (
+            <ColorPicker
+              colorKey={colorKey}
+              onChange={onColorChange}
+              onClose={() => setPickerOpen(false)}
+            />
+          )}
+        </div>
+      )}
+
       {/* Title / edit input */}
       {editing ? (
         <input
           ref={inputRef}
           type="text"
           defaultValue={section.title}
-          className="flex-1 bg-transparent text-sm font-semibold tracking-wide text-gray-700 dark:text-gray-200 focus:outline-none border-0 border-b border-[var(--border-light)] px-0 py-0.5"
+          className="flex-1 bg-transparent text-sm font-semibold text-gray-700 dark:text-gray-200 focus:outline-none border-0 border-b border-[var(--border-light)] px-0 py-0"
           placeholder={t("sectionTitlePlaceholder")}
           onBlur={(e) => commit(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commit(e.currentTarget.value);
-              onEnter?.();
-            } else if (e.key === "Escape") {
-              e.preventDefault();
-              setEditing(false);
-            }
+            if (e.key === "Enter") { e.preventDefault(); commit(e.currentTarget.value); onEnter?.(); }
+            else if (e.key === "Escape") { e.preventDefault(); setEditing(false); }
           }}
         />
       ) : (
         <h4
-          className="flex-1 text-sm font-semibold text-gray-700 dark:text-gray-200 cursor-text py-0.5"
+          className="flex-1 text-sm font-semibold text-gray-700 dark:text-gray-200 cursor-text py-0"
           onClick={() => setEditing(true)}
         >
           {section.title || t("sectionTitlePlaceholder")}
         </h4>
       )}
 
-      {/* Item count */}
+      {/* Item count badge */}
       {count !== undefined && (
-        <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 tabular-nums">
+        <span
+          className="text-xs font-medium flex-shrink-0 tabular-nums px-1.5 py-0.5 rounded-full"
+          style={countStyle}
+        >
           {count}
         </span>
       )}
@@ -151,14 +217,14 @@ export default function SectionHeader({
         onClick={handleDeleteClick}
         data-tooltip={confirmingDelete ? t("confirmRemoveSection") : t("removeSection")}
         aria-label={confirmingDelete ? t("confirmRemoveSection") : t("removeSection")}
-        className="flex items-center justify-center w-7 h-7 rounded-md text-red-500 hover:text-red-600 hover:bg-red-500/10 dark:hover:bg-red-500/20 transition-colors cursor-pointer"
+        className="flex items-center justify-center w-6 h-6 rounded text-red-500 hover:text-red-600 hover:bg-red-500/10 dark:hover:bg-red-500/20 transition-colors cursor-pointer flex-shrink-0"
       >
         {confirmingDelete ? (
-          <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         ) : (
-          <svg viewBox="0 0 24 24" className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6L6 18" />
           </svg>
         )}

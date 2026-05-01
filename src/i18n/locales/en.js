@@ -784,4 +784,5 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   // Checklist section
   collapseSection: "Collapse section",
   expandSection: "Expand section",
+  sectionColor: "Section color",
 };
