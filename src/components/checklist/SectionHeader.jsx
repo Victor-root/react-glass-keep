@@ -111,6 +111,18 @@ export default function SectionHeader({
   const colorHex = SECTION_COLORS.find((c) => c.key === colorKey)?.hex ?? null;
 
   React.useEffect(() => {
+    if (!editing || !window.visualViewport) return;
+    let prevH = window.visualViewport.height;
+    const onResize = () => {
+      const h = window.visualViewport.height;
+      if (h - prevH > 150) inputRef.current?.blur();
+      prevH = h;
+    };
+    window.visualViewport.addEventListener("resize", onResize);
+    return () => window.visualViewport.removeEventListener("resize", onResize);
+  }, [editing]);
+
+  React.useEffect(() => {
     if (editing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();

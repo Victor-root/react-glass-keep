@@ -47,6 +47,19 @@ export default function ChecklistRow({
     }
   }, [editing]);
 
+  // Exit edit mode when the soft keyboard is dismissed (mobile back / swipe down).
+  React.useEffect(() => {
+    if (!editing || !window.visualViewport) return;
+    let prevH = window.visualViewport.height;
+    const onResize = () => {
+      const h = window.visualViewport.height;
+      if (h - prevH > 150) textareaRef.current?.blur();
+      prevH = h;
+    };
+    window.visualViewport.addEventListener("resize", onResize);
+    return () => window.visualViewport.removeEventListener("resize", onResize);
+  }, [editing]);
+
   // External focus trigger: parent bumps focusToken to request this row.
   React.useEffect(() => {
     if (focusItemId !== item.id || focusToken == null) return;
