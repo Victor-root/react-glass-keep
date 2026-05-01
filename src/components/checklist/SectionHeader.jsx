@@ -20,16 +20,22 @@ export function hexAlpha(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function ColorPicker({ colorKey, onChange, onClose }) {
+function ColorPicker({ colorKey, onChange, onClose, triggerRef }) {
   const ref = React.useRef(null);
 
   React.useEffect(() => {
     const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) onClose();
+      if (ref.current?.contains(e.target)) return;
+      if (triggerRef?.current?.contains(e.target)) return;
+      // Prevent keyboard opening on mobile when closing picker by tapping an input
+      if (e.target.matches('input, textarea, [contenteditable="true"]')) {
+        e.preventDefault();
+      }
+      onClose();
     };
     document.addEventListener("pointerdown", handler, true);
     return () => document.removeEventListener("pointerdown", handler, true);
-  }, [onClose]);
+  }, [onClose, triggerRef]);
 
   return (
     <div
@@ -90,6 +96,7 @@ export default function SectionHeader({
   const inputRef = React.useRef(null);
   const confirmTimerRef = React.useRef(null);
   const enterPressedRef = React.useRef(false);
+  const colorTriggerRef = React.useRef(null);
 
   const colorKey = section.color || DEFAULT_SECTION_COLOR;
   const colorHex = SECTION_COLORS.find((c) => c.key === colorKey)?.hex ?? null;
@@ -179,6 +186,7 @@ export default function SectionHeader({
       {onColorChange && (
         <div className="relative flex-shrink-0">
           <button
+            ref={colorTriggerRef}
             type="button"
             onClick={() => setPickerOpen((o) => !o)}
             className={`w-3.5 h-3.5 rounded-full transition-transform hover:scale-110 focus:outline-none flex-shrink-0 flex items-center justify-center${colorHex ? "" : " border-2 border-gray-300 dark:border-gray-500"}`}
@@ -197,6 +205,7 @@ export default function SectionHeader({
               colorKey={colorKey}
               onChange={onColorChange}
               onClose={() => setPickerOpen(false)}
+              triggerRef={colorTriggerRef}
             />
           )}
         </div>
