@@ -250,9 +250,9 @@ export default function ChecklistEditor({
             const uncheckedInSection = section.items.filter((it) => !it.done);
             const isDefault = section.id === DEFAULT_SECTION_ID;
             const isCollapsed = !isDefault && collapsedSections.has(section.id);
-            // Zebra: alternate a very light tint on odd-indexed named sections.
-            const zebraBg = !isDefault && sectionIndex % 2 === 1
-              ? "bg-black/[1.8%] dark:bg-white/[2.5%]"
+            // Zebra: alternate a very light tint on the header row only.
+            const zebraHeaderBg = !isDefault && sectionIndex % 2 === 1
+              ? "bg-black/[2%] dark:bg-white/[2.5%]"
               : "";
             const sectionAddBtn = !isDefault ? (
               <button
@@ -274,10 +274,14 @@ export default function ChecklistEditor({
               <div
                 key={section.id}
                 data-section-block={section.id}
-                className={`space-y-2 md:space-y-1 ${zebraBg}`}
+                className="space-y-2 md:space-y-1"
               >
                 {!isDefault && (
-                  <div data-checklist-row data-section-header={section.id}>
+                  <div
+                    data-checklist-row
+                    data-section-header={section.id}
+                    className={zebraHeaderBg}
+                  >
                     <SectionHeader
                       section={section}
                       onRename={(title) => renameSection(section.id, title)}
@@ -289,7 +293,7 @@ export default function ChecklistEditor({
                       onHandlePointerCancel={handleSectionPointerCancel}
                       collapsed={isCollapsed}
                       onToggleCollapse={() => toggleSectionCollapse(section.id)}
-                      count={section.items.length}
+                      count={uncheckedInSection.length}
                     />
                   </div>
                 )}
