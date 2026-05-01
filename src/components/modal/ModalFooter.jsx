@@ -4,9 +4,11 @@ import PaletteColorIcon from "../common/PaletteColorIcon.jsx";
 import ColorPickerPanel from "../common/ColorPickerPanel.jsx";
 import Popover from "../common/Popover.jsx";
 import UserAvatar from "../common/UserAvatar.jsx";
+import AddImageMenu from "./AddImageMenu.jsx";
 import { DownloadIcon, ArchiveIcon, Trash, AddImageIcon, Kebab, TextNoteIcon, ChecklistIcon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { COLOR_ORDER, LIGHT_COLORS } from "../../utils/colors.js";
+import { getNoteIcon } from "../../utils/noteIcon.js";
 import { t } from "../../i18n";
 
 /**
@@ -44,6 +46,12 @@ export default function ModalFooter({
   modalFileRef,
   addImagesToState,
   setMImages,
+  mImages,
+  // note icon (logo badge) — flows through addImagesToState too, then
+  // gets stamped with role:"icon" via setNoteIconFromFile (handled in App).
+  modalIconFileRef,
+  setNoteIconFromFile,
+  removeNoteIcon,
   // collaboration
   onOpenCollaboration,
   // formatting (mobile)
@@ -119,6 +127,11 @@ export default function ModalFooter({
 
   const btnClass = isDesktop ? "modal-footer-labeled-btn" : "modal-footer-btn";
 
+  /* Image sub-menu (regular image vs logo / note icon) */
+  const imageBtnRef = useRef(null);
+  const [imageMenuOpen, setImageMenuOpen] = useState(false);
+  const currentNoteIcon = getNoteIcon(mImages);
+
   /* Kebab menu (download + collaborate) */
   const kebabRef = useRef(null);
 
@@ -161,7 +174,13 @@ export default function ModalFooter({
           onSelect={(name) => setMColor(name)}
         />
 
-        {/* ── Add image (hidden in view mode for draw notes, hidden in draw canvas) ── */}
+        {/* ── Add image / logo (hidden in view mode for draw notes, hidden in draw canvas) ──
+              Clicking the button opens a small sub-menu offering either
+              a regular image upload (existing flow) or a note-icon
+              upload ("logo badge", new flow). Two separate hidden file
+              inputs keep the two flows from interfering with each other
+              and let the OS picker remember the right MIME hint per
+              flow. */}
         {(mType === "checklist" || mType === "text" || (mType === "draw" && drawMode !== "draw" && !viewMode)) && (
           <>
             <input
@@ -176,14 +195,38 @@ export default function ModalFooter({
                 e.target.value = "";
               }}
             />
+            <input
+              ref={modalIconFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files && e.target.files[0];
+                if (f && setNoteIconFromFile) await setNoteIconFromFile(f);
+                e.target.value = "";
+              }}
+            />
             <button
+              ref={imageBtnRef}
               className={`${btnClass} modal-footer-btn--image focus:outline-none`}
-              onClick={() => modalFileRef.current?.click()}
+              onClick={() => setImageMenuOpen((v) => !v)}
               data-tooltip={!isDesktop ? t("addImages") : undefined}
+              aria-haspopup="menu"
+              aria-expanded={imageMenuOpen ? "true" : "false"}
             >
               <AddImageIcon />
               {isDesktop && <span>{t("image")}</span>}
             </button>
+            <AddImageMenu
+              anchorRef={imageBtnRef}
+              open={imageMenuOpen}
+              onClose={() => setImageMenuOpen(false)}
+              dark={dark}
+              hasIcon={!!currentNoteIcon}
+              onAddImage={() => modalFileRef.current?.click()}
+              onAddIcon={() => modalIconFileRef?.current?.click()}
+              onRemoveIcon={() => removeNoteIcon && removeNoteIcon()}
+            />
           </>
         )}
 

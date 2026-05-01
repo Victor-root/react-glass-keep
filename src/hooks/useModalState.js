@@ -33,6 +33,9 @@ export default function useModalState({ notes, currentUser, closeModalRef, runFo
   const [savingModal, setSavingModal] = useState(false);
   const mBodyRef = useRef(null);
   const modalFileRef = useRef(null);
+  // Separate hidden file input for the note icon (logo badge) — keeps
+  // the OS picker semantics independent from the regular images flow.
+  const modalIconFileRef = useRef(null);
   const [modalMenuOpen, setModalMenuOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
@@ -176,9 +179,19 @@ export default function useModalState({ notes, currentUser, closeModalRef, runFo
     resetMobileNav();
   };
   const closeImageViewer = () => setImgViewOpen(false);
-  const nextImage = () => setImgViewIndex((i) => (i + 1) % mImages.length);
-  const prevImage = () =>
-    setImgViewIndex((i) => (i - 1 + mImages.length) % mImages.length);
+  // Cycle only across content images — the optional note icon lives
+  // in mImages too (with role:"icon") but is never shown in the
+  // viewer, so its index must stay out of the modulo math.
+  const contentImagesLength = () =>
+    mImages.filter((im) => im && im.role !== "icon").length;
+  const nextImage = () => setImgViewIndex((i) => {
+    const len = contentImagesLength();
+    return len ? (i + 1) % len : 0;
+  });
+  const prevImage = () => setImgViewIndex((i) => {
+    const len = contentImagesLength();
+    return len ? (i - 1 + len) % len : 0;
+  });
 
   // ─── Modal link handler ───
   const onModalBodyClick = (e) => {
@@ -284,13 +297,15 @@ export default function useModalState({ notes, currentUser, closeModalRef, runFo
     if (!open) setImgViewOpen(false);
   }, [open]);
 
-  // Keyboard nav for image viewer
+  // Keyboard nav for image viewer (content images only — the note icon
+  // is excluded so arrow-keys never land on a hidden entry).
   useEffect(() => {
     if (!imgViewOpen) return;
     const onKey = (e) => {
+      const content = mImages.filter((im) => im && im.role !== "icon");
       if (e.key === "Escape") setImgViewOpen(false);
       if (e.key.toLowerCase() === "d") {
-        const im = mImages[imgViewIndex];
+        const im = content[imgViewIndex];
         if (im) {
           const fname = normalizeImageFilename(
             im.name,
@@ -300,11 +315,11 @@ export default function useModalState({ notes, currentUser, closeModalRef, runFo
           downloadDataUrl(fname, im.src);
         }
       }
-      if (e.key === "ArrowRight" && mImages.length > 1) {
-        setImgViewIndex((i) => (i + 1) % mImages.length);
+      if (e.key === "ArrowRight" && content.length > 1) {
+        setImgViewIndex((i) => (i + 1) % content.length);
       }
-      if (e.key === "ArrowLeft" && mImages.length > 1) {
-        setImgViewIndex((i) => (i - 1 + mImages.length) % mImages.length);
+      if (e.key === "ArrowLeft" && content.length > 1) {
+        setImgViewIndex((i) => (i - 1 + content.length) % content.length);
       }
     };
     document.addEventListener("keydown", onKey);
@@ -508,6 +523,7 @@ export default function useModalState({ notes, currentUser, closeModalRef, runFo
     suppressTagBlurRef,
     mBodyRef,
     modalFileRef,
+    modalIconFileRef,
     modalFmtBtnRef,
     modalColorBtnRef,
     checklistDragId,

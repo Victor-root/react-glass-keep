@@ -14,12 +14,14 @@ import DrawingCanvas from "../../DrawingCanvas";
 import ModalHeader from "./ModalHeader.jsx";
 import ModalFooter from "./ModalFooter.jsx";
 import ModalImagesGrid from "./ModalImagesGrid.jsx";
+import NoteIconEditor from "./NoteIconEditor.jsx";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog.jsx";
 import CollaborationModal from "./CollaborationModal.jsx";
 import FullscreenImageViewer from "./FullscreenImageViewer.jsx";
 import OfflineCollabBanner from "./OfflineCollabBanner.jsx";
 import ChecklistEditor from "../checklist/ChecklistEditor.jsx";
 import useModalHistory from "../../hooks/useModalHistory.js";
+import { getNoteIcon, getContentImages } from "../../utils/noteIcon.js";
 import { renderSafeMarkdown, linkifyContactsHTML } from "../../utils/markdown.jsx";
 import RichTextEditor from "../richtext/RichTextEditor.jsx";
 import { contentToHTML, serializeRichContent, isRichContent } from "../../utils/richText.js";
@@ -66,6 +68,7 @@ export default function NoteModal({
   mBodyRef,
   noteViewRef,
   modalFileRef,
+  modalIconFileRef,
   modalMenuBtnRef,
   modalFmtBtnRef,
   modalTagInputRef,
@@ -142,6 +145,8 @@ export default function NoteModal({
   handleDownloadNote,
   togglePin,
   addImagesToState,
+  setNoteIconFromFile,
+  removeNoteIcon,
   isCollaborativeNote,
   syncState,
   onModalBodyClick,
@@ -500,12 +505,23 @@ export default function NoteModal({
             />
 
             {!isDrawEdit && (
-              <ModalImagesGrid
-                images={mImages}
-                onOpenViewer={openImageViewer}
-                onRemoveImage={(id) => setMImages((prev) => prev.filter((x) => x.id !== id))}
-                canRemove={mType === "checklist" || !viewMode}
-              />
+              <>
+                {/* Content images only — the optional note icon (logo
+                    badge) lives in mImages with role:"icon" but is
+                    rendered separately by NoteIconEditor below. */}
+                <ModalImagesGrid
+                  images={getContentImages(mImages)}
+                  onOpenViewer={openImageViewer}
+                  onRemoveImage={(id) => setMImages((prev) => prev.filter((x) => x.id !== id))}
+                  canRemove={mType === "checklist" || !viewMode}
+                />
+                <NoteIconEditor
+                  icon={getNoteIcon(mImages)}
+                  canEdit={mType === "checklist" || !viewMode}
+                  onReplace={() => modalIconFileRef?.current?.click()}
+                  onRemove={() => removeNoteIcon && removeNoteIcon()}
+                />
+              </>
             )}
 
             <OfflineCollabBanner visible={isCollaborativeNote(activeId) && syncState === "offline"} />
@@ -695,6 +711,10 @@ export default function NoteModal({
             modalFileRef={modalFileRef}
             addImagesToState={addImagesToState}
             setMImages={setMImages}
+            mImages={mImages}
+            modalIconFileRef={modalIconFileRef}
+            setNoteIconFromFile={setNoteIconFromFile}
+            removeNoteIcon={removeNoteIcon}
             // collaboration
             onOpenCollaboration={async () => {
               setCollaborationModalOpen(true);
@@ -781,21 +801,26 @@ export default function NoteModal({
         </div>
       </div>
 
-      {/* Fullscreen Image Viewer */}
-      {imgViewOpen && mImages.length > 0 && (
-        <FullscreenImageViewer
-          images={mImages}
-          currentIndex={imgViewIndex}
-          dark={dark}
-          onClose={closeImageViewer}
-          onNext={nextImage}
-          onPrev={prevImage}
-          mobileNavVisible={mobileNavVisible}
-          onResetMobileNav={resetMobileNav}
-          canRemove={mType === "checklist" || !viewMode}
-          onRemoveImage={(id) => setMImages((prev) => prev.filter((x) => x.id !== id))}
-        />
-      )}
+      {/* Fullscreen Image Viewer — content images only; the icon is
+          intentionally hidden from the viewer and never indexable. */}
+      {(() => {
+        const viewerImages = getContentImages(mImages);
+        if (!imgViewOpen || viewerImages.length === 0) return null;
+        return (
+          <FullscreenImageViewer
+            images={viewerImages}
+            currentIndex={Math.min(imgViewIndex, viewerImages.length - 1)}
+            dark={dark}
+            onClose={closeImageViewer}
+            onNext={nextImage}
+            onPrev={prevImage}
+            mobileNavVisible={mobileNavVisible}
+            onResetMobileNav={resetMobileNav}
+            canRemove={mType === "checklist" || !viewMode}
+            onRemoveImage={(id) => setMImages((prev) => prev.filter((x) => x.id !== id))}
+          />
+        );
+      })()}
     </>
   );
 }

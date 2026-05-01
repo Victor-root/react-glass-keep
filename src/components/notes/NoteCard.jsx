@@ -9,6 +9,8 @@ import DrawingPreview from "../common/DrawingPreview.jsx";
 import UserAvatar from "../common/UserAvatar.jsx";
 import useNoteTouchDrag from "../../hooks/useNoteTouchDrag.js";
 import { getSections, isItem, countItems, countChecked, DEFAULT_SECTION_ID } from "../../utils/checklist.js";
+import { getNoteIcon, getContentImages } from "../../utils/noteIcon.js";
+import NoteCardFooter from "./NoteCardFooter.jsx";
 
 export default function NoteCard({
   n,
@@ -96,13 +98,12 @@ export default function NoteCard({
   const extraCount = Math.max(0, uncheckedTotal - visibleCount);
   const hasAnyTitledSection = previewSections.some((s) => s.id !== DEFAULT_SECTION_ID && s.title);
 
-  const imgs = n.images || [];
-  const mainImg = imgs[0];
+  // Content images = everything in n.images except the optional note icon
+  // (which is rendered separately in the footer). See utils/noteIcon.js.
+  const imgs = useMemo(() => getContentImages(n.images), [n.images]);
+  const noteIcon = useMemo(() => getNoteIcon(n.images), [n.images]);
 
-  const MAX_TAG_CHIPS = 4;
   const allTags = Array.isArray(n.tags) ? n.tags : [];
-  const showEllipsisChip = allTags.length > MAX_TAG_CHIPS;
-  const displayTags = allTags.slice(0, MAX_TAG_CHIPS);
 
   const group = n.pinned ? "pinned" : "others";
   // Ordering is stored per-user server-side, so collaborators can drag shared
@@ -332,23 +333,7 @@ export default function NoteCard({
         </div>
       )}
 
-      {!!displayTags.length && (
-        <div className="mt-4 text-xs flex flex-wrap gap-2">
-          {displayTags.map((tag) => (
-            <span
-              key={tag}
-              className="bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium px-2.5 py-0.5 rounded-full"
-            >
-              {tag}
-            </span>
-          ))}
-          {showEllipsisChip && (
-            <span className="bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200 text-xs font-medium px-2.5 py-0.5 rounded-full">
-              …
-            </span>
-          )}
-        </div>
-      )}
+      <NoteCardFooter tags={allTags} icon={noteIcon} />
     </div>
   );
 }

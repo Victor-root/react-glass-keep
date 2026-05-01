@@ -38,6 +38,7 @@ import {
 } from "./utils/typographyPresets.js";
 import { globalCSS } from "./styles/globalCSS.js";
 import { ALL_IMAGES } from "./utils/constants.js";
+import { setNoteIcon } from "./utils/noteIcon.js";
 import { ColorDot } from "./components/common/ColorDot.jsx";
 import { handleSmartEnter } from "./components/common/FormatToolbar.jsx";
 import DrawingPreview from "./components/common/DrawingPreview.jsx";
@@ -287,7 +288,7 @@ export default function App() {
     modalScrollable,
     // Refs
     modalTagInputRef, modalTagBtnRef, suppressTagBlurRef,
-    mBodyRef, modalFileRef, modalFmtBtnRef, modalColorBtnRef,
+    mBodyRef, modalFileRef, modalIconFileRef, modalFmtBtnRef, modalColorBtnRef,
     checklistDragId, modalMenuBtnRef, scrimClickStartRef,
     noteViewRef, modalScrollRef, savedModalScrollRatioRef,
     modalHistoryRef,
@@ -3033,6 +3034,25 @@ export default function App() {
     if (results.length) setter((prev) => [...prev, ...results]);
   };
 
+  // Note icon (logo badge) — reuses the regular image compression
+  // pipeline, then stamps role:"icon" via setNoteIcon helper. Stored
+  // in the same `images` array so the existing sync / encryption /
+  // offline-queue paths handle it for free.
+  const setNoteIconFromFile = useCallback(async (file) => {
+    if (!file) return;
+    try {
+      const src = await fileToCompressedDataURL(file);
+      const iconEntry = { id: uid(), src, name: file.name };
+      setMImages((prev) => setNoteIcon(prev, iconEntry));
+    } catch (e) {
+      console.error("Note icon load failed", e);
+    }
+  }, [setMImages]);
+
+  const removeNoteIcon = useCallback(() => {
+    setMImages((prev) => setNoteIcon(prev, null));
+  }, [setMImages]);
+
   // Track initial state when opening modal to detect if user actually edited
   // Must be defined before openModal
   const initialModalStateRef = useRef(null);
@@ -4475,6 +4495,7 @@ export default function App() {
       mBodyRef={mBodyRef}
       noteViewRef={noteViewRef}
       modalFileRef={modalFileRef}
+      modalIconFileRef={modalIconFileRef}
       modalMenuBtnRef={modalMenuBtnRef}
       modalFmtBtnRef={modalFmtBtnRef}
       modalTagInputRef={modalTagInputRef}
@@ -4540,6 +4561,8 @@ export default function App() {
       handleDownloadNote={handleDownloadNote}
       togglePin={togglePin}
       addImagesToState={addImagesToState}
+      setNoteIconFromFile={setNoteIconFromFile}
+      removeNoteIcon={removeNoteIcon}
       isCollaborativeNote={isCollaborativeNote}
       syncState={syncStatus.syncState}
       onModalBodyClick={onModalBodyClick}
