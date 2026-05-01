@@ -53,6 +53,7 @@ export default function ChecklistEditor({
   const [focusToken, setFocusToken] = React.useState(0);
   const [focusItemId, setFocusItemId] = React.useState(null);
   const [focusCaret, setFocusCaret] = React.useState("end");
+  const [doneCollapsed, setDoneCollapsed] = React.useState(false);
   const requestFocus = React.useCallback((id, caret = "end") => {
     setFocusItemId(id);
     setFocusCaret(caret);
@@ -293,56 +294,68 @@ export default function ChecklistEditor({
 
           {checkedItems.length > 0 && (
             <div className="border-t border-[var(--border-light)] pt-4 mt-4">
-              <h4 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3">
-                {t("done")}
-              </h4>
-              {showSectionBreaks ? (
-                Array.from(checkedBySection.entries()).map(([sid, arr]) => {
-                  const section = sections.find((s) => s.id === sid);
-                  const label = section && section.title ? section.title : null;
-                  return (
-                    <div key={sid} className="mb-3">
-                      {label && (
-                        <div className="text-xs font-semibold tracking-wide text-gray-400 dark:text-gray-500 mb-1">
-                          {label}
-                        </div>
-                      )}
-                      {arr.map((it) => (
-                        <ChecklistRow
-                          key={it.id}
-                          item={it}
-                          readOnly={false}
-                          disableToggle={false}
-                          showRemove={true}
-                          size="lg"
-                          onToggle={(checked, e) => {
-                            e?.stopPropagation();
-                            toggleItem(it.id, checked);
-                          }}
-                          onChange={(txt) => changeText(it.id, txt)}
-                          onRemove={() => removeItem(it.id)}
-                        />
-                      ))}
-                    </div>
-                  );
-                })
-              ) : (
-                checkedItems.map((it) => (
-                  <ChecklistRow
-                    key={it.id}
-                    item={it}
-                    readOnly={false}
-                    disableToggle={false}
-                    showRemove={true}
-                    size="lg"
-                    onToggle={(checked, e) => {
-                      e?.stopPropagation();
-                      toggleItem(it.id, checked);
-                    }}
-                    onChange={(txt) => changeText(it.id, txt)}
-                    onRemove={() => removeItem(it.id)}
-                  />
-                ))
+              <button
+                type="button"
+                onClick={() => setDoneCollapsed((c) => !c)}
+                className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors mb-3 w-full text-left"
+              >
+                <svg
+                  className={`w-4 h-4 flex-shrink-0 transition-transform duration-200${doneCollapsed ? " -rotate-90" : ""}`}
+                  fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+                {t("done")} ({checkedItems.length})
+              </button>
+              {!doneCollapsed && (
+                showSectionBreaks ? (
+                  Array.from(checkedBySection.entries()).map(([sid, arr]) => {
+                    const section = sections.find((s) => s.id === sid);
+                    const label = section && section.title ? section.title : null;
+                    return (
+                      <div key={sid} className="mb-3">
+                        {label && (
+                          <div className="text-xs font-semibold tracking-wide text-gray-400 dark:text-gray-500 mb-1">
+                            {label}
+                          </div>
+                        )}
+                        {arr.map((it) => (
+                          <ChecklistRow
+                            key={it.id}
+                            item={it}
+                            readOnly={false}
+                            disableToggle={false}
+                            showRemove={true}
+                            size="lg"
+                            onToggle={(checked, e) => {
+                              e?.stopPropagation();
+                              toggleItem(it.id, checked);
+                            }}
+                            onChange={(txt) => changeText(it.id, txt)}
+                            onRemove={() => removeItem(it.id)}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })
+                ) : (
+                  checkedItems.map((it) => (
+                    <ChecklistRow
+                      key={it.id}
+                      item={it}
+                      readOnly={false}
+                      disableToggle={false}
+                      showRemove={true}
+                      size="lg"
+                      onToggle={(checked, e) => {
+                        e?.stopPropagation();
+                        toggleItem(it.id, checked);
+                      }}
+                      onChange={(txt) => changeText(it.id, txt)}
+                      onRemove={() => removeItem(it.id)}
+                    />
+                  ))
+                )
               )}
             </div>
           )}
