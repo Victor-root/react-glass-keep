@@ -132,7 +132,7 @@ export default function SectionHeader({
     return () => document.removeEventListener("click", handler, true);
   }, []);
 
-  const colorKey = section.color || DEFAULT_SECTION_COLOR;
+  const colorKey = section.color ?? "none";
   const colorHex = SECTION_COLORS.find((c) => c.key === colorKey)?.hex ?? null;
 
   React.useEffect(() => {
