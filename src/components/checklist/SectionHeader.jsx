@@ -119,7 +119,7 @@ export default function SectionHeader({
 
   return (
     <div
-      className="flex items-center gap-1 px-2 py-1.5 -mx-2 rounded-sm"
+      className="flex items-center gap-1 px-2 py-1.5"
       style={headerStyle}
     >
       {/* Drag handle */}

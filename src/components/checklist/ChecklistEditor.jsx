@@ -281,12 +281,10 @@ export default function ChecklistEditor({
               ? (SECTION_COLORS.find((c) => c.key === colorKey) || SECTION_COLORS[1]).hex
               : null;
             const accentBorder = colorHex
-              ? {
-                  borderLeft: `3px solid ${hexAlpha(colorHex, 0.6)}`,
-                  paddingLeft: "0.75rem",
-                  background: hexAlpha(colorHex, 0.04),
-                  borderRadius: "0 0.375rem 0.375rem 0",
-                }
+              ? { borderLeft: `3px solid ${hexAlpha(colorHex, 0.6)}` }
+              : undefined;
+            const itemsAreaStyle = colorHex
+              ? { background: hexAlpha(colorHex, 0.04) }
               : undefined;
 
             if (isDefault) {
@@ -333,7 +331,7 @@ export default function ChecklistEditor({
                     />
                   </div>
                   {!isCollapsed && uncheckedInSection.length > 0 && (
-                    <div className="pl-3 space-y-1">
+                    <div className="pl-3 space-y-1 pt-1 pb-2" style={itemsAreaStyle}>
                       {uncheckedInSection.map(renderItemRow)}
                     </div>
                   )}
