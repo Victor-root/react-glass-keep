@@ -69,8 +69,8 @@ function ColorPicker({ colorKey, onChange, onClose, onOutsideClose, triggerRef }
             boxShadow: colorKey === "none" ? "0 0 0 2px white, 0 0 0 3.5px #94a3b8" : "none",
           }}
         >
-          <svg viewBox="0 0 8 8" className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="1" y1="4" x2="7" y2="4" />
+          <svg viewBox="0 0 8 8" className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <line x1="6.5" y1="1.5" x2="1.5" y2="6.5" />
           </svg>
         </button>
         {SECTION_COLORS.map((c) => (
@@ -239,11 +239,6 @@ export default function SectionHeader({
             aria-label={t("sectionColor")}
             data-tooltip={t("sectionColor")}
           >
-            {!colorHex && (
-              <svg viewBox="0 0 8 8" className="w-2.5 h-2.5 sm:w-2 sm:h-2 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="1" y1="4" x2="7" y2="4" />
-              </svg>
-            )}
           </button>
           {pickerOpen && (
             <ColorPicker
