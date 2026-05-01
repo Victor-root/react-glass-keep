@@ -276,7 +276,7 @@ export default function ChecklistEditor({
             const isDefault = section.id === DEFAULT_SECTION_ID;
             const isCollapsed = !isDefault && collapsedSections.has(section.id);
 
-            const colorKey = !isDefault ? (section.color || DEFAULT_SECTION_COLOR) : null;
+            const colorKey = !isDefault ? (section.color ?? "none") : null;
             const colorHex = colorKey
               ? (SECTION_COLORS.find((c) => c.key === colorKey)?.hex ?? null)
               : null;

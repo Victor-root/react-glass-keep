@@ -64,13 +64,14 @@ function ColorPicker({ colorKey, onChange, onClose, onOutsideClose, triggerRef }
           type="button"
           aria-label="No color"
           onClick={() => { onChange("none"); onClose(); }}
-          className="w-8 h-8 rounded-full border-2 border-gray-300 dark:border-gray-500 flex items-center justify-center transition-transform hover:scale-110 focus:outline-none"
+          className="w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 focus:outline-none"
           style={{
             boxShadow: colorKey === "none" ? "0 0 0 2px white, 0 0 0 3.5px #94a3b8" : "none",
           }}
         >
-          <svg viewBox="0 0 8 8" className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <line x1="6.5" y1="1.5" x2="1.5" y2="6.5" />
+          <svg viewBox="0 0 24 24" className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="19" y1="5" x2="5" y2="19" />
           </svg>
         </button>
         {SECTION_COLORS.map((c) => (
