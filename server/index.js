@@ -2287,7 +2287,9 @@ app.post("/api/logos", auth, (req, res) => {
   const createdAt = new Date().toISOString();
   try {
     insertLogoStmt.run(newId, req.user.id, String(name || "").slice(0, 200), src, createdAt);
-    res.json({ id: newId, name: name || "", src, created_at: createdAt });
+    const logo = { id: newId, name: name || "", src, created_at: createdAt };
+    sendEventToUser(req.user.id, { type: "logo_added", logo });
+    res.json(logo);
   } catch (e) {
     console.error("[logos] insert failed", e);
     res.status(500).json({ error: "Failed to save logo" });
@@ -2298,6 +2300,7 @@ app.delete("/api/logos/:id", auth, (req, res) => {
   try {
     const result = deleteLogoStmt.run(req.params.id, req.user.id);
     if (result.changes === 0) return res.status(404).json({ error: "Logo not found" });
+    sendEventToUser(req.user.id, { type: "logo_deleted", id: req.params.id });
     res.status(204).end();
   } catch (e) {
     console.error("[logos] delete failed", e);

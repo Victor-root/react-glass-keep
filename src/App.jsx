@@ -2151,6 +2151,13 @@ export default function App() {
               window.dispatchEvent(new CustomEvent("instance-locked"));
             } else if (msg && msg.type === "note_updated" && msg.noteId) {
               debouncedPatch(msg.noteId);
+            } else if (msg && msg.type === "logo_added" && msg.logo) {
+              setLogoLibrary((prev) => {
+                if (prev.some((l) => l.id === msg.logo.id)) return prev;
+                return [...prev, msg.logo];
+              });
+            } else if (msg && msg.type === "logo_deleted" && msg.id) {
+              setLogoLibrary((prev) => prev.filter((l) => l.id !== msg.id));
             } else if (msg && msg.type === "notes_reordered") {
               // Another session reordered notes — reload the full list once
               // instead of fetching each note individually (avoids rate limits).
