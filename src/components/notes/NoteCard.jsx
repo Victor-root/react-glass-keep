@@ -88,7 +88,7 @@ export default function NoteCard({
       const take = uncheckedRaw.slice(0, remaining);
       remaining -= take.length;
       if (take.length > 0 || (s.id !== DEFAULT_SECTION_ID && s.title)) {
-        out.push({ id: s.id, title: s.title, items: take });
+        out.push({ id: s.id, title: s.title, color: s.color, items: take });
       }
     }
     return out;
