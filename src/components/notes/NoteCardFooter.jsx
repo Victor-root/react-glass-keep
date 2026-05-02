@@ -38,7 +38,7 @@ export default function NoteCardFooter({
     : t("collaboratedNote");
 
   return (
-    <div className="note-card-footer mt-2 pt-2 border-t border-black/10 dark:border-white/10 space-y-2">
+    <div className="note-card-footer mt-2 pt-1 space-y-2">
       {/* Row 1: tag chips */}
       {hasTags && (
         <div className="flex flex-wrap gap-1 items-center">
