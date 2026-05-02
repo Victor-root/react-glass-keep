@@ -93,11 +93,28 @@ html.dark body {
   outline-offset: 4px;
   transition: outline-offset 0.15s ease, outline-color 0.15s ease;
 }
-/* Pin popup must not stay revealed while the card is being dragged. */
+/* Pin popup must not stay revealed while the card is being dragged.
+   The button transforms back to its tucked position so the existing
+   transition on the button itself produces the slide-down animation. */
 .note-card-wrapper.dragging .note-pin-popup {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease;
+}
+.note-card-wrapper.dragging .note-pin-popup button {
+  transform: translateY(100%);
+}
+
+/* Prevent native text selection / long-press callout on the main
+   notes grid. The modal lives outside .note-card-wrapper so its
+   content stays selectable normally. */
+.note-card-wrapper,
+.note-card-wrapper * {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 @keyframes noteAppear {
   from { opacity: 0; }
