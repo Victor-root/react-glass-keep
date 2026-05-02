@@ -121,12 +121,15 @@ export default function ChecklistEditor({
   // Enter inside an item. Respects the global insert preference so
   // rapid-fire Enter presses keep accumulating items on the user's
   // preferred side (top/bottom) rather than always drifting downward.
-  const addItemAdjacent = (anchorId) => {
+  // Exception: if the caret was at the very start of the text when
+  // Enter was pressed, always insert ABOVE the current item — that
+  // matches the natural editor reflex of "push this line down".
+  const addItemAdjacent = (anchorId, opts = {}) => {
     const newItem = makeItem("", false);
-    const next =
-      insertPosition === "top"
-        ? insertBefore(items, anchorId, newItem)
-        : insertAfter(items, anchorId, newItem);
+    const insertAbove = opts.atStart || insertPosition === "top";
+    const next = insertAbove
+      ? insertBefore(items, anchorId, newItem)
+      : insertAfter(items, anchorId, newItem);
     setEntries(next);
     syncEntries(next);
     requestFocus(newItem.id, "end");
@@ -249,7 +252,7 @@ export default function ChecklistEditor({
           }}
           onChange={(txt) => changeText(it.id, txt)}
           onRemove={() => removeItem(it.id)}
-          onEnter={() => addItemAdjacent(it.id)}
+          onEnter={(opts) => addItemAdjacent(it.id, opts)}
           onBackspaceEmpty={() => removeAndFocusPrev(it.id)}
         />
       </div>

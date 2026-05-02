@@ -91,9 +91,11 @@ export default function ChecklistRow({
       !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey &&
       typeof onEnter === "function"
     ) {
+      const el = e.currentTarget;
+      const atStart = el.selectionStart === 0 && el.selectionEnd === 0;
       e.preventDefault();
       // Commit any pending IME/height change before the parent inserts.
-      onEnter();
+      onEnter({ atStart });
       return;
     }
     // Shift+Enter: default browser behaviour (newline inside item).
