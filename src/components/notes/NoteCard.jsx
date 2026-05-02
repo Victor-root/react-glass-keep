@@ -143,19 +143,51 @@ export default function NoteCard({
         }
       }}
       onContextMenu={(e) => e.preventDefault()}
-      className={`note-card glass-card rounded-xl p-2 sm:p-3 mb-2 sm:mb-3 cursor-pointer transform hover:scale-[1.02] transition-transform duration-200 relative min-h-[54px] ${isDraw ? 'note-card--draw' : 'overflow-hidden'} group ${
-        multiMode && selected
-          ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-transparent"
-          : ""
-      }`}
-      style={{
-        backgroundColor: bgFor(n.color, dark),
-        '--note-color': (!dark && (!n.color || n.color === 'default')) ? '#a78bfa' : solid(bgFor(n.color, dark)),
-        ...(isDraw ? { overflow: 'visible', contain: 'none', contentVisibility: 'visible' } : {}),
-      }}
+      className="note-card-wrapper mb-2 sm:mb-3 relative group"
       data-id={n.id}
       data-group={group}
     >
+      {/* Pin popup — sits BEHIND the card surface (z-0) at the top-right.
+          At rest it's translated down so it lives entirely inside the
+          card area, hidden behind the surface. On hover it slides UP and
+          peeks above the card's top edge — only the protruding portion
+          is visible because the card surface (z-10) hides whatever still
+          overlaps the card body. OnePlus 7 Pro pop-up camera vibe. */}
+      {!multiMode && !disablePin && (
+        <div
+          className="absolute top-0 right-3 translate-y-full group-hover:-translate-y-2/3 transition-transform duration-300 ease-out z-0 pointer-events-none group-hover:pointer-events-auto"
+        >
+          <button
+            aria-label={n.pinned ? t("unpinNote") : t("pinNote")}
+            onClick={(e) => {
+              if (disablePin) return;
+              e.stopPropagation();
+              togglePin(n.id, !n.pinned);
+            }}
+            className="flex items-center justify-center px-3 py-2 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-[0_3px_10px_rgba(0,0,0,0.18)]"
+            style={{ backgroundColor: bgFor(n.color, dark) }}
+            data-tooltip={n.pinned ? t("unpin") : t("pin")}
+            disabled={!!disablePin}
+          >
+            {n.pinned ? <PinFilled /> : <PinOutline />}
+          </button>
+        </div>
+      )}
+
+      {/* Card surface — the actual visible note. Higher z-index keeps it
+          in front of the pin popup. */}
+      <div
+        className={`note-card glass-card rounded-xl p-2 sm:p-3 cursor-pointer transform hover:scale-[1.02] transition-transform duration-200 relative min-h-[54px] z-10 ${isDraw ? 'note-card--draw' : 'overflow-hidden'} ${
+          multiMode && selected
+            ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-transparent"
+            : ""
+        }`}
+        style={{
+          backgroundColor: bgFor(n.color, dark),
+          '--note-color': (!dark && (!n.color || n.color === 'default')) ? '#a78bfa' : solid(bgFor(n.color, dark)),
+          ...(isDraw ? { overflow: 'visible', contain: 'none', contentVisibility: 'visible' } : {}),
+        }}
+      >
       {multiMode && (
         <div className="absolute top-3 right-3 flex items-center gap-2 z-10">
           {/* Modern checkbox */}
@@ -201,30 +233,6 @@ export default function NoteCard({
             style={{ objectFit: "contain" }}
             draggable={false}
           />
-        </div>
-      )}
-
-      {/* Pin popup — slides up from the bottom of the card on hover,
-          like the OnePlus 7 Pro pop-up camera. The card's overflow:hidden
-          acts as the "body" that hides it when at rest. */}
-      {!multiMode && !disablePin && (
-        <div
-          className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-20 pointer-events-none group-hover:pointer-events-auto"
-        >
-          <button
-            aria-label={n.pinned ? t("unpinNote") : t("pinNote")}
-            onClick={(e) => {
-              if (disablePin) return;
-              e.stopPropagation();
-              togglePin(n.id, !n.pinned);
-            }}
-            className="flex items-center justify-center px-4 py-2 rounded-t-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-[0_-3px_10px_rgba(0,0,0,0.13)]"
-            style={{ backgroundColor: bgFor(n.color, dark) }}
-            data-tooltip={n.pinned ? t("unpin") : t("pin")}
-            disabled={!!disablePin}
-          >
-            {n.pinned ? <PinFilled /> : <PinOutline />}
-          </button>
         </div>
       )}
 
@@ -324,6 +332,7 @@ export default function NoteCard({
           />
         );
       })()}
+      </div>
     </div>
   );
 }
