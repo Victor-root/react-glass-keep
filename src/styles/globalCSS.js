@@ -93,16 +93,11 @@ html.dark body {
   outline-offset: 4px;
   transition: outline-offset 0.15s ease, outline-color 0.15s ease;
 }
-/* Pin popup must not stay revealed while the card is being dragged.
-   The button transforms back to its tucked position so the existing
-   transition on the button itself produces the slide-down animation. */
+/* Pin popup must vanish the instant the card starts being dragged
+   (no transition — display:none beats both Tailwinds group-hover
+   transform and the buttons own 300 ms transition). */
 .note-card-wrapper.dragging .note-pin-popup {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease;
-}
-.note-card-wrapper.dragging .note-pin-popup button {
-  transform: translateY(100%);
+  display: none;
 }
 
 /* Prevent native text selection / long-press callout on the main
