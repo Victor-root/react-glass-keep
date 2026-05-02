@@ -54,6 +54,10 @@ export default function ModalFooter({
   modalIconFileRef,
   setNoteIconFromFile,
   removeNoteIcon,
+  // logo library (persistent, per-user)
+  logoLibrary = [],
+  addLogoToLibrary,
+  deleteLogoFromLibrary,
   // collaboration
   onOpenCollaboration,
   // formatting (mobile)
@@ -254,10 +258,11 @@ export default function ModalFooter({
               open={logoPickerOpen}
               onClose={() => setLogoPickerOpen(false)}
               dark={dark}
-              notes={notes}
+              logos={logoLibrary}
               selectedSrc={currentNoteIcon?.src}
               onPickExisting={handlePickExistingLogo}
               onUploadNew={() => modalIconFileRef?.current?.click()}
+              onDeleteLogo={deleteLogoFromLibrary}
             />
           </>
         )}

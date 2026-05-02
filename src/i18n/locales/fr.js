@@ -52,6 +52,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   removeLogo: "Retirer le logo",
   noteIcon: "Icône de la note",
   noLogosYet: "Aucun logo — cliquez sur + pour en importer un",
+  deleteLogo: "Supprimer le logo",
   editMode: "Mode édition",
   addTags: "Ajouter des tags",
   editedPrefix: "Modifié :",

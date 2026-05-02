@@ -1,27 +1,29 @@
-import React, { useRef, useState, useEffect, useLayoutEffect, useMemo } from "react";
+import React, { useRef, useState, useEffect, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { t } from "../../i18n";
-import { getNoteIcon } from "../../utils/noteIcon.js";
 
 /**
  * Logo picker popover.
  *
- * Shows a grid of all logos previously imported across the user's notes
- * plus a "+" upload tile. Clicking a tile sets that logo as the active
- * note's icon; clicking "+" opens the OS file picker.
+ * Shows a grid of every logo in the user's persistent logo library
+ * (independent of the notes that reference them) plus a dashed "+"
+ * tile that triggers the OS file picker. Each tile has a small ×
+ * badge revealed on hover that removes the logo from the library
+ * (notes already using it keep their own copy).
  *
- * Visually inspired by ColorPickerPanel (rounded-2xl, backdrop blur,
- * portal positioning, smart drop direction).
+ * Visual style mirrors ColorPickerPanel: rounded-2xl, backdrop blur,
+ * portal positioning, smart drop direction.
  */
 export default function LogoPickerPopover({
   anchorRef,
   open,
   onClose,
   dark,
-  notes,
+  logos = [],
   selectedSrc,
   onPickExisting,
   onUploadNew,
+  onDeleteLogo,
 }) {
   const panelRef = useRef(null);
   const [pos, setPos] = useState({ top: 0, left: 0, dropUp: false, arrowLeft: 0 });
@@ -61,19 +63,6 @@ export default function LogoPickerPopover({
     return () => document.removeEventListener("mousedown", onDown, true);
   }, [open, onClose, anchorRef]);
 
-  // Aggregate every unique icon across all notes (dedup by src).
-  const logos = useMemo(() => {
-    if (!Array.isArray(notes)) return [];
-    const seen = new Map();
-    for (const n of notes) {
-      const icon = getNoteIcon(n?.images);
-      if (icon?.src && !seen.has(icon.src)) {
-        seen.set(icon.src, { id: icon.id, src: icon.src, name: icon.name });
-      }
-    }
-    return Array.from(seen.values());
-  }, [notes]);
-
   if (!open) return null;
 
   const panelStyle = {
@@ -110,32 +99,52 @@ export default function LogoPickerPopover({
         {logos.map((logo) => {
           const isSelected = selectedSrc && logo.src === selectedSrc;
           return (
-            <button
-              key={logo.id || logo.src}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPickExisting?.(logo);
-                onClose?.();
-              }}
-              aria-label={logo.name || t("noteIcon")}
-              data-tooltip={logo.name || t("noteIcon")}
-              className={`w-12 h-12 rounded-xl transition-transform active:scale-95 hover:scale-110 focus:outline-none flex items-center justify-center overflow-hidden ${
-                dark ? "bg-white/5 hover:bg-white/10" : "bg-gray-100 hover:bg-gray-200"
-              } ${
-                isSelected
-                  ? "ring-[3px] ring-indigo-500 ring-offset-2 dark:ring-offset-gray-900"
-                  : ""
-              }`}
-            >
-              <img
-                src={logo.src}
-                alt={logo.name || ""}
-                className="w-full h-full"
-                style={{ objectFit: "contain" }}
-                draggable={false}
-              />
-            </button>
+            <div key={logo.id || logo.src} className="relative group/tile w-12 h-12">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPickExisting?.(logo);
+                  onClose?.();
+                }}
+                aria-label={logo.name || t("noteIcon")}
+                data-tooltip={logo.name || t("noteIcon")}
+                className={`w-12 h-12 rounded-xl transition-transform active:scale-95 hover:scale-110 focus:outline-none flex items-center justify-center overflow-hidden ${
+                  dark ? "bg-white/5 hover:bg-white/10" : "bg-gray-100 hover:bg-gray-200"
+                } ${
+                  isSelected
+                    ? "ring-[3px] ring-indigo-500 ring-offset-2 dark:ring-offset-gray-900"
+                    : ""
+                }`}
+              >
+                <img
+                  src={logo.src}
+                  alt={logo.name || ""}
+                  className="w-full h-full"
+                  style={{ objectFit: "contain" }}
+                  draggable={false}
+                />
+              </button>
+              {onDeleteLogo && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteLogo(logo.id);
+                  }}
+                  aria-label={t("deleteLogo")}
+                  data-tooltip={t("deleteLogo")}
+                  className={`absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-white opacity-0 group-hover/tile:opacity-100 transition-opacity shadow-sm ${
+                    dark ? "bg-red-500 hover:bg-red-400" : "bg-red-500 hover:bg-red-600"
+                  }`}
+                >
+                  <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M6 6l12 12" />
+                    <path d="M6 18L18 6" />
+                  </svg>
+                </button>
+              )}
+            </div>
           );
         })}
 

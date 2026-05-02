@@ -146,6 +146,9 @@ export default function NoteModal({
   addImagesToState,
   setNoteIconFromFile,
   removeNoteIcon,
+  logoLibrary,
+  addLogoToLibrary,
+  deleteLogoFromLibrary,
   isCollaborativeNote,
   syncState,
   onModalBodyClick,
@@ -707,6 +710,9 @@ export default function NoteModal({
             modalIconFileRef={modalIconFileRef}
             setNoteIconFromFile={setNoteIconFromFile}
             removeNoteIcon={removeNoteIcon}
+            logoLibrary={logoLibrary}
+            addLogoToLibrary={addLogoToLibrary}
+            deleteLogoFromLibrary={deleteLogoFromLibrary}
             // collaboration
             onOpenCollaboration={async () => {
               setCollaborationModalOpen(true);

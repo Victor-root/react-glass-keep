@@ -39,6 +39,7 @@ import {
 import { globalCSS } from "./styles/globalCSS.js";
 import { ALL_IMAGES } from "./utils/constants.js";
 import { setNoteIcon } from "./utils/noteIcon.js";
+import { loadLogoLibrary, addToLogoLibrary, removeFromLogoLibrary, seedLogoLibraryFromNotes } from "./utils/logoLibrary.js";
 import { ColorDot } from "./components/common/ColorDot.jsx";
 import { handleSmartEnter } from "./components/common/FormatToolbar.jsx";
 import DrawingPreview from "./components/common/DrawingPreview.jsx";
@@ -3034,20 +3035,51 @@ export default function App() {
     if (results.length) setter((prev) => [...prev, ...results]);
   };
 
+  // Persistent per-user logo library (lives in localStorage). Logos here
+  // are independent of any note — uploading a logo adds it to the
+  // library, deleting one removes it from the library only (notes that
+  // already use it keep their copy).
+  const [logoLibrary, setLogoLibrary] = useState([]);
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    setLogoLibrary(loadLogoLibrary(currentUser.id));
+  }, [currentUser?.id]);
+  // Seed once from existing notes so users with pre-existing logos
+  // don't appear to "lose" them when the library system rolls out.
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    if (!Array.isArray(notes) || notes.length === 0) return;
+    setLogoLibrary(seedLogoLibraryFromNotes(currentUser.id, notes));
+  }, [currentUser?.id, notes]);
+
+  const addLogoToLibrary = useCallback((logo) => {
+    if (!currentUser?.id) return;
+    setLogoLibrary(addToLogoLibrary(currentUser.id, logo));
+  }, [currentUser?.id]);
+
+  const deleteLogoFromLibrary = useCallback((id) => {
+    if (!currentUser?.id) return;
+    setLogoLibrary(removeFromLogoLibrary(currentUser.id, id));
+  }, [currentUser?.id]);
+
   // Note icon (logo badge) — reuses the regular image compression
   // pipeline, then stamps role:"icon" via setNoteIcon helper. Stored
   // in the same `images` array so the existing sync / encryption /
-  // offline-queue paths handle it for free.
+  // offline-queue paths handle it for free. Uploaded logos are also
+  // persisted to the user's logo library.
   const setNoteIconFromFile = useCallback(async (file) => {
     if (!file) return;
     try {
       const src = await fileToCompressedDataURL(file);
       const iconEntry = { id: uid(), src, name: file.name };
       setMImages((prev) => setNoteIcon(prev, iconEntry));
+      if (currentUser?.id) {
+        setLogoLibrary(addToLogoLibrary(currentUser.id, { src, name: file.name }));
+      }
     } catch (e) {
       console.error("Note icon load failed", e);
     }
-  }, [setMImages]);
+  }, [setMImages, currentUser?.id]);
 
   const removeNoteIcon = useCallback(() => {
     setMImages((prev) => setNoteIcon(prev, null));
@@ -4563,6 +4595,9 @@ export default function App() {
       addImagesToState={addImagesToState}
       setNoteIconFromFile={setNoteIconFromFile}
       removeNoteIcon={removeNoteIcon}
+      logoLibrary={logoLibrary}
+      addLogoToLibrary={addLogoToLibrary}
+      deleteLogoFromLibrary={deleteLogoFromLibrary}
       isCollaborativeNote={isCollaborativeNote}
       syncState={syncStatus.syncState}
       onModalBodyClick={onModalBodyClick}
