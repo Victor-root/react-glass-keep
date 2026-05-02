@@ -175,7 +175,7 @@ export default function NoteCard({
           OnePlus 7 Pro pop-up camera vibe. */}
       {!multiMode && !disablePin && noteIcon ? (
         <div
-          className="absolute right-3 bottom-full w-10 h-14 overflow-hidden z-0 pointer-events-none group-hover:pointer-events-auto"
+          className="note-pin-popup absolute right-3 bottom-full w-10 h-14 overflow-hidden z-0 pointer-events-none group-hover:pointer-events-auto"
         >
           <button
             aria-label={n.pinned ? t("unpinNote") : t("pinNote")}

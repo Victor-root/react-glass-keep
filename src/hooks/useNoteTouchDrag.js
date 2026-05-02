@@ -95,7 +95,9 @@ export default function useNoteTouchDrag(cardRef, { canDrag, multiMode, noteId, 
 
       if (lastTarget) lastTarget.classList.remove("drag-over");
       const el = document.elementFromPoint(touch.clientX, touch.clientY);
-      const target = el?.closest(".note-card");
+      // Match the wrapper (it carries data-note-id and the CSS rule
+      // .note-card-wrapper.drag-over > .note-card targets the wrapper).
+      const target = el?.closest(".note-card-wrapper");
       if (target && target !== card) {
         target.classList.add("drag-over");
         lastTarget = target;

@@ -93,6 +93,12 @@ html.dark body {
   outline-offset: 4px;
   transition: outline-offset 0.15s ease, outline-color 0.15s ease;
 }
+/* Pin popup must not stay revealed while the card is being dragged. */
+.note-card-wrapper.dragging .note-pin-popup {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
 @keyframes noteAppear {
   from { opacity: 0; }
   to   { opacity: 1; }
