@@ -5,10 +5,12 @@ import ColorPickerPanel from "../common/ColorPickerPanel.jsx";
 import Popover from "../common/Popover.jsx";
 import UserAvatar from "../common/UserAvatar.jsx";
 import AddImageMenu from "./AddImageMenu.jsx";
+import LogoPickerPopover from "./LogoPickerPopover.jsx";
 import { DownloadIcon, ArchiveIcon, Trash, AddImageIcon, Kebab, TextNoteIcon, ChecklistIcon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { COLOR_ORDER, LIGHT_COLORS } from "../../utils/colors.js";
-import { getNoteIcon } from "../../utils/noteIcon.js";
+import { getNoteIcon, setNoteIcon } from "../../utils/noteIcon.js";
+import { uid } from "../../utils/helpers.js";
 import { t } from "../../i18n";
 
 /**
@@ -130,7 +132,13 @@ export default function ModalFooter({
   /* Image sub-menu (regular image vs logo / note icon) */
   const imageBtnRef = useRef(null);
   const [imageMenuOpen, setImageMenuOpen] = useState(false);
+  const [logoPickerOpen, setLogoPickerOpen] = useState(false);
   const currentNoteIcon = getNoteIcon(mImages);
+
+  const handlePickExistingLogo = (logo) => {
+    if (!logo?.src) return;
+    setMImages((prev) => setNoteIcon(prev, { id: uid(), src: logo.src, name: logo.name }));
+  };
 
   /* Kebab menu (download + collaborate) */
   const kebabRef = useRef(null);
@@ -235,8 +243,21 @@ export default function ModalFooter({
               dark={dark}
               hasIcon={!!currentNoteIcon}
               onAddImage={() => modalFileRef.current?.click()}
-              onAddIcon={() => modalIconFileRef?.current?.click()}
+              onAddIcon={() => {
+                setImageMenuOpen(false);
+                setLogoPickerOpen(true);
+              }}
               onRemoveIcon={() => removeNoteIcon && removeNoteIcon()}
+            />
+            <LogoPickerPopover
+              anchorRef={imageBtnRef}
+              open={logoPickerOpen}
+              onClose={() => setLogoPickerOpen(false)}
+              dark={dark}
+              notes={notes}
+              selectedSrc={currentNoteIcon?.src}
+              onPickExisting={handlePickExistingLogo}
+              onUploadNew={() => modalIconFileRef?.current?.click()}
             />
           </>
         )}
