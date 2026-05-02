@@ -147,15 +147,14 @@ export default function NoteCard({
       data-id={n.id}
       data-group={group}
     >
-      {/* Pin popup — sits BEHIND the card surface (z-0) at the top-right.
-          At rest it's translated down so it lives entirely inside the
-          card area, hidden behind the surface. On hover it slides UP and
-          peeks above the card's top edge — only the protruding portion
-          is visible because the card surface (z-10) hides whatever still
-          overlaps the card body. OnePlus 7 Pro pop-up camera vibe. */}
+      {/* Pin popup — sits in a clipping container that lives just above
+          the card top edge. The container has overflow:hidden, so the
+          button is genuinely invisible (not just covered) when tucked
+          below — even if the card surface is semi-transparent.
+          OnePlus 7 Pro pop-up camera vibe. */}
       {!multiMode && !disablePin && (
         <div
-          className="absolute top-0 right-3 translate-y-full group-hover:-translate-y-[78%] transition-transform duration-300 ease-out z-0 pointer-events-none group-hover:pointer-events-auto"
+          className="absolute right-3 bottom-full w-10 h-14 overflow-hidden z-0 pointer-events-none group-hover:pointer-events-auto"
         >
           <button
             aria-label={n.pinned ? t("unpinNote") : t("pinNote")}
@@ -164,7 +163,7 @@ export default function NoteCard({
               e.stopPropagation();
               togglePin(n.id, !n.pinned);
             }}
-            className="flex items-start justify-center w-10 h-14 pt-2 rounded-t-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-[0_3px_10px_rgba(0,0,0,0.18)]"
+            className="absolute left-0 bottom-0 flex items-start justify-center w-10 h-14 pt-2 rounded-t-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 translate-y-full group-hover:translate-y-[27%] transition-transform duration-300 ease-out"
             style={{ backgroundColor: bgFor(n.color, dark) }}
             data-tooltip={n.pinned ? t("unpin") : t("pin")}
             disabled={!!disablePin}
@@ -177,7 +176,7 @@ export default function NoteCard({
       {/* Card surface — the actual visible note. Higher z-index keeps it
           in front of the pin popup. */}
       <div
-        className={`note-card glass-card rounded-xl p-2 sm:p-3 cursor-pointer transform hover:scale-[1.02] transition-transform duration-200 relative min-h-[54px] z-10 ${isDraw ? 'note-card--draw' : 'overflow-hidden'} ${
+        className={`note-card glass-card rounded-xl p-2 sm:p-3 cursor-pointer transform group-hover:scale-[1.02] transition-transform duration-200 relative min-h-[54px] z-10 ${isDraw ? 'note-card--draw' : 'overflow-hidden'} ${
           multiMode && selected
             ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-transparent"
             : ""
