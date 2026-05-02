@@ -77,12 +77,10 @@ html.dark body {
   content-visibility: visible;
   contain: layout style;
 }
-/* Drag & drop reorder styles
-   Classes are added by the drag handlers to the .note-card-wrapper
-   (since `draggable` and the touch listeners live on the wrapper),
-   but the visual treatment is applied to the inner .note-card so the
-   pin popup container isn't scaled along with it. We support the
-   wrapper form (current) and a bare form for backward compat. */
+/* Drag & drop reorder styles.
+   Classes are added by the drag handlers to .note-card-wrapper but
+   the visual treatment is applied to the inner .note-card so the
+   pin popup container isnt scaled along with it. */
 .note-card.dragging,
 .note-card-wrapper.dragging > .note-card {
   opacity: 0.35;
