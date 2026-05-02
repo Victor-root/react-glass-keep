@@ -76,23 +76,33 @@ export default function NoteCard({
 
   const total = countItems(n.items);
   const done = countChecked(n.items);
+  // Collapsed section ids — read the same localStorage key that ChecklistEditor writes.
+  const collapsedSections = useMemo(() => {
+    try {
+      const stored = localStorage.getItem(`ck-sec-${n.id}`);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
+  }, [n.id]);
+
   // Preview: walk sections in order, emit unchecked items first, then
   // checked. Section headers only appear when the note actually has any.
+  // Collapsed sections show the header but no items (same as in the modal).
   const previewSections = useMemo(() => {
     const secs = getSections(n.items);
     const out = [];
     let remaining = maxPreviewItems;
     for (const s of secs) {
       if (remaining <= 0) break;
-      const uncheckedRaw = s.items.filter((it) => !it.done);
+      const isCollapsed = s.id !== DEFAULT_SECTION_ID && collapsedSections.has(s.id);
+      const uncheckedRaw = isCollapsed ? [] : s.items.filter((it) => !it.done);
       const take = uncheckedRaw.slice(0, remaining);
       remaining -= take.length;
       if (take.length > 0 || (s.id !== DEFAULT_SECTION_ID && s.title)) {
-        out.push({ id: s.id, title: s.title, color: s.color, items: take });
+        out.push({ id: s.id, title: s.title, color: s.color, collapsed: isCollapsed, items: take });
       }
     }
     return out;
-  }, [n.items, maxPreviewItems]);
+  }, [n.items, maxPreviewItems, collapsedSections]);
   const visibleCount = previewSections.reduce((n2, s) => n2 + s.items.length, 0);
   const uncheckedTotal = (n.items || []).filter((it) => isItem(it) && !it.done).length;
   const extraCount = Math.max(0, uncheckedTotal - visibleCount);
@@ -315,13 +325,20 @@ export default function NoteCard({
                 const colorHex = SECTION_COLORS.find((c) => c.key === s.color)?.hex ?? null;
                 return (
                   <div
-                    className="text-xs font-semibold tracking-wide mt-2 px-1.5 py-0.5 rounded"
+                    className="flex items-center gap-1 text-xs font-semibold tracking-wide mt-2 px-1.5 py-0.5 rounded"
                     style={colorHex ? {
                       color: colorHex,
                       background: hexAlpha(colorHex, dark ? 0.18 : 0.10),
                       borderLeft: `2px solid ${hexAlpha(colorHex, dark ? 0.5 : 0.35)}`,
-                    } : {}}
+                    } : { color: undefined }}
                   >
+                    <svg
+                      className="w-2.5 h-2.5 shrink-0 transition-transform"
+                      style={{ transform: s.collapsed ? "rotate(-90deg)" : "rotate(0deg)" }}
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    >
+                      <path d="M6 9l6 6 6-6" />
+                    </svg>
                     {s.title}
                   </div>
                 );
