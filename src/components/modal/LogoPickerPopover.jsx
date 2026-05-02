@@ -160,13 +160,17 @@ export default function LogoPickerPopover({
           data-tooltip={t("addLogo")}
           className={`w-12 h-12 rounded-xl transition-transform active:scale-95 hover:scale-110 focus:outline-none flex items-center justify-center border-2 border-dashed ${
             dark
-              ? "border-gray-500 text-gray-300 hover:border-indigo-400 hover:text-indigo-300"
-              : "border-gray-300 text-gray-500 hover:border-indigo-500 hover:text-indigo-600"
+              ? "border-gray-500 text-gray-400 hover:border-indigo-400 hover:text-indigo-300"
+              : "border-gray-300 text-gray-400 hover:border-indigo-500 hover:text-indigo-600"
           }`}
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 5v14" />
-            <path d="M5 12h14" />
+          <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12.5 21h-6.5a3 3 0 0 1 -3 -3v-12a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v6.5" />
+            <path d="M3 16l5 -5c.928 -.893 2.072 -.893 3 0l3.5 3.5" />
+            <path d="M14 14l1 -1c.928 -.893 2.072 -.893 3 0" />
+            <path d="M16 19h6" />
+            <path d="M19 16v6" />
+            <path d="M12.5 7.5l.01 0" />
           </svg>
         </button>
       </div>
