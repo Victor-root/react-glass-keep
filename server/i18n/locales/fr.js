@@ -38,4 +38,6 @@ module.exports = {
     "J'ai trouvé des notes pertinentes, mais l'IA n'a pas cité correctement ses sources. Ouvrez les notes utilisées pour vérifier.",
   aiCitationRetryReminder:
     "Ta réponse précédente n'incluait pas le marqueur de citation requis. Réécris la même réponse en ajoutant à la toute fin le marqueur exact [[NOTES:id1,id2]] avec uniquement les IDs des notes que tu as réellement utilisées.",
+  aiCitationFallbackNote:
+    "Note : les sources ont été rattachées automatiquement car l'IA n'a pas ajouté le marqueur de citation attendu.",
 };

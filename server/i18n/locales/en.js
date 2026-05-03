@@ -38,4 +38,6 @@ module.exports = {
     "I found relevant notes, but the AI did not cite its sources correctly. Open the used notes to verify.",
   aiCitationRetryReminder:
     "Your previous answer did not include the required citation marker. Rewrite the same answer adding at the very end the exact marker [[NOTES:id1,id2]] with only the IDs of the notes you actually used.",
+  aiCitationFallbackNote:
+    "Note: sources were attached automatically because the AI did not add the expected citation marker.",
 };

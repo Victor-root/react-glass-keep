@@ -347,6 +347,7 @@ function scoreNote(haystacks, queryEntries, normalizedQuestion) {
   let titleMatchCount = 0;
   let tagMatchCount = 0;
   let bodyMatchCount = 0;
+  let titleAnchorMatchCount = 0;
 
   for (const entry of queryEntries) {
     // Weak tokens help rank notes that already match the real subject,
@@ -373,11 +374,14 @@ function scoreNote(haystacks, queryEntries, normalizedQuestion) {
       inTags = true;
     }
 
+    // Body repetition capped at 2 (was 5) so a note with many keyword
+    // occurrences in its body can't outrank a note that names the subject
+    // directly in its title.
     let bestBodyHits = 0;
     for (const v of vArr) {
       const hits = Math.min(
         countVariantInBody(v, haystacks.body, haystacks.bodyTokenSet),
-        5,
+        2,
       );
       if (hits > bestBodyHits) bestBodyHits = hits;
     }
@@ -398,7 +402,10 @@ function scoreNote(haystacks, queryEntries, normalizedQuestion) {
         matchedAnchors.push(entry.original);
       }
     }
-    if (inTitle) titleMatchCount++;
+    if (inTitle) {
+      titleMatchCount++;
+      if (!entry.isWeak) titleAnchorMatchCount++;
+    }
     if (inTags) tagMatchCount++;
     if (inBody) bodyMatchCount++;
   }
@@ -428,6 +435,7 @@ function scoreNote(haystacks, queryEntries, normalizedQuestion) {
     titleMatchCount,
     tagMatchCount,
     bodyMatchCount,
+    titleAnchorMatchCount,
   };
 }
 
@@ -455,6 +463,8 @@ function makeDropEntry(s, reason) {
     matchedWeakCount: s.matchedWeakCount,
     matchedAnchors: s.matchedAnchors || [],
     matchedWeakTokens: s.matchedWeakTokens || [],
+    anchorCoverage: Number((s.anchorCoverage || 0).toFixed(3)),
+    rareAnchorCoverage: Number((s.rareAnchorCoverage || 0).toFixed(3)),
     reason,
   };
 }
@@ -631,8 +641,24 @@ function pickRelevantNotes(notes, question, opts = {}) {
         titleMatchCount: result.titleMatchCount,
         tagMatchCount: result.tagMatchCount,
         bodyMatchCount: result.bodyMatchCount,
+        titleAnchorMatchCount: result.titleAnchorMatchCount || 0,
+        anchorCoverage: 0,
+        rareAnchorCoverage: 0,
       });
     }
+  }
+
+  // Identify rarest anchor token(s) by IDF (highest IDF = least common
+  // in corpus = most discriminating signal). Used in Phase 1.5 pruning.
+  const anchorCount = anchorTokens.length;
+  const anchorEntries = queryEntries.filter((e) => !e.isWeak);
+  let rareAnchorTokens = [];
+  if (anchorEntries.length > 0) {
+    const sortedByIdf = [...anchorEntries].sort((a, b) => b.idf - a.idf);
+    const topIdf = sortedByIdf[0].idf;
+    rareAnchorTokens = sortedByIdf
+      .filter((e) => e.idf >= topIdf * 0.9)
+      .map((e) => e.original);
   }
 
   const baseMetrics = {
@@ -640,6 +666,7 @@ function pickRelevantNotes(notes, question, opts = {}) {
     anchorTokens,
     weakQueryTokens,
     hasAnchors,
+    rareAnchorTokens,
     usefulTokenCount: tokens.length,
   };
 
@@ -656,15 +683,63 @@ function pickRelevantNotes(notes, question, opts = {}) {
     return [];
   }
 
-  scored.sort((a, b) => b.score - a.score);
+  // Apply per-note bonuses based on anchor coverage and title anchor hits.
+  // These run after IDF is known so the multipliers are data-driven.
+  for (const s of scored) {
+    const cov = anchorCount > 0 ? s.matchedAnchorCount / anchorCount : 0;
+    const rareMatches = rareAnchorTokens.filter(
+      (tok) => s.matchedAnchors.includes(tok),
+    ).length;
+    const rareCov =
+      rareAnchorTokens.length > 0
+        ? rareMatches / rareAnchorTokens.length
+        : 0;
+    s.anchorCoverage = cov;
+    s.rareAnchorCoverage = rareCov;
+
+    // Proportional bonus for covering more of the query's anchor tokens.
+    if (anchorCount > 0 && cov > 0) s.score *= 1 + 0.4 * cov;
+
+    // Title multi-anchor bonus: note whose title directly names both
+    // the action and subject beats one that only mentions them in the body.
+    if (s.titleAnchorMatchCount >= 2) {
+      const allInTitle =
+        anchorCount >= 2 && s.titleAnchorMatchCount >= anchorCount;
+      s.score *= allInTitle ? 1.8 : 1.5;
+    }
+  }
+
+  // Phase 1.5: rare-anchor pruning.
+  // If the rarest (most IDF) anchor token(s) appear in at least one
+  // scored note, drop notes that don't match them — they can't be the
+  // best answer to the most specific part of the query.
+  const phase15Dropped = [];
+  let scoredPool = scored;
+  if (rareAnchorTokens.length > 0) {
+    const anyMatchesRare = scored.some((s) => s.rareAnchorCoverage > 0);
+    if (anyMatchesRare) {
+      scoredPool = [];
+      for (const s of scored) {
+        if (s.rareAnchorCoverage > 0) {
+          scoredPool.push(s);
+        } else {
+          phase15Dropped.push(makeDropEntry(s, "rare-anchor-miss"));
+        }
+      }
+    }
+  }
+
+  scoredPool.sort((a, b) => b.score - a.score);
 
   // Prune: Phase 1 = anchor gate (drop notes with no anchor match when
   // query has anchors). Phase 2 = score-ratio / field-strength gate.
-  const { kept, dropped, topScore, topIsObvious } = pruneScoredNotes(scored, {
+  const { kept, dropped: phase2Dropped, topScore, topIsObvious } = pruneScoredNotes(scoredPool, {
     mode,
     usefulTokenCount: tokens.length,
     hasAnchors,
   });
+
+  const allDropped = [...phase15Dropped, ...phase2Dropped];
 
   if (metricsOut) {
     Object.assign(metricsOut, baseMetrics, {
@@ -672,7 +747,7 @@ function pickRelevantNotes(notes, question, opts = {}) {
       afterPruningCount: kept.length,
       topScore,
       topIsObvious,
-      dropped,
+      dropped: allDropped,
     });
   }
 
@@ -708,6 +783,9 @@ function pickRelevantNotes(notes, question, opts = {}) {
     titleMatchCount: s.titleMatchCount,
     tagMatchCount: s.tagMatchCount,
     bodyMatchCount: s.bodyMatchCount,
+    titleAnchorMatchCount: s.titleAnchorMatchCount || 0,
+    anchorCoverage: s.anchorCoverage || 0,
+    rareAnchorCoverage: s.rareAnchorCoverage || 0,
     snippet: extractSnippets(s.hay.rawContent, allVariants, snippetOpts).join(
       "\n",
     ),

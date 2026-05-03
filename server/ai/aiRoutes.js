@@ -477,17 +477,31 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
           picked.length === 1;
 
         if (eligibleForFallback) {
-          // Surface up to 3 of the highest-scoring notes the model
-          // actually saw so the user can verify manually. Cap at 3 to
-          // keep the UI tidy and only cite notes that were sent.
-          const allowedSet = new Set(allowedCitationIds);
-          const fallbackIds = picked
+          // Choose fallback IDs by anchor quality (most anchors matched,
+          // then highest coverage, then title matches) rather than score
+          // rank — score can be inflated by body repetitions for the
+          // wrong note when the right one has a clean title match.
+          const fallbackIds = includedNotes
+            .slice()
+            .sort(
+              (a, b) =>
+                (b.matchedAnchorCount || 0) - (a.matchedAnchorCount || 0) ||
+                (b.anchorCoverage || 0) - (a.anchorCoverage || 0) ||
+                (b.titleMatchCount || 0) - (a.titleMatchCount || 0),
+            )
             .map((p) => String(p.note?.id || ""))
-            .filter((id) => id && allowedSet.has(id))
+            .filter(Boolean)
             .slice(0, 3);
 
+          // Keep the model's actual answer; append a discrete localized
+          // note explaining that citations were attached automatically.
+          const rawAnswer = raw.replace(markerRe, "").trim();
+          const fallbackWarning = t(lang, "aiCitationFallbackNote");
+          const answer =
+            rawAnswer + (fallbackWarning ? "\n\n" + fallbackWarning : "");
+
           const resp = {
-            answer: t(lang, "aiCitationFallback"),
+            answer,
             citedNoteIds: fallbackIds,
             finishReason: "citation_fallback",
           };
@@ -499,9 +513,12 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
               rawCitedIds: parsed.rawCitedIds,
               validCitedIds: fallbackIds,
               rawAnswerLength: raw.length,
+              rawAnswerPreview: raw.slice(0, 200),
               retryAttempted,
               retryMarkerFound,
               fallbackCitationUsed: true,
+              fallbackIds,
+              fallbackReason: "anchor-quality",
             };
           }
           return res.json(resp);

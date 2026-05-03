@@ -369,8 +369,16 @@ console.log("\n[anchor gate — config jellyfin]");
     "weakTokens contains config",
     Array.isArray(metrics.weakQueryTokens) && metrics.weakQueryTokens.includes("config"),
   );
-  const weakDropped = metrics.dropped.filter((d) => d.reason === "weak-only-match");
-  assert("at least one note dropped as weak-only-match", weakDropped.length >= 1);
+  // Phase 1.5 (rare-anchor-miss) drops these before Phase 1 (weak-only-match)
+  // can reach them, so either reason is valid.
+  const droppedWithoutAnchor = metrics.dropped.filter(
+    (d) =>
+      d.reason === "weak-only-match" || d.reason === "rare-anchor-miss",
+  );
+  assert(
+    "notes without jellyfin dropped (weak-only-match or rare-anchor-miss)",
+    droppedWithoutAnchor.length >= 1,
+  );
 }
 
 // ── Anchor gate: only-weak query falls back to score-ratio ────────────
@@ -472,7 +480,8 @@ console.log("\n[pruning — obvious top]");
     "dropped notes carry reason",
     Array.isArray(metrics.dropped) &&
       metrics.dropped.length > 0 &&
-      metrics.dropped[0].reason === "weak-match",
+      typeof metrics.dropped[0].reason === "string" &&
+      metrics.dropped[0].reason.length > 0,
   );
 }
 
@@ -506,6 +515,84 @@ console.log("\n[extended stopwords]");
     "'... wallet' still finds wallets",
     ids.includes("1") || ids.includes("2"),
   );
+}
+
+// ── Ranking: title multi-anchor beats body repetition ────────────────
+// Regression for "Utiliser xterm.js sur une VM" outranking "Kill VM"
+// for the query "kill une vm proxmox" when body hits were uncapped.
+console.log("\n[ranking — Kill VM over xterm.js via rare-anchor pruning]");
+{
+  const rankCorpus = [
+    {
+      id: "500",
+      title: "Kill VM",
+      tags: ["proxmox"],
+      content: "qm stop 101\npveam update",
+    },
+    {
+      id: "501",
+      title: "Utiliser xterm.js sur une VM",
+      tags: ["proxmox", "terminal"],
+      content:
+        "xterm.js est un terminal web. " +
+        "Installation sur une VM proxmox. " +
+        "La VM doit avoir nodejs. " +
+        "Lancer dans la VM avec node index.js. " +
+        "La VM ecoutera sur le port 3000.",
+    },
+  ];
+  const metrics = {};
+  const picked = r.pickRelevantNotes(
+    rankCorpus,
+    "je cherche a kill une vm proxmox",
+    { metricsOut: metrics },
+  );
+  const ids = picked.map((p) => p.note.id);
+  console.log("  picked:", ids, "scores:", picked.map((p) => p.score.toFixed(3)));
+  assert("rareAnchorTokens populated in metrics", Array.isArray(metrics.rareAnchorTokens) && metrics.rareAnchorTokens.length > 0);
+  assert("Kill VM is in results", ids.includes("500"));
+  assert("Kill VM ranks first", ids[0] === "500");
+  assert("xterm.js pruned (rare-anchor-miss on kill)", !ids.includes("501"));
+  assert("Kill VM anchorCoverage = 1", picked[0]?.anchorCoverage === 1);
+}
+
+// ── anchorCoverage exposed on picked notes ────────────────────────────
+console.log("\n[anchorCoverage — partial vs full coverage]");
+{
+  const covCorpus = [
+    {
+      id: "600",
+      title: "Kill VM",
+      tags: ["proxmox"],
+      content: "qm stop 101",
+    },
+    {
+      id: "601",
+      title: "Autre note proxmox",
+      tags: ["proxmox"],
+      content: "gestion des vms proxmox",
+    },
+  ];
+  // "kill vm proxmox": 3 anchors. Kill VM matches all 3 (title: kill+vm, tag: proxmox).
+  // "601" matches proxmox only (1/3). rareAnchorTokens=[kill or vm]; 601 doesn't
+  // match kill or vm → pruned by Phase 1.5.
+  const picked = r.pickRelevantNotes(covCorpus, "kill une vm proxmox");
+  const killNote = picked.find((p) => p.note.id === "600");
+  console.log("  Kill VM anchorCoverage:", killNote?.anchorCoverage, "matchedAnchorCount:", killNote?.matchedAnchorCount);
+  assert("Kill VM found", killNote != null);
+  assert("Kill VM anchorCoverage = 1", killNote?.anchorCoverage === 1);
+  assert("Kill VM matchedAnchorCount = 3", killNote?.matchedAnchorCount === 3);
+  assert("Autre note pruned by rare-anchor-miss", !picked.find((p) => p.note.id === "601"));
+}
+
+// ── rareAnchorTokens in metricsOut ───────────────────────────────────
+console.log("\n[metricsOut — rareAnchorTokens]");
+{
+  const metrics = {};
+  r.pickRelevantNotes(corpus, "wallet bitcoin", { metricsOut: metrics });
+  // "bitcoin" has lower df than "wallet" (only Wallet Bitcoin has it) → rarest
+  assert("rareAnchorTokens in metrics", Array.isArray(metrics.rareAnchorTokens));
+  assert("bitcoin is rarest anchor for 'wallet bitcoin'", metrics.rareAnchorTokens.includes("bitcoin"));
 }
 
 console.log("\n────────────────────────────");
