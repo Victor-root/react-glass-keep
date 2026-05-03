@@ -517,6 +517,63 @@ console.log("\n[extended stopwords]");
   );
 }
 
+// ── Rare-anchor soft fallback: multi-anchor match rescues note ───────
+// A note that misses the rarest anchor should survive if it already
+// matches ≥2 other anchor tokens (e.g. "clé github" note for query
+// "clé api github" where "api" is the rarest anchor).
+console.log("\n[rare-anchor soft fallback — clé api github]");
+{
+  // Build a corpus where "api" appears in only 1 note (→ highest IDF,
+  // becomes rareAnchorToken), while "cle" and "github" each appear in
+  // 2 notes (→ lower IDF). Note 700 matches cle+github but NOT api.
+  const apiCorpus = [
+    {
+      id: "700",
+      title: "Clé pour github access token (classic)",
+      tags: ["github", "token"],
+      content: "Personal access token GitHub classic.",
+    },
+    {
+      id: "701",
+      title: "Config API serveur",
+      tags: ["api", "backend"],
+      content: "Configuration de l'API backend.",
+    },
+    // Extra notes to lower cle/github IDF, making api clearly the rarest.
+    {
+      id: "702",
+      title: "Clé SSH accès serveur",
+      tags: ["ssh"],
+      content: "Clé privée SSH pour connexion.",
+    },
+    {
+      id: "703",
+      title: "GitHub Actions workflow",
+      tags: ["github", "ci"],
+      content: "Pipeline CI avec GitHub Actions.",
+    },
+  ];
+  const metrics = {};
+  const picked = r.pickRelevantNotes(apiCorpus, "clé api github", { metricsOut: metrics });
+  const ids = picked.map((p) => p.note.id);
+  console.log("  clé api github picked:", ids);
+  console.log("  rareAnchorTokens:", metrics.rareAnchorTokens);
+  assert("api is rarest anchor in this corpus", metrics.rareAnchorTokens.includes("api"));
+  assert("clé api github finds GitHub token note", ids.includes("700"));
+
+  // The kept-but-penalized note should carry the rareAnchorPenalty flag.
+  const kept700 = picked.find((p) => p.note.id === "700");
+  assert("note 700 carries rareAnchorPenalty flag", kept700?.rareAnchorPenalty === true);
+
+  // "clé github" (no api) must also find note 700 normally.
+  const pickedBase = r.pickRelevantNotes(apiCorpus, "clé github");
+  assert("clé github finds GitHub token note", pickedBase.some((p) => p.note.id === "700"));
+
+  // A config-only note (701 matches "api" only, 702/703 match one anchor
+  // but not the rare one "api") — Phase 2 should eliminate them all.
+  assert("only note 700 survives for clé api github", ids[0] === "700");
+}
+
 // ── Ranking: title multi-anchor beats body repetition ────────────────
 // Regression for "Utiliser xterm.js sur une VM" outranking "Kill VM"
 // for the query "kill une vm proxmox" when body hits were uncapped.
@@ -552,7 +609,9 @@ console.log("\n[ranking — Kill VM over xterm.js via rare-anchor pruning]");
   assert("rareAnchorTokens populated in metrics", Array.isArray(metrics.rareAnchorTokens) && metrics.rareAnchorTokens.length > 0);
   assert("Kill VM is in results", ids.includes("500"));
   assert("Kill VM ranks first", ids[0] === "500");
-  assert("xterm.js pruned (rare-anchor-miss on kill)", !ids.includes("501"));
+  // xterm.js survives Phase 1.5 via strong fallback (vm+proxmox anchor match)
+  // but is still dropped by Phase 2 score-ratio because Kill VM dominates.
+  assert("xterm.js not in final results (dominated by Kill VM)", !ids.includes("501"));
   assert("Kill VM anchorCoverage = 1", picked[0]?.anchorCoverage === 1);
 }
 

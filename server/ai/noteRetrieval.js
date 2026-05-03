@@ -530,19 +530,26 @@ function pruneScoredNotes(scored, opts = {}) {
 
     const passes = [];
     if (s.score >= minRatioScore) passes.push("score-ratio");
-    if (
-      s.matchedTokenCount >= 2 &&
-      (s.titleMatchCount > 0 || s.tagMatchCount > 0)
-    ) {
-      passes.push("multi-token-field");
-    }
-    if (s.titleMatchCount >= 2) passes.push("strong-title");
-    if (s.tagMatchCount >= 2) passes.push("strong-tag");
-    if (
-      usefulTokenCount === 1 &&
-      (s.titleMatchCount > 0 || s.tagMatchCount > 0)
-    ) {
-      passes.push("single-token-field");
+    // When topIsObvious the dominant note already has a multi-token title
+    // hit and 1.5× the runner-up — field-strength overrides would let a
+    // weak second note sneak through despite a clearly superior top note.
+    // Restrict to score-ratio only so "topIsObvious" actually collapses
+    // the result to a single answer.
+    if (!topIsObvious) {
+      if (
+        s.matchedTokenCount >= 2 &&
+        (s.titleMatchCount > 0 || s.tagMatchCount > 0)
+      ) {
+        passes.push("multi-token-field");
+      }
+      if (s.titleMatchCount >= 2) passes.push("strong-title");
+      if (s.tagMatchCount >= 2) passes.push("strong-tag");
+      if (
+        usefulTokenCount === 1 &&
+        (s.titleMatchCount > 0 || s.tagMatchCount > 0)
+      ) {
+        passes.push("single-token-field");
+      }
     }
 
     if (passes.length > 0) {
@@ -644,6 +651,7 @@ function pickRelevantNotes(notes, question, opts = {}) {
         titleAnchorMatchCount: result.titleAnchorMatchCount || 0,
         anchorCoverage: 0,
         rareAnchorCoverage: 0,
+        rareAnchorPenalty: false,
       });
     }
   }
@@ -709,10 +717,16 @@ function pickRelevantNotes(notes, question, opts = {}) {
     }
   }
 
-  // Phase 1.5: rare-anchor pruning.
-  // If the rarest (most IDF) anchor token(s) appear in at least one
-  // scored note, drop notes that don't match them — they can't be the
-  // best answer to the most specific part of the query.
+  // Phase 1.5: rare-anchor filtering.
+  // When the rarest (highest-IDF) anchor appears in at least one note,
+  // notes that miss it receive one of two outcomes:
+  //   • hard drop  — note has no strong coverage of the remaining query
+  //                  (e.g. config-only note for "config jellyfin")
+  //   • score ×0.75 — note already matches ≥2 anchors, or has a title
+  //                   hit + some anchor match, or ≥67 % anchor coverage.
+  //                   Keeps "clé github access token" alive for the query
+  //                   "clé api github" even though "api" is absent, because
+  //                   the note matches the two other meaningful anchors.
   const phase15Dropped = [];
   let scoredPool = scored;
   if (rareAnchorTokens.length > 0) {
@@ -723,7 +737,19 @@ function pickRelevantNotes(notes, question, opts = {}) {
         if (s.rareAnchorCoverage > 0) {
           scoredPool.push(s);
         } else {
-          phase15Dropped.push(makeDropEntry(s, "rare-anchor-miss"));
+          // A note that matches multiple anchor tokens or has the subject
+          // in its title is still a strong candidate — penalise but keep.
+          const hasStrongFallback =
+            s.matchedAnchorCount >= 2 ||
+            (s.titleMatchCount >= 1 && s.matchedAnchorCount >= 1) ||
+            s.anchorCoverage >= 0.67;
+          if (hasStrongFallback) {
+            s.score *= 0.75;
+            s.rareAnchorPenalty = true;
+            scoredPool.push(s);
+          } else {
+            phase15Dropped.push(makeDropEntry(s, "rare-anchor-miss"));
+          }
         }
       }
     }
@@ -786,6 +812,7 @@ function pickRelevantNotes(notes, question, opts = {}) {
     titleAnchorMatchCount: s.titleAnchorMatchCount || 0,
     anchorCoverage: s.anchorCoverage || 0,
     rareAnchorCoverage: s.rareAnchorCoverage || 0,
+    rareAnchorPenalty: s.rareAnchorPenalty || false,
     snippet: extractSnippets(s.hay.rawContent, allVariants, snippetOpts).join(
       "\n",
     ),
