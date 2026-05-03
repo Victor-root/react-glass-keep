@@ -89,6 +89,26 @@ export async function askAI(question, notes, onProgress) {
     }))
     .filter((n) => n.id && (n.title.trim() || n.content.trim()));
 
+  const debugMode = localStorage.getItem("glasskeep_ai_debug") === "true";
+  const lang = detectLang();
+
+  if (debugMode) {
+    console.groupCollapsed("[GlassKeep AI Debug] request");
+    console.log("question:", question);
+    console.log("lang:", lang);
+    console.log("notes count:", flattened.length);
+    console.table(
+      flattened.map((n) => ({
+        id: n.id,
+        title: n.title,
+        tags: n.tags.join(", "),
+        contentLength: n.content.length,
+        preview: n.content.slice(0, 80).replace(/\n/g, " "),
+      })),
+    );
+    console.groupEnd();
+  }
+
   // Real model inference can take well over the 6 s default timeout
   // baked into api(); allow up to 2 minutes for the chat round-trip.
   const data = await api("/ai/chat", {
@@ -98,9 +118,23 @@ export async function askAI(question, notes, onProgress) {
     body: {
       question,
       notes: flattened,
-      lang: detectLang(),
+      lang,
+      ...(debugMode && { debug: true }),
     },
   });
+
+  if (debugMode) {
+    console.groupCollapsed("[GlassKeep AI Debug] response");
+    console.log("finishReason:", data?.finishReason);
+    console.log("citedNoteIds:", data?.citedNoteIds);
+    if (data?.debug) {
+      console.log("debug metadata:", data.debug);
+      if (Array.isArray(data.debug.pickedNotes)) {
+        console.table(data.debug.pickedNotes);
+      }
+    }
+    console.groupEnd();
+  }
 
   if (onProgress) onProgress({ status: "ready" });
 

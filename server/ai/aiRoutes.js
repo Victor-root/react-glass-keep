@@ -227,6 +227,7 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
       let messages = null;
 
       const lang = body.lang === "fr" ? "fr" : "en";
+      const debugRequested = body.debug === true;
 
       let pickedIds = [];
 
@@ -269,11 +270,24 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
         // produce anyway, and skipping the round-trip removes one path
         // for the model to hallucinate from external knowledge.
         if (picked.length === 0) {
-          return res.json({
+          const resp = {
             answer: t(lang, "aiNoRelevantNotes"),
             citedNoteIds: [],
             finishReason: "no_context",
-          });
+          };
+          if (debugRequested) {
+            resp.debug = {
+              receivedNotesCount: allNotes.length,
+              question,
+              lang,
+              listIntent,
+              mode,
+              pickedCount: 0,
+              pickedNotes: [],
+              rejectionReason: "no_context",
+            };
+          }
+          return res.json(resp);
         }
 
         pickedIds = picked
@@ -301,6 +315,30 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
         }
         const context = blocks.join("\n\n---\n\n");
 
+        // Build debug metadata now (before the provider call) so it's
+        // available on every response path below.
+        if (debugRequested) {
+          body._debugMeta = {
+            receivedNotesCount: allNotes.length,
+            question,
+            lang,
+            listIntent,
+            mode,
+            pickedCount: picked.length,
+            pickedNotes: picked.map((p, i) => ({
+              id: p.note?.id,
+              title: p.note?.title,
+              score: p.score,
+              matched: p.matched,
+              contentLength: (p.note?.content || "").length,
+              contextBlockLength: blocks[i] !== undefined ? blocks[i].length : 0,
+            })),
+            pickedIds,
+            contextLength: context.length,
+            maxTotalChars,
+          };
+        }
+
         messages = [
           {
             role: "system",
@@ -324,11 +362,16 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
       const match = raw.match(markerRe);
       const allowed = new Set(pickedIds);
       let citedNoteIds = [];
+      const rawCitedIds = [];
       if (match) {
-        citedNoteIds = match[1]
+        match[1]
           .split(/[,\s]+/)
           .map((s) => s.trim())
-          .filter((s) => s && allowed.has(s));
+          .filter(Boolean)
+          .forEach((s) => {
+            rawCitedIds.push(s);
+            if (allowed.has(s)) citedNoteIds.push(s);
+          });
       }
       // If we sent notes to the model but it didn't cite a single
       // valid one (no marker, empty marker, or invented IDs), the
@@ -336,19 +379,40 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
       // as unreliable and replace it with the localized "not found"
       // string instead of leaking external-knowledge text to the user.
       if (pickedIds.length > 0 && citedNoteIds.length === 0) {
-        return res.json({
+        const resp = {
           answer: t(lang, "aiNoRelevantNotes"),
           citedNoteIds: [],
           finishReason: "no_valid_citation",
-        });
+        };
+        if (debugRequested && body._debugMeta) {
+          resp.debug = {
+            ...body._debugMeta,
+            finishReason: result.finishReason || null,
+            markerFound: !!match,
+            rawCitedIds,
+            validCitedIds: [],
+            rejectionReason: "no_valid_citation",
+          };
+        }
+        return res.json(resp);
       }
 
       const answer = raw.replace(markerRe, "").trim();
-      res.json({
+      const resp = {
         answer,
         citedNoteIds,
         finishReason: result.finishReason || null,
-      });
+      };
+      if (debugRequested && body._debugMeta) {
+        resp.debug = {
+          ...body._debugMeta,
+          finishReason: result.finishReason || null,
+          markerFound: !!match,
+          rawCitedIds,
+          validCitedIds: citedNoteIds,
+        };
+      }
+      res.json(resp);
     } catch (err) {
       const status = err instanceof provider.AIProviderError ? err.status : 500;
       const message = err?.message || "AI request failed.";
