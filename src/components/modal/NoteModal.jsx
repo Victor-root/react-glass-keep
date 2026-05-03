@@ -825,6 +825,7 @@ export default function NoteModal({
             the combined block. Hidden on mobile / draw-edit / closing. */}
         <NoteAiChatPanel
           dark={dark}
+          mColor={mColor}
           open={noteAiPanelVisible}
           messages={noteAiMessages || []}
           loading={!!noteAiLoading}

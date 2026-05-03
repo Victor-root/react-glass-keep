@@ -870,4 +870,9 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   noteAiChatThinking: "Réflexion en cours…",
   noteAiChatClose: "Fermer le panneau IA",
   noteAiChatGenericError: "La requête IA a échoué.",
+  // Boutons rapides affichés uniquement dans l'état vide.
+  noteAiChatQuickSummarize: "Résumer",
+  noteAiChatQuickExplain: "Expliquer",
+  noteAiChatQuickSummarizePrompt: "Résume cette note.",
+  noteAiChatQuickExplainPrompt: "Explique cette note.",
 };

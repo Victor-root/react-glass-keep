@@ -869,4 +869,9 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   noteAiChatThinking: "Thinking…",
   noteAiChatClose: "Close AI panel",
   noteAiChatGenericError: "AI request failed.",
+  // Quick-action chips shown only in the empty state.
+  noteAiChatQuickSummarize: "Summarize",
+  noteAiChatQuickExplain: "Explain",
+  noteAiChatQuickSummarizePrompt: "Summarize this note.",
+  noteAiChatQuickExplainPrompt: "Explain this note.",
 };

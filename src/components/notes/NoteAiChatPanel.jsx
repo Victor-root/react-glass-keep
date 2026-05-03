@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { t } from "../../i18n";
 import { Sparkles, CloseIcon } from "../../icons/index.jsx";
+import { modalBgFor } from "../../utils/colors.js";
 
 /**
  * Per-note AI chat panel — sits attached to the right side of NoteModal.
@@ -11,6 +12,7 @@ import { Sparkles, CloseIcon } from "../../icons/index.jsx";
  */
 export default function NoteAiChatPanel({
   dark,
+  mColor,
   open,
   messages,
   loading,
@@ -61,15 +63,17 @@ export default function NoteAiChatPanel({
   return (
     <aside
       className={`note-ai-panel glass-card rounded-xl shadow-lg flex flex-col overflow-hidden border ${
-        dark
-          ? "border-white/10 bg-[rgba(34,34,34,0.95)]"
-          : "border-[var(--border-light)] bg-white"
+        dark ? "border-white/10" : "border-[var(--border-light)]"
       }`}
       style={{
         width: "min(420px, 32vw)",
         maxWidth: "420px",
         height: "95vh",
         flexShrink: 0,
+        // Match the note modal's exact background — same colour key,
+        // same opacity treatment via modalBgFor — so the panel reads as
+        // an extension of the modal rather than a translucent overlay.
+        backgroundColor: modalBgFor(mColor, dark),
       }}
       onMouseDown={stopBubbling}
       onMouseUp={stopBubbling}
@@ -107,8 +111,40 @@ export default function NoteAiChatPanel({
         style={{ minHeight: 0 }}
       >
         {messages.length === 0 && !loading && !error && (
-          <div className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-            {t("noteAiChatEmpty")}
+          <div className="flex flex-col gap-3">
+            <div className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+              {t("noteAiChatEmpty")}
+            </div>
+            {/* Quick actions — only visible while the conversation is
+                empty. Clicking sends the corresponding prompt, after
+                which the chips disappear so they don't clutter the
+                follow-up turns. */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => onSend?.(t("noteAiChatQuickSummarizePrompt"))}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  dark
+                    ? "border-indigo-400/30 text-indigo-300 hover:bg-indigo-500/10"
+                    : "border-indigo-500/30 text-indigo-700 hover:bg-indigo-500/10"
+                }`}
+              >
+                {t("noteAiChatQuickSummarize")}
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => onSend?.(t("noteAiChatQuickExplainPrompt"))}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  dark
+                    ? "border-indigo-400/30 text-indigo-300 hover:bg-indigo-500/10"
+                    : "border-indigo-500/30 text-indigo-700 hover:bg-indigo-500/10"
+                }`}
+              >
+                {t("noteAiChatQuickExplain")}
+              </button>
+            </div>
           </div>
         )}
 
@@ -163,7 +199,7 @@ export default function NoteAiChatPanel({
           dark ? "border-white/10" : "border-[var(--border-light)]"
         }`}
       >
-        <div className="flex items-end gap-2">
+        <div className="flex items-center gap-2">
           <textarea
             ref={inputRef}
             value={draft}
