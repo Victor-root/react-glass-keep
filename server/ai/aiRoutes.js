@@ -9,165 +9,14 @@
 // Neither admin nor user API keys are ever returned in plain form. The
 // admin UI exposes `hasApiKey`, the user UI exposes its own `hasApiKey`,
 // and the chat endpoint never echoes either back.
+//
+// Note retrieval (tokenization, scoring, snippet extraction) lives in
+// noteRetrieval.js — this file is responsible for orchestration only.
 
 const aiSettings = require("./aiSettings");
 const provider = require("./openaiCompatibleProvider");
+const retrieval = require("./noteRetrieval");
 const { t } = require("../i18n");
-
-// Generic words that match in almost every note and would otherwise
-// dominate the score. Mostly French + English filler — keep tight on
-// purpose so domain words ("rustdesk", "wireguard", …) survive.
-const STOP_WORDS = new Set([
-  // English
-  "the","is","are","was","were","be","been","being","of","and","or","not",
-  "to","in","on","at","for","with","from","by","about","into","over","as",
-  "this","that","these","those","there","here","it","its","i","you","he",
-  "she","we","they","me","him","her","us","them","my","your","his","our",
-  "their","do","does","did","done","have","has","had","can","could","will",
-  "would","should","may","might","what","when","where","which","who","why",
-  "how","find","search","note","notes","please","tell","show","give","get",
-  // French
-  "le","la","les","un","une","des","du","de","au","aux","et","ou","ne",
-  "pas","plus","tres","sur","sous","dans","par","pour","avec","sans","entre",
-  "ma","mon","mes","ta","ton","tes","sa","son","ses","notre","votre","leur",
-  "leurs","ce","cet","cette","ces","est","sont","ai","as","ont","etait",
-  "etaient","ete","fait","faire","faut","ai","si","mais","car","donc","or",
-  "que","qui","quoi","dont","ou","comme","tout","tous","toute","toutes",
-  "moi","toi","lui","eux","elles","ils","elle","il","on","nous","vous",
-  "trouve","trouver","cherche","chercher","montre","montrer","dis","donne",
-  "donner","ouvre","ouvrir","quelle","quel","quelles","quels",
-]);
-
-// Tokenize a string into searchable lowercase tokens (≥ 2 chars).
-function tokenize(s) {
-  return String(s || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // strip combining diacritics
-    .split(/[^a-z0-9]+/)
-    .filter((w) => w.length >= 2);
-}
-
-function normalize(s) {
-  return String(s || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
-}
-
-// Conservative plural/singular expansion.
-// Only strips the most common suffixes so "wallets" matches "wallet",
-// "cryptos" matches "crypto", "entries" matches "entry", etc.
-// Kept intentionally narrow — no Levenshtein, no phonetics.
-function expandTokenVariants(tok) {
-  const v = new Set([tok]);
-  if (tok.length > 4 && tok.endsWith("ies")) {
-    v.add(tok.slice(0, -3) + "y");   // entries → entry, batteries → battery
-  } else if (tok.length > 3 && tok.endsWith("s") && !tok.endsWith("ss")) {
-    v.add(tok.slice(0, -1));         // wallets → wallet, cryptos → crypto, notes → note
-  }
-  return v;
-}
-
-// Score notes against the question's tokens.
-// Scoring weights: title match ×3, tag match ×2, body match ×1.
-// Plural variants (wallets/wallet) are expanded at query time so the
-// best-matching variant is used without double-counting.
-// IDF keeps rare domain words (e.g. "rustdesk") dominant over common ones.
-// Tags are indexed separately and carry a title-equivalent bonus so a
-// note tagged "crypto" surfaces when the user asks about "crypto" even
-// if the word doesn't appear in the title or body.
-function pickRelevantNotes(notes, question, limit) {
-  if (!Array.isArray(notes) || notes.length === 0) return [];
-
-  const rawTokens = Array.from(new Set(tokenize(question)));
-  const queryTokens = rawTokens.filter((t) => !STOP_WORDS.has(t));
-  const tokens = queryTokens.length > 0 ? queryTokens : rawTokens;
-  if (tokens.length === 0) return [];
-
-  // Pre-expand each query token into its variant set once.
-  const tokenVariants = new Map();
-  for (const tok of tokens) {
-    tokenVariants.set(tok, expandTokenVariants(tok));
-  }
-
-  // Pre-normalize each note's haystacks once.
-  const docs = [];
-  for (const n of notes) {
-    if (!n) continue;
-    const title = String(n.title || "");
-    const content = String(n.content || "");
-    const tagStr = Array.isArray(n.tags) ? n.tags.map(String).join(" ") : "";
-    if (!title.trim() && !content.trim() && !tagStr.trim()) continue;
-    docs.push({
-      note: n,
-      hayTitle: normalize(title),
-      hayTags: normalize(tagStr),
-      hayBody: normalize(content),
-    });
-  }
-  if (docs.length === 0) return [];
-
-  // IDF: count docs where ANY variant of the token appears in title, tags, or body.
-  const N = docs.length;
-  const df = new Map();
-  for (const tok of tokens) {
-    const variants = tokenVariants.get(tok);
-    let count = 0;
-    for (const d of docs) {
-      const hit = [...variants].some(
-        (v) => d.hayTitle.includes(v) || d.hayTags.includes(v) || d.hayBody.includes(v),
-      );
-      if (hit) count += 1;
-    }
-    df.set(tok, count);
-  }
-
-  const idf = new Map();
-  for (const tok of tokens) {
-    idf.set(tok, Math.log((N + 1) / ((df.get(tok) || 0) + 1)));
-  }
-
-  const scored = [];
-  for (const d of docs) {
-    let score = 0;
-    for (const tok of tokens) {
-      const w = idf.get(tok) || 0;
-      if (w <= 0) continue;
-      const variants = tokenVariants.get(tok);
-      const vArr = [...variants];
-
-      // Title match (×3) — one bonus per token regardless of variant count.
-      if (vArr.some((v) => d.hayTitle.includes(v))) score += 3 * w;
-
-      // Tag match (×2) — close to title strength.
-      if (vArr.some((v) => d.hayTags.includes(v))) score += 2 * w;
-
-      // Body match — count hits for the best-matching variant (capped at 5).
-      let bodyHits = 0;
-      for (const v of vArr) {
-        let idx = 0;
-        let hits = 0;
-        while (hits < 5) {
-          const found = d.hayBody.indexOf(v, idx);
-          if (found === -1) break;
-          hits++;
-          idx = found + v.length;
-        }
-        if (hits > bodyHits) bodyHits = hits;
-      }
-      score += bodyHits * w;
-    }
-    if (score > 0) scored.push({ note: d.note, score });
-  }
-
-  if (scored.length > 0) {
-    scored.sort((a, b) => b.score - a.score);
-    return scored.slice(0, limit).map((s) => s.note);
-  }
-
-  return [];
-}
 
 function buildOverride(saved, body) {
   const cfg = {
@@ -188,13 +37,14 @@ function buildOverride(saved, body) {
   return cfg;
 }
 
-function buildSystemPrompt(lang, context) {
+function buildSystemPrompt(lang, context, listIntent) {
   const base = t(lang, "aiSystemPromptBase");
   const label = t(lang, "aiSystemPromptContextLabel");
   const noCtx = t(lang, "aiSystemPromptNoContext");
+  const listHint = listIntent ? "\n\n" + t(lang, "aiSystemPromptListHint") : "";
   return context
-    ? `${base}\n\n${label}:\n${context}`
-    : `${base}\n\n${label}: ${noCtx}`;
+    ? `${base}${listHint}\n\n${label}:\n${context}`
+    : `${base}${listHint}\n\n${label}: ${noCtx}`;
 }
 
 function attachAiRoutes(app, { db, auth, adminOnly }) {
@@ -393,13 +243,22 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
       } else if (typeof body.question === "string" && body.question.trim()) {
         const question = body.question.trim();
         const allNotes = Array.isArray(body.notes) ? body.notes : [];
-        const picked = pickRelevantNotes(allNotes, question, 12);
 
-        // No relevant note → don't call the provider at all. Returning
-        // the localized "not found" string here is what the strict
-        // prompt would produce anyway, but it also prevents the model
-        // from drifting onto external knowledge when the context is
-        // weak or empty.
+        const picked = retrieval.pickRelevantNotes(allNotes, question, {
+          limit: 12,
+        });
+
+        retrieval.debugRetrieval({
+          question,
+          totalNotes: allNotes.length,
+          tokens: undefined,
+          picked,
+        });
+
+        // No relevant note → don't call the provider at all. The
+        // localized "not found" string is what the strict prompt would
+        // produce anyway, and skipping the round-trip removes one path
+        // for the model to hallucinate from external knowledge.
         if (picked.length === 0) {
           return res.json({
             answer: t(lang, "aiNoRelevantNotes"),
@@ -408,30 +267,20 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
           });
         }
 
-        pickedIds = picked.map((n) => String(n?.id || "")).filter(Boolean);
+        pickedIds = picked
+          .map((p) => String(p.note?.id || ""))
+          .filter(Boolean);
+
         const context = picked
-          .map((n) => {
-            const id = (n?.id || "").toString();
-            const title = (n?.title || "").toString();
-            const tagsList =
-              Array.isArray(n?.tags) && n.tags.length > 0
-                ? n.tags.map(String).join(", ")
-                : null;
-            const content = (n?.content || "").toString().slice(0, 2000);
-            return [
-              `[${id}] TITLE: ${title}`,
-              tagsList ? `TAGS: ${tagsList}` : null,
-              `CONTENT: ${content}`,
-            ]
-              .filter(Boolean)
-              .join("\n");
-          })
+          .map((p) => retrieval.buildContextBlock(p))
           .join("\n\n---\n\n");
+
+        const listIntent = retrieval.detectListIntent(question);
 
         messages = [
           {
             role: "system",
-            content: buildSystemPrompt(lang, context),
+            content: buildSystemPrompt(lang, context, listIntent),
           },
           { role: "user", content: question },
         ];

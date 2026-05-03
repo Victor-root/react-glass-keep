@@ -21,5 +21,7 @@ module.exports = {
     "Si aucune note n'est utilisée, utilise : [[NOTES:]]",
   aiSystemPromptContextLabel: "Contexte des notes",
   aiSystemPromptNoContext: "(aucune note disponible)",
+  aiSystemPromptListHint:
+    "L'utilisateur demande une liste de notes. Réponds par une courte liste à puces des notes correspondantes — pour chacune, donne le titre exact et un extrait utile sur une ligne, tiré directement de son SNIPPET. N'invente pas de notes supplémentaires.",
   aiNoRelevantNotes: "Je n'ai pas trouvé d'information pertinente dans les notes.",
 };
