@@ -136,6 +136,49 @@ export default function AiAdminSection({ token, showToast }) {
     }
   };
 
+  // Persist a single field immediately (used by the toggles so the
+  // admin doesn't have to remember to hit Save before reloading).
+  const persistOne = async (patch) => {
+    setSaving(true);
+    setTestResult(null);
+    try {
+      const data = await api("/admin/ai/settings", {
+        method: "PUT",
+        token,
+        body: patch,
+      });
+      setEnabled(!!data.enabled);
+      setAllowServerAiForUsers(!!data.allowServerAiForUsers);
+      setHasApiKey(!!data.hasApiKey);
+      baselineRef.current = data;
+    } catch (err) {
+      showToast?.(localizeServerError(err?.message, "saveFailed"), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const onToggleEnabled = () => {
+    const next = !enabled;
+    setEnabled(next);
+    // When the master switch goes off, the share flag becomes
+    // meaningless; flip it off in the same write so the user-facing
+    // serverAiAvailable also drops to false.
+    const patch = { enabled: next };
+    if (!next && allowServerAiForUsers) {
+      patch.allowServerAiForUsers = false;
+      setAllowServerAiForUsers(false);
+    }
+    persistOne(patch);
+  };
+
+  const onToggleShare = () => {
+    if (!enabled) return;
+    const next = !allowServerAiForUsers;
+    setAllowServerAiForUsers(next);
+    persistOne({ allowServerAiForUsers: next });
+  };
+
   const onClearKey = async () => {
     setSaving(true);
     setTestResult(null);
@@ -194,7 +237,7 @@ export default function AiAdminSection({ token, showToast }) {
     <form onSubmit={onSave} className="space-y-4">
       <PrivacyWarning />
 
-      {/* Enable toggle */}
+      {/* Enable toggle — auto-saves */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="font-medium">{t("aiEnableLabel")}</div>
@@ -202,8 +245,8 @@ export default function AiAdminSection({ token, showToast }) {
         </div>
         <button
           type="button"
-          disabled={loading}
-          onClick={() => setEnabled((v) => !v)}
+          disabled={loading || saving}
+          onClick={onToggleEnabled}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
             enabled ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
           } disabled:opacity-50`}
@@ -217,7 +260,7 @@ export default function AiAdminSection({ token, showToast }) {
         </button>
       </div>
 
-      {/* Share with users toggle */}
+      {/* Share with users toggle — auto-saves */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="font-medium">{t("aiAllowServerAiForUsersLabel")}</div>
@@ -225,8 +268,8 @@ export default function AiAdminSection({ token, showToast }) {
         </div>
         <button
           type="button"
-          disabled={loading || !enabled}
-          onClick={() => setAllowServerAiForUsers((v) => !v)}
+          disabled={loading || saving || !enabled}
+          onClick={onToggleShare}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
             allowServerAiForUsers && enabled
               ? "bg-indigo-600"
