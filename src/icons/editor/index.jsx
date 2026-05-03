@@ -66,6 +66,8 @@ import brainSvg            from "./tabler/brain.svg?raw";
 import deviceMobileRotSvg  from "./tabler/device-mobile-rotated.svg?raw";
 import eraserSvg           from "./tabler/eraser.svg?raw";
 import filter2QuestionSvg  from "./tabler/filter-2-question.svg?raw";
+import inputSparkSvg       from "./tabler/input-spark.svg?raw";
+import messageSearchSvg    from "./tabler/message-search.svg?raw";
 
 // Admin panel icons
 import usersSvg           from "./tabler/users.svg?raw";
@@ -169,6 +171,8 @@ export const TI = {
   DeviceMobileRotated:  (p) => <TablerIcon svg={deviceMobileRotSvg} {...p} />,
   Eraser:               (p) => <TablerIcon svg={eraserSvg} {...p} />,
   Filter2Question:      (p) => <TablerIcon svg={filter2QuestionSvg} {...p} />,
+  InputSpark:           (p) => <TablerIcon svg={inputSparkSvg} {...p} />,
+  MessageSearch:        (p) => <TablerIcon svg={messageSearchSvg} {...p} />,
   // Admin panel
   Users:                (p) => <TablerIcon svg={usersSvg} {...p} />,
   UserPlus:             (p) => <TablerIcon svg={userPlusSvg} {...p} />,

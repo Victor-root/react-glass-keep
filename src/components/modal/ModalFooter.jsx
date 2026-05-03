@@ -6,7 +6,7 @@ import Popover from "../common/Popover.jsx";
 import UserAvatar from "../common/UserAvatar.jsx";
 import AddImageMenu from "./AddImageMenu.jsx";
 import LogoPickerPopover from "./LogoPickerPopover.jsx";
-import { DownloadIcon, ArchiveIcon, Trash, AddImageIcon, Kebab, TextNoteIcon, ChecklistIcon, Sparkles } from "../../icons/index.jsx";
+import { DownloadIcon, ArchiveIcon, Trash, AddImageIcon, Kebab, TextNoteIcon, ChecklistIcon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { COLOR_ORDER, LIGHT_COLORS } from "../../utils/colors.js";
 import { getNoteIcon, setNoteIcon } from "../../utils/noteIcon.js";
@@ -672,7 +672,7 @@ export default function ModalFooter({
                 style={{ color: dark ? "#a5b4fc" : "#4f46e5" }}
                 onClick={() => { onOpenNoteAi(); setModalKebabOpen(false); }}
               >
-                <Sparkles />
+                <TI.MessageSearch />
                 {t("noteAiChatMenuItem")}
               </button>
             )}

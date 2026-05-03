@@ -277,7 +277,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
                 aria-pressed={mode === "custom"}
               >
                 <div className="font-medium flex items-center gap-2">
-                  <TI.Sparkles className="tabler-icon w-4 h-4" />
+                  <TI.Brain className="tabler-icon w-4 h-4" />
                   {t("userAiModeCustom")}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">

@@ -388,7 +388,7 @@ export default function SettingsPanel({
               base URL or model. */}
           <div className="mb-8">
             <h4 className="text-md font-semibold mb-4 flex items-center gap-3 pl-3">
-              <SectionHeaderIcon icon={TI.Sparkles} />
+              <SectionHeaderIcon icon={TI.Brain} />
               {t("aiSectionTitle")}
             </h4>
             <div className="pl-3">

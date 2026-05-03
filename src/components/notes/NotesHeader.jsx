@@ -1,7 +1,8 @@
 import React from "react";
 import { createPortal } from "react-dom";
 import { t } from "../../i18n";
-import { Hamburger, SearchIcon, Sparkles, CloseIcon, GridIcon, ListIcon, SunIcon, MoonIcon, CheckSquareIcon, SettingsIcon, ShieldIcon, LogOutIcon, Kebab } from "../../icons/index.jsx";
+import { Hamburger, SearchIcon, CloseIcon, GridIcon, ListIcon, SunIcon, MoonIcon, CheckSquareIcon, SettingsIcon, ShieldIcon, LogOutIcon, Kebab } from "../../icons/index.jsx";
+import TI from "../../icons/editor/index.jsx";
 import SyncStatusIcon from "../../sync/SyncStatusIcon.jsx";
 import UserAvatar from "../common/UserAvatar.jsx";
 
@@ -140,7 +141,7 @@ export default function NotesHeader({
                   className="h-7 w-7 rounded-full flex items-center justify-center text-indigo-600 hover:bg-indigo-600/10 transition-colors"
                   onClick={() => onAiSearch?.(search)}
                 >
-                  <Sparkles />
+                  <TI.InputSpark />
                 </button>
               )}
               {search && (
@@ -215,7 +216,7 @@ export default function NotesHeader({
                     className="h-6 w-6 rounded-full flex items-center justify-center text-indigo-600 hover:bg-indigo-600/10 transition-colors"
                     onClick={() => onAiSearch?.(search)}
                   >
-                    <Sparkles />
+                    <TI.InputSpark />
                   </button>
                 )}
                 {search && (

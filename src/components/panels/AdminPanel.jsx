@@ -383,7 +383,7 @@ export default function AdminPanel({
               the API key never leaves the server in plain form. */}
           <div className="mb-8">
             <h4 className="text-md font-semibold mb-4 flex items-center gap-3 pl-3">
-              <SectionHeaderIcon icon={TI.Sparkles} />
+              <SectionHeaderIcon icon={TI.Brain} />
               {t("aiSectionTitle")}
             </h4>
             <div className="pl-3">

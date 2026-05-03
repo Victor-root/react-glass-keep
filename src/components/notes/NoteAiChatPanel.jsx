@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { t } from "../../i18n";
-import { Sparkles, CloseIcon } from "../../icons/index.jsx";
+import { CloseIcon } from "../../icons/index.jsx";
+import TI from "../../icons/editor/index.jsx";
 import { modalBgFor } from "../../utils/colors.js";
 
 /**
@@ -85,7 +86,7 @@ export default function NoteAiChatPanel({
           dark ? "border-white/10" : "border-[var(--border-light)]"
         }`}
       >
-        <Sparkles className="text-indigo-600 dark:text-indigo-400" />
+        <TI.MessageSearch className="tabler-icon text-indigo-600 dark:text-indigo-400 shrink-0" />
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-indigo-700 dark:text-indigo-300 truncate">
             {t("noteAiChatTitle")}
@@ -154,7 +155,7 @@ export default function NoteAiChatPanel({
                     ? "bg-indigo-600 text-white"
                     : dark
                     ? "bg-white/10 text-white"
-                    : "bg-gray-100 text-gray-800"
+                    : "bg-black/10 text-gray-800"
                 }`}
               >
                 {m.content}
@@ -165,7 +166,7 @@ export default function NoteAiChatPanel({
             <li className="flex justify-start">
               <div
                 className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                  dark ? "bg-white/10 text-white" : "bg-gray-100 text-gray-600"
+                  dark ? "bg-white/10 text-white" : "bg-black/10 text-gray-700"
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" />
