@@ -13,6 +13,126 @@
 const aiSettings = require("./aiSettings");
 const provider = require("./openaiCompatibleProvider");
 
+// Generic words that match in almost every note and would otherwise
+// dominate the score. Mostly French + English filler — keep tight on
+// purpose so domain words ("rustdesk", "wireguard", …) survive.
+const STOP_WORDS = new Set([
+  // English
+  "the","is","are","was","were","be","been","being","of","and","or","not",
+  "to","in","on","at","for","with","from","by","about","into","over","as",
+  "this","that","these","those","there","here","it","its","i","you","he",
+  "she","we","they","me","him","her","us","them","my","your","his","our",
+  "their","do","does","did","done","have","has","had","can","could","will",
+  "would","should","may","might","what","when","where","which","who","why",
+  "how","find","search","note","notes","please","tell","show","give","get",
+  // French
+  "le","la","les","un","une","des","du","de","au","aux","et","ou","ne",
+  "pas","plus","tres","sur","sous","dans","par","pour","avec","sans","entre",
+  "ma","mon","mes","ta","ton","tes","sa","son","ses","notre","votre","leur",
+  "leurs","ce","cet","cette","ces","est","sont","ai","as","ont","etait",
+  "etaient","ete","fait","faire","faut","ai","si","mais","car","donc","or",
+  "que","qui","quoi","dont","ou","comme","tout","tous","toute","toutes",
+  "moi","toi","lui","eux","elles","ils","elle","il","on","nous","vous",
+  "trouve","trouver","cherche","chercher","montre","montrer","dis","donne",
+  "donner","ouvre","ouvrir","quelle","quel","quelles","quels",
+]);
+
+// Tokenize a string into searchable lowercase tokens (≥ 2 chars).
+function tokenize(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip combining diacritics
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 2);
+}
+
+function normalize(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+}
+
+// Score notes against the question's tokens, with stop-word filtering
+// and per-token IDF weighting so a generic word that matches every
+// note ("note", "le", …) doesn't drown the rare, informative ones
+// (project names, identifiers). Title matches still get a small
+// boost over body matches.
+function pickRelevantNotes(notes, question, limit) {
+  if (!Array.isArray(notes) || notes.length === 0) return [];
+
+  const rawTokens = Array.from(new Set(tokenize(question)));
+  const queryTokens = rawTokens.filter((t) => !STOP_WORDS.has(t));
+  // If everything was filtered out (very short generic question), fall
+  // back to the unfiltered set so we still pick *something* relevant.
+  const tokens = queryTokens.length > 0 ? queryTokens : rawTokens;
+  if (tokens.length === 0) return notes.slice(0, limit);
+
+  // Pre-normalize each note's haystacks once.
+  const docs = [];
+  for (const n of notes) {
+    if (!n) continue;
+    const title = String(n.title || "");
+    const content = String(n.content || "");
+    if (!title.trim() && !content.trim()) continue;
+    docs.push({
+      note: n,
+      hayTitle: normalize(title),
+      hayBody: normalize(content),
+    });
+  }
+  if (docs.length === 0) return [];
+
+  // Document frequency per token (any occurrence in title or body counts).
+  const N = docs.length;
+  const df = new Map();
+  for (const tok of tokens) {
+    let count = 0;
+    for (const d of docs) {
+      if (d.hayTitle.includes(tok) || d.hayBody.includes(tok)) count += 1;
+    }
+    df.set(tok, count);
+  }
+
+  // Weight rare tokens much more than common ones (classic IDF).
+  // log((N+1)/(df+1)) keeps the value positive and ≈ 0 when the token
+  // is in nearly every note (e.g. "note" itself).
+  const idf = new Map();
+  for (const tok of tokens) {
+    idf.set(tok, Math.log((N + 1) / ((df.get(tok) || 0) + 1)));
+  }
+
+  const scored = [];
+  for (const d of docs) {
+    let score = 0;
+    for (const tok of tokens) {
+      const w = idf.get(tok) || 0;
+      if (w <= 0) continue;
+      if (d.hayTitle.includes(tok)) score += 3 * w;
+      let idx = 0;
+      let hits = 0;
+      while (hits < 5) {
+        const found = d.hayBody.indexOf(tok, idx);
+        if (found === -1) break;
+        hits += 1;
+        idx = found + tok.length;
+      }
+      score += hits * w;
+    }
+    if (score > 0) scored.push({ note: d.note, score });
+  }
+
+  if (scored.length > 0) {
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, limit).map((s) => s.note);
+  }
+
+  // Nothing matched the (filtered) tokens — give the model the first N
+  // so it can answer general questions (e.g. "list my notes").
+  return notes.slice(0, limit);
+}
+
 function buildOverride(saved, body) {
   const cfg = {
     enabled: true,
@@ -223,11 +343,12 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
           .slice(0, 32);
       } else if (typeof body.question === "string" && body.question.trim()) {
         const question = body.question.trim();
-        const notes = Array.isArray(body.notes) ? body.notes.slice(0, 5) : [];
-        const context = notes
+        const allNotes = Array.isArray(body.notes) ? body.notes : [];
+        const picked = pickRelevantNotes(allNotes, question, 8);
+        const context = picked
           .map((n) => {
             const title = (n?.title || "").toString();
-            const content = (n?.content || "").toString().slice(0, 1500);
+            const content = (n?.content || "").toString().slice(0, 2000);
             return `TITLE: ${title}\nCONTENT: ${content}`;
           })
           .join("\n\n---\n\n");
@@ -237,10 +358,13 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
             role: "system",
             content:
               "You are an assistant for the GlassKeep notes app. " +
-              "Use only the provided Note Context to answer the user. " +
-              "If the answer is not in the notes, say you couldn't find it. " +
-              "Be direct, helpful, and concise." +
-              (context ? `\n\nNote Context:\n${context}` : ""),
+              "Answer the user's question using ONLY the Note Context below. " +
+              "If you find a relevant note, quote its title and the relevant excerpt. " +
+              "If nothing in the context matches, say you couldn't find it. " +
+              "Be direct and concise." +
+              (context
+                ? `\n\nNote Context:\n${context}`
+                : "\n\nNote Context: (no notes available)"),
           },
           { role: "user", content: question },
         ];

@@ -7,6 +7,7 @@
  */
 
 import { api, getAuth } from "./utils/api.js";
+import { contentToPlain } from "./utils/richText.js";
 
 /**
  * No-op kept for backward compatibility — the server no longer needs
@@ -17,11 +18,45 @@ export async function initAI(onProgress) {
   return Promise.resolve();
 }
 
+// Flatten any note shape (text / checklist / drawing) into a single
+// plain-text body the AI can actually read. Without this the model
+// receives raw Tiptap JSON for text notes and an empty string for
+// checklists (since their text lives in `items[].text`, not `content`).
+function noteToPlainText(n) {
+  if (!n) return "";
+  const type = n.type || "text";
+
+  if (type === "checklist") {
+    const items = Array.isArray(n.items) ? n.items : [];
+    return items
+      .map((it) => {
+        const mark = it?.done ? "[x]" : "[ ]";
+        const text = (it?.text || "").toString();
+        return `- ${mark} ${text}`;
+      })
+      .join("\n");
+  }
+
+  if (type === "draw") {
+    // Drawing notes wrap their typed caption inside a JSON blob.
+    try {
+      const parsed = typeof n.content === "string" ? JSON.parse(n.content) : null;
+      return (parsed?.text || "").toString();
+    } catch {
+      return "";
+    }
+  }
+
+  // Text notes — content is either the rich-text envelope or legacy
+  // Markdown. contentToPlain handles both.
+  return contentToPlain(n.content || "");
+}
+
 /**
  * Ask the AI assistant a question with optional note context.
  *
  * @param {string} question
- * @param {Array<{title: string, content: string}>} notes
+ * @param {Array} notes  the user's note objects (any shape)
  * @param {Function} [onProgress]
  * @returns {Promise<string>} the assistant's answer
  */
@@ -34,6 +69,16 @@ export async function askAI(question, notes, onProgress) {
 
   if (onProgress) onProgress({ status: "init" });
 
+  // Send a flattened, searchable view of the notes. The server picks
+  // the relevant ones by keyword score before forwarding to the model.
+  const flattened = (notes || [])
+    .filter((n) => n && !n.archived && !n.trashed)
+    .map((n) => ({
+      title: (n.title || "").toString(),
+      content: noteToPlainText(n),
+    }))
+    .filter((n) => n.title.trim() || n.content.trim());
+
   // Real model inference can take well over the 6 s default timeout
   // baked into api(); allow up to 2 minutes for the chat round-trip.
   const data = await api("/ai/chat", {
@@ -42,10 +87,7 @@ export async function askAI(question, notes, onProgress) {
     timeoutMs: 120000,
     body: {
       question,
-      notes: (notes || []).map((n) => ({
-        title: n?.title || "",
-        content: n?.content || "",
-      })),
+      notes: flattened,
     },
   });
 
