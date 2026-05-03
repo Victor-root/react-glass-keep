@@ -94,6 +94,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   adminPanel: "Panneau d'administration",
   aiAssistant: "Assistant IA",
   aiAssistantThinking: "L'assistant IA réfléchit...",
+  aiCitedNotes: "Notes utilisées",
   allImages: "Toutes les images",
   allowNewAccountCreation: "Autoriser la création de nouveaux comptes",
   allowNewAccountCreationDesc: "Si désactivé, l'inscription publique est bloquée et seul un admin peut créer des comptes.",

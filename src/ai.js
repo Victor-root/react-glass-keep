@@ -63,7 +63,7 @@ function noteToPlainText(n) {
  * @param {string} question
  * @param {Array} notes  the user's note objects (any shape)
  * @param {Function} [onProgress]
- * @returns {Promise<string>} the assistant's answer
+ * @returns {Promise<{answer: string, citedNoteIds: string[]}>}
  */
 export async function askAI(question, notes, onProgress) {
   const auth = getAuth();
@@ -76,13 +76,17 @@ export async function askAI(question, notes, onProgress) {
 
   // Send a flattened, searchable view of the notes. The server picks
   // the relevant ones by keyword score before forwarding to the model.
+  // The `id` is forwarded so the model can cite which notes it used —
+  // the server appends a [[NOTES:…]] marker instruction to the prompt
+  // and parses it back out before returning.
   const flattened = (notes || [])
     .filter((n) => n && !n.archived && !n.trashed)
     .map((n) => ({
+      id: n.id != null ? String(n.id) : "",
       title: (n.title || "").toString(),
       content: noteToPlainText(n),
     }))
-    .filter((n) => n.title.trim() || n.content.trim());
+    .filter((n) => n.id && (n.title.trim() || n.content.trim()));
 
   // Real model inference can take well over the 6 s default timeout
   // baked into api(); allow up to 2 minutes for the chat round-trip.
@@ -99,5 +103,8 @@ export async function askAI(question, notes, onProgress) {
 
   if (onProgress) onProgress({ status: "ready" });
 
-  return data?.answer || "";
+  return {
+    answer: data?.answer || "",
+    citedNoteIds: Array.isArray(data?.citedNoteIds) ? data.citedNoteIds : [],
+  };
 }

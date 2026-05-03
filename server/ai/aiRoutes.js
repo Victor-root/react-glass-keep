@@ -343,6 +343,8 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
 
       const lang = body.lang === "fr" ? "fr" : "en";
 
+      let pickedIds = [];
+
       if (Array.isArray(body.messages) && body.messages.length > 0) {
         messages = body.messages
           .filter(
@@ -357,11 +359,13 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
         const question = body.question.trim();
         const allNotes = Array.isArray(body.notes) ? body.notes : [];
         const picked = pickRelevantNotes(allNotes, question, 8);
+        pickedIds = picked.map((n) => String(n?.id || "")).filter(Boolean);
         const context = picked
           .map((n) => {
+            const id = (n?.id || "").toString();
             const title = (n?.title || "").toString();
             const content = (n?.content || "").toString().slice(0, 2000);
-            return `TITLE: ${title}\nCONTENT: ${content}`;
+            return `[${id}] TITLE: ${title}\nCONTENT: ${content}`;
           })
           .join("\n\n---\n\n");
 
@@ -379,8 +383,27 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
       }
 
       const result = await provider.chatCompletion(cfg, { messages });
-      const answer = (result.content || "").trim();
-      res.json({ answer, finishReason: result.finishReason || null });
+      const raw = (result.content || "").trim();
+      // Pull the [[NOTES:id1,id2]] marker out of the answer (case
+      // tolerant; brackets occasionally drift to single). Whatever the
+      // model emits, we only keep IDs that were actually in the
+      // selected context — never trust the model to invent IDs.
+      const markerRe = /\[\[?\s*NOTES\s*:\s*([^\]]*?)\s*\]?\]/i;
+      const match = raw.match(markerRe);
+      const allowed = new Set(pickedIds);
+      let citedNoteIds = [];
+      if (match) {
+        citedNoteIds = match[1]
+          .split(/[,\s]+/)
+          .map((s) => s.trim())
+          .filter((s) => s && allowed.has(s));
+      }
+      const answer = raw.replace(markerRe, "").trim();
+      res.json({
+        answer,
+        citedNoteIds,
+        finishReason: result.finishReason || null,
+      });
     } catch (err) {
       const status = err instanceof provider.AIProviderError ? err.status : 500;
       const message = err?.message || "AI request failed.";

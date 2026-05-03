@@ -12,6 +12,7 @@ function NotesUI({
   currentUser,
   dark,
   toggleDark,
+  notes,
   search,
   setSearch,
   composerType,
@@ -128,6 +129,8 @@ function NotesUI({
   aiAssistantEnabled,
   aiResponse,
   setAiResponse,
+  aiCitedNoteIds,
+  setAiCitedNoteIds,
   isAiLoading,
   aiLoadingProgress,
   onAiSearch,
@@ -331,12 +334,19 @@ function NotesUI({
         aiAssistantEnabled={aiAssistantEnabled}
         aiResponse={aiResponse}
         setAiResponse={setAiResponse}
+        aiCitedNoteIds={aiCitedNoteIds}
+        setAiCitedNoteIds={setAiCitedNoteIds}
         isAiLoading={isAiLoading}
         aiLoadingProgress={aiLoadingProgress}
         onAiSearch={onAiSearch}
         search={search}
         setSearch={setSearch}
         syncStatus={syncStatus}
+        notes={notes}
+        currentUser={currentUser}
+        openModal={openModal}
+        isOnline={isOnline}
+        onUpdateChecklistItem={onUpdateChecklistItem}
       />
 
       <NotesSections

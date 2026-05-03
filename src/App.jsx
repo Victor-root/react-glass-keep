@@ -217,6 +217,7 @@ export default function App() {
     applyTypographyPresets(typographyPresets);
   }, [typographyPresets]);
   const [aiResponse, setAiResponse] = useState(null);
+  const [aiCitedNoteIds, setAiCitedNoteIds] = useState([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiLoadingProgress, setAiLoadingProgress] = useState(null);
 
@@ -604,7 +605,10 @@ export default function App() {
   }, [sidebarWidth]);
 
   useEffect(() => {
-    if (!aiAssistantEnabled) setAiResponse(null);
+    if (!aiAssistantEnabled) {
+      setAiResponse(null);
+      setAiCitedNoteIds([]);
+    }
   }, [aiAssistantEnabled]);
 
   // Mirror the server-side AI preference into the local visibility flag
@@ -1462,22 +1466,25 @@ export default function App() {
     if (!question || question.trim().length < 3) return;
     setIsAiLoading(true);
     setAiResponse(null);
+    setAiCitedNoteIds([]);
     setAiLoadingProgress(0);
 
     try {
-      const answer = await askAI(question, notes, (progress) => {
+      const result = await askAI(question, notes, (progress) => {
         if (progress.status === "progress") {
           setAiLoadingProgress(progress.progress);
         } else if (progress.status === "ready") {
           setAiLoadingProgress(100);
         }
       });
-      setAiResponse(answer);
+      setAiResponse(result.answer);
+      setAiCitedNoteIds(result.citedNoteIds || []);
     } catch (err) {
       console.error("AI Error:", err);
       setAiResponse(
         "Sorry, I encountered an error while processing your request.",
       );
+      setAiCitedNoteIds([]);
     } finally {
       setIsAiLoading(false);
       setAiLoadingProgress(null);
@@ -4936,6 +4943,7 @@ export default function App() {
         instanceLocked={isLocked}
         toggleDark={toggleDark}
         signOut={signOut}
+        notes={notes}
         search={search}
         setSearch={setSearch}
         composerType={composerType}
@@ -5009,6 +5017,8 @@ export default function App() {
         aiAssistantEnabled={aiAssistantEnabled}
         aiResponse={aiResponse}
         setAiResponse={setAiResponse}
+        aiCitedNoteIds={aiCitedNoteIds}
+        setAiCitedNoteIds={setAiCitedNoteIds}
         isAiLoading={isAiLoading}
         aiLoadingProgress={aiLoadingProgress}
         onAiSearch={handleAiSearch}
