@@ -233,9 +233,13 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
       // narrows to only the notes whose context block actually fit in
       // the prompt budget — that's the set the model is allowed to
       // cite. Citing a note we didn't send to the model is a fabrication.
+      // includedNotes / blocks are hoisted here because the citation
+      // fallback below this block also reads them.
       let pickedIds = [];
       let allowedCitationIds = [];
       let picked = [];
+      let includedNotes = [];
+      let blocks = [];
       let debugMeta = null;
 
       if (Array.isArray(body.messages) && body.messages.length > 0) {
@@ -324,8 +328,9 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
         // than a missing one. Per the spec: 6 nearly-complete notes
         // beat 12 amputated ones.
         const maxTotalChars = listIntent ? 60000 : 16000;
-        const blocks = [];
-        const includedNotes = []; // picked items whose block fit in budget
+        // Reset the hoisted accumulators in case of upstream reuse.
+        blocks = [];
+        includedNotes = []; // picked items whose block fit in budget
         let total = 0;
         for (const p of picked) {
           const block = retrieval.buildContextBlock(p, { mode });
