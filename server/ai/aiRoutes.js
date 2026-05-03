@@ -152,6 +152,32 @@ function buildOverride(saved, body) {
   return cfg;
 }
 
+const SYSTEM_PROMPTS = {
+  en: (context) =>
+    "You are an assistant for the GlassKeep notes app. " +
+    "Answer the user's question using ONLY the Note Context below. " +
+    "If you find a relevant note, quote its title and the relevant excerpt. " +
+    "If nothing in the context matches, say you couldn't find it. " +
+    "Be direct and concise." +
+    (context
+      ? `\n\nNote Context:\n${context}`
+      : "\n\nNote Context: (no notes available)"),
+  fr: (context) =>
+    "Tu es un assistant pour l'application de notes GlassKeep. " +
+    "Réponds à la question de l'utilisateur en te basant UNIQUEMENT sur le Contexte des notes ci-dessous. " +
+    "Si tu trouves une note pertinente, cite son titre et l'extrait correspondant. " +
+    "Si rien dans le contexte ne correspond, dis que tu n'as pas trouvé. " +
+    "Sois direct et concis." +
+    (context
+      ? `\n\nContexte des notes :\n${context}`
+      : "\n\nContexte des notes : (aucune note disponible)"),
+};
+
+function buildSystemPrompt(lang, context) {
+  const builder = SYSTEM_PROMPTS[lang] || SYSTEM_PROMPTS.en;
+  return builder(context);
+}
+
 function attachAiRoutes(app, { db, auth, adminOnly }) {
   aiSettings.ensureSchema(db);
 
@@ -331,6 +357,8 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
       const body = req.body || {};
       let messages = null;
 
+      const lang = body.lang === "fr" ? "fr" : "en";
+
       if (Array.isArray(body.messages) && body.messages.length > 0) {
         messages = body.messages
           .filter(
@@ -356,15 +384,7 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
         messages = [
           {
             role: "system",
-            content:
-              "You are an assistant for the GlassKeep notes app. " +
-              "Answer the user's question using ONLY the Note Context below. " +
-              "If you find a relevant note, quote its title and the relevant excerpt. " +
-              "If nothing in the context matches, say you couldn't find it. " +
-              "Be direct and concise." +
-              (context
-                ? `\n\nNote Context:\n${context}`
-                : "\n\nNote Context: (no notes available)"),
+            content: buildSystemPrompt(lang, context),
           },
           { role: "user", content: question },
         ];

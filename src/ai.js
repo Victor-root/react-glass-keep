@@ -9,6 +9,11 @@
 import { api, getAuth } from "./utils/api.js";
 import { contentToPlain } from "./utils/richText.js";
 
+function detectLang() {
+  const lang = (navigator.language || "en").toLowerCase();
+  return lang.startsWith("fr") ? "fr" : "en";
+}
+
 /**
  * No-op kept for backward compatibility — the server no longer needs
  * any client-driven initialization.
@@ -88,6 +93,7 @@ export async function askAI(question, notes, onProgress) {
     body: {
       question,
       notes: flattened,
+      lang: detectLang(),
     },
   });
 
