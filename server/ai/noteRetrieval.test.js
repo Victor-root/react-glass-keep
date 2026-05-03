@@ -76,7 +76,9 @@ const corpus = [
 
 // ── Variant tests ─────────────────────────────────────────────────────
 console.log("\n[plural variants]");
-const { expandPluralVariants, expandToken, normalize, tokenize } = r.__internals;
+const {
+  expandPluralVariants, expandToken, normalize, tokenize, WEAK_TOKENS,
+} = r.__internals;
 eq("wallets → wallet", [...expandPluralVariants("wallets")].sort(), ["wallet", "wallets"]);
 eq("cryptos → crypto", [...expandPluralVariants("cryptos")].sort(), ["crypto", "cryptos"]);
 eq("entries → entry", [...expandPluralVariants("entries")].sort(), ["entries", "entry"]);
@@ -302,6 +304,98 @@ console.log("\n[context block format — inventory]");
   const block = r.buildContextBlock(picked[0], { mode: "inventory" });
   console.log("  block:\n" + block);
   assert("inventory uses CONTENT:", /CONTENT:/.test(block));
+}
+
+// ── WEAK_TOKENS classification ────────────────────────────────────────
+console.log("\n[weak token classification]");
+assert("config is weak", WEAK_TOKENS.has("config"));
+assert("configuration is weak", WEAK_TOKENS.has("configuration"));
+assert("tuto is weak", WEAK_TOKENS.has("tuto"));
+assert("installation is weak", WEAK_TOKENS.has("installation"));
+assert("setup is weak", WEAK_TOKENS.has("setup"));
+assert("doc is weak", WEAK_TOKENS.has("doc"));
+assert("jellyfin is NOT weak", !WEAK_TOKENS.has("jellyfin"));
+assert("docker is NOT weak", !WEAK_TOKENS.has("docker"));
+assert("kill is NOT weak", !WEAK_TOKENS.has("kill"));
+assert("vm is NOT weak", !WEAK_TOKENS.has("vm"));
+assert("crypto is NOT weak", !WEAK_TOKENS.has("crypto"));
+
+// ── Anchor gate: weak-only notes are dropped ──────────────────────────
+console.log("\n[anchor gate — config jellyfin]");
+{
+  const jellyCorp = [
+    {
+      id: "300",
+      title: "Jellyfin vroot",
+      tags: ["jellyfin", "media"],
+      content: "config jellyfin dans vroot",
+    },
+    {
+      id: "301",
+      title: "STORJ NODES CONFIG",
+      tags: ["storj", "stockage"],
+      content: "configuration des noeuds storj",
+    },
+    {
+      id: "302",
+      title: "Installation Nextcloud",
+      tags: ["nextcloud"],
+      content: "installation et configuration de nextcloud",
+    },
+    {
+      id: "303",
+      title: "Linux bond config",
+      tags: ["reseau"],
+      content: "configuration d un bond reseau linux",
+    },
+  ];
+  const picked = r.pickRelevantNotes(jellyCorp, "je cherche une config jellyfin");
+  const ids = picked.map((p) => p.note.id);
+  console.log("  picked:", ids);
+  assert("config jellyfin keeps Jellyfin vroot", ids.includes("300"));
+  assert("config jellyfin drops STORJ CONFIG (config only)", !ids.includes("301"));
+  assert("config jellyfin drops Nextcloud (config only)", !ids.includes("302"));
+  assert("config jellyfin drops Linux bond (config only)", !ids.includes("303"));
+  // Verify reason in dropped via metricsOut
+  const metrics = {};
+  r.pickRelevantNotes(jellyCorp, "je cherche une config jellyfin", {
+    metricsOut: metrics,
+  });
+  assert(
+    "anchorTokens contains jellyfin",
+    Array.isArray(metrics.anchorTokens) && metrics.anchorTokens.includes("jellyfin"),
+  );
+  assert(
+    "weakTokens contains config",
+    Array.isArray(metrics.weakQueryTokens) && metrics.weakQueryTokens.includes("config"),
+  );
+  const weakDropped = metrics.dropped.filter((d) => d.reason === "weak-only-match");
+  assert("at least one note dropped as weak-only-match", weakDropped.length >= 1);
+}
+
+// ── Anchor gate: only-weak query falls back to score-ratio ────────────
+console.log("\n[anchor gate — config only (no anchor)]");
+{
+  // If ALL tokens are weak, hasAnchors=false and we fall back to
+  // score-ratio pruning — we don't return [].
+  const weakCorp = [
+    {
+      id: "400",
+      title: "Configuration guide",
+      tags: [],
+      content: "guide de configuration generale",
+    },
+    {
+      id: "401",
+      title: "Random note",
+      tags: [],
+      content: "rien a voir",
+    },
+  ];
+  const picked = r.pickRelevantNotes(weakCorp, "config guide");
+  const ids = picked.map((p) => p.note.id);
+  assert("all-weak query still returns matching note", ids.includes("400"));
+  assert("all-weak query doesn't return unmatched note", !ids.includes("401"));
 }
 
 // ── Short-token exact-match (no `vm` inside `lvm`) ───────────────────

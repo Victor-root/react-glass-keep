@@ -45,6 +45,29 @@ const STOP_WORDS = new Set([
   "donner","ouvre","ouvrir","quelle","quel","quelles","quels","liste",
   "lister","afficher",
   "je","veux","voudrais","besoin","comment","peux","peut","a",
+  "suis","est","sait","savoir",
+]);
+
+// ── Weak tokens ────────────────────────────────────────────────────────
+// These tokens survive stop-word filtering but carry no real subject
+// information. "config jellyfin" → "config" is weak, "jellyfin" is the
+// anchor. When the query contains at least one non-weak (anchor) token,
+// notes that ONLY matched weak tokens are pruned before the model sees
+// them. Weak tokens still score at 25 % weight so they help rank notes
+// that already matched the real subject.
+const WEAK_TOKENS = new Set([
+  // generic tech/doc labels
+  "config","configuration","configs",
+  "commande","commandes","cmd",
+  "tuto","tutoriel","guide",
+  "procedure","procedures",
+  "installation","installer","install",
+  "setup",
+  "parametre","parametres","setting","settings","param","params",
+  "info","infos","information","informations",
+  "documentation","doc","docs",
+  "resume","synthese",
+  "recherche",
 ]);
 
 // ── Synonyms ───────────────────────────────────────────────────────────
@@ -317,12 +340,19 @@ function scoreNote(haystacks, queryEntries, normalizedQuestion) {
   let score = 0;
   const matched = new Set();
   let matchedTokenCount = 0;
+  let matchedAnchorCount = 0;
+  let matchedWeakCount = 0;
+  const matchedAnchors = [];
+  const matchedWeakTokens = [];
   let titleMatchCount = 0;
   let tagMatchCount = 0;
   let bodyMatchCount = 0;
 
   for (const entry of queryEntries) {
-    const w = entry.idf;
+    // Weak tokens help rank notes that already match the real subject,
+    // but they contribute at 25 % weight so a note can't float to the
+    // top by matching only "config" or "installation".
+    const w = entry.isWeak ? entry.idf * 0.25 : entry.idf;
     const vArr = entry.variantsArr;
 
     let tokenMatched = false;
@@ -358,7 +388,16 @@ function scoreNote(haystacks, queryEntries, normalizedQuestion) {
       inBody = true;
     }
 
-    if (tokenMatched) matchedTokenCount++;
+    if (tokenMatched) {
+      matchedTokenCount++;
+      if (entry.isWeak) {
+        matchedWeakCount++;
+        matchedWeakTokens.push(entry.original);
+      } else {
+        matchedAnchorCount++;
+        matchedAnchors.push(entry.original);
+      }
+    }
     if (inTitle) titleMatchCount++;
     if (inTags) tagMatchCount++;
     if (inBody) bodyMatchCount++;
@@ -382,6 +421,10 @@ function scoreNote(haystacks, queryEntries, normalizedQuestion) {
     score,
     matched: [...matched],
     matchedTokenCount,
+    matchedAnchorCount,
+    matchedWeakCount,
+    matchedAnchors,
+    matchedWeakTokens,
     titleMatchCount,
     tagMatchCount,
     bodyMatchCount,
@@ -402,15 +445,59 @@ function scoreNote(haystacks, queryEntries, normalizedQuestion) {
 // token title hit and ≥1.5× the runner-up); in that case the score-
 // ratio threshold tightens so we collapse to just that note.
 
+function makeDropEntry(s, reason) {
+  return {
+    id: s.note?.id != null ? String(s.note.id) : "",
+    title: String(s.note?.title || "").slice(0, 80),
+    score: Number(s.score.toFixed(3)),
+    matched: s.matched,
+    matchedAnchorCount: s.matchedAnchorCount,
+    matchedWeakCount: s.matchedWeakCount,
+    matchedAnchors: s.matchedAnchors || [],
+    matchedWeakTokens: s.matchedWeakTokens || [],
+    reason,
+  };
+}
+
 function pruneScoredNotes(scored, opts = {}) {
   if (!Array.isArray(scored) || scored.length === 0) {
     return { kept: [], dropped: [], topScore: 0, topIsObvious: false };
   }
-  const top = scored[0];
-  const topScore = top.score;
-  const second = scored[1];
+
+  const hasAnchors = opts.hasAnchors || false;
   const usefulTokenCount = opts.usefulTokenCount || 0;
   const mode = opts.mode === "inventory" ? "inventory" : "compact";
+  const dropped = [];
+
+  // ── Phase 1: anchor gate ─────────────────────────────────────────────
+  // When the query has at least one anchor token (not in WEAK_TOKENS),
+  // notes that only matched generic/weak tokens ("config", "setup", …)
+  // are discarded before score-ratio pruning. A note about "STORJ
+  // NODES CONFIG" must not appear for "config jellyfin" just because
+  // it has the word "config". This gate applies to every note including
+  // the top scorer — if no note matches an anchor, we return [] so the
+  // caller can skip the model call.
+  let pool;
+  if (hasAnchors) {
+    pool = [];
+    for (const s of scored) {
+      if (s.matchedAnchorCount > 0) {
+        pool.push(s);
+      } else {
+        dropped.push(makeDropEntry(s, "weak-only-match"));
+      }
+    }
+    if (pool.length === 0) {
+      return { kept: [], dropped, topScore: 0, topIsObvious: false };
+    }
+  } else {
+    pool = scored;
+  }
+
+  // ── Phase 2: score-ratio pruning ─────────────────────────────────────
+  const top = pool[0];
+  const topScore = top.score;
+  const second = pool[1];
 
   const topIsObvious =
     top.matchedTokenCount >= 2 &&
@@ -423,11 +510,9 @@ function pruneScoredNotes(scored, opts = {}) {
   else ratioThreshold = 0.45;
 
   const minRatioScore = topScore * ratioThreshold;
-
   const kept = [];
-  const dropped = [];
 
-  for (const s of scored) {
+  for (const s of pool) {
     if (s === top) {
       kept.push(s);
       continue;
@@ -453,17 +538,7 @@ function pruneScoredNotes(scored, opts = {}) {
     if (passes.length > 0) {
       kept.push(s);
     } else {
-      dropped.push({
-        id: s.note?.id != null ? String(s.note.id) : "",
-        title: String(s.note?.title || "").slice(0, 80),
-        score: Number(s.score.toFixed(3)),
-        matched: s.matched,
-        matchedTokenCount: s.matchedTokenCount,
-        titleMatchCount: s.titleMatchCount,
-        tagMatchCount: s.tagMatchCount,
-        bodyMatchCount: s.bodyMatchCount,
-        reason: "weak-match",
-      });
+      dropped.push(makeDropEntry(s, "weak-match"));
     }
   }
 
@@ -491,6 +566,9 @@ function pickRelevantNotes(notes, question, opts = {}) {
   if (tokens.length === 0) return [];
 
   // Build query entries with their full variant sets.
+  // isWeak: token is in WEAK_TOKENS (generic label like "config",
+  // "installation", "tuto"). Weak tokens score at 25 % and, when the
+  // query also has anchor tokens, cannot alone keep a note in context.
   const queryEntries = tokens.map((tok) => {
     const variants = expandToken(tok);
     return {
@@ -498,8 +576,13 @@ function pickRelevantNotes(notes, question, opts = {}) {
       variants,
       variantsArr: [...variants],
       idf: 0,
+      isWeak: WEAK_TOKENS.has(tok),
     };
   });
+
+  const anchorTokens = queryEntries.filter((e) => !e.isWeak).map((e) => e.original);
+  const weakQueryTokens = queryEntries.filter((e) => e.isWeak).map((e) => e.original);
+  const hasAnchors = anchorTokens.length > 0;
 
   // Materialize note haystacks once.
   const docs = [];
@@ -541,39 +624,56 @@ function pickRelevantNotes(notes, question, opts = {}) {
         score: result.score,
         matched: result.matched,
         matchedTokenCount: result.matchedTokenCount,
+        matchedAnchorCount: result.matchedAnchorCount,
+        matchedWeakCount: result.matchedWeakCount,
+        matchedAnchors: result.matchedAnchors,
+        matchedWeakTokens: result.matchedWeakTokens,
         titleMatchCount: result.titleMatchCount,
         tagMatchCount: result.tagMatchCount,
         bodyMatchCount: result.bodyMatchCount,
       });
     }
   }
+
+  const baseMetrics = {
+    queryTokens: tokens,
+    anchorTokens,
+    weakQueryTokens,
+    hasAnchors,
+    usefulTokenCount: tokens.length,
+  };
+
   if (scored.length === 0) {
     if (metricsOut) {
-      metricsOut.beforePruningCount = 0;
-      metricsOut.afterPruningCount = 0;
-      metricsOut.topScore = 0;
-      metricsOut.topIsObvious = false;
-      metricsOut.dropped = [];
-      metricsOut.usefulTokenCount = tokens.length;
+      Object.assign(metricsOut, baseMetrics, {
+        beforePruningCount: 0,
+        afterPruningCount: 0,
+        topScore: 0,
+        topIsObvious: false,
+        dropped: [],
+      });
     }
     return [];
   }
 
   scored.sort((a, b) => b.score - a.score);
 
-  // Prune the long tail of weak matches.
+  // Prune: Phase 1 = anchor gate (drop notes with no anchor match when
+  // query has anchors). Phase 2 = score-ratio / field-strength gate.
   const { kept, dropped, topScore, topIsObvious } = pruneScoredNotes(scored, {
     mode,
     usefulTokenCount: tokens.length,
+    hasAnchors,
   });
 
   if (metricsOut) {
-    metricsOut.beforePruningCount = scored.length;
-    metricsOut.afterPruningCount = kept.length;
-    metricsOut.topScore = topScore;
-    metricsOut.topIsObvious = topIsObvious;
-    metricsOut.dropped = dropped;
-    metricsOut.usefulTokenCount = tokens.length;
+    Object.assign(metricsOut, baseMetrics, {
+      beforePruningCount: scored.length,
+      afterPruningCount: kept.length,
+      topScore,
+      topIsObvious,
+      dropped,
+    });
   }
 
   if (kept.length === 0) return [];
@@ -601,6 +701,10 @@ function pickRelevantNotes(notes, question, opts = {}) {
     score: s.score,
     matched: s.matched,
     matchedTokenCount: s.matchedTokenCount,
+    matchedAnchorCount: s.matchedAnchorCount,
+    matchedWeakCount: s.matchedWeakCount,
+    matchedAnchors: s.matchedAnchors,
+    matchedWeakTokens: s.matchedWeakTokens,
     titleMatchCount: s.titleMatchCount,
     tagMatchCount: s.tagMatchCount,
     bodyMatchCount: s.bodyMatchCount,
@@ -679,6 +783,7 @@ module.exports = {
     variantInField,
     countVariantInBody,
     STOP_WORDS,
+    WEAK_TOKENS,
     SYNONYMS,
   },
 };
