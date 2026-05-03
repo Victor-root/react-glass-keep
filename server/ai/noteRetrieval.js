@@ -144,16 +144,28 @@ function noteToHaystacks(n) {
 }
 
 // ── Snippet extraction ─────────────────────────────────────────────────
-// Pick up to `maxSnippets` short windows around the query terms. Falls
-// back to the first chunk of content when no specific window is better
-// than the head.
+// Two modes:
+//   "compact"   — top N short matched lines (good for narrow Q&A).
+//   "inventory" — every matched line plus a single-line neighborhood,
+//                 capped at maxChars. Used when the user asks for a
+//                 list/inventory ("liste mes wallets", "show all
+//                 my crypto wallets") and the model needs to extract
+//                 every relevant entry, not just a few examples.
 function extractSnippets(rawContent, allVariants, opts = {}) {
+  const mode = opts.mode === "inventory" ? "inventory" : "compact";
+  const content = String(rawContent || "");
+  if (!content.trim()) return [];
+
+  if (mode === "inventory") {
+    return extractInventory(content, allVariants, opts);
+  }
+  return extractCompact(content, allVariants, opts);
+}
+
+function extractCompact(content, allVariants, opts) {
   const maxSnippets = opts.maxSnippets || 3;
   const radius = opts.radius || 140;
   const headFallback = opts.headFallback || 320;
-
-  const content = String(rawContent || "");
-  if (!content.trim()) return [];
 
   const lines = content.split(/\r?\n/);
   const scored = [];
@@ -171,7 +183,6 @@ function extractSnippets(rawContent, allVariants, opts = {}) {
     return head ? [head] : [];
   }
 
-  // Take the best `maxSnippets` distinct lines (by hit count, then order).
   scored.sort((a, b) => b.hits - a.hits || a.idx - b.idx);
   const picked = scored.slice(0, maxSnippets);
   picked.sort((a, b) => a.idx - b.idx);
@@ -182,6 +193,66 @@ function extractSnippets(rawContent, allVariants, opts = {}) {
       ? trimmed.slice(0, radius * 2) + "…"
       : trimmed;
   });
+}
+
+// Inventory mode: keep every paragraph (block separated by blank lines)
+// that contains at least one matched line. This preserves the natural
+// structure of inventory notes where each entry has a heading line
+// ("Monero wallet") and several attribute lines under it ("adresse: …",
+// "hauteur de bloc: …"), all of which the user expects to see together.
+// Non-contiguous blocks are joined with an "…" separator. The output
+// preserves original line breaks within each block.
+function extractInventory(content, allVariants, opts) {
+  const maxChars = opts.maxChars || 4000;
+  const headFallback = opts.headFallback || Math.min(maxChars, 2000);
+
+  const lines = content.split(/\r?\n/);
+
+  // Split into blocks: contiguous runs of non-blank lines.
+  const blocks = []; // [{ start, end, lines, hasMatch }]
+  let cur = null;
+  for (let i = 0; i < lines.length; i++) {
+    const blank = !lines[i].trim();
+    if (blank) {
+      if (cur) {
+        blocks.push(cur);
+        cur = null;
+      }
+    } else {
+      if (!cur) cur = { start: i, end: i, lines: [], hasMatch: false };
+      cur.end = i;
+      cur.lines.push(lines[i]);
+      const norm = normalize(lines[i]);
+      for (const v of allVariants) {
+        if (v && norm.includes(v)) {
+          cur.hasMatch = true;
+          break;
+        }
+      }
+    }
+  }
+  if (cur) blocks.push(cur);
+
+  const matchedBlocks = blocks.filter((b) => b.hasMatch);
+  if (matchedBlocks.length === 0) {
+    const head = content.slice(0, headFallback).trim();
+    return head ? [head] : [];
+  }
+
+  // Emit blocks in original order, with "…" between non-contiguous ones.
+  const out = [];
+  let prevEnd = -2;
+  for (const b of matchedBlocks) {
+    if (b.start > prevEnd + 1 && out.length > 0) out.push("…");
+    out.push(b.lines.join("\n"));
+    prevEnd = b.end;
+  }
+
+  let joined = out.join("\n");
+  if (joined.length > maxChars) {
+    joined = joined.slice(0, maxChars).replace(/\s+\S*$/, "") + "…";
+  }
+  return [joined];
 }
 
 // ── Scoring ────────────────────────────────────────────────────────────
@@ -253,6 +324,8 @@ function scoreNote(haystacks, queryEntries, normalizedQuestion) {
 
 function pickRelevantNotes(notes, question, opts = {}) {
   const limit = opts.limit || 12;
+  const mode = opts.mode === "inventory" ? "inventory" : "compact";
+  const perNoteMaxChars = opts.perNoteMaxChars;
   if (!Array.isArray(notes) || notes.length === 0) return [];
 
   const rawTokens = Array.from(new Set(tokenize(question)));
@@ -314,11 +387,25 @@ function pickRelevantNotes(notes, question, opts = {}) {
   const allVariants = new Set();
   for (const e of queryEntries) for (const v of e.variantsArr) allVariants.add(v);
 
+  // Per-note budget defaults: compact mode keeps the old 1.2 KB cap so
+  // narrow Q&A doesn't bloat the prompt; inventory mode opens it up to
+  // 4 KB so long notes (lists of wallets, credentials, …) fit fully.
+  const noteCap =
+    typeof perNoteMaxChars === "number"
+      ? perNoteMaxChars
+      : mode === "inventory"
+      ? 4000
+      : 1200;
+  const snippetOpts = { mode, maxChars: noteCap };
+
   return top.map((s) => ({
     note: s.note,
     score: s.score,
     matched: s.matched,
-    snippet: extractSnippets(s.hay.rawContent, allVariants).join("\n"),
+    snippet: extractSnippets(s.hay.rawContent, allVariants, snippetOpts).join(
+      "\n",
+    ),
+    mode,
   }));
 }
 
@@ -326,7 +413,9 @@ function pickRelevantNotes(notes, question, opts = {}) {
 // Renders a single picked note as a structured block the model can read.
 // Intentionally compact — no full bodies, only matched snippets.
 
-function buildContextBlock({ note, matched, snippet }) {
+function buildContextBlock(picked, opts = {}) {
+  const { note, matched, snippet, mode: pickedMode } = picked || {};
+  const mode = opts.mode || pickedMode || "compact";
   const id = String(note?.id || "");
   const title = String(note?.title || "");
   const tags =
@@ -334,13 +423,19 @@ function buildContextBlock({ note, matched, snippet }) {
       ? note.tags.map(String).join(", ")
       : null;
   const matchedStr = matched && matched.length > 0 ? matched.join(", ") : null;
+  // Block label flips to CONTENT in inventory mode so the model treats
+  // it as the relevant excerpt of the note rather than a "snippet" hint.
+  const bodyLabel = mode === "inventory" ? "CONTENT" : "SNIPPET";
+  // Cap is just a safety net here — the snippet was already trimmed by
+  // the retriever to the per-note budget that matches `mode`.
+  const cap = mode === "inventory" ? 4000 : 1200;
 
   const lines = [`[${id}] TITLE: ${title}`];
   if (tags) lines.push(`TAGS: ${tags}`);
   if (matchedStr) lines.push(`MATCHED: ${matchedStr}`);
   if (snippet && snippet.trim()) {
-    lines.push("SNIPPET:");
-    lines.push(snippet.trim().slice(0, 1200));
+    lines.push(`${bodyLabel}:`);
+    lines.push(snippet.trim().slice(0, cap));
   }
   return lines.join("\n");
 }

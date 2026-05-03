@@ -244,8 +244,17 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
         const question = body.question.trim();
         const allNotes = Array.isArray(body.notes) ? body.notes : [];
 
+        // List-intent queries ("liste mes wallets", "show my crypto",
+        // "trouve mes notes …") flip the retriever into inventory mode:
+        // each picked note keeps every matched line plus a one-line
+        // neighborhood, so the model can extract every entry instead of
+        // a few examples. Narrow Q&A queries stay in compact mode.
+        const listIntent = retrieval.detectListIntent(question);
+        const mode = listIntent ? "inventory" : "compact";
+
         const picked = retrieval.pickRelevantNotes(allNotes, question, {
           limit: 12,
+          mode,
         });
 
         retrieval.debugRetrieval({
@@ -271,11 +280,24 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
           .map((p) => String(p.note?.id || ""))
           .filter(Boolean);
 
-        const context = picked
-          .map((p) => retrieval.buildContextBlock(p))
-          .join("\n\n---\n\n");
-
-        const listIntent = retrieval.detectListIntent(question);
+        // Inventory mode is permitted to grow the context up to ~32 KB
+        // total (12 notes × 4 KB worst case = 48 KB → trimmed to 32 KB).
+        // Compact mode keeps the lean ~16 KB ceiling. Top-scored notes
+        // are added first; if the budget is exhausted, the lower-ranked
+        // ones get truncated or dropped — never silently dumped at full
+        // size, since long contexts are what made models hallucinate
+        // when they couldn't fit reliably.
+        const maxTotalChars = listIntent ? 32000 : 16000;
+        const blocks = [];
+        let total = 0;
+        for (const p of picked) {
+          const block = retrieval.buildContextBlock(p, { mode });
+          // +5 accounts for the "\n\n---\n\n" separator we add later.
+          if (total + block.length + 5 > maxTotalChars) break;
+          blocks.push(block);
+          total += block.length + 5;
+        }
+        const context = blocks.join("\n\n---\n\n");
 
         messages = [
           {

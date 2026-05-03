@@ -166,15 +166,73 @@ console.log("\n[retrieval — empty corpus]");
   eq("empty notes → []", r.pickRelevantNotes([], "wallet"), []);
 }
 
-console.log("\n[snippet extraction]");
+console.log("\n[snippet extraction — compact]");
 {
   const picked = r.pickRelevantNotes(corpus, "wallet seed phrase");
   const note1 = picked.find((p) => p.note.id === "1");
   console.log("  #1 snippet:", note1?.snippet);
   assert("snippet includes 'seed'", note1 && /seed/i.test(note1.snippet));
+  assert("compact picks short snippets", note1.snippet.length < 800);
 }
 
-console.log("\n[context block format]");
+console.log("\n[snippet extraction — inventory]");
+{
+  // Realistic inventory note: the word "wallet" appears on each entry
+  // line, so compact mode can only keep 3 entries while inventory mode
+  // keeps every matched line plus its neighborhood.
+  const inventoryCorpus = [
+    {
+      id: "10",
+      title: "Mes wallets crypto",
+      tags: ["crypto"],
+      content: [
+        "Bitcoin wallet",
+        "  adresse: bc1qxy2k...",
+        "  label: cold storage",
+        "",
+        "Ethereum wallet",
+        "  adresse: 0xAbC123...",
+        "  label: metamask quotidien",
+        "",
+        "Monero wallet",
+        "  adresse publique: 4Ad...",
+        "  hauteur de bloc: 3 050 412",
+        "  vue: privé",
+        "",
+        "Solana wallet",
+        "  adresse: SoLA1...",
+        "  label: phantom",
+      ].join("\n"),
+    },
+  ];
+  const inv = r.pickRelevantNotes(inventoryCorpus, "liste mes wallets crypto", {
+    mode: "inventory",
+  });
+  const cmp = r.pickRelevantNotes(inventoryCorpus, "liste mes wallets crypto", {
+    mode: "compact",
+  });
+  console.log("  inventory length:", inv[0].snippet.length);
+  console.log("  compact   length:", cmp[0].snippet.length);
+  assert("inventory > compact", inv[0].snippet.length > cmp[0].snippet.length);
+  assert("inventory keeps Bitcoin", /Bitcoin/.test(inv[0].snippet));
+  assert("inventory keeps Ethereum", /Ethereum/.test(inv[0].snippet));
+  assert("inventory keeps Monero", /Monero/.test(inv[0].snippet));
+  assert("inventory keeps Solana", /Solana/.test(inv[0].snippet));
+  assert(
+    "inventory keeps the hauteur de bloc detail",
+    /hauteur de bloc/.test(inv[0].snippet),
+  );
+  assert(
+    "inventory keeps the public address detail",
+    /adresse publique/.test(inv[0].snippet),
+  );
+  // Compact must drop something — with 4 wallet entries and a
+  // 3-snippet cap, at least one shouldn't make the cut.
+  const compactWalletCount = (cmp[0].snippet.match(/wallet/g) || []).length;
+  assert("compact drops some entries", compactWalletCount < 4);
+}
+
+console.log("\n[context block format — compact]");
 {
   const picked = r.pickRelevantNotes(corpus, "wallet bitcoin");
   const block = r.buildContextBlock(picked[0]);
@@ -183,7 +241,17 @@ console.log("\n[context block format]");
   assert("block has TITLE:", /TITLE:/.test(block));
   assert("block has TAGS:", /TAGS:/.test(block));
   assert("block has MATCHED:", /MATCHED:/.test(block));
-  assert("block has SNIPPET:", /SNIPPET:/.test(block));
+  assert("compact uses SNIPPET:", /SNIPPET:/.test(block));
+}
+
+console.log("\n[context block format — inventory]");
+{
+  const picked = r.pickRelevantNotes(corpus, "wallet bitcoin", {
+    mode: "inventory",
+  });
+  const block = r.buildContextBlock(picked[0], { mode: "inventory" });
+  console.log("  block:\n" + block);
+  assert("inventory uses CONTENT:", /CONTENT:/.test(block));
 }
 
 console.log("\n────────────────────────────");

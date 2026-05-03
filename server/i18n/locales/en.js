@@ -22,6 +22,12 @@ module.exports = {
   aiSystemPromptContextLabel: "Note Context",
   aiSystemPromptNoContext: "(no notes available)",
   aiSystemPromptListHint:
-    "The user is asking for a list of notes. Reply with a short bulleted list of the matching notes — for each, give the exact title and a one-line useful excerpt drawn directly from its SNIPPET. Do not invent extra notes.",
+    "The user is looking for a list or inventory of information contained in their notes.\n" +
+    "Do not provide only a few examples.\n" +
+    "Extract all relevant entries present in the provided context.\n" +
+    "If the same note contains multiple relevant items, list them all.\n" +
+    "Group the answer by note when useful.\n" +
+    "Always cite the exact title of each note used.\n" +
+    "Do not add external knowledge.",
   aiNoRelevantNotes: "I couldn't find relevant information in the notes.",
 };
