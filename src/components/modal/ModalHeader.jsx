@@ -187,6 +187,7 @@ export default function ModalHeader({
           {!isDesktop && !isDrawEdit && <div className="flex-1" />}
 
           <div className={`flex items-center flex-none shrink-0 ${isDesktop && !isDrawEdit ? "ml-auto" : ""}`}>
+            {/* Pin & Save grouped together */}
             <div className={isDesktop ? "modal-icon-group" : "flex items-center gap-0.5"}>
               {/* Pin */}
               {showPinBtn && (
@@ -211,25 +212,28 @@ export default function ModalHeader({
                   <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
+            </div>
 
-              {/* AI toggle — mobile/non-sidebar only, placed after save so
-                  the chevron sits at the far right of the action group.
-                  Always indigo (matches the ← in the AI panel header). */}
-              {!isDesktop && !isDrawEdit && noteAiAvailable && !noteAiSidebarLayout && (
+            {/* AI toggle separated from pin/save — mobile/non-sidebar only.
+                Larger icons to make the chat functionality prominent. */}
+            {!isDesktop && !isDrawEdit && noteAiAvailable && !noteAiSidebarLayout && (
+              <>
+                <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1" />
                 <button
-                  className="modal-icon-btn focus:outline-none relative"
+                  className="modal-icon-btn focus:outline-none relative flex items-center gap-0"
                   style={{ color: "rgb(99,102,241)" }}
                   onClick={() => noteAiOpen ? onHideNoteAi?.() : onOpenNoteAi?.()}
                   data-tooltip={t("noteAiChatMenuItem")}
                   aria-pressed={noteAiOpen ? "true" : "false"}
                 >
-                  <TI.MessageSearch className="tabler-icon w-[18px] h-[18px]" />
-                  <TI.ChevronRight className="tabler-icon w-4 h-4 -ml-0.5" />
+                  <TI.MessageSearch className="tabler-icon w-5 h-5" />
+                  <TI.ChevronRight className="tabler-icon w-5 h-5 -ml-1" />
                   {noteAiHasMessages && !noteAiOpen && (
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-indigo-500 ring-[1.5px] ring-white dark:ring-gray-800" />
                   )}
                 </button>
-              )}
+              </>
+            )}
 
               {/* Close (desktop only — mobile uses back arrow above) */}
               {isDesktop && (
