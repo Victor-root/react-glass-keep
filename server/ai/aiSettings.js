@@ -243,14 +243,16 @@ function getUserConfig(db, userId) {
   return userRowToInternal(getUserRow(db, userId));
 }
 
-// Sanitized payload for the user-facing settings UI. Includes a hint
-// (`serverAiAvailable`) so the UI can disable the "server" radio when
-// the admin hasn't opted in.
+// Sanitized payload for the user-facing settings UI. Includes hints
+// (`serverAiAvailable`, `adminAiEnabled`) so the UI can disable the
+// "server" radio when the admin hasn't opted in, and grey out the
+// whole AI toggle when the admin has fully disabled the feature.
 function getUserPublicConfig(db, userId) {
   const userCfg = getUserConfig(db, userId);
   const adminCfg = getAdminConfig(db);
+  const adminAiEnabled = !!adminCfg.enabled;
   const serverAiAvailable =
-    !!adminCfg.enabled &&
+    adminAiEnabled &&
     !!adminCfg.allowServerAiForUsers &&
     !!adminCfg.baseUrl &&
     !!adminCfg.model;
@@ -263,6 +265,7 @@ function getUserPublicConfig(db, userId) {
     maxTokens: userCfg.maxTokens,
     hasApiKey: userCfg.apiKey.length > 0,
     serverAiAvailable,
+    adminAiEnabled,
   };
 }
 
@@ -330,9 +333,20 @@ function resolveEffectiveConfig(db, userId) {
     throw err;
   }
 
+  // Master admin gate — when the admin has disabled the AI feature
+  // server-wide, no user can use AI regardless of their preferred mode
+  // (server or custom). The UI greys out the toggle to communicate this,
+  // but enforce here too in case a stale client tries anyway.
+  const adminCfg = getAdminConfig(db);
+  if (!adminCfg.enabled) {
+    const err = new Error("AI has been disabled by the administrator.");
+    err.status = 503;
+    err.code = "admin_ai_disabled";
+    throw err;
+  }
+
   if (userCfg.mode === "server") {
-    const adminCfg = getAdminConfig(db);
-    if (!adminCfg.enabled || !adminCfg.allowServerAiForUsers) {
+    if (!adminCfg.allowServerAiForUsers) {
       const err = new Error("Server AI is not available.");
       err.status = 503;
       err.code = "server_ai_unavailable";

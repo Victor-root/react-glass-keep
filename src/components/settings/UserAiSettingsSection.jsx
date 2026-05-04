@@ -37,6 +37,10 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
   const [enabled, setEnabled] = useState(false);
   const [mode, setMode] = useState("server");
   const [serverAiAvailable, setServerAiAvailable] = useState(false);
+  // True when the admin has the master AI switch enabled. When false
+  // the user toggle is greyed out and the rest of the form is hidden —
+  // no mode is usable (not even custom) while AI is admin-disabled.
+  const [adminAiEnabled, setAdminAiEnabled] = useState(true);
 
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
@@ -68,6 +72,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
         setEnabled(!!data.enabled);
         setMode(data.mode === "custom" ? "custom" : "server");
         setServerAiAvailable(!!data.serverAiAvailable);
+        setAdminAiEnabled(data.adminAiEnabled !== false);
         setBaseUrl(data.baseUrl || "");
         setModel(data.model || "");
         setHasApiKey(!!data.hasApiKey);
@@ -78,7 +83,9 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
         setMaxTokens(
           typeof data.maxTokens === "number" ? data.maxTokens : 800,
         );
-        onEnabledChangeRef.current?.(!!data.enabled);
+        onEnabledChangeRef.current?.(
+          !!data.enabled && data.adminAiEnabled !== false,
+        );
       } catch (err) {
         if (!cancelled) {
           showToastRef.current?.(
@@ -121,6 +128,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
       setEnabled(!!data.enabled);
       setMode(data.mode === "custom" ? "custom" : "server");
       setServerAiAvailable(!!data.serverAiAvailable);
+      setAdminAiEnabled(data.adminAiEnabled !== false);
       setBaseUrl(data.baseUrl || "");
       setModel(data.model || "");
       setHasApiKey(!!data.hasApiKey);
@@ -129,7 +137,9 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
         typeof data.temperature === "number" ? data.temperature : 0.3,
       );
       setMaxTokens(typeof data.maxTokens === "number" ? data.maxTokens : 800);
-      onEnabledChangeRef.current?.(!!data.enabled);
+      onEnabledChangeRef.current?.(
+        !!data.enabled && data.adminAiEnabled !== false,
+      );
       return data;
     } finally {
       setSaving(false);
@@ -211,32 +221,51 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
     ? t("aiApiKeyPlaceholderSet")
     : t("aiApiKeyPlaceholder");
 
+  // When the admin has fully disabled AI, the user can't enable
+  // anything — not even a custom provider. The toggle stays off and
+  // the rest of the form is hidden.
+  const effectiveEnabled = enabled && adminAiEnabled;
+
   return (
     <form onSubmit={onSave} className="space-y-4">
       {/* Enable toggle */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="font-medium">{t("userAiEnableLabel")}</div>
-          <div className="text-sm text-gray-500">{t("userAiEnableDesc")}</div>
+          <div
+            className={`font-medium ${adminAiEnabled ? "" : "text-gray-400 dark:text-gray-500"}`}
+          >
+            {t("userAiEnableLabel")}
+          </div>
+          <div
+            className={`text-sm ${
+              adminAiEnabled
+                ? "text-gray-500"
+                : "text-amber-700 dark:text-amber-400"
+            }`}
+          >
+            {adminAiEnabled
+              ? t("userAiEnableDesc")
+              : t("userAiAdminDisabled")}
+          </div>
         </div>
         <button
           type="button"
-          disabled={loading || saving}
+          disabled={loading || saving || !adminAiEnabled}
           onClick={onToggleEnabled}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-            enabled ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
-          } disabled:opacity-50`}
-          aria-pressed={enabled}
+            effectiveEnabled ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+          aria-pressed={effectiveEnabled}
         >
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              enabled ? "translate-x-6" : "translate-x-1"
+              effectiveEnabled ? "translate-x-6" : "translate-x-1"
             }`}
           />
         </button>
       </div>
 
-      {enabled && (
+      {effectiveEnabled && (
         <>
           {/* Mode picker */}
           <div className="space-y-2">

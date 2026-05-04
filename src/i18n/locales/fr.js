@@ -374,6 +374,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   aiAllowServerAiForUsersDesc: "Si activé, les utilisateurs peuvent choisir d'utiliser cette IA serveur depuis leurs propres paramètres. Ils ne voient jamais l'URL de base, le modèle ni la clé API.",
   userAiEnableLabel: "Activer l'assistant IA",
   userAiEnableDesc: "Affiche l'assistant IA dans la barre de recherche et permet de poser des questions sur vos notes.",
+  userAiAdminDisabled: "L'administrateur a désactivé l'IA pour l'ensemble du serveur. Vous ne pouvez pas activer l'assistant IA.",
   userAiModeLabel: "Fournisseur",
   userAiModeServer: "IA du serveur",
   userAiModeServerDesc: "Utiliser l'IA fournie par l'administrateur.",

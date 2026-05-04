@@ -634,7 +634,11 @@ export default function App() {
     api("/user/ai/settings", { token })
       .then((data) => {
         if (!cancelled && data && typeof data.enabled === "boolean") {
-          setAiAssistantEnabled(data.enabled);
+          // Effective AI availability — even if the user has it enabled,
+          // the admin's master switch overrides everything. Custom mode
+          // is not a workaround anymore (server enforces this too).
+          const adminGate = data.adminAiEnabled !== false;
+          setAiAssistantEnabled(data.enabled && adminGate);
         }
       })
       .catch(() => {});
