@@ -104,8 +104,6 @@ export default function NoteAiChatPanel({
     }
   }, [open]);
 
-  if (!open) return null;
-
   const handleKeyDown = (e) => {
     // Enter sends, Shift+Enter inserts a newline.
     if (e.key === "Enter" && !e.shiftKey) {
