@@ -155,10 +155,11 @@ export default function NoteAiChatPanel({
             type="button"
             onClick={onHide}
             aria-label={t("noteAiChatBackToNote")}
-            className="flex items-center p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-indigo-500 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-white shrink-0"
+            className="modal-icon-btn focus:outline-none relative shrink-0"
+            style={{ color: "rgb(99,102,241)", width: "auto", paddingLeft: 4, paddingRight: 4 }}
           >
-            <TI.ChevronLeft className="tabler-icon w-4 h-4 -mr-0.5" />
-            <TI.MessageSearch className="tabler-icon w-[18px] h-[18px]" />
+            <TI.ChevronLeft className="tabler-icon -mr-1" style={{ width: 22, height: 22 }} />
+            <TI.MessageSearch className="tabler-icon" style={{ width: 26, height: 26 }} />
           </button>
         ) : (
           <TI.MessageSearch className="tabler-icon text-indigo-600 dark:text-indigo-400 shrink-0" />
