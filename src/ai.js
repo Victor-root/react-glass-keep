@@ -6,7 +6,7 @@
  * LiteLLM, OpenAI, …). The server holds the API key and the base URL.
  */
 
-import { api, getAuth } from "./utils/api.js";
+import { api, getAuth, API_BASE } from "./utils/api.js";
 import { contentToPlain } from "./utils/richText.js";
 
 function detectLang() {
@@ -194,4 +194,97 @@ export async function askNoteAI({ note, messages, question }) {
     answer: data?.answer || "",
     finishReason: data?.finishReason || null,
   };
+}
+
+/**
+ * Streaming variant of askNoteAI. Posts to /api/ai/note-chat with
+ * stream:true and reads the SSE response, dispatching each delta to
+ * onChunk as it arrives. Resolves with { finishReason } once the
+ * stream terminates. Throws on transport / server errors and on the
+ * server's own `{error}` SSE frame.
+ *
+ * @param {Object}   params
+ * @param {Object}   params.note      flattened note context (same shape as askNoteAI)
+ * @param {Array}    params.messages  prior turns
+ * @param {string}   params.question  latest user question
+ * @param {Function} params.onChunk   called with each text delta as it arrives
+ * @param {AbortSignal} [params.signal]
+ */
+export async function askNoteAIStream({ note, messages, question, onChunk, signal }) {
+  const auth = getAuth();
+  const token = auth?.token;
+  if (!token) throw new Error("You must be logged in to use the AI Assistant.");
+  if (!note) throw new Error("Missing note context.");
+  if (!question || !String(question).trim()) throw new Error("Missing question.");
+
+  const flatNote = {
+    id: note.id != null ? String(note.id) : "",
+    title: (note.title || "").toString(),
+    content: noteToPlainText(note),
+    tags: Array.isArray(note.tags) ? note.tags.map(String) : [],
+  };
+
+  const lang = detectLang();
+
+  const res = await fetch(`${API_BASE}/ai/note-chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      note: flatNote,
+      messages: Array.isArray(messages) ? messages : [],
+      question: String(question),
+      lang,
+      stream: true,
+    }),
+    signal,
+  });
+
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data?.error) msg = data.error;
+    } catch {}
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+  let finishReason = null;
+
+  // SSE frame parser — frames are separated by a blank line, each
+  // frame may carry one or more `data:` lines whose payloads we JSON-
+  // parse. Anything else (comments, retry hints, …) is ignored.
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let sep;
+    while ((sep = buffer.indexOf("\n\n")) !== -1) {
+      const frame = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      for (const rawLine of frame.split("\n")) {
+        const line = rawLine.replace(/\r$/, "");
+        if (!line.startsWith("data:")) continue;
+        const data = line.slice(5).trim();
+        if (!data) continue;
+        if (data === "[DONE]") return { finishReason };
+        let json;
+        try { json = JSON.parse(data); } catch { continue; }
+        if (json.error) throw new Error(json.error);
+        if (typeof json.delta === "string" && json.delta.length > 0) {
+          onChunk?.(json.delta);
+        }
+        if (json.finishReason) finishReason = json.finishReason;
+      }
+    }
+  }
+  return { finishReason };
 }

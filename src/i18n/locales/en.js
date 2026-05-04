@@ -861,7 +861,7 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   // Per-note AI chat panel (kebab entry + side panel UI)
   noteAiChatMenuItem: "Chat with AI",
   noteAiChatTitle: "AI Assistant",
-  noteAiChatSubtitle: "About this note only",
+  noteAiChatSubtitle: "About this note",
   noteAiChatEmpty:
     "Ask a question about this note, request an explanation, a rewrite, or an adaptation.",
   noteAiChatPlaceholder: "Ask a question about this note…",

@@ -3,6 +3,7 @@ import { t } from "../../i18n";
 import { CloseIcon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { modalBgFor } from "../../utils/colors.js";
+import { renderSafeMarkdown } from "../../utils/markdown.jsx";
 
 /**
  * Per-note AI chat panel — sits attached to the right side of NoteModal.
@@ -146,23 +147,26 @@ export default function NoteAiChatPanel({
             <li
               key={i}
               className={`flex ${
-                m.role === "user" ? "justify-end" : "justify-start"
+                m.role === "user" ? "justify-end" : "justify-stretch"
               }`}
             >
-              <div
-                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words ${
-                  m.role === "user"
-                    ? "bg-indigo-600 text-white"
-                    : dark
-                    ? "bg-white/10 text-white"
-                    : "bg-black/10 text-gray-800"
-                }`}
-              >
-                {m.content}
-              </div>
+              {m.role === "user" ? (
+                <div className="max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words bg-indigo-600 text-white">
+                  {m.content}
+                </div>
+              ) : (
+                <div
+                  className={`note-content note-content--dense w-full px-1 py-1 text-sm break-words ${
+                    dark ? "text-white" : "text-gray-800"
+                  }`}
+                  dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(m.content) }}
+                />
+              )}
             </li>
           ))}
-          {loading && (
+          {loading
+            && (messages.length === 0
+              || messages[messages.length - 1]?.role !== "assistant") && (
             <li className="flex justify-start">
               <div
                 className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${

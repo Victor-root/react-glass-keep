@@ -114,6 +114,96 @@ async function chatCompletion(cfg, { messages, temperature, maxTokens, signal } 
   };
 }
 
+// Streaming variant of chatCompletion. Issues the same request with
+// stream:true and yields incremental content deltas as the upstream
+// emits them via Server-Sent Events. Each yielded value is one of:
+//   { delta: string }          — partial assistant text
+//   { finishReason: string }   — terminal stop reason from upstream
+// Upstream errors and network failures throw AIProviderError, exactly
+// like the non-streaming path.
+async function* chatCompletionStream(
+  cfg,
+  { messages, temperature, maxTokens, signal } = {},
+) {
+  validateConfig(cfg);
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new AIProviderError("Messages array is required.", { status: 400 });
+  }
+
+  const url = joinUrl(cfg.baseUrl, "/chat/completions");
+  const body = {
+    model: cfg.model,
+    messages,
+    temperature:
+      typeof temperature === "number" ? temperature : cfg.temperature ?? 0.2,
+    max_tokens:
+      typeof maxTokens === "number" ? maxTokens : cfg.maxTokens ?? 800,
+    stream: true,
+  };
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { ...buildHeaders(cfg), Accept: "text/event-stream" },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    const reason = err?.name === "AbortError" ? "request aborted" : "network error";
+    throw new AIProviderError(`Failed to reach AI provider (${reason}).`, {
+      status: 502,
+    });
+  }
+
+  if (!res.ok) {
+    let payload = null;
+    try { payload = await res.json(); } catch {}
+    const providerMessage =
+      (payload && (payload.error?.message || payload.message)) ||
+      `HTTP ${res.status}`;
+    throw new AIProviderError(`AI provider error: ${providerMessage}`, {
+      status: 502,
+      providerStatus: res.status,
+      providerBody: payload,
+    });
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    // SSE frames are separated by a blank line. Process complete frames
+    // and keep the trailing partial in the buffer.
+    let sep;
+    while ((sep = buffer.indexOf("\n\n")) !== -1) {
+      const frame = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      for (const rawLine of frame.split("\n")) {
+        const line = rawLine.replace(/\r$/, "");
+        if (!line.startsWith("data:")) continue;
+        const data = line.slice(5).trim();
+        if (!data) continue;
+        if (data === "[DONE]") return;
+        let json;
+        try { json = JSON.parse(data); } catch { continue; }
+        const choice = Array.isArray(json?.choices) ? json.choices[0] : null;
+        const delta = choice?.delta?.content;
+        if (typeof delta === "string" && delta.length > 0) {
+          yield { delta };
+        }
+        if (choice?.finish_reason) {
+          yield { finishReason: choice.finish_reason };
+        }
+      }
+    }
+  }
+}
+
 // Probe the provider with a tiny prompt to validate the configuration.
 // Used by the admin "Test connection" button. Keeps the request small
 // (max_tokens=16) so it stays cheap on remote providers.
@@ -134,6 +224,7 @@ async function testConnection(cfg) {
 module.exports = {
   AIProviderError,
   chatCompletion,
+  chatCompletionStream,
   testConnection,
   joinUrl,
   redactApiKey,

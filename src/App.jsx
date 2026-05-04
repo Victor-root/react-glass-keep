@@ -6,7 +6,7 @@ import React, {
   useLayoutEffect,
   useCallback,
 } from "react";
-import { askAI, askNoteAI } from "./ai";
+import { askAI, askNoteAIStream } from "./ai";
 import { t } from "./i18n";
 import Masonry from "react-masonry-css";
 import SyncStatusIcon from "./sync/SyncStatusIcon.jsx";
@@ -1529,17 +1529,45 @@ export default function App() {
     setNoteAiMessages((prev) => [...prev, userMsg]);
     setNoteAiError(null);
     setNoteAiLoading(true);
+
+    // Streaming receive — the first delta clears the "thinking" state
+    // and seeds an assistant message; subsequent deltas append to the
+    // last assistant message in place so the user sees the answer
+    // grow word-by-word.
+    // noteAiLoading stays true for the whole request — input + send
+    // remain locked while a stream is in flight so the user can't fire
+    // a second turn that would race with the live one. The "thinking"
+    // indicator in the panel hides itself once the first chunk lands
+    // (the new assistant message becomes the visible progress).
+    let firstChunkSeen = false;
+    let assistantText = "";
     try {
-      const result = await askNoteAI({
+      await askNoteAIStream({
         note: noteSnapshot,
         messages: historyForRequest,
         question: q,
+        onChunk: (delta) => {
+          assistantText += delta;
+          if (!firstChunkSeen) {
+            firstChunkSeen = true;
+            setNoteAiMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: assistantText },
+            ]);
+          } else {
+            setNoteAiMessages((prev) => {
+              if (prev.length === 0) return prev;
+              const last = prev[prev.length - 1];
+              if (!last || last.role !== "assistant") return prev;
+              const next = prev.slice(0, -1);
+              next.push({ ...last, content: assistantText });
+              return next;
+            });
+          }
+        },
       });
-      const answer = (result?.answer || "").trim();
-      if (!answer) {
+      if (!firstChunkSeen) {
         setNoteAiError(t("noteAiChatGenericError"));
-      } else {
-        setNoteAiMessages((prev) => [...prev, { role: "assistant", content: answer }]);
       }
     } catch (err) {
       console.error("Note AI error:", err);

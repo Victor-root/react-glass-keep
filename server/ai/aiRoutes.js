@@ -674,6 +674,37 @@ function attachAiRoutes(app, { db, auth, adminOnly }) {
         { role: "user", content: question },
       ];
 
+      // Stream branch — opt-in via { stream: true } in the request body.
+      // Emits Server-Sent Events whose `data:` payloads are JSON of the
+      // shape { delta } / { finishReason } / { error }, terminated by a
+      // final `data: [DONE]` frame. Falls through to JSON otherwise so
+      // older callers still work unchanged.
+      if (body.stream === true) {
+        res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache, no-transform");
+        res.setHeader("Connection", "keep-alive");
+        res.setHeader("X-Accel-Buffering", "no");
+        if (typeof res.flushHeaders === "function") res.flushHeaders();
+
+        const send = (obj) => {
+          res.write(`data: ${JSON.stringify(obj)}\n\n`);
+          if (typeof res.flush === "function") res.flush();
+        };
+        try {
+          for await (const chunk of provider.chatCompletionStream(cfg, { messages })) {
+            send(chunk);
+          }
+          res.write("data: [DONE]\n\n");
+        } catch (err) {
+          const message = err?.message || "AI request failed.";
+          console.warn("[ai] note-chat stream failed:", message);
+          send({ error: message });
+        } finally {
+          res.end();
+        }
+        return;
+      }
+
       const result = await provider.chatCompletion(cfg, { messages });
       const answer = (result.content || "").trim();
       res.json({

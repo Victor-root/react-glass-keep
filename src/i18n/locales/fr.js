@@ -862,7 +862,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   // Panneau IA attaché à une note ouverte (entrée kebab + interface)
   noteAiChatMenuItem: "Discuter avec l'IA",
   noteAiChatTitle: "Assistant IA",
-  noteAiChatSubtitle: "Uniquement sur cette note",
+  noteAiChatSubtitle: "À propos de cette note",
   noteAiChatEmpty:
     "Pose une question sur cette note, demande une explication, une reformulation ou une adaptation.",
   noteAiChatPlaceholder: "Pose une question sur cette note…",
