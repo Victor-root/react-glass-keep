@@ -256,7 +256,7 @@ Admins control AI at the instance level: disable it entirely, configure a **serv
 
 > ⚠️ Notes sent to a remote provider leave your GlassKeep instance. For sensitive data, prefer a local setup such as **Ollama + Open WebUI** on your LAN/LXC.
 
-Recommended starter model (usable on CPU only):
+Recommended starter model (light enough to run even on CPU-only setups):
 
 ```bash
 ollama pull qwen3:4b-instruct-2507-q4_K_M
