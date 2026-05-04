@@ -23,13 +23,10 @@ export default function NoteAiChatPanel({
   saved,
   canSave,
   onSend,
+  onStop,
   onClose,
   onSave,
   onReset,
-  // Computed by the parent so the panel can absorb whatever horizontal
-  // space is left over once the modal has its full 4xl width. Falls
-  // back to a sensible default when not provided.
-  width,
 }) {
   const [draft, setDraft] = useState("");
   // Stick-to-bottom: while true, new messages auto-scroll the view
@@ -120,11 +117,6 @@ export default function NoteAiChatPanel({
   // floating "scroll to bottom" button so it visually belongs to the
   // current note.
   const noteSolid = solid(bgFor(mColor, dark));
-
-  const panelWidth =
-    typeof width === "number" && Number.isFinite(width) && width > 0
-      ? width
-      : 520;
 
   // The save / reset cluster only renders when the parent told us a
   // stable note ID exists (otherwise there's nowhere to persist) and
@@ -337,14 +329,27 @@ export default function NoteAiChatPanel({
             } disabled:opacity-60`}
             style={{ maxHeight: "8rem" }}
           />
-          <button
-            type="button"
-            onClick={submit}
-            disabled={loading || !draft.trim()}
-            className="shrink-0 px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {t("noteAiChatSend")}
-          </button>
+          {loading ? (
+            <button
+              type="button"
+              onClick={onStop}
+              aria-label={t("noteAiChatStop")}
+              data-tooltip={t("noteAiChatStop")}
+              className="shrink-0 px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient inline-flex items-center gap-1.5"
+            >
+              <TI.PlayerStopFilled className="tabler-icon w-4 h-4" />
+              {t("noteAiChatStop")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!draft.trim()}
+              className="shrink-0 px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {t("noteAiChatSend")}
+            </button>
+          )}
         </div>
       </div>
     </aside>

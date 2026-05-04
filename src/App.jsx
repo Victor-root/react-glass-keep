@@ -1585,6 +1585,18 @@ export default function App() {
     if (noteAiLoading) return;
     persistNoteAiMessages(activeId, noteAiMessages);
   }, [noteAiMessages, noteAiSaved, activeId, noteAiOpen, noteAiLoading]);
+  // AbortController for the in-flight Note-AI streaming request. The user
+  // can interrupt mid-stream via the Stop button, which calls .abort() —
+  // the streaming fetch then rejects with an AbortError that we swallow
+  // silently (no error banner) and the partial assistant message stays
+  // visible exactly as it had streamed in.
+  const noteAiAbortRef = useRef(null);
+  const stopNoteAi = () => {
+    const ctrl = noteAiAbortRef.current;
+    if (ctrl) {
+      try { ctrl.abort(); } catch {}
+    }
+  };
   const sendNoteAiMessage = async (question) => {
     const q = (question || "").trim();
     if (!q || noteAiLoading) return;
@@ -1629,11 +1641,14 @@ export default function App() {
     // (the new assistant message becomes the visible progress).
     let firstChunkSeen = false;
     let assistantText = "";
+    const ctrl = new AbortController();
+    noteAiAbortRef.current = ctrl;
     try {
       await askNoteAIStream({
         note: noteSnapshot,
         messages: historyForRequest,
         question: q,
+        signal: ctrl.signal,
         onChunk: (delta) => {
           assistantText += delta;
           if (!firstChunkSeen) {
@@ -1658,14 +1673,22 @@ export default function App() {
         setNoteAiError(t("noteAiChatGenericError"));
       }
     } catch (err) {
-      console.error("Note AI error:", err);
-      const fallback = t("noteAiChatGenericError");
-      setNoteAiError(
-        typeof err?.message === "string" && err.message
-          ? localizeServerError(err.message, "noteAiChatGenericError")
-          : fallback,
-      );
+      // User-initiated abort via the Stop button — no error banner, the
+      // partial assistant message (whatever streamed before abort) stays
+      // visible as-is.
+      if (err?.name === "AbortError" || ctrl.signal.aborted) {
+        // Intentional cancel — silent.
+      } else {
+        console.error("Note AI error:", err);
+        const fallback = t("noteAiChatGenericError");
+        setNoteAiError(
+          typeof err?.message === "string" && err.message
+            ? localizeServerError(err.message, "noteAiChatGenericError")
+            : fallback,
+        );
+      }
     } finally {
+      if (noteAiAbortRef.current === ctrl) noteAiAbortRef.current = null;
       setNoteAiLoading(false);
     }
   };
@@ -3781,16 +3804,15 @@ export default function App() {
     setImgViewOpen(false);
   };
 
-  const closeModal = () => {
-    // Prevent double-triggering while exit animation is running
-    if (modalClosingTimerRef.current) return;
-
-    // Unmaterialised draft: the user opened a blank note via the creation
-    // buttons and never touched it, so nothing was ever persisted. Just run
-    // the exit animation and drop the pending state — no IDB/queue work.
-    if (pendingDraftRef.current && String(activeId) === String(pendingDraftRef.current.id)) {
-      pendingDraftRef.current = null;
-      freshlyCreatedNoteRef.current = null;
+  // Run the modal exit animation. If the AI side panel is open, close
+  // it first with its own slide-back animation, then kick off the modal
+  // fade-out — this gives a clean sequential close instead of both
+  // animations playing at the same time. The same modalClosingTimerRef
+  // guards re-entry through both phases.
+  const startModalExitAnimation = () => {
+    const PANEL_CLOSE_DURATION = 640; // matches NoteModal's aiClosing window
+    const MODAL_FADE_DURATION = 180;
+    const beginFade = () => {
       setIsModalClosing(true);
       modalClosingTimerRef.current = setTimeout(() => {
         modalClosingTimerRef.current = null;
@@ -3801,7 +3823,33 @@ export default function App() {
         setConfirmDeleteOpen(false);
         setShowModalFmt(false);
         setIsModalClosing(false);
-      }, 180);
+      }, MODAL_FADE_DURATION);
+    };
+    if (noteAiOpen) {
+      setNoteAiOpen(false);
+      // Cancel any in-flight AI request so chunks don't arrive after
+      // the note has unmounted.
+      stopNoteAi();
+      modalClosingTimerRef.current = setTimeout(() => {
+        modalClosingTimerRef.current = null;
+        beginFade();
+      }, PANEL_CLOSE_DURATION);
+    } else {
+      beginFade();
+    }
+  };
+
+  const closeModal = () => {
+    // Prevent double-triggering while exit animation is running
+    if (modalClosingTimerRef.current) return;
+
+    // Unmaterialised draft: the user opened a blank note via the creation
+    // buttons and never touched it, so nothing was ever persisted. Just run
+    // the exit animation and drop the pending state — no IDB/queue work.
+    if (pendingDraftRef.current && String(activeId) === String(pendingDraftRef.current.id)) {
+      pendingDraftRef.current = null;
+      freshlyCreatedNoteRef.current = null;
+      startModalExitAnimation();
       return;
     }
 
@@ -3863,17 +3911,7 @@ export default function App() {
           );
         })();
 
-        setIsModalClosing(true);
-        modalClosingTimerRef.current = setTimeout(() => {
-          modalClosingTimerRef.current = null;
-          setOpen(false);
-          setActiveId(null);
-          setViewMode(true);
-          setModalMenuOpen(false);
-          setConfirmDeleteOpen(false);
-          setShowModalFmt(false);
-          setIsModalClosing(false);
-        }, 180);
+        startModalExitAnimation();
         return;
       }
     }
@@ -3960,18 +3998,9 @@ export default function App() {
     // owns its own lease via acquireLocalLease/releaseLocalLease,
     // released only after successful enqueueAndSync.
 
-    // Start exit animation, then actually unmount after it completes
-    setIsModalClosing(true);
-    modalClosingTimerRef.current = setTimeout(() => {
-      modalClosingTimerRef.current = null;
-      setOpen(false);
-      setActiveId(null);
-      setViewMode(true);
-      setModalMenuOpen(false);
-      setConfirmDeleteOpen(false);
-      setShowModalFmt(false);
-      setIsModalClosing(false);
-    }, 180);
+    // Start exit animation, then actually unmount after it completes.
+    // Sequential close: if the AI panel is open, it animates out first.
+    startModalExitAnimation();
   };
   closeModalRef.current = closeModal;
 
@@ -4885,6 +4914,7 @@ export default function App() {
       onOpenNoteAi={openNoteAi}
       onCloseNoteAi={closeNoteAi}
       onSendNoteAiMessage={sendNoteAiMessage}
+      onStopNoteAi={stopNoteAi}
       onSaveNoteAi={saveNoteAi}
       onResetNoteAi={resetNoteAi}
     />

@@ -869,6 +869,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
     "Posez une question sur cette note, demandez une explication, une reformulation ou une adaptation.",
   noteAiChatPlaceholder: "Posez une question sur cette note…",
   noteAiChatSend: "Envoyer",
+  noteAiChatStop: "Arrêter",
   noteAiChatThinking: "Réflexion en cours…",
   noteAiChatClose: "Fermer le panneau IA",
   noteAiChatSave: "Sauvegarder la conversation",

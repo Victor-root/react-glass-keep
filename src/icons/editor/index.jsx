@@ -73,6 +73,7 @@ import inputSparkSvg       from "./tabler/input-spark.svg?raw";
 import messageSearchSvg    from "./tabler/message-search.svg?raw";
 import message2DownSvg    from "./tabler/message-2-down.svg?raw";
 import message2XSvg       from "./tabler/message-2-x.svg?raw";
+import playerStopFilledSvg from "./tabler/player-stop-filled.svg?raw";
 
 // Admin panel icons
 import usersSvg           from "./tabler/users.svg?raw";
@@ -183,6 +184,7 @@ export const TI = {
   MessageSearch:        (p) => <TablerIcon svg={messageSearchSvg} {...p} />,
   Message2Down:         (p) => <TablerIcon svg={message2DownSvg} {...p} />,
   Message2X:            (p) => <TablerIcon svg={message2XSvg} {...p} />,
+  PlayerStopFilled:     (p) => <TablerIcon svg={playerStopFilledSvg} {...p} />,
   // Admin panel
   Users:                (p) => <TablerIcon svg={usersSvg} {...p} />,
   UserPlus:             (p) => <TablerIcon svg={userPlusSvg} {...p} />,

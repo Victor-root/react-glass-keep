@@ -176,6 +176,7 @@ export default function NoteModal({
   onOpenNoteAi,
   onCloseNoteAi,
   onSendNoteAiMessage,
+  onStopNoteAi,
   onSaveNoteAi,
   onResetNoteAi,
 }) {
@@ -911,10 +912,10 @@ export default function NoteModal({
                 saved={!!noteAiSaved}
                 canSave={!!noteAiCanSave}
                 onSend={onSendNoteAiMessage}
+                onStop={onStopNoteAi}
                 onClose={onCloseNoteAi}
                 onSave={onSaveNoteAi}
                 onReset={onResetNoteAi}
-                width={aiPanelWidth}
               />
             )}
           </div>
