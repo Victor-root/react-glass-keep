@@ -188,24 +188,6 @@ export default function ModalHeader({
 
           <div className={`flex items-center flex-none shrink-0 ${isDesktop && !isDrawEdit ? "ml-auto" : ""}`}>
             <div className={isDesktop ? "modal-icon-group" : "flex items-center gap-0.5"}>
-              {/* AI toggle — mobile/non-sidebar only. Chevron right opens the
-                  panel; chevron left (mirrored style in the panel) closes it.
-                  A dot badge signals a hidden active conversation. */}
-              {!isDesktop && !isDrawEdit && noteAiAvailable && !noteAiSidebarLayout && (
-                <button
-                  className="modal-icon-btn focus:outline-none relative"
-                  style={{ color: noteAiOpen ? "rgb(99,102,241)" : undefined }}
-                  onClick={() => noteAiOpen ? onHideNoteAi?.() : onOpenNoteAi?.()}
-                  data-tooltip={t("noteAiChatMenuItem")}
-                  aria-pressed={noteAiOpen ? "true" : "false"}
-                >
-                  <TI.ChevronRight className="tabler-icon w-5 h-5" />
-                  {noteAiHasMessages && !noteAiOpen && (
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-indigo-500 ring-[1.5px] ring-white dark:ring-gray-800" />
-                  )}
-                </button>
-              )}
-
               {/* Pin */}
               {showPinBtn && (
                 <button
@@ -229,6 +211,24 @@ export default function ModalHeader({
                   <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
+
+              {/* AI toggle — mobile/non-sidebar only, placed after save so
+                  the chevron sits at the far right of the action group.
+                  Always indigo (matches the ← in the AI panel header). */}
+              {!isDesktop && !isDrawEdit && noteAiAvailable && !noteAiSidebarLayout && (
+                <button
+                  className="modal-icon-btn focus:outline-none relative"
+                  style={{ color: "rgb(99,102,241)" }}
+                  onClick={() => noteAiOpen ? onHideNoteAi?.() : onOpenNoteAi?.()}
+                  data-tooltip={t("noteAiChatMenuItem")}
+                  aria-pressed={noteAiOpen ? "true" : "false"}
+                >
+                  <TI.ChevronRight className="tabler-icon w-5 h-5" />
+                  {noteAiHasMessages && !noteAiOpen && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-indigo-500 ring-[1.5px] ring-white dark:ring-gray-800" />
+                  )}
+                </button>
+              )}
 
               {/* Close (desktop only — mobile uses back arrow above) */}
               {isDesktop && (
