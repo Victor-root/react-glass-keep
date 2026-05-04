@@ -3517,6 +3517,17 @@ export default function App() {
     setViewMode(true);
     setModalMenuOpen(false);
     setOpen(true);
+
+    // If this note has a saved AI conversation in localStorage, pre-load
+    // the messages and mark the panel as "has been opened" so the header
+    // toggle is immediately visible (the user can resume the saved chat
+    // without having to re-open via the kebab menu).
+    const savedMsgs = loadSavedNoteAiMessages(id);
+    if (savedMsgs && savedMsgs.length > 0) {
+      setNoteAiMessages(savedMsgs);
+      setNoteAiSaved(true);
+      setNoteAiHasBeenOpened(true);
+    }
   };
 
   // Check if the note has been modified from initial state
