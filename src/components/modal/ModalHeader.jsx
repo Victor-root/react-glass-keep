@@ -235,16 +235,16 @@ export default function ModalHeader({
               </>
             )}
 
-              {/* Close (desktop only — mobile uses back arrow above) */}
-              {isDesktop && (
-                <button
-                  className="modal-icon-btn modal-icon-btn--close focus:outline-none"
-                  data-tooltip={t("close")}
-                  onClick={onClose}
-                >
-                  <CloseIcon />
-                </button>
-              )}
+            {/* Close (desktop only — mobile uses back arrow above) */}
+            {isDesktop && (
+              <button
+                className="modal-icon-btn modal-icon-btn--close focus:outline-none"
+                data-tooltip={t("close")}
+                onClick={onClose}
+              >
+                <CloseIcon />
+              </button>
+            )}
             </div>
           </div>
         </div>
