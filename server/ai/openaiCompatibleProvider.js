@@ -63,7 +63,7 @@ async function chatCompletion(cfg, { messages, temperature, maxTokens, signal } 
     model: cfg.model,
     messages,
     temperature:
-      typeof temperature === "number" ? temperature : cfg.temperature ?? 0.2,
+      typeof temperature === "number" ? temperature : cfg.temperature ?? 0.3,
     max_tokens:
       typeof maxTokens === "number" ? maxTokens : cfg.maxTokens ?? 800,
     stream: false,
@@ -136,7 +136,7 @@ async function* chatCompletionStream(
     model: cfg.model,
     messages,
     temperature:
-      typeof temperature === "number" ? temperature : cfg.temperature ?? 0.2,
+      typeof temperature === "number" ? temperature : cfg.temperature ?? 0.3,
     max_tokens:
       typeof maxTokens === "number" ? maxTokens : cfg.maxTokens ?? 800,
     stream: true,

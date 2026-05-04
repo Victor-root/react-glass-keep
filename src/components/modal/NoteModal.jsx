@@ -171,9 +171,13 @@ export default function NoteModal({
   noteAiMessages,
   noteAiLoading,
   noteAiError,
+  noteAiSaved,
+  noteAiCanSave,
   onOpenNoteAi,
   onCloseNoteAi,
   onSendNoteAiMessage,
+  onSaveNoteAi,
+  onResetNoteAi,
 }) {
   const [drawMode, setDrawMode] = React.useState("view");
   const [drawToolbarEl, setDrawToolbarEl] = React.useState(null);
@@ -422,18 +426,19 @@ export default function NoteModal({
 
   // Adaptive AI-panel width — fills whatever horizontal space is left
   // over after the modal claims its full max-w-4xl (≈ 896 px) plus a
-  // small gutter on each side. Calibrated so the panel grows with the
-  // viewport (laptop → 4K) without ever asking the modal to shrink:
-  //   panelWidth = viewport − modalWidth − sideGutter*2 − gap
-  // Lower-bounded at 360 px so the panel stays usable on tighter
-  // screens, otherwise unbounded so a 4K monitor can use the room.
-  // Modal's effective width at the lg breakpoint (where the panel is
-  // even rendered) is always the 4xl cap — w-11/12 always exceeds it.
+  // small gutter on each side. Capped at MODAL_WIDTH so the panel
+  // never grows wider than the note itself: on very large monitors the
+  // pair stays a coherent reading width and lets the page background
+  // fill the unused sides. Lower bound of 360 px keeps the panel
+  // usable on the tightest screens where it's still rendered.
   const SIDE_GUTTER = 16;
   const MODAL_GAP = 8;
   const MODAL_WIDTH = 896; // Tailwind max-w-4xl in px
   const aiPanelWidth = noteAiPanelVisible
-    ? Math.max(360, windowWidth - MODAL_WIDTH - SIDE_GUTTER * 2 - MODAL_GAP)
+    ? Math.min(
+        MODAL_WIDTH,
+        Math.max(360, windowWidth - MODAL_WIDTH - SIDE_GUTTER * 2 - MODAL_GAP),
+      )
     : 0;
 
   if (!open && !isModalClosing) return null;
@@ -844,8 +849,12 @@ export default function NoteModal({
           messages={noteAiMessages || []}
           loading={!!noteAiLoading}
           error={noteAiError}
+          saved={!!noteAiSaved}
+          canSave={!!noteAiCanSave}
           onSend={onSendNoteAiMessage}
           onClose={onCloseNoteAi}
+          onSave={onSaveNoteAi}
+          onReset={onResetNoteAi}
           width={aiPanelWidth}
         />
       </div>

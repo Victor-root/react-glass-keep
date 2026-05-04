@@ -24,7 +24,7 @@ const ADMIN_DEFAULTS = Object.freeze({
   baseUrl: "",
   apiKey: "",
   model: "",
-  temperature: 0.2,
+  temperature: 0.3,
   maxTokens: 800,
   allowServerAiForUsers: false,
 });
@@ -35,7 +35,7 @@ const USER_DEFAULTS = Object.freeze({
   baseUrl: "",
   apiKey: "",
   model: "",
-  temperature: 0.2,
+  temperature: 0.3,
   maxTokens: 800,
 });
 
@@ -49,7 +49,7 @@ function ensureSchema(db) {
       base_url TEXT NOT NULL DEFAULT '',
       api_key TEXT NOT NULL DEFAULT '',
       model TEXT NOT NULL DEFAULT '',
-      temperature REAL NOT NULL DEFAULT 0.2,
+      temperature REAL NOT NULL DEFAULT 0.3,
       max_tokens INTEGER NOT NULL DEFAULT 800,
       updated_at TEXT
     );
@@ -61,7 +61,7 @@ function ensureSchema(db) {
       base_url TEXT NOT NULL DEFAULT '',
       api_key TEXT NOT NULL DEFAULT '',
       model TEXT NOT NULL DEFAULT '',
-      temperature REAL NOT NULL DEFAULT 0.2,
+      temperature REAL NOT NULL DEFAULT 0.3,
       max_tokens INTEGER NOT NULL DEFAULT 800,
       updated_at TEXT,
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -85,7 +85,7 @@ function ensureSchema(db) {
   db.prepare(`
     INSERT OR IGNORE INTO ai_settings
       (id, enabled, provider, base_url, api_key, model, temperature, max_tokens, allow_server_ai_for_users, updated_at)
-    VALUES (1, 0, 'openai-compatible', '', '', '', 0.2, 800, 0, datetime('now'))
+    VALUES (1, 0, 'openai-compatible', '', '', '', 0.3, 800, 0, datetime('now'))
   `).run();
 }
 

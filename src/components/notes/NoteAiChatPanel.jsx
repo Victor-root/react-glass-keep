@@ -1,16 +1,17 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { t } from "../../i18n";
 import { CloseIcon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
-import { modalBgFor, scrollColorsFor } from "../../utils/colors.js";
+import { modalBgFor, scrollColorsFor, solid, bgFor } from "../../utils/colors.js";
 import { renderSafeMarkdown } from "../../utils/markdown.jsx";
 
 /**
  * Per-note AI chat panel — sits attached to the right side of NoteModal.
- * The conversation is purely temporary: state lives in the parent (App),
- * is reset when the panel or the note closes, and is never persisted or
- * synced. This component is presentational + minimal local state for the
- * input draft only.
+ * The conversation is throwaway by default: the parent (App) clears it
+ * on close and never persists it. The user can opt in to keeping the
+ * conversation across closes via the save button — that flips the
+ * `saved` flag and the parent mirrors the messages to localStorage; a
+ * reset button on the header tears the saved copy back down.
  */
 export default function NoteAiChatPanel({
   dark,
@@ -19,26 +20,29 @@ export default function NoteAiChatPanel({
   messages,
   loading,
   error,
+  saved,
+  canSave,
   onSend,
   onClose,
+  onSave,
+  onReset,
   // Computed by the parent so the panel can absorb whatever horizontal
   // space is left over once the modal has its full 4xl width. Falls
   // back to a sensible default when not provided.
   width,
 }) {
-  const [draft, setDraft] = React.useState("");
+  const [draft, setDraft] = useState("");
+  // Stick-to-bottom: while true, new messages auto-scroll the view
+  // down. Flips off as soon as the user scrolls up; flips back on when
+  // they return to the bottom or send a new turn. Mirrored into a ref
+  // so the scroll-into-view effect (which only re-runs on messages /
+  // loading changes) can read the latest value synchronously.
+  const [stickToBottom, setStickToBottom] = useState(true);
+  const stickToBottomRef = useRef(true);
   const messagesEndRef = useRef(null);
   const messagesScrollRef = useRef(null);
   const inputRef = useRef(null);
-  // Whether new chunks should yank the view to the bottom. Flips off
-  // the moment the user scrolls up, flips back on when they return to
-  // the bottom — gives them free read-up control while a stream is in
-  // flight without sacrificing the "follow the answer" default.
-  const stickToBottomRef = useRef(true);
 
-  // Auto-scroll to the latest message ONLY when the user is already
-  // pinned to the bottom. If they scrolled up to re-read something
-  // mid-stream, we leave their view alone.
   useEffect(() => {
     if (!open) return;
     if (!stickToBottomRef.current) return;
@@ -47,31 +51,41 @@ export default function NoteAiChatPanel({
     }
   }, [messages, loading, open]);
 
-  // Track scroll position so we can decide whether the next chunk
-  // should auto-scroll. A 32 px slack means tiny rubber-banding from
-  // smooth scrolls doesn't immediately disable stick-to-bottom.
+  // 32 px slack so a smooth scroll's tiny rubber-banding doesn't flip
+  // stick-to-bottom off by accident.
   const onScroll = () => {
     const el = messagesScrollRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    stickToBottomRef.current = distanceFromBottom < 32;
+    const stick = distanceFromBottom < 32;
+    if (stickToBottomRef.current !== stick) {
+      stickToBottomRef.current = stick;
+      setStickToBottom(stick);
+    }
   };
 
-  // Re-arm stick-to-bottom whenever the user fires a new turn — they
-  // clearly want to see the new answer, even if they had scrolled up
-  // earlier.
+  const reArmStickToBottom = () => {
+    stickToBottomRef.current = true;
+    setStickToBottom(true);
+  };
+
   const submit = () => {
     const q = draft.trim();
     if (!q || loading) return;
     setDraft("");
-    stickToBottomRef.current = true;
+    reArmStickToBottom();
     onSend?.(q);
   };
 
   const sendQuick = (prompt) => {
     if (loading) return;
-    stickToBottomRef.current = true;
+    reArmStickToBottom();
     onSend?.(prompt);
+  };
+
+  const scrollToBottomNow = () => {
+    reArmStickToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   };
 
   // Focus the input when the panel opens.
@@ -94,17 +108,26 @@ export default function NoteAiChatPanel({
 
   const stopBubbling = (e) => e.stopPropagation();
 
-  // Same scrollbar palette the note modal uses, so the chat scrollbar
-  // reads as a continuation of the note's themed scrollbar.
+  // Same scrollbar palette the note modal uses.
   const sc = scrollColorsFor(mColor, dark);
+  // Note's own colour, fully opaque — used as the background of the
+  // floating "scroll to bottom" button so it visually belongs to the
+  // current note.
+  const noteSolid = solid(bgFor(mColor, dark));
 
-  // Effective panel width — prefer the parent-computed value (which
-  // sizes to the leftover viewport space), fall back to a sane min/max
-  // pair if the prop is missing for any reason.
   const panelWidth =
     typeof width === "number" && Number.isFinite(width) && width > 0
       ? width
       : 520;
+
+  // The save / reset cluster only renders when the parent told us a
+  // stable note ID exists (otherwise there's nowhere to persist) and
+  // either the user has typed at least one message or the slot is
+  // already saved (so they can wipe it).
+  const showSaveCtrl = canSave && !saved && messages.length > 0;
+  const showResetCtrl = canSave && saved;
+
+  const showScrollBtn = !stickToBottom && messages.length > 0;
 
   return (
     <aside
@@ -115,9 +138,6 @@ export default function NoteAiChatPanel({
         width: `${panelWidth}px`,
         height: "95vh",
         flexShrink: 0,
-        // Match the note modal's exact background — same colour key,
-        // same opacity treatment via modalBgFor — so the panel reads as
-        // an extension of the modal rather than a translucent overlay.
         backgroundColor: modalBgFor(mColor, dark),
       }}
       onMouseDown={stopBubbling}
@@ -136,9 +156,31 @@ export default function NoteAiChatPanel({
             {t("noteAiChatTitle")}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-200 truncate">
-            {t("noteAiChatSubtitle")}
+            {saved ? t("noteAiChatSavedBadge") : t("noteAiChatSubtitle")}
           </p>
         </div>
+        {showSaveCtrl && (
+          <button
+            type="button"
+            onClick={onSave}
+            aria-label={t("noteAiChatSave")}
+            data-tooltip={t("noteAiChatSave")}
+            className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-500 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300"
+          >
+            <TI.DeviceFloppy className="tabler-icon w-5 h-5" />
+          </button>
+        )}
+        {showResetCtrl && (
+          <button
+            type="button"
+            onClick={onReset}
+            aria-label={t("noteAiChatReset")}
+            data-tooltip={t("noteAiChatReset")}
+            className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-indigo-600 hover:text-red-600 dark:text-indigo-300 dark:hover:text-red-400"
+          >
+            <TI.Eraser className="tabler-icon w-5 h-5" />
+          </button>
+        )}
         <button
           type="button"
           onClick={onClose}
@@ -150,95 +192,104 @@ export default function NoteAiChatPanel({
         </button>
       </div>
 
-      {/* Messages area */}
-      <div
-        ref={messagesScrollRef}
-        onScroll={onScroll}
-        className="flex-1 overflow-y-auto px-4 py-3 modal-scroll-themed"
-        style={{ minHeight: 0, "--sb-thumb": sc.thumb, "--sb-track": sc.track }}
-      >
-        {messages.length === 0 && !loading && !error && (
-          <div className="flex flex-col gap-3">
-            <div className="text-sm text-gray-500 dark:text-gray-200 leading-relaxed">
-              {t("noteAiChatEmpty")}
-            </div>
-            {/* Quick actions — only visible while the conversation is
-                empty. Clicking sends the corresponding prompt, after
-                which the chips disappear so they don't clutter the
-                follow-up turns. */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => sendQuick(t("noteAiChatQuickSummarizePrompt"))}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t("noteAiChatQuickSummarize")}
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => sendQuick(t("noteAiChatQuickExplainPrompt"))}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {t("noteAiChatQuickExplain")}
-              </button>
-            </div>
-          </div>
-        )}
-
-        <ul className="flex flex-col gap-3">
-          {messages.map((m, i) => {
-            // Brand-gradient separators frame the user's prompt so it
-            // stands out between assistant turns. Skip the top rule on
-            // the very first message (there's nothing above) and the
-            // bottom rule on the last message (we add it once the AI
-            // has actually replied — i.e. another message follows).
-            const isUser = m.role === "user";
-            const showTop = isUser && i > 0;
-            const showBottom = isUser && i < messages.length - 1;
-            return (
-              <li key={i} className="flex flex-col gap-2">
-                {showTop && (
-                  <div className="h-px bg-gradient-to-r from-transparent via-indigo-500/70 to-transparent dark:via-indigo-400/70" />
-                )}
-                <div className={`flex ${isUser ? "justify-end" : "justify-stretch"}`}>
-                  {isUser ? (
-                    <div className="max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words bg-indigo-600 text-white">
-                      {m.content}
-                    </div>
-                  ) : (
-                    <div
-                      className={`note-content note-content--dense w-full px-1 py-1 text-sm break-words ${
-                        dark ? "text-white" : "text-gray-800"
-                      }`}
-                      dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(m.content) }}
-                    />
-                  )}
-                </div>
-                {showBottom && (
-                  <div className="h-px bg-gradient-to-r from-transparent via-violet-500/70 to-transparent dark:via-violet-400/70" />
-                )}
-              </li>
-            );
-          })}
-          {loading
-            && (messages.length === 0
-              || messages[messages.length - 1]?.role !== "assistant") && (
-            <li className="flex justify-start">
-              <div
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                  dark ? "bg-white/10 text-white" : "bg-black/10 text-gray-700"
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" />
-                {t("noteAiChatThinking")}
+      {/* Messages area + floating scroll-to-bottom shortcut */}
+      <div className="relative flex-1 min-h-0">
+        <div
+          ref={messagesScrollRef}
+          onScroll={onScroll}
+          className="absolute inset-0 overflow-y-auto px-4 py-3 modal-scroll-themed"
+          style={{ "--sb-thumb": sc.thumb, "--sb-track": sc.track }}
+        >
+          {messages.length === 0 && !loading && !error && (
+            <div className="flex flex-col gap-3">
+              <div className="text-sm text-gray-500 dark:text-gray-200 leading-relaxed">
+                {t("noteAiChatEmpty")}
               </div>
-            </li>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => sendQuick(t("noteAiChatQuickSummarizePrompt"))}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t("noteAiChatQuickSummarize")}
+                </button>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => sendQuick(t("noteAiChatQuickExplainPrompt"))}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t("noteAiChatQuickExplain")}
+                </button>
+              </div>
+            </div>
           )}
-        </ul>
 
-        <div ref={messagesEndRef} />
+          <ul className="flex flex-col gap-3">
+            {messages.map((m, i) => {
+              const isUser = m.role === "user";
+              const showTop = isUser && i > 0;
+              const showBottom = isUser && i < messages.length - 1;
+              return (
+                <li key={i} className="flex flex-col gap-2">
+                  {showTop && (
+                    <div className="h-px bg-gradient-to-r from-transparent via-indigo-500/70 to-transparent dark:via-indigo-400/70" />
+                  )}
+                  <div className={`flex ${isUser ? "justify-end" : "justify-stretch"}`}>
+                    {isUser ? (
+                      <div className="max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words bg-indigo-600 text-white">
+                        {m.content}
+                      </div>
+                    ) : (
+                      <div
+                        className={`note-content note-content--dense w-full px-1 py-1 text-sm break-words ${
+                          dark ? "text-white" : "text-gray-800"
+                        }`}
+                        dangerouslySetInnerHTML={{ __html: renderSafeMarkdown(m.content) }}
+                      />
+                    )}
+                  </div>
+                  {showBottom && (
+                    <div className="h-px bg-gradient-to-r from-transparent via-violet-500/70 to-transparent dark:via-violet-400/70" />
+                  )}
+                </li>
+              );
+            })}
+            {loading
+              && (messages.length === 0
+                || messages[messages.length - 1]?.role !== "assistant") && (
+              <li className="flex justify-start">
+                <div
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                    dark ? "bg-white/10 text-white" : "bg-black/10 text-gray-700"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" />
+                  {t("noteAiChatThinking")}
+                </div>
+              </li>
+            )}
+          </ul>
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Floating "back to bottom" shortcut. Sits over the scroll
+            container so it's always reachable, themed in the note's
+            own colour to feel like part of the current page. */}
+        {showScrollBtn && (
+          <button
+            type="button"
+            onClick={scrollToBottomNow}
+            aria-label={t("noteAiChatScrollDown")}
+            data-tooltip={t("noteAiChatScrollDown")}
+            className="absolute bottom-3 right-3 w-9 h-9 rounded-full flex items-center justify-center shadow-md border border-black/10 dark:border-white/10 hover:scale-105 active:scale-95 transition-transform text-indigo-700 dark:text-indigo-200"
+            style={{ backgroundColor: noteSolid }}
+          >
+            <TI.ArrowDown className="tabler-icon w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Error banner */}

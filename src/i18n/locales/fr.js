@@ -397,6 +397,8 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   aiApiKeyCleared: "Clé API supprimée",
   aiTemperatureLabel: "Température",
   aiMaxTokensLabel: "Tokens max",
+  aiAdvancedFieldsHint:
+    "Si vous ne savez pas à quoi servent ces réglages, laissez les valeurs par défaut (0.3 et 800) — elles conviennent pour la plupart des modèles.",
   aiTestConnection: "Tester la connexion",
   aiTesting: "Test en cours…",
   aiTestOk: "Connexion réussie",
@@ -869,6 +871,10 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   noteAiChatSend: "Envoyer",
   noteAiChatThinking: "Réflexion en cours…",
   noteAiChatClose: "Fermer le panneau IA",
+  noteAiChatSave: "Sauvegarder la conversation",
+  noteAiChatReset: "Effacer la conversation",
+  noteAiChatSavedBadge: "Conversation sauvegardée",
+  noteAiChatScrollDown: "Aller en bas",
   noteAiChatGenericError: "La requête IA a échoué.",
   // Boutons rapides affichés uniquement dans l'état vide.
   noteAiChatQuickSummarize: "Résumer",

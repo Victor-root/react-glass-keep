@@ -38,6 +38,7 @@ import highlightSvg       from "./tabler/highlight.svg?raw";
 import textIncreaseSvg    from "./tabler/text-increase.svg?raw";
 import textDecreaseSvg    from "./tabler/text-decrease.svg?raw";
 import chevronDownSvg     from "./tabler/chevron-down.svg?raw";
+import arrowDownSvg       from "./tabler/arrow-down.svg?raw";
 import pilcrowSvg         from "./tabler/pilcrow.svg?raw";
 import headingSvg         from "./tabler/heading.svg?raw";
 import terminal2Svg       from "./tabler/terminal-2.svg?raw";
@@ -66,6 +67,7 @@ import layoutSidebarSvg    from "./tabler/layout-sidebar.svg?raw";
 import brainSvg            from "./tabler/brain.svg?raw";
 import deviceMobileRotSvg  from "./tabler/device-mobile-rotated.svg?raw";
 import eraserSvg           from "./tabler/eraser.svg?raw";
+import deviceFloppySvg     from "./tabler/device-floppy.svg?raw";
 import filter2QuestionSvg  from "./tabler/filter-2-question.svg?raw";
 import inputSparkSvg       from "./tabler/input-spark.svg?raw";
 import messageSearchSvg    from "./tabler/message-search.svg?raw";
@@ -146,6 +148,7 @@ export const TI = {
   TextIncrease:    (p) => <TablerIcon svg={textIncreaseSvg} {...p} />,
   TextDecrease:    (p) => <TablerIcon svg={textDecreaseSvg} {...p} />,
   ChevronDown:     (p) => <TablerIcon svg={chevronDownSvg} {...p} />,
+  ArrowDown:       (p) => <TablerIcon svg={arrowDownSvg} {...p} />,
   Pilcrow:         (p) => <TablerIcon svg={pilcrowSvg} {...p} />,
   Heading:         (p) => <TablerIcon svg={headingSvg} {...p} />,
   Terminal2:       (p) => <TablerIcon svg={terminal2Svg} {...p} />,
@@ -172,6 +175,7 @@ export const TI = {
   Brain:                (p) => <TablerIcon svg={brainSvg} {...p} />,
   DeviceMobileRotated:  (p) => <TablerIcon svg={deviceMobileRotSvg} {...p} />,
   Eraser:               (p) => <TablerIcon svg={eraserSvg} {...p} />,
+  DeviceFloppy:         (p) => <TablerIcon svg={deviceFloppySvg} {...p} />,
   Filter2Question:      (p) => <TablerIcon svg={filter2QuestionSvg} {...p} />,
   InputSpark:           (p) => <TablerIcon svg={inputSparkSvg} {...p} />,
   MessageSearch:        (p) => <TablerIcon svg={messageSearchSvg} {...p} />,

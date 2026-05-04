@@ -36,7 +36,7 @@ export default function AiAdminSection({ token, showToast }) {
   const [apiKeyDraft, setApiKeyDraft] = useState("");
   const [hasApiKey, setHasApiKey] = useState(false);
   const [showKey, setShowKey] = useState(false);
-  const [temperature, setTemperature] = useState(0.2);
+  const [temperature, setTemperature] = useState(0.3);
   const [maxTokens, setMaxTokens] = useState(800);
 
   // Track the loaded baseline so we can render the API-key field as
@@ -67,7 +67,7 @@ export default function AiAdminSection({ token, showToast }) {
         setHasApiKey(!!data.hasApiKey);
         setApiKeyDraft("");
         setTemperature(
-          typeof data.temperature === "number" ? data.temperature : 0.2,
+          typeof data.temperature === "number" ? data.temperature : 0.3,
         );
         setMaxTokens(
           typeof data.maxTokens === "number" ? data.maxTokens : 800,
@@ -355,20 +355,29 @@ export default function AiAdminSection({ token, showToast }) {
             disabled={loading || saving}
             className={FIELD_INPUT_CLASSES}
           />
-          <button
-            type="button"
-            onClick={() => setShowKey((v) => !v)}
-            disabled={loading || saving}
-            className="shrink-0 px-3 py-2 rounded-lg border border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50"
-            aria-label={showKey ? t("hide") : t("show")}
-            data-tooltip={showKey ? t("hide") : t("show")}
-          >
-            {showKey ? (
-              <TI.EyeOff className="tabler-icon w-4 h-4" />
-            ) : (
-              <TI.Eye className="tabler-icon w-4 h-4" />
-            )}
-          </button>
+          {/* The toggle only makes sense when there's draft text to
+              reveal: the saved key is hashed server-side and never
+              returned, so flipping password→text on an empty field
+              would do nothing visible. Hide the button entirely while
+              hasApiKey is true and no replacement is being typed, and
+              re-show it as soon as the admin starts typing a new key
+              (or when the slot is empty to begin with). */}
+          {(!hasApiKey || apiKeyDraft.length > 0) && (
+            <button
+              type="button"
+              onClick={() => setShowKey((v) => !v)}
+              disabled={loading || saving}
+              className="shrink-0 px-3 py-2 rounded-lg border border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-50"
+              aria-label={showKey ? t("hide") : t("show")}
+              data-tooltip={showKey ? t("hide") : t("show")}
+            >
+              {showKey ? (
+                <TI.EyeOff className="tabler-icon w-4 h-4" />
+              ) : (
+                <TI.Eye className="tabler-icon w-4 h-4" />
+              )}
+            </button>
+          )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
           <span>{t("aiApiKeyHint")}</span>
@@ -386,39 +395,44 @@ export default function AiAdminSection({ token, showToast }) {
       </div>
 
       {/* Temperature + Max tokens */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label htmlFor="ai-temperature" className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
-            {t("aiTemperatureLabel")}
-          </label>
-          <input
-            id="ai-temperature"
-            type="number"
-            step="0.1"
-            min="0"
-            max="2"
-            value={temperature}
-            onChange={(e) => setTemperature(e.target.value)}
-            disabled={loading || saving}
-            className={FIELD_INPUT_CLASSES}
-          />
+      <div className="space-y-1">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <label htmlFor="ai-temperature" className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {t("aiTemperatureLabel")}
+            </label>
+            <input
+              id="ai-temperature"
+              type="number"
+              step="0.1"
+              min="0"
+              max="2"
+              value={temperature}
+              onChange={(e) => setTemperature(e.target.value)}
+              disabled={loading || saving}
+              className={FIELD_INPUT_CLASSES}
+            />
+          </div>
+          <div className="space-y-1">
+            <label htmlFor="ai-max-tokens" className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
+              {t("aiMaxTokensLabel")}
+            </label>
+            <input
+              id="ai-max-tokens"
+              type="number"
+              step="1"
+              min="1"
+              max="32768"
+              value={maxTokens}
+              onChange={(e) => setMaxTokens(e.target.value)}
+              disabled={loading || saving}
+              className={FIELD_INPUT_CLASSES}
+            />
+          </div>
         </div>
-        <div className="space-y-1">
-          <label htmlFor="ai-max-tokens" className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
-            {t("aiMaxTokensLabel")}
-          </label>
-          <input
-            id="ai-max-tokens"
-            type="number"
-            step="1"
-            min="1"
-            max="32768"
-            value={maxTokens}
-            onChange={(e) => setMaxTokens(e.target.value)}
-            disabled={loading || saving}
-            className={FIELD_INPUT_CLASSES}
-          />
-        </div>
+        <p className="text-xs text-gray-500 pt-1">
+          {t("aiAdvancedFieldsHint")}
+        </p>
       </div>
 
       {/* Test result */}
