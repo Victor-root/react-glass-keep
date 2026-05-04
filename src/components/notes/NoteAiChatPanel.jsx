@@ -16,6 +16,7 @@ import { renderSafeMarkdown } from "../../utils/markdown.jsx";
 export default function NoteAiChatPanel({
   dark,
   mColor,
+  isMobile,
   open,
   messages,
   loading,
@@ -24,6 +25,7 @@ export default function NoteAiChatPanel({
   canSave,
   onSend,
   onStop,
+  onHide,
   onClose,
   onSave,
   onReset,
@@ -147,7 +149,18 @@ export default function NoteAiChatPanel({
           dark ? "border-white/10" : "border-[var(--border-light)]"
         }`}
       >
-        <TI.MessageSearch className="tabler-icon text-indigo-600 dark:text-indigo-400 shrink-0" />
+        {/* Mobile: back arrow returns to note without clearing conversation */}
+        {isMobile && onHide && (
+          <button
+            type="button"
+            onClick={onHide}
+            aria-label={t("noteAiChatBackToNote")}
+            className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-indigo-500 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-white shrink-0"
+          >
+            <TI.ChevronLeft className="tabler-icon w-5 h-5" />
+          </button>
+        )}
+        {!isMobile && <TI.MessageSearch className="tabler-icon text-indigo-600 dark:text-indigo-400 shrink-0" />}
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold text-indigo-700 dark:text-indigo-300 truncate">
             {t("noteAiChatTitle")}

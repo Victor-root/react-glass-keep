@@ -872,6 +872,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   noteAiChatSend: "Envoyer",
   noteAiChatStop: "Arrêter",
   noteAiChatThinking: "Réflexion en cours…",
+  noteAiChatBackToNote: "Retour à la note",
   noteAiChatClose: "Fermer le panneau IA",
   noteAiChatSave: "Sauvegarder la conversation",
   noteAiChatReset: "Effacer la conversation",

@@ -175,6 +175,7 @@ export default function NoteModal({
   noteAiCanSave,
   onOpenNoteAi,
   onCloseNoteAi,
+  onHideNoteAi,
   onSendNoteAiMessage,
   onStopNoteAi,
   onSaveNoteAi,
@@ -845,7 +846,11 @@ export default function NoteModal({
             // available on this viewport (desktop ≥ 1024 px) and the user
             // has the AI assistant turned on.
             noteAiAvailable={noteAiAvailable}
+            noteAiSidebarLayout={noteAiSidebarLayout}
+            noteAiOpen={noteAiOpen}
+            noteAiHasMessages={(noteAiMessages || []).length > 0}
             onOpenNoteAi={onOpenNoteAi}
+            onHideNoteAi={onHideNoteAi}
           />
 
           <ConfirmDeleteDialog
@@ -943,6 +948,7 @@ export default function NoteModal({
           <NoteAiChatPanel
             dark={dark}
             mColor={mColor}
+            isMobile
             open={noteAiPanelVisible}
             messages={noteAiMessages || []}
             loading={!!noteAiLoading}
@@ -951,6 +957,7 @@ export default function NoteModal({
             canSave={!!noteAiCanSave}
             onSend={onSendNoteAiMessage}
             onStop={onStopNoteAi}
+            onHide={onHideNoteAi}
             onClose={onCloseNoteAi}
             onSave={onSaveNoteAi}
             onReset={onResetNoteAi}

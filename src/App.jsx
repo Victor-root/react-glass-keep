@@ -1542,8 +1542,10 @@ export default function App() {
   const openNoteAi = () => {
     setNoteAiOpen(true);
     setNoteAiError(null);
-    // Restore a previously saved conversation for this note, if any.
-    // Otherwise start fresh and stay in temporary mode.
+    // If a conversation is already in memory (e.g. re-opening after a
+    // mobile "back to note" hide), keep it intact and don't overwrite.
+    if (noteAiMessages.length > 0) return;
+    // Otherwise restore a previously saved conversation, or start fresh.
     const saved = loadSavedNoteAiMessages(activeId);
     if (saved && saved.length > 0) {
       setNoteAiMessages(saved);
@@ -1562,6 +1564,13 @@ export default function App() {
     if (!noteAiSaved) {
       setNoteAiMessages([]);
     }
+  };
+  // Mobile "back to note" — hides the panel without clearing the
+  // conversation. The user can re-open the panel and resume where they
+  // left off. Explicit close (X) still calls closeNoteAi and wipes.
+  const hideNoteAi = () => {
+    setNoteAiOpen(false);
+    setNoteAiError(null);
   };
   const saveNoteAi = () => {
     if (!activeId) return;
@@ -4917,6 +4926,7 @@ export default function App() {
       noteAiCanSave={!!activeId}
       onOpenNoteAi={openNoteAi}
       onCloseNoteAi={closeNoteAi}
+      onHideNoteAi={hideNoteAi}
       onSendNoteAiMessage={sendNoteAiMessage}
       onStopNoteAi={stopNoteAi}
       onSaveNoteAi={saveNoteAi}

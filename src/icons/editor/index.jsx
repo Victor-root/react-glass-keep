@@ -38,6 +38,7 @@ import highlightSvg       from "./tabler/highlight.svg?raw";
 import textIncreaseSvg    from "./tabler/text-increase.svg?raw";
 import textDecreaseSvg    from "./tabler/text-decrease.svg?raw";
 import chevronDownSvg     from "./tabler/chevron-down.svg?raw";
+import chevronLeftSvg    from "./tabler/chevron-left.svg?raw";
 import arrowDownSvg       from "./tabler/arrow-down.svg?raw";
 import pilcrowSvg         from "./tabler/pilcrow.svg?raw";
 import headingSvg         from "./tabler/heading.svg?raw";
@@ -153,6 +154,7 @@ export const TI = {
   TextIncrease:    (p) => <TablerIcon svg={textIncreaseSvg} {...p} />,
   TextDecrease:    (p) => <TablerIcon svg={textDecreaseSvg} {...p} />,
   ChevronDown:     (p) => <TablerIcon svg={chevronDownSvg} {...p} />,
+  ChevronLeft:     (p) => <TablerIcon svg={chevronLeftSvg} {...p} />,
   ArrowDown:       (p) => <TablerIcon svg={arrowDownSvg} {...p} />,
   Pilcrow:         (p) => <TablerIcon svg={pilcrowSvg} {...p} />,
   Heading:         (p) => <TablerIcon svg={headingSvg} {...p} />,

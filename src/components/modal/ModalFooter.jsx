@@ -97,9 +97,13 @@ export default function ModalFooter({
   onConvertNoteType,
   // Duplicate the active note (kebab → "Dupliquer la note").
   onDuplicateNote,
-  // Per-note AI chat panel — kebab entry only when desktop + AI on.
+  // Per-note AI chat panel
   noteAiAvailable,
+  noteAiSidebarLayout,
+  noteAiOpen,
+  noteAiHasMessages,
   onOpenNoteAi,
+  onHideNoteAi,
 }) {
   const isDesktop = windowWidth >= 768 && !isLandscapeMobile && !isWebView;
   const isTrashed = tagFilter === "TRASHED";
@@ -527,6 +531,31 @@ export default function ModalFooter({
             aria-pressed={showModalFmt ? "true" : "false"}
           >
             <TI.TextColor />
+          </button>
+        )}
+
+        {/* Mobile AI toggle — visible in the footer bar when on mobile
+            (non-sidebar) and AI is available. The button is active/
+            highlighted when the panel is currently open. Tapping when
+            open hides the panel without clearing the conversation;
+            tapping when hidden opens (or re-opens) it. */}
+        {!isDesktop && !isTrashed && noteAiAvailable && !noteAiSidebarLayout && (
+          <button
+            className={`modal-footer-btn focus:outline-none relative ${noteAiOpen ? "modal-footer-btn--ai-active" : ""}`}
+            onClick={() => {
+              if (noteAiOpen) {
+                onHideNoteAi?.();
+              } else {
+                onOpenNoteAi?.();
+              }
+            }}
+            data-tooltip={t("noteAiChatMenuItem")}
+            aria-pressed={noteAiOpen ? "true" : "false"}
+          >
+            <TI.MessageSearch className="tabler-icon w-[18px] h-[18px]" />
+            {noteAiHasMessages && !noteAiOpen && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-indigo-500 ring-[1.5px] ring-white dark:ring-gray-800" />
+            )}
           </button>
         )}
 

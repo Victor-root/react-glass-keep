@@ -773,8 +773,16 @@ html.dark .modal-footer-toolbar {
   max-width: 30%;
 }
 
-/* Mobile-only "Mise en forme" footer toggle styling — flag the active
-   state with the same indigo accent the toolbar already uses. */
+/* Mobile-only "Mise en forme" and AI footer toggle styling — flag the
+   active state with the same indigo accent the toolbar already uses. */
+.modal-footer-btn--ai-active {
+  background: rgba(99, 102, 241, 0.14);
+  color: rgb(99, 102, 241);
+}
+html.dark .modal-footer-btn--ai-active {
+  background: rgba(129, 140, 248, 0.22);
+  color: rgb(165, 180, 252);
+}
 .modal-footer-btn--fmt.is-active {
   background: rgba(99, 102, 241, 0.14);
   color: rgb(99, 102, 241);
