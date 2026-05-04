@@ -2866,4 +2866,15 @@ html.dark .typo-modal-toggle {
   /* Inline style handles the actual margin; this hook just lets us attach
      responsive overrides if ever needed. */
 }
+
+/* AI chat panel slide-in animation.
+   The note modal shifts left naturally via flex layout; the panel slides in
+   from the right simultaneously. */
+@keyframes noteAiPanelIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.note-ai-panel {
+  animation: noteAiPanelIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 `;

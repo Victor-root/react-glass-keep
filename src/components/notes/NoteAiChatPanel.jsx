@@ -60,9 +60,17 @@ export default function NoteAiChatPanel({
     const stick = distanceFromBottom < 32;
     if (stickToBottomRef.current !== stick) {
       stickToBottomRef.current = stick;
-      setStickToBottom(stick);
+      // During streaming, skip the state update so the scroll-to-bottom
+      // button doesn't flicker as each new line nudges the scroll position.
+      // The effect below syncs ref→state once streaming ends.
+      if (!loading) setStickToBottom(stick);
     }
   };
+
+  // Sync ref→state after streaming ends so the button appears/disappears.
+  useEffect(() => {
+    if (!loading) setStickToBottom(stickToBottomRef.current);
+  }, [loading]);
 
   const reArmStickToBottom = () => {
     stickToBottomRef.current = true;
@@ -165,9 +173,9 @@ export default function NoteAiChatPanel({
             onClick={onSave}
             aria-label={t("noteAiChatSave")}
             data-tooltip={t("noteAiChatSave")}
-            className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-500 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300"
+            className="p-1.5 rounded-lg transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
           >
-            <TI.DeviceFloppy className="tabler-icon w-5 h-5" />
+            <TI.Message2Down className="tabler-icon w-5 h-5" />
           </button>
         )}
         {showResetCtrl && (
@@ -176,9 +184,9 @@ export default function NoteAiChatPanel({
             onClick={onReset}
             aria-label={t("noteAiChatReset")}
             data-tooltip={t("noteAiChatReset")}
-            className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-indigo-600 hover:text-red-600 dark:text-indigo-300 dark:hover:text-red-400"
+            className="p-1.5 rounded-lg transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
           >
-            <TI.Eraser className="tabler-icon w-5 h-5" />
+            <TI.Message2X className="tabler-icon w-5 h-5" />
           </button>
         )}
         <button
@@ -231,6 +239,11 @@ export default function NoteAiChatPanel({
               const isUser = m.role === "user";
               const showTop = isUser && i > 0;
               const showBottom = isUser && i < messages.length - 1;
+              // While streaming, keep the active assistant message as plain
+              // text so React doesn't replace the DOM node on every chunk —
+              // which would destroy any in-progress browser text selection.
+              const isStreaming =
+                loading && i === messages.length - 1 && m.role === "assistant";
               return (
                 <li key={i} className="flex flex-col gap-2">
                   {showTop && (
@@ -239,6 +252,14 @@ export default function NoteAiChatPanel({
                   <div className={`flex ${isUser ? "justify-end" : "justify-stretch"}`}>
                     {isUser ? (
                       <div className="max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap break-words bg-indigo-600 text-white">
+                        {m.content}
+                      </div>
+                    ) : isStreaming ? (
+                      <div
+                        className={`w-full px-1 py-1 text-sm whitespace-pre-wrap break-words ${
+                          dark ? "text-white" : "text-gray-800"
+                        }`}
+                      >
                         {m.content}
                       </div>
                     ) : (

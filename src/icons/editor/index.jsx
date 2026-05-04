@@ -71,6 +71,8 @@ import deviceFloppySvg     from "./tabler/device-floppy.svg?raw";
 import filter2QuestionSvg  from "./tabler/filter-2-question.svg?raw";
 import inputSparkSvg       from "./tabler/input-spark.svg?raw";
 import messageSearchSvg    from "./tabler/message-search.svg?raw";
+import message2DownSvg    from "./tabler/message-2-down.svg?raw";
+import message2XSvg       from "./tabler/message-2-x.svg?raw";
 
 // Admin panel icons
 import usersSvg           from "./tabler/users.svg?raw";
@@ -179,6 +181,8 @@ export const TI = {
   Filter2Question:      (p) => <TablerIcon svg={filter2QuestionSvg} {...p} />,
   InputSpark:           (p) => <TablerIcon svg={inputSparkSvg} {...p} />,
   MessageSearch:        (p) => <TablerIcon svg={messageSearchSvg} {...p} />,
+  Message2Down:         (p) => <TablerIcon svg={message2DownSvg} {...p} />,
+  Message2X:            (p) => <TablerIcon svg={message2XSvg} {...p} />,
   // Admin panel
   Users:                (p) => <TablerIcon svg={usersSvg} {...p} />,
   UserPlus:             (p) => <TablerIcon svg={userPlusSvg} {...p} />,
