@@ -223,13 +223,13 @@ export default function ModalHeader({
                 <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-0.5" />
                 <button
                   className="modal-icon-btn focus:outline-none relative"
-                  style={{ color: "rgb(99,102,241)", backgroundColor: "rgba(99,102,241,0.12)" }}
+                  style={{ color: "rgb(99,102,241)", width: "auto", paddingLeft: 4, paddingRight: 4 }}
                   onClick={() => noteAiOpen ? onHideNoteAi?.() : onOpenNoteAi?.()}
                   data-tooltip={t("noteAiChatMenuItem")}
                   aria-pressed={noteAiOpen ? "true" : "false"}
                 >
-                  <TI.MessageSearch className="tabler-icon" style={{ width: 18, height: 18 }} />
-                  <TI.ChevronRight className="tabler-icon -ml-1" style={{ width: 14, height: 14 }} />
+                  <TI.MessageSearch className="tabler-icon" style={{ width: 26, height: 26 }} />
+                  <TI.ChevronRight className="tabler-icon -ml-1" style={{ width: 22, height: 22 }} />
                   {noteAiHasMessages && !noteAiOpen && (
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-indigo-500 ring-[1.5px] ring-white dark:ring-gray-800" />
                   )}
