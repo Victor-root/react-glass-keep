@@ -571,6 +571,13 @@ export default function NoteModal({
               onToggleDrawMode={() => setDrawMode((m) => m === "view" ? "draw" : "view")}
               toolbarSlotRef={setToolbarSlot}
               titleInputRef={modalTitleInputRef}
+              // AI toggle in the header (mobile/non-sidebar only)
+              noteAiAvailable={noteAiAvailable}
+              noteAiSidebarLayout={noteAiSidebarLayout}
+              noteAiOpen={noteAiOpen}
+              noteAiHasMessages={(noteAiMessages || []).length > 0}
+              onOpenNoteAi={onOpenNoteAi}
+              onHideNoteAi={onHideNoteAi}
               // keyboard: Tab from title → body, skipping the toolbar buttons
               onTitleTab={() => {
                 if (mType === "checklist") {
@@ -846,11 +853,7 @@ export default function NoteModal({
             // available on this viewport (desktop ≥ 1024 px) and the user
             // has the AI assistant turned on.
             noteAiAvailable={noteAiAvailable}
-            noteAiSidebarLayout={noteAiSidebarLayout}
-            noteAiOpen={noteAiOpen}
-            noteAiHasMessages={(noteAiMessages || []).length > 0}
             onOpenNoteAi={onOpenNoteAi}
-            onHideNoteAi={onHideNoteAi}
           />
 
           <ConfirmDeleteDialog

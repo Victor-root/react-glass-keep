@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useCallback } from "react";
 import { PinOutline, PinFilled, CloseIcon } from "../../icons/index.jsx";
+import TI from "../../icons/editor/index.jsx";
 import { modalBgFor } from "../../utils/colors.js";
 import { t } from "../../i18n";
 
@@ -52,6 +53,13 @@ export default function ModalHeader({
   // Rich-text editor toolbar is portaled into this slot (a ref to the
   // div we render below the header row, inside the sticky wrapper).
   toolbarSlotRef,
+  // AI toggle — shown in header on mobile/non-sidebar layouts
+  noteAiAvailable,
+  noteAiSidebarLayout,
+  noteAiOpen,
+  noteAiHasMessages,
+  onOpenNoteAi,
+  onHideNoteAi,
 }) {
   const handleTitleKeyDown = (e) => {
     // Enter must never insert a newline in the title — titles render
@@ -180,6 +188,24 @@ export default function ModalHeader({
 
           <div className={`flex items-center flex-none shrink-0 ${isDesktop && !isDrawEdit ? "ml-auto" : ""}`}>
             <div className={isDesktop ? "modal-icon-group" : "flex items-center gap-0.5"}>
+              {/* AI toggle — mobile/non-sidebar only. Chevron right opens the
+                  panel; chevron left (mirrored style in the panel) closes it.
+                  A dot badge signals a hidden active conversation. */}
+              {!isDesktop && !isDrawEdit && noteAiAvailable && !noteAiSidebarLayout && (
+                <button
+                  className="modal-icon-btn focus:outline-none relative"
+                  style={{ color: noteAiOpen ? "rgb(99,102,241)" : undefined }}
+                  onClick={() => noteAiOpen ? onHideNoteAi?.() : onOpenNoteAi?.()}
+                  data-tooltip={t("noteAiChatMenuItem")}
+                  aria-pressed={noteAiOpen ? "true" : "false"}
+                >
+                  <TI.ChevronRight className="tabler-icon w-5 h-5" />
+                  {noteAiHasMessages && !noteAiOpen && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-indigo-500 ring-[1.5px] ring-white dark:ring-gray-800" />
+                  )}
+                </button>
+              )}
+
               {/* Pin */}
               {showPinBtn && (
                 <button
