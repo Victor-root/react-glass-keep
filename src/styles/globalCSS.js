@@ -2898,4 +2898,16 @@ html.dark .typo-modal-toggle {
 .note-ai-panel-wrapper.closing .note-ai-panel {
   animation: noteAiPanelOut 0.32s cubic-bezier(0.55, 0, 0.55, 0.6) both;
 }
+/* Save ↔ Reset button swap animation. Both buttons carry this class so the
+   animation re-fires each time React mounts the replacement button. The
+   short overshoot (scale 1.25) makes the swap feel decisive even though
+   the two icons look similar. */
+@keyframes noteAiSaveBtnIn {
+  0%   { transform: scale(0.2) rotate(-45deg); opacity: 0; }
+  65%  { transform: scale(1.25) rotate(6deg);  opacity: 1; }
+  100% { transform: scale(1)   rotate(0deg);   opacity: 1; }
+}
+.note-ai-save-btn {
+  animation: noteAiSaveBtnIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
 `;
