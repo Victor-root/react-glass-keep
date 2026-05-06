@@ -1160,104 +1160,89 @@ html.dark .modal-scroll-themed::-webkit-scrollbar-thumb { background: var(--sb-t
 
 /* ───────── Side-by-side mode ─────────
    Two NoteModal instances render their own scrims simultaneously. Both
-   scrims are full-screen overlays; we keep ONE visible (the left pane's
-   scrim provides the shared backdrop) and route pointer events through
-   the panes. Each pane keeps its NATURAL modal dimensions (same width,
-   height, and border-radius as a single open note) — the two panels
-   simply sit anchored against the viewport center with a configurable
-   gap between them. The surviving pane smoothly translates back to
-   center when its sibling closes.                                       */
+   scrims keep their natural full-screen flex-center layout (i.e. the
+   pane's NATURAL position is the same in SBS and single mode — exact
+   viewport centre). The only thing SBS does is apply a translateX to
+   each pane so it visibly anchors to one half of the screen with a
+   configurable gap between them. When a pane closes, its surviving
+   sibling animates its translateX back to 0 — i.e. exactly its natural
+   centred position — so when the body class drops at the end of the
+   animation, no layout property has actually moved and there is no
+   "jolt": the pane was already at the same position the new layout
+   would put it.                                                          */
 :root {
-  --sbs-gap: 24px;        /* horizontal space between the two panes */
-  --sbs-anim: 360ms;      /* close + recenter duration (must match JS) */
+  --sbs-gap: 24px;
+  --sbs-anim: 360ms;
 }
-body.sbs-active .modal-scrim[data-split-mode="true"] {
-  pointer-events: none;        /* let clicks reach the pane only */
-  padding: 0;
-  gap: 0;
-}
+/* The right-pane scrim is invisible — only the left scrim provides
+   the shared backdrop. Pointer events still go through to each pane. */
 body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="right"] {
   background: transparent !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-body.sbs-active .modal-scrim[data-split-mode="true"] > * {
-  pointer-events: auto;
-}
-/* Left pane: anchor to right of its scrim, just before the centerline,
-   leaving half the gap between the pane and the screen center.        */
-body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="left"] {
-  justify-content: flex-end !important;
-  padding-right: calc(50vw + var(--sbs-gap) / 2) !important;
-  padding-left: 16px !important;
-}
-body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="right"] {
-  justify-content: flex-start !important;
-  padding-left: calc(50vw + var(--sbs-gap) / 2) !important;
-  padding-right: 16px !important;
-}
-/* Each pane keeps its native modal dimensions — height and border-radius
-   come straight from the standard sm:h-[95vh] sm:rounded-xl classes.
-   The only width tweak is to let the pane fill the scrim's content area
-   (i.e. the viewport half minus the gap), still capped by sm:max-w-4xl
-   from the original modal markup, so on a roomy screen the pane lands
-   at exactly the same width as a single open note. The transform
-   transition lets the surviving pane glide back to centre when its
-   sibling closes.                                                       */
+/* Each pane keeps its native modal dimensions (no width / height /
+   border-radius override). The SBS layout is purely transform-based
+   so the natural flex layout is identical in SBS and single mode.
+   Two CSS variables compose the final transform:
+     --sbs-anchor-x  →  half-pane offset that anchors the pane to
+                        one side of the viewport centre
+     --sbs-close-x   →  small extra offset applied to the pane that's
+                        animating out                                  */
 body.sbs-active .modal-scrim[data-split-mode="true"] > .note-modal-anim {
-  width: 100% !important;
+  --sbs-anchor-x: 0px;
+  --sbs-close-x: 0px;
+  transform: translateX(var(--sbs-anchor-x)) translateX(var(--sbs-close-x));
   transition:
     transform var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
     opacity var(--sbs-anim) ease;
   will-change: transform;
 }
-/* Pane that is being closed: slide outward off-centre and fade. The
-   sibling (no splitClosing flag) gets translated to centre via the
-   body-level closing class below.                                   */
+body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
+  --sbs-anchor-x: calc(-50% - var(--sbs-gap) / 2);
+}
+body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim {
+  --sbs-anchor-x: calc(50% + var(--sbs-gap) / 2);
+}
+/* Pane that's animating out: small extra offset + fade. The anchor
+   stays the same so the pane fades from its current position. */
 body.sbs-active .modal-scrim[data-split-mode="true"][data-split-closing="true"] > .note-modal-anim {
   opacity: 0;
   pointer-events: none;
 }
 body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="left"][data-split-closing="true"] > .note-modal-anim {
-  transform: translateX(-32px) scale(0.96);
+  --sbs-close-x: -24px;
 }
 body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="right"][data-split-closing="true"] > .note-modal-anim {
-  transform: translateX(32px) scale(0.96);
+  --sbs-close-x: 24px;
 }
-/* When the right pane is closing, recenter the left: translate it half
-   the (pane width + gap) to the right so its centre lands at viewport
-   centre. The pane's right edge currently sits at (50vw - gap/2), and
-   target right edge is at (50vw + paneWidth/2). The translate distance
-   is therefore (paneWidth + gap) / 2.
-   We approximate paneWidth via the pane's actual rendered box by using
-   percentages: translating by 50% of the pane itself nudges its centre
-   to where the gap was, then half a gap finishes the alignment.     */
+/* Surviving pane recenters: anchor goes back to 0. This is exactly
+   the pane's natural flex-centre position, so when sbs-active drops
+   at t=anim-end the transform clears with no visible delta.          */
 body.sbs-active.sbs-closing-right .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
-  transform: translateX(calc(50% + var(--sbs-gap) / 2));
+  --sbs-anchor-x: 0px;
 }
 body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim {
-  transform: translateX(calc(-50% - var(--sbs-gap) / 2));
+  --sbs-anchor-x: 0px;
 }
-/* Mobile fallback: stack vertically — same height per pane as a normal
-   single modal can't fit two; use 50vh each as a reasonable compromise. */
+/* Mobile: stack vertically with the same transform-only approach. */
 @media (max-width: 767px) {
-  body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="left"],
-  body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="right"] {
-    padding: 8px !important;
-    align-items: flex-start;
-  }
-  body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="right"] {
-    align-items: flex-end;
-  }
   body.sbs-active .modal-scrim[data-split-mode="true"] > .note-modal-anim {
-    width: calc(100vw - 16px) !important;
-    max-width: calc(100vw - 16px) !important;
-    height: calc(50vh - 16px) !important;
+    --sbs-anchor-x: 0px;
+    --sbs-anchor-y: 0px;
+    transform: translateY(var(--sbs-anchor-y));
+    height: calc(50vh - 12px) !important;
+  }
+  body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
+    --sbs-anchor-y: calc(-25vh - var(--sbs-gap) / 2);
+  }
+  body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim {
+    --sbs-anchor-y: calc(25vh + var(--sbs-gap) / 2);
   }
   body.sbs-active.sbs-closing-right .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim,
   body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim {
-    transform: translateY(0);
-    height: calc(100vh - 16px) !important;
+    --sbs-anchor-y: 0px;
+    height: calc(95vh) !important;
   }
 }
 
