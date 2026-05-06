@@ -3605,12 +3605,14 @@ export default function App() {
   // Backdrop click while in SBS mode: close both panes at once.
   // We synchronously remove sbs-active so the primary plays its normal
   // single-modal close animation (not the SBS left-exit animation).
+  // closeModal is defined later in the component body (TDZ), so we go
+  // through the existing closeModalRef which is wired up below.
   const closeBothSBS = useCallback(() => {
     document.body.classList.remove("sbs-active");
     setSbsSecondaryId(null);
     setSbsClosingSide(null);
-    closeModal();
-  }, [closeModal]); // eslint-disable-line
+    closeModalRef.current?.();
+  }, []);
 
   // Check if the note has been modified from initial state
   const hasNoteBeenModified = useCallback(() => {
