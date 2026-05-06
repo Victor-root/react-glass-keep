@@ -3546,6 +3546,11 @@ export default function App() {
     setMultiMode(false);
     setSelectedIds([]);
     setSidebarOpen(false);
+    // Add sbs-active to <body> synchronously before the React render so
+    // the SBS CSS (including the sbsPaneIn animation override) is already
+    // in effect when the new DOM elements are first painted — preventing
+    // the noteModalIn keyframe from conflicting with the SBS transform.
+    document.body.classList.add("sbs-active");
     // Open the left pane via the existing primary pipeline (full features
     // unchanged). Open the right pane via the SecondaryNoteInstance below.
     openModal(String(ids[0]));
@@ -3596,6 +3601,16 @@ export default function App() {
     setSbsSecondaryId(null);
     setSbsClosingSide(null);
   }, []);
+
+  // Backdrop click while in SBS mode: close both panes at once.
+  // We synchronously remove sbs-active so the primary plays its normal
+  // single-modal close animation (not the SBS left-exit animation).
+  const closeBothSBS = useCallback(() => {
+    document.body.classList.remove("sbs-active");
+    setSbsSecondaryId(null);
+    setSbsClosingSide(null);
+    closeModal();
+  }, [closeModal]); // eslint-disable-line
 
   // Check if the note has been modified from initial state
   const hasNoteBeenModified = useCallback(() => {
@@ -5009,6 +5024,7 @@ export default function App() {
       notes={notes}
       currentUser={currentUser}
       tagFilter={tagFilter}
+      onScrimClose={sbsActive ? closeBothSBS : undefined}
       closeModal={primaryCloseModal}
       saveModal={saveModal}
       deleteModal={deleteModal}

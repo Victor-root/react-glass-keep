@@ -1175,11 +1175,17 @@ html.dark .modal-scroll-themed::-webkit-scrollbar-thumb { background: var(--sb-t
   --sbs-anim: 360ms;
 }
 /* The right-pane scrim is invisible — only the left scrim provides
-   the shared backdrop. Pointer events still go through to each pane. */
+   the shared backdrop. Setting pointer-events:none lets clicks pass
+   through the transparent scrim overlay to the left pane below. */
 body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="right"] {
   background: transparent !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  pointer-events: none;
+}
+/* Restore pointer events on the right pane content itself. */
+body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim {
+  pointer-events: auto;
 }
 /* Each pane keeps its native modal dimensions (no width / height /
    border-radius override). The SBS layout is purely transform-based
@@ -1224,6 +1230,21 @@ body.sbs-active.sbs-closing-right .modal-scrim[data-split-mode="true"][data-spli
 }
 body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim {
   --sbs-anchor-x: 0px;
+}
+/* Opening animation for SBS panes.
+   noteModalIn uses translateY which conflicts with the SBS transform:
+   the keyframe animation overrides the CSS transform during its run,
+   so the pane plays its animation from the viewport centre and then
+   jumps to the SBS position when the keyframe finishes. Fix: suppress
+   noteModalIn for both panes and replace with a pure opacity fade so
+   the SBS positioning transform is always in full control.
+   fill-mode: backwards → opacity=0 on first frame even without delay.
+   No 'forwards' fill → opacity returns to CSS default (1) after the
+   animation completes, which lets the splitClosing CSS transition take
+   over later when the user closes one pane.                          */
+@keyframes sbsPaneIn  { from { opacity: 0; } to { opacity: 1; } }
+body.sbs-active .modal-scrim[data-split-mode="true"] > .note-modal-anim {
+  animation: sbsPaneIn 220ms ease-out backwards !important;
 }
 /* Mobile: stack vertically with the same transform-only approach. */
 @media (max-width: 767px) {

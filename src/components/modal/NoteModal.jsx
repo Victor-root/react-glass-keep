@@ -144,6 +144,7 @@ export default function NoteModal({
   currentUser,
   tagFilter,
   // handlers
+  onScrimClose, // when set (SBS mode), called on backdrop click to close both panes
   closeModal,
   saveModal,
   deleteModal,
@@ -508,15 +509,22 @@ export default function NoteModal({
         data-split-side={splitMode ? splitSide : undefined}
         data-split-closing={splitClosing ? "true" : undefined}
         onMouseDown={(e) => {
-          if (splitMode) return; // shell handles scrim clicks
+          // In SBS mode the right-scrim is pointer-events:none, so this
+          // handler only fires on the left (backdrop) scrim. Track the
+          // click start so a drag doesn't accidentally dismiss.
           scrimClickStartRef.current = e.target === e.currentTarget;
         }}
         onClick={(e) => {
-          if (splitMode) return;
-          if (scrimClickStartRef.current && e.target === e.currentTarget) {
-            closeModal();
+          if (!scrimClickStartRef.current || e.target !== e.currentTarget) {
+            scrimClickStartRef.current = false;
+            return;
           }
           scrimClickStartRef.current = false;
+          if (splitMode && onScrimClose) {
+            onScrimClose(); // close both panes
+          } else if (!splitMode) {
+            closeModal();
+          }
         }}
       >
         <div
