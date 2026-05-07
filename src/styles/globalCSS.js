@@ -1551,6 +1551,30 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
     overflow: hidden;
     transition: none !important;
   }
+  /* Explicit keyframes so height + transform always move on the same composited
+     pass. CSS transitions animate each property independently, which can produce
+     a 2-frame jump on Android WebView when height (layout) and transform
+     (composited) are scheduled on different tick queues. */
+  @keyframes sbsMobileSurvivorFromBottom {
+    from {
+      transform: translateY(calc(25dvh + var(--sbs-gap) / 2));
+      height: calc(50dvh - var(--sbs-gap) / 2);
+    }
+    to {
+      transform: translateY(0px);
+      height: 100dvh;
+    }
+  }
+  @keyframes sbsMobileSurvivorFromTop {
+    from {
+      transform: translateY(calc(-25dvh - var(--sbs-gap) / 2));
+      height: calc(50dvh - var(--sbs-gap) / 2);
+    }
+    to {
+      transform: translateY(0px);
+      height: 100dvh;
+    }
+  }
   /* Survivor is layered above the frozen closing pane and is the only moving element. */
   body.sbs-active.sbs-closing-left
     .modal-scrim[data-split-mode="true"][data-split-side="right"],
@@ -1564,18 +1588,25 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
     .modal-scrim[data-split-mode="true"][data-split-side="right"] {
     z-index: 41;
   }
-  /* Survivor: recenters and expands to 100dvh — the only pane whose height animates. */
+  /* Closing top pane → bottom pane (right) is the survivor, plays fromBottom. */
   body.sbs-active.sbs-closing-left
-    .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim,
+    .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim {
+    --sbs-anchor-y: 0px;
+    height: 100dvh !important;
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    transition: none !important;
+    animation: sbsMobileSurvivorFromBottom var(--sbs-anim) cubic-bezier(.22,.61,.36,1) both;
+  }
+  /* Closing bottom pane → top pane (left) is the survivor, plays fromTop. */
   body.sbs-active.sbs-closing-right
     .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
     --sbs-anchor-y: 0px;
     height: 100dvh !important;
     clip-path: inset(0 0 0 0);
     opacity: 1;
-    transition:
-      transform var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
-      height var(--sbs-anim) cubic-bezier(.22,.61,.36,1);
+    transition: none !important;
+    animation: sbsMobileSurvivorFromTop var(--sbs-anim) cubic-bezier(.22,.61,.36,1) both;
   }
 }
 
