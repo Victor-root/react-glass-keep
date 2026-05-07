@@ -42,6 +42,7 @@ export default function NotesComposer({
   fabOpen,
   setFabOpen,
   isDesktop,
+  multiMode,
   addImagesToState,
   formatComposer,
   showComposerFmt,
@@ -170,7 +171,7 @@ export default function NotesComposer({
               onCreateChecklist={onDirectChecklist}
               onCreateDraw={onDirectDraw}
             />
-          ) : (
+          ) : !multiMode ? (
             <MobileCreateFab
               open={fabOpen}
               setOpen={setFabOpen}
@@ -178,7 +179,7 @@ export default function NotesComposer({
               onCreateChecklist={onDirectChecklist}
               onCreateDraw={onDirectDraw}
             />
-          )}
+          ) : null}
         </div>
       </div>
       )}

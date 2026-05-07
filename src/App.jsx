@@ -488,6 +488,7 @@ export default function App() {
   const onStartMulti = () => {
     setMultiMode(true);
     setSelectedIds([]);
+    setFabOpen(false); // dock lives at bottom; close FAB to avoid overlap
   };
   const onExitMulti = () => {
     setMultiMode(false);

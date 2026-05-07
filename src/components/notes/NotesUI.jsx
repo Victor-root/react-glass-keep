@@ -268,24 +268,6 @@ function NotesUI({
         activeTagFilter={activeTagFilter}
       />
 
-      <MultiSelectToolbar
-        multiMode={multiMode}
-        dark={dark}
-        activeTagFilter={activeTagFilter}
-        selectedIds={selectedIds}
-        filteredNotes={[...pinned, ...others]}
-        onBulkDownloadZip={onBulkDownloadZip}
-        onBulkRestore={onBulkRestore}
-        onBulkDelete={onBulkDelete}
-        onBulkColor={onBulkColor}
-        onBulkPin={onBulkPin}
-        onBulkArchive={onBulkArchive}
-        onSelectAll={onSelectAll}
-        onExitMulti={onExitMulti}
-        onOpenSideBySide={onOpenSideBySide}
-        headerVisible={headerVisible}
-      />
-
       <NotesComposer
         dark={dark}
         activeTagFilter={activeTagFilter}
@@ -322,6 +304,7 @@ function NotesUI({
         fabOpen={fabOpen}
         setFabOpen={setFabOpen}
         isDesktop={windowWidth >= 700 && !isLandscapeMobile}
+        multiMode={multiMode}
         formatComposer={formatComposer}
         showComposerFmt={showComposerFmt}
         setShowComposerFmt={setShowComposerFmt}
@@ -378,6 +361,26 @@ function NotesUI({
         syncStatus={syncStatus}
         windowWidth={windowWidth}
         onEmptyTrash={onEmptyTrash}
+      />
+
+      {/* Floating multi-select dock — fixed at the bottom of the viewport,
+          overlay-style. Lives outside the scrollable content so it doesn't
+          push layout down or compete with NotesHeader. */}
+      <MultiSelectToolbar
+        multiMode={multiMode}
+        dark={dark}
+        activeTagFilter={activeTagFilter}
+        selectedIds={selectedIds}
+        filteredNotes={[...pinned, ...others]}
+        onBulkDownloadZip={onBulkDownloadZip}
+        onBulkRestore={onBulkRestore}
+        onBulkDelete={onBulkDelete}
+        onBulkColor={onBulkColor}
+        onBulkPin={onBulkPin}
+        onBulkArchive={onBulkArchive}
+        onSelectAll={onSelectAll}
+        onExitMulti={onExitMulti}
+        onOpenSideBySide={onOpenSideBySide}
       />
     </div>
   );

@@ -130,13 +130,107 @@ html.dark header.glass-card {
   border-bottom: 1px solid var(--border-light);
   box-shadow: none;
 }
-header.multi-select-bar {
-  border: 2px solid rgba(139, 92, 246, 0.45);
-  box-shadow: 0 4px 24px rgba(139, 92, 246, 0.18), inset 0 0 0 1px rgba(139, 92, 246, 0.08);
+/* ───────── Multi-select floating dock ─────────
+   Replaces the old sticky header. The dock is fixed at the bottom of the
+   viewport (centred on desktop, near-full-width on mobile) so it never
+   pushes the layout down or doubles up with NotesHeader. */
+.multi-select-dock {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  transform: translateX(-50%);
+  z-index: 35;
+  pointer-events: none;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  animation: multiDockIn 220ms cubic-bezier(.22,.61,.36,1) both;
 }
-html.dark header.multi-select-bar {
+.multi-select-dock--exiting {
+  animation: multiDockOut 200ms ease-in both;
+}
+.multi-select-dock__inner {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 16px;
+  border: 2px solid rgba(139, 92, 246, 0.45);
+  box-shadow:
+    0 12px 40px -8px rgba(76, 29, 149, 0.35),
+    0 8px 20px -10px rgba(76, 29, 149, 0.25),
+    inset 0 0 0 1px rgba(139, 92, 246, 0.08);
+}
+html.dark .multi-select-dock__inner {
   border: 2px solid rgba(139, 92, 246, 0.5);
-  box-shadow: 0 4px 24px rgba(139, 92, 246, 0.22), inset 0 0 0 1px rgba(139, 92, 246, 0.1);
+  box-shadow:
+    0 14px 48px -10px rgba(0, 0, 0, 0.65),
+    0 8px 20px -10px rgba(76, 29, 149, 0.45),
+    inset 0 0 0 1px rgba(139, 92, 246, 0.12);
+}
+.multi-select-dock__divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border-light);
+  flex-shrink: 0;
+}
+.multi-select-dock__actions {
+  scrollbar-width: none;
+}
+.multi-select-dock__actions::-webkit-scrollbar { display: none; }
+
+.multi-select-dock__menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  min-width: 180px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.25);
+  z-index: 1;
+  animation: multiDockIn 160ms ease-out both;
+}
+
+@keyframes multiDockIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.96); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0)   scale(1);    }
+}
+@keyframes multiDockOut {
+  from { opacity: 1; transform: translateX(-50%) translateY(0)   scale(1);    }
+  to   { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.97); }
+}
+
+@media (max-width: 639px) {
+  .multi-select-dock {
+    left: 12px;
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    transform: none;
+    width: auto;
+    max-width: none;
+    animation: multiDockInMobile 220ms cubic-bezier(.22,.61,.36,1) both;
+  }
+  .multi-select-dock--exiting {
+    animation: multiDockOutMobile 200ms ease-in both;
+  }
+  .multi-select-dock__inner {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+  /* Menu (Kebab) anchor: align to the right edge on mobile too. */
+  .multi-select-dock__menu {
+    right: 0;
+  }
+}
+
+@keyframes multiDockInMobile {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+@keyframes multiDockOutMobile {
+  from { opacity: 1; transform: translateY(0)    scale(1);    }
+  to   { opacity: 0; transform: translateY(12px) scale(0.97); }
 }
 .note-content { -webkit-user-select: text; user-select: text; }
 /* Text cursor on the modal's note body (both edit AND view mode) so the
