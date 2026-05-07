@@ -140,8 +140,8 @@ html.dark header.glass-card {
   left: 12px;
   right: 12px;
   /* Anchored flush against the bottom of NotesHeader (no gap).
-     The header is `sticky top-0` with ~88px desktop / 72px mobile
-     of content height, so the dock's top equals header height +
+     The header is sticky at top:0 with ~88px desktop / 72px mobile
+     of content height, so the dock top equals header height +
      safe-area-inset-top. Header sits at z-40 and the dock at z-35,
      so any minor overlap from a banner row hides cleanly behind
      the header rather than poking through. */
