@@ -13,6 +13,20 @@ import { COLOR_ORDER, LIGHT_COLORS } from "../../utils/colors.js";
 
 const EXIT_MS = 200;
 
+// Hex color pairs for kebab-menu items. Mirrors the modal's kebab menu
+// (ModalFooter) so the in-overflow style is consistent across the app:
+// colored TEXT on a neutral white / #222 background, not a tinted block.
+const MENU_COLOR = {
+  red:     { light: "#dc2626", dark: "#f87171" },
+  green:   { light: "#16a34a", dark: "#4ade80" },
+  emerald: { light: "#059669", dark: "#34d399" },
+  amber:   { light: "#d97706", dark: "#fbbf24" },
+  violet:  { light: "#7c3aed", dark: "#c4b5fd" },
+  blue:    { light: "#0284c7", dark: "#7dd3fc" },
+  slate:   { light: "#475569", dark: "#cbd5e1" },
+  indigo:  { light: "#4f46e5", dark: "#a5b4fc" },
+};
+
 // Tone classes per action. Each kind is recognisable at a glance while
 // staying within the violet/blue family of the dock so the palette feels
 // cohesive (not "rainbow toy"). Backgrounds are opaque so contrast is
@@ -184,23 +198,27 @@ export default function MultiSelectToolbar({
 
   // Build the action list in priority order. Order matters: items earlier
   // in the array win the limited width budget; the rest go into the kebab.
+  // The SBS CTA is ALWAYS in the list — when it can't be triggered (less
+  // or more than 2 notes selected, trash) it renders disabled instead of
+  // disappearing, so the user always sees it as an available outcome.
   const actions = useMemo(() => {
     const list = [];
-    if (canSideBySide) {
-      list.push({
-        id: "sbs",
-        label: t("openSideBySide"),
-        icon: <SbsIcon />,
-        onClick: () => onOpenSideBySide(selectedIds),
-        kind: "cta",
-      });
-    }
+    list.push({
+      id: "sbs",
+      label: t("openSideBySide"),
+      icon: <SbsIcon />,
+      onClick: canSideBySide ? () => onOpenSideBySide(selectedIds) : undefined,
+      disabled: !canSideBySide,
+      kind: "cta",
+      menuTone: "indigo",
+    });
     list.push({
       id: "destructive",
       label: isTrash ? t("permanentlyDelete") : t("moveToTrash"),
       icon: <Trash />,
       onClick: onBulkDelete,
       tone: "red",
+      menuTone: "red",
     });
     if (isTrash) {
       list.push({
@@ -209,6 +227,7 @@ export default function MultiSelectToolbar({
         icon: <RestoreIconSvg />,
         onClick: onBulkRestore,
         tone: "green",
+        menuTone: "emerald",
       });
     } else {
       list.push({
@@ -217,6 +236,7 @@ export default function MultiSelectToolbar({
         icon: <ColorEmoji />,
         onClick: () => setShowMultiColorPop((v) => !v),
         tone: "violet",
+        menuTone: "violet",
         attachRef: colorBtnAttachRef,
       });
       if (!isArchive) {
@@ -226,6 +246,7 @@ export default function MultiSelectToolbar({
           icon: <PinIcon />,
           onClick: () => onBulkPin(true),
           tone: "amber",
+          menuTone: "amber",
         });
       }
       list.push({
@@ -234,6 +255,7 @@ export default function MultiSelectToolbar({
         icon: <ArchiveIcon />,
         onClick: onBulkArchive,
         tone: "blue",
+        menuTone: "blue",
       });
     }
     list.push({
@@ -241,7 +263,8 @@ export default function MultiSelectToolbar({
       label: t("downloadZip"),
       icon: <DownloadIcon />,
       onClick: onBulkDownloadZip,
-      tone: "slate",
+      tone: "green",
+      menuTone: "green",
     });
     if (filteredNotes?.length > 0) {
       list.push({
@@ -250,6 +273,7 @@ export default function MultiSelectToolbar({
         icon: null,
         onClick: () => onSelectAll?.(filteredNotes),
         tone: "slate",
+        menuTone: "slate",
       });
     }
     return list;
@@ -268,6 +292,7 @@ export default function MultiSelectToolbar({
     onBulkArchive,
     onBulkDownloadZip,
     onSelectAll,
+    colorBtnAttachRef,
   ]);
 
   // Measure each button via the hidden ghost. Re-runs whenever the action
@@ -338,25 +363,56 @@ export default function MultiSelectToolbar({
 
   if (!shouldRender) return null;
 
+  // Resolve the colored-text style for a kebab menu item — mirrors the
+  // exact hex pairs the modal kebab uses so visual continuity is kept.
+  const menuItemStyle = (action) => {
+    const tone = action.menuTone || action.tone || "slate";
+    const palette = MENU_COLOR[tone] || MENU_COLOR.slate;
+    return { color: dark ? palette.dark : palette.light };
+  };
+
   // Renders one action button (visible row OR ghost row OR menu item).
   const renderActionButton = (action, opts = {}) => {
     const { ghost = false, menuItem = false, attachRef } = opts;
+    const isDisabled = !!action.disabled;
     if (action.kind === "cta") {
-      // CTA (side-by-side): keeps the gradient identity but harmonised
-      // with the dock's violet skin — slightly darker, ringed, with a
-      // soft violet glow shadow so it still reads as the primary action.
+      // CTA (side-by-side): always rendered. When it can't fire (selection
+      // count != 2 or trash) it stays in place but greys out via opacity
+      // — the user keeps it on screen as an available outcome.
+      const ctaBase =
+        "h-9 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-bold whitespace-nowrap shrink-0 text-white bg-gradient-to-r from-indigo-600 to-violet-700 ring-1 ring-violet-500/30 shadow-md shadow-violet-500/40 transition-all duration-200";
+      const ctaActive =
+        " hover:from-indigo-700 hover:to-violet-800 hover:shadow-lg hover:shadow-violet-500/50 hover:scale-[1.02] active:scale-[0.98]";
+      const ctaDisabled = " opacity-40 cursor-not-allowed grayscale-[0.2]";
       return (
         <button
           key={action.id}
           ref={attachRef}
           data-action-id={ghost ? action.id : undefined}
           type="button"
-          onClick={menuItem ? () => { action.onClick(); setShowMoreMenu(false); } : action.onClick}
+          disabled={isDisabled}
+          onClick={
+            isDisabled
+              ? undefined
+              : menuItem
+                ? () => {
+                    action.onClick?.();
+                    setShowMoreMenu(false);
+                  }
+                : action.onClick
+          }
           tabIndex={ghost ? -1 : 0}
+          aria-disabled={isDisabled || undefined}
           className={
             menuItem
-              ? "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md font-semibold text-violet-900 dark:text-violet-100 hover:bg-violet-200/60 dark:hover:bg-violet-800/50"
-              : "h-9 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-bold whitespace-nowrap shrink-0 text-white bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-700 hover:to-violet-800 ring-1 ring-violet-500/30 shadow-md shadow-violet-500/40 hover:shadow-lg hover:shadow-violet-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+              ? "flex items-center gap-2 w-full text-left px-3 py-2 text-sm font-semibold transition-colors hover:bg-gray-100 dark:hover:bg-white/10" +
+                (isDisabled ? " opacity-50 cursor-not-allowed" : "")
+              : ctaBase + (isDisabled ? ctaDisabled : ctaActive)
+          }
+          style={
+            menuItem
+              ? menuItemStyle({ ...action, menuTone: action.menuTone || "indigo" })
+              : undefined
           }
         >
           {action.icon}
@@ -366,6 +422,8 @@ export default function MultiSelectToolbar({
     }
     const toneCls = TONE[action.tone] || TONE.slate;
     if (menuItem) {
+      // Kebab menu items mirror the modal's kebab style: colored text on
+      // a neutral white / #222 background, hover greys.
       return (
         <button
           key={action.id}
@@ -373,10 +431,11 @@ export default function MultiSelectToolbar({
           ref={attachRef}
           type="button"
           onClick={() => {
-            action.onClick();
+            action.onClick?.();
             setShowMoreMenu(false);
           }}
-          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md hover:bg-violet-100/70 dark:hover:bg-violet-800/40 text-gray-800 dark:text-gray-100"
+          className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-white/10"
+          style={menuItemStyle(action)}
         >
           {action.icon && (
             <span className="inline-flex w-5 justify-center">{action.icon}</span>

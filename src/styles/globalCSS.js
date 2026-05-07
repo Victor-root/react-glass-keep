@@ -139,7 +139,14 @@ html.dark header.glass-card {
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+  /* Anchored at the top, sitting just under the page header. The
+     spacing here mirrors what we used to keep at the bottom: a 16px
+     gap above the dock + safe-area-inset-top, plus the header height
+     (~88px desktop / 72px mobile) so the dock floats neatly under
+     NotesHeader without overlapping it. Auto-hide of the header on
+     scroll just frees up empty space above the dock — no overlap. */
+  top: calc(env(safe-area-inset-top, 0px) + 104px);
+  bottom: auto;
   z-index: 35;
   pointer-events: none;
   display: flex;
@@ -207,42 +214,51 @@ html.dark .multi-select-dock__divider {
   white-space: nowrap;
 }
 
-/* Kebab popover — opens above the dock, in the same violet skin. */
+/* Kebab popover — opens BELOW the dock (dock is anchored at the top).
+   Visual style matches the modal's kebab menu (ModalFooter): white
+   background in light mode, #222 in dark, with colored TEXT items
+   (set inline by JS) and a neutral grey hover. */
 .multi-select-dock__menu {
   position: absolute;
   right: 0;
-  bottom: calc(100% + 8px);
-  min-width: 220px;
-  padding: 6px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #faf8ff 0%, #f3eeff 100%);
-  border: 1px solid rgba(124, 58, 237, 0.30);
+  top: calc(100% + 8px);
+  min-width: 200px;
+  padding: 4px 0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid var(--border-light);
   box-shadow:
-    0 14px 32px -10px rgba(76, 29, 149, 0.34),
-    0 6px 16px -8px rgba(99, 102, 241, 0.22);
+    0 14px 32px -10px rgba(15, 23, 42, 0.20),
+    0 6px 16px -8px rgba(15, 23, 42, 0.15);
   z-index: 1;
-  animation: multiDockIn 160ms ease-out both;
+  animation: multiDockMenuIn 160ms ease-out both;
 }
 html.dark .multi-select-dock__menu {
-  background: linear-gradient(135deg, #1e1a3d 0%, #271f4f 100%);
-  border: 1px solid rgba(167, 139, 250, 0.32);
+  background: #222222;
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     0 14px 32px -10px rgba(0, 0, 0, 0.65),
-    0 6px 16px -8px rgba(76, 29, 149, 0.45);
+    0 6px 16px -8px rgba(0, 0, 0, 0.5);
 }
 
 @keyframes multiDockIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.96); }
-  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+  from { opacity: 0; transform: translateY(-10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)     scale(1);    }
 }
 @keyframes multiDockOut {
-  from { opacity: 1; transform: translateY(0)    scale(1);    }
-  to   { opacity: 0; transform: translateY(12px) scale(0.97); }
+  from { opacity: 1; transform: translateY(0)     scale(1);    }
+  to   { opacity: 0; transform: translateY(-12px) scale(0.97); }
+}
+@keyframes multiDockMenuIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
 @media (max-width: 639px) {
   .multi-select-dock {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    top: calc(env(safe-area-inset-top, 0px) + 80px);
     left: 8px;
     right: 8px;
   }
