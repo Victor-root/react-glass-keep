@@ -1515,19 +1515,20 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
     animation: sbsMobilePaneIn 220ms cubic-bezier(.22,.61,.36,1);
   }
   /* Curtain close — top pane stays put and is masked from bottom upward via clip-path.
-     The pane keeps its real height so its internal flex layout never reflows. */
+     The pane keeps its real height so its internal flex layout never reflows.
+     Stays fully opaque during the curtain so the backdrop never bleeds through. */
   body.sbs-active.sbs-closing-left
     .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
     --sbs-anchor-y: calc(-25dvh - var(--sbs-gap) / 2);
     --sbs-close-y: 0px;
     height: calc(50dvh - var(--sbs-gap) / 2) !important;
     clip-path: inset(0 0 100% 0);
-    opacity: 0;
+    opacity: 1;
     pointer-events: none;
     overflow: hidden;
-    transition:
-      clip-path var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
-      opacity calc(var(--sbs-anim) * .75) ease;
+    will-change: clip-path;
+    backface-visibility: hidden;
+    transition: clip-path var(--sbs-anim) cubic-bezier(.22,.61,.36,1);
   }
   /* Curtain close — bottom pane stays put and is masked from top downward via clip-path. */
   body.sbs-active.sbs-closing-right
@@ -1536,12 +1537,26 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
     --sbs-close-y: 0px;
     height: calc(50dvh - var(--sbs-gap) / 2) !important;
     clip-path: inset(100% 0 0 0);
-    opacity: 0;
+    opacity: 1;
     pointer-events: none;
     overflow: hidden;
-    transition:
-      clip-path var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
-      opacity calc(var(--sbs-anim) * .75) ease;
+    will-change: clip-path;
+    backface-visibility: hidden;
+    transition: clip-path var(--sbs-anim) cubic-bezier(.22,.61,.36,1);
+  }
+  /* Survivor sits above the closing pane during the transition so any
+     sub-pixel desync at the seam never reveals the backdrop. */
+  body.sbs-active.sbs-closing-left
+    .modal-scrim[data-split-mode="true"][data-split-side="right"],
+  body.sbs-active.sbs-closing-right
+    .modal-scrim[data-split-mode="true"][data-split-side="left"] {
+    z-index: 42;
+  }
+  body.sbs-active.sbs-closing-left
+    .modal-scrim[data-split-mode="true"][data-split-side="left"],
+  body.sbs-active.sbs-closing-right
+    .modal-scrim[data-split-mode="true"][data-split-side="right"] {
+    z-index: 41;
   }
   /* Survivor: recenters and expands to full height — the only pane whose real
      height actually animates. height transition lives here only, not on the base rule. */
@@ -1552,6 +1567,8 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
     --sbs-anchor-y: 0px;
     height: 100dvh !important;
     clip-path: inset(0 0 0 0);
+    will-change: transform, height;
+    backface-visibility: hidden;
     transition:
       transform var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
       height var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
