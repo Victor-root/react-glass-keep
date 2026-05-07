@@ -1347,7 +1347,19 @@ html.dark .modal-scroll-themed::-webkit-scrollbar-thumb { background: var(--sb-t
   --sbs-gap: clamp(12px, 2vw, 32px);
   --sbs-edge: clamp(12px, 2vw, 28px);
   --sbs-pane-w: min(896px, calc((100vw - var(--sbs-gap) - var(--sbs-edge) * 2) / 2));
+  /* Width the modal would naturally take in single-pane mode, mirroring
+     the Tailwind utilities on .note-modal-anim
+     (sm:w-11/12 sm:max-w-3xl). Used by the survivor's recenter rule so
+     it expands to its single-pane width as part of the SAME animation
+     as the recenter — no width flash after the transform settles. */
+  --sbs-single-w: min(91.6667vw, 768px, calc(100vw - var(--sbs-edge) * 2));
   --sbs-anim: 360ms;
+}
+@media (min-width: 1024px) {
+  :root {
+    /* lg breakpoint: lg:max-w-4xl raises the cap to 896px. */
+    --sbs-single-w: min(91.6667vw, 896px, calc(100vw - var(--sbs-edge) * 2));
+  }
 }
 /* The right-pane scrim is invisible — only the left scrim provides
    the shared backdrop. Setting pointer-events:none lets clicks pass
@@ -1376,7 +1388,9 @@ body.sbs-active .modal-scrim[data-split-mode="true"] > .note-modal-anim {
   transform: translateX(var(--sbs-anchor-x)) translateX(var(--sbs-close-x));
   transition:
     transform var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
-    opacity var(--sbs-anim) ease;
+    opacity var(--sbs-anim) ease,
+    width var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
+    max-width var(--sbs-anim) cubic-bezier(.22,.61,.36,1);
   will-change: transform;
 }
 body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
@@ -1429,6 +1443,21 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
   body.sbs-active .modal-scrim[data-split-mode="true"] > .note-modal-anim {
     width: var(--sbs-pane-w) !important;
     max-width: var(--sbs-pane-w) !important;
+  }
+  /* Survivor expansion. When ONE pane is closing (sbs-closing-left or
+     sbs-closing-right), the surviving pane already recenters via
+     --sbs-anchor-x: 0. Here we additionally expand its width to the
+     single-modal width so the recenter and the expansion play as a
+     SINGLE smooth animation (the base rule above transitions width).
+     When sbsBothClosing fires (backdrop click) sbsClosingSide stays
+     null, neither sbs-closing-* class is set, and these rules do
+     nothing — both panes keep --sbs-pane-w through their fade-out. */
+  body.sbs-active.sbs-closing-left
+    .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim,
+  body.sbs-active.sbs-closing-right
+    .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
+    width: var(--sbs-single-w) !important;
+    max-width: var(--sbs-single-w) !important;
   }
 }
 /* Mobile: stack vertically with the same transform-only approach.
