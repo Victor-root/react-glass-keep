@@ -3585,16 +3585,8 @@ export default function App() {
     const remaining = sbsSecondaryId;
     setSbsClosingSide("left");
     setTimeout(() => {
-      // Drop the body classes synchronously BEFORE the React state
-      // updates. Otherwise sbs-closing-left drops first (via the
-      // useEffect on sbsClosingSide) while sbs-active is still on body
-      // for one more tick, which makes the surviving right pane's
-      // anchor-x revert to its default (`calc(50% + gap/2)`) for one
-      // frame — visible as a final left→right kick on the recentered
-      // pane just before unmount. Removing both classes synchronously
-      // means the SBS rules drop in lockstep so the surviving pane's
-      // transform clears to none with no intermediate target.
-      document.body.classList.remove("sbs-active", "sbs-closing-left");
+      // useLayoutEffect handles the body-class drop atomically with the
+      // React commit (same paint cycle), so no manual sync removal here.
       // Swap primary to note B in place (openModal doesn't replay the
       // open animation when the modal is already mounted) and drop SBS
       // state so split CSS releases its hold.
@@ -3613,9 +3605,6 @@ export default function App() {
     if (sbsClosingSide) return;
     setSbsClosingSide("right");
     setTimeout(() => {
-      // Same lockstep removal as in requestCloseLeftPaneSBS — see the
-      // long comment there for the rationale.
-      document.body.classList.remove("sbs-active", "sbs-closing-right");
       setSbsSecondaryId(null);
       setSbsClosingSide(null);
     }, SBS_ANIM_MS);
@@ -4936,7 +4925,15 @@ export default function App() {
   //   .sbs-active            — both panes are mounted
   //   .sbs-closing-left      — left is fading out, right glides to centre
   //   .sbs-closing-right     — right is fading out, left glides to centre
-  useEffect(() => {
+  // Use useLayoutEffect (not useEffect) so the class change is applied
+  // BEFORE the next paint, in the same commit cycle as data-split-* prop
+  // updates on the primary scrim. This prevents an intermediate paint
+  // where body still has sbs-active/sbs-closing-left while the primary's
+  // data-split-mode has already become undefined — the surviving right
+  // pane's anchor-x rule would briefly flip from the recenter (0) back
+  // to its default (calc(50%+gap/2)), kicking it rightward for one frame
+  // before the rule drops entirely.
+  useLayoutEffect(() => {
     const body = document.body;
     body.classList.toggle("sbs-active", sbsActive);
     body.classList.toggle("sbs-closing-left", sbsActive && sbsClosingSide === "left");
