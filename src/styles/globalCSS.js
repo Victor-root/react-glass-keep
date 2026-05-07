@@ -1386,11 +1386,14 @@ body.sbs-active .modal-scrim[data-split-mode="true"] > .note-modal-anim {
   --sbs-anchor-x: 0px;
   --sbs-close-x: 0px;
   transform: translateX(var(--sbs-anchor-x)) translateX(var(--sbs-close-x));
+  /* Base SBS transition: ONLY transform + opacity. width/max-width are
+     deliberately excluded here so the dock-from-Tailwind-width to
+     --sbs-pane-w switch on OPEN happens instantly (no visible resize on
+     entry). The survivor's recenter rule below opts back into width
+     transitions for the close animation only. */
   transition:
     transform var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
-    opacity var(--sbs-anim) ease,
-    width var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
-    max-width var(--sbs-anim) cubic-bezier(.22,.61,.36,1);
+    opacity var(--sbs-anim) ease;
   will-change: transform;
 }
 body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
@@ -1448,7 +1451,10 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
      sbs-closing-right), the surviving pane already recenters via
      --sbs-anchor-x: 0. Here we additionally expand its width to the
      single-modal width so the recenter and the expansion play as a
-     SINGLE smooth animation (the base rule above transitions width).
+     SINGLE smooth animation. The width/max-width transitions are
+     declared on this rule (NOT on the base rule) so they exist only
+     during the close animation — preventing any width resize on OPEN
+     when --sbs-pane-w first replaces the Tailwind class width.
      When sbsBothClosing fires (backdrop click) sbsClosingSide stays
      null, neither sbs-closing-* class is set, and these rules do
      nothing — both panes keep --sbs-pane-w through their fade-out. */
@@ -1458,6 +1464,11 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
     .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
     width: var(--sbs-single-w) !important;
     max-width: var(--sbs-single-w) !important;
+    transition:
+      transform var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
+      opacity var(--sbs-anim) ease,
+      width var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
+      max-width var(--sbs-anim) cubic-bezier(.22,.61,.36,1);
   }
 }
 /* Mobile: stack vertically with the same transform-only approach.
