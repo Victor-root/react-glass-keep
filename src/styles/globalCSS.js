@@ -308,6 +308,9 @@ html.dark .multi-select-dock__menu {
   .multi-select-dock[data-header-visible="false"] {
     top: calc(env(safe-area-inset-top, 0px) + 8px);
   }
+  .multi-select-dock--exiting .multi-select-dock__inner {
+    animation: none;
+  }
 }
 .note-content { -webkit-user-select: text; user-select: text; }
 /* Text cursor on the modal's note body (both edit AND view mode) so the

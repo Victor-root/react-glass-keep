@@ -203,15 +203,16 @@ export default function MultiSelectToolbar({
     }
     if (shouldRender) {
       setExiting(true);
+      const exitMs = isMobile ? 0 : EXIT_MS;
       const id = setTimeout(() => {
         setShouldRender(false);
         setExiting(false);
         setShowMoreMenu(false);
         setShowMultiColorPop(false);
-      }, EXIT_MS);
+      }, exitMs);
       return () => clearTimeout(id);
     }
-  }, [multiMode]); // eslint-disable-line
+  }, [multiMode, isMobile]); // eslint-disable-line
 
   // Click outside the kebab menu
   useEffect(() => {
