@@ -1,10 +1,76 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { t } from "../../i18n";
-import { CloseIcon, PinIcon, ArchiveIcon, DownloadIcon, Trash, Kebab } from "../../icons/index.jsx";
+import {
+  CloseIcon,
+  PinIcon,
+  ArchiveIcon,
+  DownloadIcon,
+  Trash,
+  Kebab,
+} from "../../icons/index.jsx";
 import ColorPickerPanel from "../common/ColorPickerPanel.jsx";
 import { COLOR_ORDER, LIGHT_COLORS } from "../../utils/colors.js";
 
 const EXIT_MS = 200;
+
+// Tone classes per action. Each kind is recognisable at a glance while
+// staying within the violet/blue family of the dock so the palette feels
+// cohesive (not "rainbow toy"). Backgrounds are opaque so contrast is
+// preserved against the dock's already-coloured surface.
+const TONE = {
+  slate:
+    "border-slate-300/70 bg-slate-100 text-slate-700 hover:bg-slate-200 dark:border-slate-500/40 dark:bg-slate-700/80 dark:text-slate-100 dark:hover:bg-slate-600/90",
+  violet:
+    "border-violet-300/80 bg-violet-100 text-violet-800 hover:bg-violet-200 dark:border-violet-400/40 dark:bg-violet-800/65 dark:text-violet-100 dark:hover:bg-violet-700/80",
+  amber:
+    "border-amber-300/80 bg-amber-100 text-amber-800 hover:bg-amber-200 dark:border-amber-400/40 dark:bg-amber-800/55 dark:text-amber-100 dark:hover:bg-amber-700/70",
+  blue:
+    "border-sky-300/80 bg-sky-100 text-sky-800 hover:bg-sky-200 dark:border-sky-400/40 dark:bg-sky-800/60 dark:text-sky-100 dark:hover:bg-sky-700/75",
+  red:
+    "border-rose-300/80 bg-rose-100 text-rose-700 hover:bg-rose-200 dark:border-rose-400/45 dark:bg-rose-900/55 dark:text-rose-100 dark:hover:bg-rose-800/70",
+  green:
+    "border-emerald-300/80 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:border-emerald-400/40 dark:bg-emerald-800/55 dark:text-emerald-100 dark:hover:bg-emerald-700/75",
+};
+
+const BTN_BASE =
+  "h-9 px-3 inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap shrink-0";
+
+// Inline icons not available in /icons.
+const ColorEmoji = () => (
+  <span aria-hidden="true" className="text-base leading-none">🎨</span>
+);
+const RestoreIconSvg = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <polyline points="3 8 3 14 9 14" />
+    <path d="M3 14a9 9 0 1 0 3-7" />
+  </svg>
+);
+const SbsIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <rect x="3" y="5" width="7" height="14" rx="1.5" />
+    <rect x="14" y="5" width="7" height="14" rx="1.5" />
+  </svg>
+);
 
 export default function MultiSelectToolbar({
   multiMode,
@@ -22,17 +88,36 @@ export default function MultiSelectToolbar({
   onExitMulti,
   onOpenSideBySide,
 }) {
-  const multiColorBtnRef = useRef(null);
+  // ── Refs ────────────────────────────────────────────────────────
+  const containerRef = useRef(null); // outer wrapper — drives the budget
+  const measureRef = useRef(null);   // hidden ghost row — measures each btn
+  const fixedRef = useRef(null);     // counter cluster — measure
+  const closeRef = useRef(null);     // close button — measure
+  const multiColorBtnRef = useRef(null); // anchor for the color popover
   const moreMenuBtnRef = useRef(null);
   const moreMenuRef = useRef(null);
+
+  // ── State ───────────────────────────────────────────────────────
   const [showMultiColorPop, setShowMultiColorPop] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-
-  // Keep mounted for the exit animation. shouldRender controls actual mount;
-  // exiting drives the slide-down/fade keyframe.
   const [shouldRender, setShouldRender] = useState(multiMode);
   const [exiting, setExiting] = useState(false);
+  const [availableWidth, setAvailableWidth] = useState(0);
+  const [actionWidths, setActionWidths] = useState({});
+  const [counterWidth, setCounterWidth] = useState(110);
+  const [closeWidth, setCloseWidth] = useState(36);
 
+  // Stable ref callbacks so React doesn't re-fire them on every render.
+  const colorBtnAttachRef = useCallback((el) => {
+    multiColorBtnRef.current = el;
+  }, []);
+  const colorMenuItemAttachRef = useCallback((el) => {
+    // When the menu item unmounts (kebab closes), fall back to the kebab
+    // button so the color popover still has a valid anchor.
+    multiColorBtnRef.current = el || moreMenuBtnRef.current;
+  }, []);
+
+  // Mount/exit animation lifecycle
   useEffect(() => {
     if (multiMode) {
       setShouldRender(true);
@@ -51,7 +136,7 @@ export default function MultiSelectToolbar({
     }
   }, [multiMode]); // eslint-disable-line
 
-  // Close the more-menu when clicking outside
+  // Click outside the kebab menu
   useEffect(() => {
     if (!showMoreMenu) return;
     const onDocClick = (e) => {
@@ -63,188 +148,350 @@ export default function MultiSelectToolbar({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [showMoreMenu]);
 
-  if (!shouldRender) return null;
+  // ResizeObserver — track the wrapper's available width as a real budget,
+  // not a window.innerWidth shortcut. The wrapper has a max-width and
+  // viewport-relative side insets, so its clientWidth IS the room we have.
+  useEffect(() => {
+    if (!shouldRender) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setAvailableWidth(entry.contentRect.width);
+      }
+    });
+    ro.observe(el);
+    setAvailableWidth(el.clientWidth);
+    return () => ro.disconnect();
+  }, [shouldRender]);
 
+  // Derived flags
   const isTrash = activeTagFilter === "TRASHED";
   const isArchive = activeTagFilter === "ARCHIVED";
   const allSelected =
     filteredNotes?.length > 0 &&
     filteredNotes.every((n) => selectedIds.includes(String(n.id)));
   const canSideBySide =
-    selectedIds.length === 2 && !isTrash && typeof onOpenSideBySide === "function";
+    selectedIds.length === 2 &&
+    !isTrash &&
+    typeof onOpenSideBySide === "function";
 
-  // Shared button classes for the icon-style action buttons.
-  const iconBtn =
-    "h-9 w-9 sm:h-9 sm:w-auto sm:px-3 inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium border border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors";
-  const iconBtnDanger =
-    "h-9 w-9 sm:h-9 sm:w-auto sm:px-3 inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 border border-red-300/60 dark:border-red-500/40 hover:bg-red-500/10 dark:hover:bg-red-500/15 transition-colors";
+  // Build the action list in priority order. Order matters: items earlier
+  // in the array win the limited width budget; the rest go into the kebab.
+  const actions = useMemo(() => {
+    const list = [];
+    if (canSideBySide) {
+      list.push({
+        id: "sbs",
+        label: t("openSideBySide"),
+        icon: <SbsIcon />,
+        onClick: () => onOpenSideBySide(selectedIds),
+        kind: "cta",
+      });
+    }
+    list.push({
+      id: "destructive",
+      label: isTrash ? t("permanentlyDelete") : t("moveToTrash"),
+      icon: <Trash />,
+      onClick: onBulkDelete,
+      tone: "red",
+    });
+    if (isTrash) {
+      list.push({
+        id: "restore",
+        label: t("restoreFromTrash"),
+        icon: <RestoreIconSvg />,
+        onClick: onBulkRestore,
+        tone: "green",
+      });
+    } else {
+      list.push({
+        id: "color",
+        label: t("color"),
+        icon: <ColorEmoji />,
+        onClick: () => setShowMultiColorPop((v) => !v),
+        tone: "violet",
+        attachRef: colorBtnAttachRef,
+      });
+      if (!isArchive) {
+        list.push({
+          id: "pin",
+          label: t("pin"),
+          icon: <PinIcon />,
+          onClick: () => onBulkPin(true),
+          tone: "amber",
+        });
+      }
+      list.push({
+        id: "archive",
+        label: isArchive ? t("unarchive") : t("archive"),
+        icon: <ArchiveIcon />,
+        onClick: onBulkArchive,
+        tone: "blue",
+      });
+    }
+    list.push({
+      id: "download",
+      label: t("downloadZip"),
+      icon: <DownloadIcon />,
+      onClick: onBulkDownloadZip,
+      tone: "slate",
+    });
+    if (filteredNotes?.length > 0) {
+      list.push({
+        id: "selectAll",
+        label: allSelected ? t("deselectAll") : t("selectAll"),
+        icon: null,
+        onClick: () => onSelectAll?.(filteredNotes),
+        tone: "slate",
+      });
+    }
+    return list;
+  }, [
+    canSideBySide,
+    isTrash,
+    isArchive,
+    allSelected,
+    selectedIds,
+    filteredNotes,
+    onOpenSideBySide,
+    onBulkDelete,
+    onBulkRestore,
+    onBulkColor,
+    onBulkPin,
+    onBulkArchive,
+    onBulkDownloadZip,
+    onSelectAll,
+  ]);
+
+  // Measure each button via the hidden ghost. Re-runs whenever the action
+  // list shape or labels change (language switch, filter switch, count
+  // hitting/leaving the SBS threshold).
+  const actionsKey = actions.map((a) => `${a.id}:${a.label}`).join("|");
+  useLayoutEffect(() => {
+    if (!shouldRender) return;
+    if (!measureRef.current) return;
+    const widths = {};
+    measureRef.current.querySelectorAll("[data-action-id]").forEach((b) => {
+      widths[b.dataset.actionId] = b.offsetWidth;
+    });
+    setActionWidths(widths);
+    if (fixedRef.current) setCounterWidth(fixedRef.current.offsetWidth);
+    if (closeRef.current) setCloseWidth(closeRef.current.offsetWidth);
+  }, [shouldRender, actionsKey]);
+
+  // Compute the visible / overflow split based on real measurements.
+  // Two passes: first without reserving kebab space; if that overflows,
+  // reserve kebab and re-fit so reserving the kebab itself doesn't push
+  // another button out unexpectedly.
+  const PAD = 20; // dock inner padding (10px each side)
+  const GAP = 8; // dock flex gap
+  const DIVIDER = 1 + GAP * 2; // counter|actions and actions|close dividers
+  const KEBAB = 36;
+
+  const { visibleActions, overflowActions } = useMemo(() => {
+    if (
+      availableWidth === 0 ||
+      Object.keys(actionWidths).length === 0
+    ) {
+      // Pre-measurement: render everything; the ghost will measure on this same paint.
+      return { visibleActions: actions, overflowActions: [] };
+    }
+    const tryFit = (reserveKebab) => {
+      let budget =
+        availableWidth -
+        PAD -
+        counterWidth -
+        closeWidth -
+        DIVIDER * 2 -
+        (reserveKebab ? KEBAB + GAP : 0);
+      const visible = [];
+      const overflow = [];
+      for (const action of actions) {
+        const w = actionWidths[action.id] ?? 100;
+        const cost = w + (visible.length > 0 ? GAP : 0);
+        if (cost <= budget) {
+          budget -= cost;
+          visible.push(action);
+        } else {
+          overflow.push(action);
+        }
+      }
+      return { visible, overflow };
+    };
+    let result = tryFit(false);
+    if (result.overflow.length > 0) result = tryFit(true);
+    return { visibleActions: result.visible, overflowActions: result.overflow };
+  }, [
+    availableWidth,
+    actionWidths,
+    actions,
+    counterWidth,
+    closeWidth,
+  ]);
+
+  if (!shouldRender) return null;
+
+  // Renders one action button (visible row OR ghost row OR menu item).
+  const renderActionButton = (action, opts = {}) => {
+    const { ghost = false, menuItem = false, attachRef } = opts;
+    if (action.kind === "cta") {
+      // CTA (side-by-side): keeps the gradient identity but harmonised
+      // with the dock's violet skin — slightly darker, ringed, with a
+      // soft violet glow shadow so it still reads as the primary action.
+      return (
+        <button
+          key={action.id}
+          ref={attachRef}
+          data-action-id={ghost ? action.id : undefined}
+          type="button"
+          onClick={menuItem ? () => { action.onClick(); setShowMoreMenu(false); } : action.onClick}
+          tabIndex={ghost ? -1 : 0}
+          className={
+            menuItem
+              ? "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md font-semibold text-violet-900 dark:text-violet-100 hover:bg-violet-200/60 dark:hover:bg-violet-800/50"
+              : "h-9 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-bold whitespace-nowrap shrink-0 text-white bg-gradient-to-r from-indigo-600 to-violet-700 hover:from-indigo-700 hover:to-violet-800 ring-1 ring-violet-500/30 shadow-md shadow-violet-500/40 hover:shadow-lg hover:shadow-violet-500/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+          }
+        >
+          {action.icon}
+          <span>{action.label}</span>
+        </button>
+      );
+    }
+    const toneCls = TONE[action.tone] || TONE.slate;
+    if (menuItem) {
+      return (
+        <button
+          key={action.id}
+          role="menuitem"
+          ref={attachRef}
+          type="button"
+          onClick={() => {
+            action.onClick();
+            setShowMoreMenu(false);
+          }}
+          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md hover:bg-violet-100/70 dark:hover:bg-violet-800/40 text-gray-800 dark:text-gray-100"
+        >
+          {action.icon && (
+            <span className="inline-flex w-5 justify-center">{action.icon}</span>
+          )}
+          <span>{action.label}</span>
+        </button>
+      );
+    }
+    return (
+      <button
+        key={action.id}
+        ref={attachRef}
+        data-action-id={ghost ? action.id : undefined}
+        type="button"
+        onClick={action.onClick}
+        tabIndex={ghost ? -1 : 0}
+        data-tooltip={action.label}
+        className={`${BTN_BASE} ${toneCls}`}
+      >
+        {action.icon}
+        <span>{action.label}</span>
+      </button>
+    );
+  };
+
+  // The color popover is anchored to wherever the color action is
+  // currently rendered: the visible button if it fits, the kebab menu
+  // item otherwise (we re-point multiColorBtnRef when the menu item
+  // mounts via callback ref).
+  const colorInOverflow = overflowActions.some((a) => a.id === "color");
 
   return (
     <div
+      ref={containerRef}
       className={`multi-select-dock${exiting ? " multi-select-dock--exiting" : ""}`}
       role="toolbar"
       aria-label={t("multiSelect")}
     >
-      <div className="multi-select-dock__inner glass-card">
-        {/* Left cluster: close + counter */}
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            className="h-9 w-9 inline-flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-            data-tooltip={t("exitMultiSelect")}
-            onClick={onExitMulti}
-            aria-label={t("exitMultiSelect")}
-          >
-            <CloseIcon />
-          </button>
-          <span className="text-sm font-semibold tabular-nums px-1 select-none whitespace-nowrap">
-            <span className="opacity-60 font-normal hidden sm:inline">
-              {t("selectedPrefix")}{" "}
+      {/* Hidden ghost — renders ALL possible actions to measure their
+          intrinsic widths. Lives off-screen so it doesn't affect layout. */}
+      <div ref={measureRef} className="multi-select-dock__measure" aria-hidden="true">
+        {actions.map((a) => renderActionButton(a, { ghost: true }))}
+      </div>
+
+      <div className="multi-select-dock__inner">
+        {/* LEFT — counter (always visible) */}
+        <div ref={fixedRef} className="flex items-center shrink-0">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-200/70 dark:bg-violet-800/60 text-violet-900 dark:text-violet-50 text-sm font-semibold whitespace-nowrap select-none">
+            <span className="opacity-70 font-normal hidden sm:inline">
+              {t("selectedPrefix")}
             </span>
-            {selectedIds.length}
+            <span className="tabular-nums">{selectedIds.length}</span>
           </span>
         </div>
 
         <div className="multi-select-dock__divider" aria-hidden="true" />
 
-        {/* Side-by-side highlight (when exactly 2 selected, not trashed) */}
-        {canSideBySide && (
-          <button
-            type="button"
-            onClick={() => onOpenSideBySide(selectedIds)}
-            className="h-9 px-3 sm:px-4 inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 hover:scale-[1.03] active:scale-[0.98] btn-gradient shrink-0"
-          >
-            <span className="hidden sm:inline">{t("openSideBySide")}</span>
-            <span className="sm:hidden" aria-hidden="true">
-              ⇆
-            </span>
-            <span className="sr-only sm:hidden">{t("openSideBySide")}</span>
-          </button>
-        )}
-
-        {/* Main actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0 justify-center sm:justify-start overflow-x-auto multi-select-dock__actions">
-          <button
-            className={iconBtn}
-            onClick={onBulkDownloadZip}
-            data-tooltip={t("downloadZip")}
-            aria-label={t("downloadZip")}
-          >
-            <DownloadIcon />
-            <span className="hidden md:inline">{t("downloadZip")}</span>
-          </button>
-
-          {!isTrash && (
-            <>
-              <button
-                ref={multiColorBtnRef}
-                type="button"
-                onClick={() => setShowMultiColorPop((v) => !v)}
-                className={iconBtn}
-                data-tooltip={t("color")}
-                aria-label={t("color")}
-              >
-                <span className="text-base leading-none">{t("colorEmoji")}</span>
-                <span className="hidden md:inline">{t("color")}</span>
-              </button>
-              <ColorPickerPanel
-                anchorRef={multiColorBtnRef}
-                open={showMultiColorPop}
-                onClose={() => setShowMultiColorPop(false)}
-                colors={COLOR_ORDER.filter((name) => LIGHT_COLORS[name])}
-                selectedColor={null}
-                darkMode={dark}
-                onSelect={(name) => {
-                  onBulkColor(name);
-                }}
-              />
-              {!isArchive && (
-                <button
-                  className={iconBtn}
-                  onClick={() => onBulkPin(true)}
-                  data-tooltip={t("pin")}
-                  aria-label={t("pin")}
-                >
-                  <PinIcon />
-                  <span className="hidden md:inline">{t("pin")}</span>
-                </button>
-              )}
-              <button
-                className={iconBtn}
-                onClick={onBulkArchive}
-                data-tooltip={isArchive ? t("unarchive") : t("archive")}
-                aria-label={isArchive ? t("unarchive") : t("archive")}
-              >
-                <ArchiveIcon />
-                <span className="hidden md:inline">
-                  {isArchive ? t("unarchive") : t("archive")}
-                </span>
-              </button>
-            </>
+        {/* CENTER — visible actions */}
+        <div className="flex items-center gap-2 min-w-0">
+          {visibleActions.map((action) =>
+            renderActionButton(action, { attachRef: action.attachRef })
           )}
-
-          {isTrash && (
-            <button
-              className={iconBtn}
-              onClick={onBulkRestore}
-              data-tooltip={t("restoreFromTrash")}
-              aria-label={t("restoreFromTrash")}
-            >
-              <span className="hidden md:inline">{t("restoreFromTrash")}</span>
-              <span className="md:hidden text-base leading-none">↺</span>
-            </button>
-          )}
-
-          <button
-            className={iconBtnDanger}
-            onClick={onBulkDelete}
-            data-tooltip={isTrash ? t("permanentlyDelete") : t("moveToTrash")}
-            aria-label={isTrash ? t("permanentlyDelete") : t("moveToTrash")}
-          >
-            <Trash />
-            <span className="hidden md:inline">
-              {isTrash ? t("permanentlyDelete") : t("moveToTrash")}
-            </span>
-          </button>
         </div>
 
-        {/* "..." secondary menu — hosts Select all / Deselect all */}
-        {filteredNotes?.length > 0 && (
-          <>
-            <div className="multi-select-dock__divider" aria-hidden="true" />
-            <div className="relative shrink-0">
-              <button
-                ref={moreMenuBtnRef}
-                type="button"
-                onClick={() => setShowMoreMenu((v) => !v)}
-                className="h-9 w-9 inline-flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                data-tooltip={t("moreOptions")}
-                aria-label={t("moreOptions")}
-                aria-expanded={showMoreMenu}
-              >
-                <Kebab />
-              </button>
-              {showMoreMenu && (
-                <div
-                  ref={moreMenuRef}
-                  className="multi-select-dock__menu glass-card"
-                  role="menu"
-                >
-                  <button
-                    role="menuitem"
-                    className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-black/5 dark:hover:bg-white/10"
-                    onClick={() => {
-                      onSelectAll?.(filteredNotes);
-                      setShowMoreMenu(false);
-                    }}
-                  >
-                    {allSelected ? t("deselectAll") : t("selectAll")}
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
+        {/* Kebab — only if at least one action overflowed */}
+        {overflowActions.length > 0 && (
+          <div className="relative shrink-0">
+            <button
+              ref={moreMenuBtnRef}
+              type="button"
+              onClick={() => setShowMoreMenu((v) => !v)}
+              className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-violet-700 dark:text-violet-200 hover:bg-violet-200/60 dark:hover:bg-violet-700/40 transition-colors"
+              data-tooltip={t("moreOptions")}
+              aria-label={t("moreOptions")}
+              aria-expanded={showMoreMenu}
+            >
+              <Kebab />
+            </button>
+            {showMoreMenu && (
+              <div ref={moreMenuRef} className="multi-select-dock__menu" role="menu">
+                {overflowActions.map((action) =>
+                  renderActionButton(action, {
+                    menuItem: true,
+                    attachRef:
+                      action.id === "color" ? colorMenuItemAttachRef : undefined,
+                  })
+                )}
+              </div>
+            )}
+          </div>
         )}
+
+        <div className="multi-select-dock__divider" aria-hidden="true" />
+
+        {/* RIGHT — close button (always visible) */}
+        <button
+          ref={closeRef}
+          className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-violet-700 dark:text-violet-100 hover:bg-violet-200/60 dark:hover:bg-violet-700/40 transition-colors shrink-0"
+          data-tooltip={t("exitMultiSelect")}
+          onClick={onExitMulti}
+          aria-label={t("exitMultiSelect")}
+        >
+          <CloseIcon />
+        </button>
       </div>
+
+      {/* Color picker popover — anchored to the color button or to the
+          kebab menu item (whichever is currently rendered). */}
+      {!isTrash && (
+        <ColorPickerPanel
+          anchorRef={multiColorBtnRef}
+          open={showMultiColorPop}
+          onClose={() => setShowMultiColorPop(false)}
+          colors={COLOR_ORDER.filter((name) => LIGHT_COLORS[name])}
+          selectedColor={null}
+          darkMode={dark}
+          onSelect={(name) => {
+            onBulkColor(name);
+          }}
+        />
+      )}
     </div>
   );
 }

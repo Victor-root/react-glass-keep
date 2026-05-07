@@ -131,22 +131,21 @@ html.dark header.glass-card {
   box-shadow: none;
 }
 /* ───────── Multi-select floating dock ─────────
-   Replaces the old sticky header. The dock is fixed at the bottom of the
-   viewport (centred on desktop, near-full-width on mobile) so it never
-   pushes the layout down or doubles up with NotesHeader. */
+   Premium floating dock anchored at the bottom of the viewport. Fully
+   OPAQUE (no backdrop blur / glass) so notes behind never bleed through
+   and compromise lisibility. Violet/blue tinted skin to give the dock
+   a real identity within the Glasskeep palette. */
 .multi-select-dock {
   position: fixed;
-  left: 50%;
+  left: 12px;
+  right: 12px;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-  transform: translateX(-50%);
+  margin: 0 auto;
+  max-width: 960px;
   z-index: 35;
   pointer-events: none;
-  width: max-content;
-  max-width: calc(100vw - 24px);
-  animation: multiDockIn 220ms cubic-bezier(.22,.61,.36,1) both;
-}
-.multi-select-dock--exiting {
-  animation: multiDockOut 200ms ease-in both;
+  display: flex;
+  justify-content: center;
 }
 .multi-select-dock__inner {
   pointer-events: auto;
@@ -154,83 +153,101 @@ html.dark header.glass-card {
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
+  /* Size to content (compact dock) but never exceed the wrapper budget. */
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-width: 0;
   border-radius: 16px;
-  border: 2px solid rgba(139, 92, 246, 0.45);
+  background: linear-gradient(135deg, #faf8ff 0%, #f1ecff 50%, #ebe4ff 100%);
+  border: 2px solid rgba(124, 58, 237, 0.32);
   box-shadow:
-    0 12px 40px -8px rgba(76, 29, 149, 0.35),
-    0 8px 20px -10px rgba(76, 29, 149, 0.25),
-    inset 0 0 0 1px rgba(139, 92, 246, 0.08);
+    0 22px 56px -14px rgba(76, 29, 149, 0.32),
+    0 12px 30px -10px rgba(99, 102, 241, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 0 1px rgba(124, 58, 237, 0.08);
+  animation: multiDockIn 220ms cubic-bezier(.22,.61,.36,1) both;
 }
 html.dark .multi-select-dock__inner {
-  border: 2px solid rgba(139, 92, 246, 0.5);
+  background: linear-gradient(135deg, #1e1a3d 0%, #261f4f 50%, #2c2456 100%);
+  border: 2px solid rgba(167, 139, 250, 0.36);
   box-shadow:
-    0 14px 48px -10px rgba(0, 0, 0, 0.65),
-    0 8px 20px -10px rgba(76, 29, 149, 0.45),
-    inset 0 0 0 1px rgba(139, 92, 246, 0.12);
+    0 22px 56px -14px rgba(0, 0, 0, 0.7),
+    0 12px 30px -10px rgba(76, 29, 149, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(167, 139, 250, 0.12);
+}
+.multi-select-dock--exiting .multi-select-dock__inner {
+  animation: multiDockOut 200ms ease-in both;
 }
 .multi-select-dock__divider {
   width: 1px;
-  height: 22px;
-  background: var(--border-light);
+  height: 24px;
+  background: rgba(124, 58, 237, 0.22);
   flex-shrink: 0;
 }
-.multi-select-dock__actions {
-  scrollbar-width: none;
+html.dark .multi-select-dock__divider {
+  background: rgba(167, 139, 250, 0.22);
 }
-.multi-select-dock__actions::-webkit-scrollbar { display: none; }
 
+/* Off-screen ghost row used to measure each action button's natural
+   width. Must NOT influence layout but must lay out naturally so each
+   button reports its real intrinsic width. */
+.multi-select-dock__measure {
+  position: absolute;
+  top: -10000px;
+  left: -10000px;
+  visibility: hidden;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* Kebab popover — opens above the dock, in the same violet skin. */
 .multi-select-dock__menu {
   position: absolute;
   right: 0;
   bottom: calc(100% + 8px);
-  min-width: 180px;
+  min-width: 220px;
   padding: 6px;
   border-radius: 12px;
-  border: 1px solid var(--border-light);
-  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(135deg, #faf8ff 0%, #f3eeff 100%);
+  border: 1px solid rgba(124, 58, 237, 0.30);
+  box-shadow:
+    0 14px 32px -10px rgba(76, 29, 149, 0.34),
+    0 6px 16px -8px rgba(99, 102, 241, 0.22);
   z-index: 1;
   animation: multiDockIn 160ms ease-out both;
 }
+html.dark .multi-select-dock__menu {
+  background: linear-gradient(135deg, #1e1a3d 0%, #271f4f 100%);
+  border: 1px solid rgba(167, 139, 250, 0.32);
+  box-shadow:
+    0 14px 32px -10px rgba(0, 0, 0, 0.65),
+    0 6px 16px -8px rgba(76, 29, 149, 0.45);
+}
 
 @keyframes multiDockIn {
-  from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(0.96); }
-  to   { opacity: 1; transform: translateX(-50%) translateY(0)   scale(1);    }
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 @keyframes multiDockOut {
-  from { opacity: 1; transform: translateX(-50%) translateY(0)   scale(1);    }
-  to   { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.97); }
+  from { opacity: 1; transform: translateY(0)    scale(1);    }
+  to   { opacity: 0; transform: translateY(12px) scale(0.97); }
 }
 
 @media (max-width: 639px) {
   .multi-select-dock {
-    left: 12px;
-    right: 12px;
     bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-    transform: none;
-    width: auto;
-    max-width: none;
-    animation: multiDockInMobile 220ms cubic-bezier(.22,.61,.36,1) both;
-  }
-  .multi-select-dock--exiting {
-    animation: multiDockOutMobile 200ms ease-in both;
+    left: 8px;
+    right: 8px;
   }
   .multi-select-dock__inner {
     padding: 6px 8px;
     gap: 6px;
+    border-radius: 14px;
   }
-  /* Menu (Kebab) anchor: align to the right edge on mobile too. */
-  .multi-select-dock__menu {
-    right: 0;
-  }
-}
-
-@keyframes multiDockInMobile {
-  from { opacity: 0; transform: translateY(10px) scale(0.96); }
-  to   { opacity: 1; transform: translateY(0)    scale(1);    }
-}
-@keyframes multiDockOutMobile {
-  from { opacity: 1; transform: translateY(0)    scale(1);    }
-  to   { opacity: 0; transform: translateY(12px) scale(0.97); }
 }
 .note-content { -webkit-user-select: text; user-select: text; }
 /* Text cursor on the modal's note body (both edit AND view mode) so the
