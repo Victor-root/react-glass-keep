@@ -1486,6 +1486,7 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
     --sbs-close-y: 0px;
     transform: translateY(var(--sbs-anchor-y)) translateY(var(--sbs-close-y));
     height: calc(50dvh - var(--sbs-gap) / 2) !important;
+    clip-path: inset(0 0 0 0);
   }
   /* Per-side anchors; override --note-anim-x so noteModalIn starts at the correct Y position */
   body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
@@ -1509,44 +1510,44 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
     > .note-modal-anim:not(.closing) {
     animation: sbsMobilePaneIn 220ms cubic-bezier(.22,.61,.36,1);
   }
-  /* Accordion close — top pane folds upward: anchor moves to -50dvh, height collapses to 0.
-     Top edge stays fixed at 0, bottom edge rises to meet it. */
+  /* Curtain close — top pane stays put and is masked from bottom upward via clip-path.
+     The pane keeps its real height so its internal flex layout never reflows. */
   body.sbs-active.sbs-closing-left
     .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
-    --sbs-anchor-y: -50dvh;
+    --sbs-anchor-y: calc(-25dvh - var(--sbs-gap) / 2);
     --sbs-close-y: 0px;
-    height: 0dvh !important;
+    height: calc(50dvh - var(--sbs-gap) / 2) !important;
+    clip-path: inset(0 0 100% 0);
     opacity: 0;
     pointer-events: none;
     overflow: hidden;
     transition:
-      transform var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
-      height var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
+      clip-path var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
       opacity calc(var(--sbs-anim) * .75) ease;
   }
-  /* Accordion close — bottom pane folds downward: anchor moves to 50dvh, height collapses to 0.
-     Bottom edge stays fixed at 100dvh, top edge descends to meet it. */
+  /* Curtain close — bottom pane stays put and is masked from top downward via clip-path. */
   body.sbs-active.sbs-closing-right
     .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim {
-    --sbs-anchor-y: 50dvh;
+    --sbs-anchor-y: calc(25dvh + var(--sbs-gap) / 2);
     --sbs-close-y: 0px;
-    height: 0dvh !important;
+    height: calc(50dvh - var(--sbs-gap) / 2) !important;
+    clip-path: inset(100% 0 0 0);
     opacity: 0;
     pointer-events: none;
     overflow: hidden;
     transition:
-      transform var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
-      height var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
+      clip-path var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
       opacity calc(var(--sbs-anim) * .75) ease;
   }
-  /* Survivor: recenters and expands to full height in one accordion movement.
-     height transition lives here only, not on the base rule. */
+  /* Survivor: recenters and expands to full height — the only pane whose real
+     height actually animates. height transition lives here only, not on the base rule. */
   body.sbs-active.sbs-closing-left
     .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim,
   body.sbs-active.sbs-closing-right
     .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
     --sbs-anchor-y: 0px;
     height: 100dvh !important;
+    clip-path: inset(0 0 0 0);
     transition:
       transform var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
       height var(--sbs-anim) cubic-bezier(.22,.61,.36,1),
