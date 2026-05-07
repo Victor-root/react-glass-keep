@@ -486,22 +486,35 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState([]); // array of string ids
   const isSelected = (id) => selectedIds.includes(String(id));
   const onStartMulti = () => {
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
     setMultiMode(true);
     setSelectedIds([]);
     setFabOpen(false); // dock lives at bottom; close FAB to avoid overlap
+    // Compensate the shim's padding-top so the visible content doesn't slide
+    // down when the dock appears. Read the actual padding after the commit
+    // so desktop (48px) and mobile (44px) both work.
+    requestAnimationFrame(() => {
+      const shim = document.querySelector(".multi-select-content-shim");
+      const pad = shim ? parseFloat(getComputedStyle(shim).paddingTop) || 0 : 0;
+      if (pad > 0) {
+        window.scrollTo({ left: scrollX, top: scrollY + pad, behavior: "instant" });
+      }
+    });
   };
   const onExitMulti = () => {
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
+    // Read the padding BEFORE the state change — after the commit it's gone.
+    const shim = document.querySelector(".multi-select-content-shim");
+    const pad = shim ? parseFloat(getComputedStyle(shim).paddingTop) || 0 : 0;
     setMultiMode(false);
     setSelectedIds([]);
-    // Restore scroll: the shim's padding-top disappears on the next paint,
-    // which can shift layout and scroll the page back to the top.
+    // The shim's padding-top drops to 0 on the next paint; compensate by
+    // scrolling up by the same amount so the visible content stays put.
     requestAnimationFrame(() => {
-      window.scrollTo({ left: scrollX, top: scrollY, behavior: "instant" });
-      requestAnimationFrame(() => {
-        window.scrollTo({ left: scrollX, top: scrollY, behavior: "instant" });
-      });
+      const targetY = Math.max(0, scrollY - pad);
+      window.scrollTo({ left: scrollX, top: targetY, behavior: "instant" });
     });
   };
   const onToggleSelect = (id, checked) => {

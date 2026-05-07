@@ -138,7 +138,10 @@ html.dark header.glass-card {
    transitions for a smooth in/out. */
 .multi-select-content-shim {
   padding-top: 0;
-  transition: padding-top 220ms cubic-bezier(.22,.61,.36,1);
+  /* No padding-top transition: layout reflow over 220ms is expensive on mobile
+     and feels like a sluggish auto-scroll. Padding flips instantly; the dock
+     itself still slides in via its own multiDockIn animation, and onStartMulti/
+     onExitMulti compensate scrollY so the user's view never visibly shifts. */
 }
 .multi-select-content-shim[data-multimode="true"] {
   /* Symmetric breathing: same 8px gap below the dock as above it.
