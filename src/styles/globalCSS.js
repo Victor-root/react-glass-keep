@@ -141,11 +141,18 @@ html.dark header.glass-card {
   transition: padding-top 220ms cubic-bezier(.22,.61,.36,1);
 }
 .multi-select-content-shim[data-multimode="true"] {
-  padding-top: 64px;
+  /* Symmetric breathing: same 8px gap below the dock as above it.
+     Header bottom -> dock top = 8px (96px - 88px). The composer
+     naturally sits 24px below the header (mb-6), so adding
+     dock-height (56px) + 8px - 24px = 40px on top of mb-6 lands the
+     composer 8px below the dock bottom. We round to 48px to absorb
+     subpixel layout. */
+  padding-top: 48px;
 }
 @media (max-width: 639px) {
   .multi-select-content-shim[data-multimode="true"] {
-    padding-top: 56px;
+    /* Mobile dock is ~52px tall (smaller padding), so 8 + 52 + 8 - 24 = 44 */
+    padding-top: 44px;
   }
 }
 
