@@ -37,6 +37,14 @@ export default function SecondaryNoteInstance({
   // shell callbacks
   onRequestClosing,             // close animation just started → tell shell to flip recenter flag
   onRequestClose,               // pane animation done → unmount + parent state cleanup
+  // SBS AI coordination — shell passes the side ("left" for the right pane in
+  // SBS, mirroring the active note) and a flag that hides this pane while the
+  // OPPOSITE pane's AI panel takes over its slot. AI open/close callbacks let
+  // the shell drive sbsAiActiveSide.
+  aiPanelSide,
+  sbsOppositeHidden = false,
+  onAiOpen,
+  onAiClose,
   // shared state & helpers (all owned by App.jsx)
   notes, setNotes,
   currentUser, sessionId, token,
@@ -163,6 +171,7 @@ export default function SecondaryNoteInstance({
     setNoteAiOpen(true);
     setNoteAiHasBeenOpened(true);
     setNoteAiError(null);
+    onAiOpen?.();
     if (noteAiMessages.length > 0) return;
     const saved = loadSavedNoteAiMessages(activeId);
     if (saved && saved.length > 0) {
@@ -179,10 +188,12 @@ export default function SecondaryNoteInstance({
     setNoteAiError(null);
     setNoteAiLoading(false);
     if (!noteAiSaved) setNoteAiMessages([]);
+    onAiClose?.();
   };
   const hideNoteAi = () => {
     setNoteAiOpen(false);
     setNoteAiError(null);
+    onAiClose?.();
   };
   const saveNoteAi = () => {
     if (!activeId) return;
@@ -202,8 +213,9 @@ export default function SecondaryNoteInstance({
       setNoteAiError(null);
       setNoteAiLoading(false);
       if (!noteAiSaved) setNoteAiMessages([]);
+      onAiClose?.();
     }
-  }, [open, noteAiSaved]);
+  }, [open, noteAiSaved]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!noteAiOpen) return;
@@ -1137,6 +1149,8 @@ export default function SecondaryNoteInstance({
       splitMode
       splitSide={splitSide}
       splitClosing={splitClosing}
+      aiPanelSide={aiPanelSide}
+      sbsOppositeHidden={sbsOppositeHidden}
       dark={dark}
       windowWidth={windowWidth}
       isLandscapeMobile={isLandscapeMobile}

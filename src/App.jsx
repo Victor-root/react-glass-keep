@@ -1638,6 +1638,7 @@ export default function App() {
     setNoteAiOpen(true);
     setNoteAiHasBeenOpened(true);
     setNoteAiError(null);
+    if (sbsSecondaryId) setSbsAiActiveSide("left");
     // If a conversation is already in memory (e.g. re-opening after a
     // mobile "back to note" hide), keep it intact and don't overwrite.
     if (noteAiMessages.length > 0) return;
@@ -1656,6 +1657,7 @@ export default function App() {
     setNoteAiHasBeenOpened(false);
     setNoteAiError(null);
     setNoteAiLoading(false);
+    if (sbsAiActiveSide === "left") setSbsAiActiveSide(null);
     // Saved conversations stay in localStorage and in memory so a
     // later open can resume them. Temporary ones are wiped.
     if (!noteAiSaved) {
@@ -1668,6 +1670,7 @@ export default function App() {
   const hideNoteAi = () => {
     setNoteAiOpen(false);
     setNoteAiError(null);
+    if (sbsAiActiveSide === "left") setSbsAiActiveSide(null);
   };
   const saveNoteAi = () => {
     if (!activeId) return;
@@ -3646,6 +3649,10 @@ export default function App() {
   // the base .note-modal-anim { animation: noteModalIn } would re-fire on the
   // primary, producing a tiny close/reopen flash. Suppress for two frames.
   const [sbsSuppressOpenReplay, setSbsSuppressOpenReplay] = useState(false);
+  // SBS AI coordination — when one note opens its AI panel in SBS mode,
+  // the AI panel takes over the OPPOSITE pane's slot and the opposite
+  // note is hidden (kept mounted). Cleared on close/hide and on SBS exit.
+  const [sbsAiActiveSide, setSbsAiActiveSide] = useState(null); // null | "left" | "right"
 
   const onOpenSideBySide = (ids) => {
     if (!Array.isArray(ids) || ids.length !== 2) return;
@@ -3679,6 +3686,7 @@ export default function App() {
   const requestCloseLeftPaneSBS = useCallback(() => {
     if (!sbsSecondaryId || sbsClosingSide) return;
     const remaining = sbsSecondaryId;
+    setSbsAiActiveSide(null);
     setSbsClosingSide("left");
     setTimeout(() => {
       // Handoff: snap the primary back to centre WITHOUT transition. The
@@ -3706,6 +3714,7 @@ export default function App() {
   // the primary settles into normal single-modal layout at centre.
   const onSbsRightClosing = useCallback(() => {
     if (sbsClosingSide) return;
+    setSbsAiActiveSide(null);
     setSbsClosingSide("right");
     setTimeout(() => {
       // Sticky flag: stays true while the survivor remains mounted, so the
@@ -3721,6 +3730,17 @@ export default function App() {
   const onSbsRightClosed = useCallback(() => {
     setSbsSecondaryId(null);
     setSbsClosingSide(null);
+  }, []);
+
+  // SBS AI callbacks for the secondary (right) pane. The secondary owns
+  // its own AI state, so it must signal the shell when its AI opens or
+  // closes/hides. The shell uses these to drive sbsAiActiveSide and the
+  // body class that hides the opposite pane.
+  const onSecondaryAiOpen = useCallback(() => {
+    setSbsAiActiveSide("right");
+  }, []);
+  const onSecondaryAiClose = useCallback(() => {
+    setSbsAiActiveSide((s) => (s === "right" ? null : s));
   }, []);
 
   // Backdrop click while in SBS mode: close BOTH notes together.
@@ -3740,6 +3760,7 @@ export default function App() {
     setSbsBothClosing(true);
     setIsModalClosing(true);
     setTimeout(() => {
+      setSbsAiActiveSide(null);
       setSbsSecondaryId(null);
       setSbsClosingSide(null);
       setSbsBothClosing(false);
@@ -5066,12 +5087,16 @@ export default function App() {
     body.classList.toggle("sbs-active", sbsActive);
     body.classList.toggle("sbs-closing-left", sbsActive && sbsClosingSide === "left");
     body.classList.toggle("sbs-closing-right", sbsActive && sbsClosingSide === "right");
+    body.classList.toggle("sbs-ai-left", sbsActive && sbsAiActiveSide === "left");
+    body.classList.toggle("sbs-ai-right", sbsActive && sbsAiActiveSide === "right");
     return () => {
       body.classList.remove("sbs-active");
       body.classList.remove("sbs-closing-left");
       body.classList.remove("sbs-closing-right");
+      body.classList.remove("sbs-ai-left");
+      body.classList.remove("sbs-ai-right");
     };
-  }, [sbsActive, sbsClosingSide]);
+  }, [sbsActive, sbsClosingSide, sbsAiActiveSide]);
 
   // In SBS mode the left pane's X / scrim click no longer tears down the
   // primary modal — it just animates the left half out and hands B to
@@ -5087,6 +5112,8 @@ export default function App() {
       splitClosing={sbsActive && sbsClosingSide === "left"}
       handoffNoTransition={sbsHandoffNoTransition}
       suppressOpenReplay={sbsSuppressOpenReplay}
+      aiPanelSide={sbsActive ? "right" : undefined}
+      sbsOppositeHidden={sbsActive && sbsAiActiveSide === "right"}
       dark={dark}
       windowWidth={windowWidth}
       isLandscapeMobile={isLandscapeMobile}
@@ -5656,6 +5683,10 @@ export default function App() {
           forceClosing={sbsBothClosing}
           onRequestClosing={onSbsRightClosing}
           onRequestClose={onSbsRightClosed}
+          aiPanelSide="left"
+          sbsOppositeHidden={sbsAiActiveSide === "left"}
+          onAiOpen={onSecondaryAiOpen}
+          onAiClose={onSecondaryAiClose}
           notes={notes}
           setNotes={setNotes}
           currentUser={currentUser}

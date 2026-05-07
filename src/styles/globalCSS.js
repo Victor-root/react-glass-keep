@@ -3441,4 +3441,85 @@ html.dark .typo-modal-toggle {
 .note-ai-save-btn {
   animation: noteAiSaveBtnIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
+
+/* ───────── SBS-aware AI panel ─────────
+   In side-by-side mode (desktop, ≥1024px where the AI sidebar layout
+   is active), the AI panel for the active note temporarily replaces
+   the OPPOSITE pane's slot — left-note AI shows in the right half,
+   right-note AI shows in the left half. The opposite note stays mounted
+   but is hidden (visibility:hidden + pointer-events:none) so its
+   internal state is preserved across show/hide cycles.
+
+   The active note keeps its SBS half position; only the AI panel wrapper
+   is repositioned via absolute layout into the opposite half. The wrapper
+   width (animated 0 → var(--sbs-pane-w) inline) drives the open/close
+   reveal exactly like single-note mode. The inner panel uses the regular
+   noteAiPanelIn or its mirrored variant (noteAiPanelInRightToLeft) so the
+   slide direction always points "into" the active note.
+
+   Below 1024px the AI panel is a fullscreen overlay (mobile-style) that
+   covers both panes — no SBS coordination needed and these rules are
+   intentionally inert. */
+@media (min-width: 1024px) {
+  /* Opposite pane hides while the other side's AI panel is showing.
+     visibility (not display:none) is intentional — keeps the DOM
+     layout & internal state intact, so when the AI panel closes the
+     pane reappears exactly where it was. */
+  body.sbs-active .modal-scrim[data-sbs-opposite-hidden="true"] > .note-modal-anim {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  /* When the LEFT pane is the hidden one (right-AI open), suppress the
+     left scrim's dark backdrop so it doesn't dim the AI panel now
+     occupying the left half. */
+  body.sbs-active.sbs-ai-right .modal-scrim[data-split-side="left"] {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* AI panel wrapper position in SBS+AI mode. Pulled out of the scrim's
+     horizontal flex layout via absolute positioning, anchored to the
+     opposite half via left/right + half-pane offset. Width is set inline
+     on the element to var(--sbs-pane-w) so the wrapper transition still
+     animates 0 → full-width on open and back on close. */
+  body.sbs-active .modal-scrim[data-ai-panel-side] > .note-ai-panel-wrapper {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 95vh;
+    pointer-events: auto;
+    z-index: 1;
+  }
+  /* Left pane's AI panel sits in the RIGHT half. */
+  body.sbs-active .modal-scrim[data-split-side="left"][data-ai-panel-side="right"] > .note-ai-panel-wrapper {
+    left: calc(50% + var(--sbs-gap) / 2);
+    right: auto;
+  }
+  /* Right pane's AI panel sits in the LEFT half. The right scrim has
+     pointer-events:none on the scrim itself; we restore them on the
+     wrapper via the rule above. */
+  body.sbs-active .modal-scrim[data-split-side="right"][data-ai-panel-side="left"] > .note-ai-panel-wrapper {
+    right: calc(50% + var(--sbs-gap) / 2);
+    left: auto;
+  }
+}
+
+/* Mirrored AI panel slide animation — same duration / easing / opacity
+   curve as noteAiPanelIn / Out, just with the X delta inverted so the
+   panel slides "into" the active note from the opposite side. Used when
+   the panel sits to the LEFT of the note (right-pane's AI in SBS). */
+@keyframes noteAiPanelInRightToLeft {
+  from { opacity: 0.4; transform: translateX(32px); }
+  to   { opacity: 1;   transform: translateX(0); }
+}
+@keyframes noteAiPanelOutRightToLeft {
+  from { opacity: 1;   transform: translateX(0); }
+  to   { opacity: 0;   transform: translateX(32px); }
+}
+.modal-scrim[data-ai-panel-side="left"] .note-ai-panel {
+  animation: noteAiPanelInRightToLeft 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+.modal-scrim[data-ai-panel-side="left"] .note-ai-panel-wrapper.closing .note-ai-panel {
+  animation: noteAiPanelOutRightToLeft 0.32s cubic-bezier(0.55, 0, 0.55, 0.6) both;
+}
 `;

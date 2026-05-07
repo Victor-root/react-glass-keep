@@ -45,6 +45,15 @@ export default function NoteModal({
   suppressOpenReplay,  // SBS right-close cleanup (mobile): suppresses the
                        // base noteModalIn replay on the survivor when the
                        // sbsMobileSurvivorFromTop animation rule drops.
+  // SBS AI coordination — when this pane's AI panel is open in SBS mode,
+  // it should appear in the OPPOSITE half of the screen. aiPanelSide is
+  // "right" by default (the panel sits to the right of the note), or "left"
+  // when this is the right pane in SBS (so the panel sits to the left,
+  // taking the LEFT pane's slot).
+  // sbsOppositeHidden hides this pane while the other pane's AI takes
+  // over — the DOM stays mounted so internal state is preserved.
+  aiPanelSide,
+  sbsOppositeHidden = false,
   // theme & layout
   dark,
   windowWidth,
@@ -457,7 +466,13 @@ export default function NoteModal({
   // Always compute the target width when AI is available — the wrapper div
   // animates between 0 and this value regardless of noteAiPanelVisible, so
   // we need a stable target even while the panel is collapsed.
-  const aiPanelWidth = noteAiSidebarLayout
+  // In SBS mode the panel takes the OPPOSITE pane's slot, so its width
+  // matches the SBS pane width via a CSS variable. The browser still
+  // resolves it to a concrete px value, so the wrapper width transition
+  // (0 ↔ var(--sbs-pane-w)) animates as expected.
+  const aiPanelWidth = (splitMode && noteAiSidebarLayout)
+    ? "var(--sbs-pane-w)"
+    : noteAiSidebarLayout
     ? Math.min(MODAL_WIDTH, Math.max(360, windowWidth - MODAL_WIDTH - SIDE_GUTTER * 2 - MODAL_GAP))
     : 360;
 
@@ -514,6 +529,8 @@ export default function NoteModal({
         data-split-mode={splitMode ? "true" : undefined}
         data-split-side={splitMode ? splitSide : undefined}
         data-split-closing={splitClosing ? "true" : undefined}
+        data-ai-panel-side={splitMode ? aiPanelSide : undefined}
+        data-sbs-opposite-hidden={sbsOppositeHidden ? "true" : undefined}
         onMouseDown={(e) => {
           // In SBS mode the right-scrim is pointer-events:none, so this
           // handler only fires on the left (backdrop) scrim. Track the
