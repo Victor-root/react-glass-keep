@@ -1492,10 +1492,14 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
   body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="left"] > .note-modal-anim {
     --sbs-anchor-y: calc(-25dvh - var(--sbs-gap) / 2);
     --note-anim-x: translateY(calc(-25dvh - var(--sbs-gap) / 2));
+    /* Top pane: keep safe-area-top, strip safe-area-bottom (junction edge, not screen bottom) */
+    padding-bottom: 0 !important;
   }
   body.sbs-active .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim {
     --sbs-anchor-y: calc(25dvh + var(--sbs-gap) / 2);
     --note-anim-x: translateY(calc(25dvh + var(--sbs-gap) / 2));
+    /* Bottom pane: keep safe-area-bottom, strip safe-area-top (junction edge, not screen top) */
+    padding-top: 0 !important;
   }
   /* Mobile SBS open: pop/zoom at the anchor Y position, no vertical slide.
      The global noteModalIn keyframe is redefined at <=639px to a translateY(14px)
