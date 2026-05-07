@@ -1608,6 +1608,14 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
     transition: none !important;
     animation: sbsMobileSurvivorFromTop var(--sbs-anim) cubic-bezier(.22,.61,.36,1) both;
   }
+  /* Right-close cleanup: when sbs-closing-right drops, the survivor's animation
+     rule disappears and the base .note-modal-anim { animation: noteModalIn }
+     would re-fire, producing a tiny close/reopen flash. This class is set for
+     two frames during the cleanup commit to suppress that replay. */
+  .note-modal-anim.note-modal-anim--sbs-suppress-open-replay {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* Popover arrow — CSS-only via data-arrow attribute */

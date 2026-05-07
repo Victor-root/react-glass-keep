@@ -3618,6 +3618,10 @@ export default function App() {
   // suppressed; animation: noteModalIn must remain so it doesn't restart
   // when the class is removed.
   const [sbsHandoffNoTransition, setSbsHandoffNoTransition] = useState(false);
+  // After right-pane close cleanup, mobile survivor's animation rule drops and
+  // the base .note-modal-anim { animation: noteModalIn } would re-fire on the
+  // primary, producing a tiny close/reopen flash. Suppress for two frames.
+  const [sbsSuppressOpenReplay, setSbsSuppressOpenReplay] = useState(false);
 
   const onOpenSideBySide = (ids) => {
     if (!Array.isArray(ids) || ids.length !== 2) return;
@@ -3680,8 +3684,14 @@ export default function App() {
     if (sbsClosingSide) return;
     setSbsClosingSide("right");
     setTimeout(() => {
+      setSbsSuppressOpenReplay(true);
       setSbsSecondaryId(null);
       setSbsClosingSide(null);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setSbsSuppressOpenReplay(false);
+        });
+      });
     }, SBS_ANIM_MS);
   }, [sbsClosingSide]);
   // Kept for backward-compat in case the secondary ever runs its own
@@ -5051,6 +5061,7 @@ export default function App() {
       splitSide={sbsActive ? "left" : undefined}
       splitClosing={sbsActive && sbsClosingSide === "left"}
       handoffNoTransition={sbsHandoffNoTransition}
+      suppressOpenReplay={sbsSuppressOpenReplay}
       dark={dark}
       windowWidth={windowWidth}
       isLandscapeMobile={isLandscapeMobile}
