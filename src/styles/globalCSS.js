@@ -1332,7 +1332,21 @@ html.dark .modal-scroll-themed::-webkit-scrollbar-thumb { background: var(--sb-t
    "jolt": the pane was already at the same position the new layout
    would put it.                                                          */
 :root {
-  --sbs-gap: 24px;
+  /* SBS layout vars.
+       --sbs-gap   : space between the two panes
+       --sbs-edge  : safety margin on each viewport edge so panes never
+                     touch the screen border
+       --sbs-pane-w: each pane's width, computed so that
+                     2 * pane + gap + 2 * edge fits in 100vw. Capped at
+                     896px so on very wide screens the panes don't grow
+                     past the comfortable single-modal width.
+       The translateX(-50%) anchors used below are relative to the
+       pane's own width, so once --sbs-pane-w shrinks, the anchor
+       offsets shrink with it and the pair stays centred + visible
+       end-to-end without any JS work. */
+  --sbs-gap: clamp(12px, 2vw, 32px);
+  --sbs-edge: clamp(12px, 2vw, 28px);
+  --sbs-pane-w: min(896px, calc((100vw - var(--sbs-gap) - var(--sbs-edge) * 2) / 2));
   --sbs-anim: 360ms;
 }
 /* The right-pane scrim is invisible — only the left scrim provides
@@ -1403,6 +1417,19 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
    name or shorthand could restart noteModalIn when the class is removed. */
 .note-modal-anim.note-modal-anim--sbs-handoff {
   transition: none !important;
+}
+/* Horizontal SBS width clamp. On ≥768px each pane takes --sbs-pane-w,
+   which auto-shrinks below 100vw - gap - 2*edge so the pair always
+   fits the viewport end-to-end. The Tailwind utilities on the modal
+   (sm:w-11/12 sm:max-w-3xl lg:max-w-4xl) are overridden via
+   !important so the dynamic clamp wins regardless of breakpoint.
+   Mobile (<=767px) is left untouched and keeps the vertical stack
+   rule defined in the next @media block. */
+@media (min-width: 768px) {
+  body.sbs-active .modal-scrim[data-split-mode="true"] > .note-modal-anim {
+    width: var(--sbs-pane-w) !important;
+    max-width: var(--sbs-pane-w) !important;
+  }
 }
 /* Mobile: stack vertically with the same transform-only approach. */
 @media (max-width: 767px) {
