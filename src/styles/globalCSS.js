@@ -1238,11 +1238,15 @@ body.sbs-active.sbs-closing-right .modal-scrim[data-split-mode="true"][data-spli
 body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split-side="right"] > .note-modal-anim {
   --sbs-anchor-x: 0px;
 }
-/* Both-close: backdrop (left scrim) fades out alongside both panes.
-   In single-pane close scenarios the scrim stays — backdrop-close is the
-   only case where both sides close and we want the whole overlay to fade. */
-body.sbs-both-closing .modal-scrim[data-split-mode="true"][data-split-side="left"] {
-  animation: scrimFadeOut 360ms ease-in both;
+/* SBS left-close handoff. At the end of requestCloseLeftPaneSBS, React
+   swaps the primary's content from note A to note B and drops the SBS
+   body classes / data-split attrs. Without this rule, the residual
+   transition transform from the SBS base rule would animate the primary
+   from its closing position back to centre — a visible left to right
+   kick. Cutting only transition is intentional: changing animation
+   name or shorthand could restart noteModalIn when the class is removed. */
+.note-modal-anim.note-modal-anim--sbs-handoff {
+  transition: none !important;
 }
 /* Mobile: stack vertically with the same transform-only approach. */
 @media (max-width: 767px) {

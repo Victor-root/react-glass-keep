@@ -33,6 +33,7 @@ export default function SecondaryNoteInstance({
   noteId,                       // requested id (null/undefined = closed)
   splitSide = "right",
   splitClosing,
+  forceClosing = false,         // shell-driven close-both signal — OR-s into NoteModal's isModalClosing
   // shell callbacks
   onRequestClosing,             // close animation just started → tell shell to flip recenter flag
   onRequestClose,               // pane animation done → unmount + parent state cleanup
@@ -1132,7 +1133,7 @@ export default function SecondaryNoteInstance({
   return (
     <NoteModal
       open={open}
-      isModalClosing={isModalClosing}
+      isModalClosing={isModalClosing || forceClosing}
       splitMode
       splitSide={splitSide}
       splitClosing={splitClosing}

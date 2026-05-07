@@ -39,6 +39,9 @@ export default function NoteModal({
   splitMode,
   splitSide,    // "left" | "right" | undefined
   splitClosing, // pane-close animation flag (slide+fade out, sibling recenters)
+  handoffNoTransition, // SBS left-close handoff: cuts CSS transitions for the
+                       // single frame where SBS rules drop and the pane snaps
+                       // back to centre, preventing a left→right kick.
   // theme & layout
   dark,
   windowWidth,
@@ -528,7 +531,7 @@ export default function NoteModal({
         }}
       >
         <div
-          className={`note-modal-anim${isModalClosing ? ' closing' : ''} glass-card rounded-none shadow-none w-full max-w-none ${
+          className={`note-modal-anim${isModalClosing ? ' closing' : ''}${handoffNoTransition ? ' note-modal-anim--sbs-handoff' : ''} glass-card rounded-none shadow-none w-full max-w-none ${
             mobileLayout ? ''
             : isDrawEdit ? 'sm:w-screen sm:max-w-none sm:h-screen sm:!rounded-none'
             : 'sm:w-11/12 sm:max-w-3xl lg:max-w-4xl sm:h-[95vh] sm:rounded-xl'

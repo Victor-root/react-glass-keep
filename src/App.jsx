@@ -3552,6 +3552,13 @@ export default function App() {
   const [sbsSecondaryId, setSbsSecondaryId] = useState(null);
   const [sbsClosingSide, setSbsClosingSide] = useState(null); // "left" | "right" | null
   const [sbsBothClosing, setSbsBothClosing] = useState(false);
+  // Cuts CSS transitions on the primary modal during the final left-close
+  // handoff frame. Without it, the primary keeps its closing transform
+  // (translateX(-50%-36px) opacity:0) and would visibly transition back to
+  // centre when the SBS rules drop — a left→right kick. Only transition is
+  // suppressed; animation: noteModalIn must remain so it doesn't restart
+  // when the class is removed.
+  const [sbsHandoffNoTransition, setSbsHandoffNoTransition] = useState(false);
 
   const onOpenSideBySide = (ids) => {
     if (!Array.isArray(ids) || ids.length !== 2) return;
@@ -3587,14 +3594,21 @@ export default function App() {
     const remaining = sbsSecondaryId;
     setSbsClosingSide("left");
     setTimeout(() => {
-      // useLayoutEffect handles the body-class drop atomically with the
-      // React commit (same paint cycle), so no manual sync removal here.
-      // Swap primary to note B in place (openModal doesn't replay the
-      // open animation when the modal is already mounted) and drop SBS
-      // state so split CSS releases its hold.
+      // Handoff: snap the primary back to centre WITHOUT transition. The
+      // SBS rules drop in the same React commit as openModal/setSbsSecondaryId,
+      // and without this snap the residual `transition: transform var(--sbs-anim)`
+      // would animate the primary from translateX(-50%-36px) back to translateX(0)
+      // — a left→right kick at the very end. Re-enable transitions after two
+      // frames so the next render has settled.
+      setSbsHandoffNoTransition(true);
       openModal(String(remaining));
       setSbsSecondaryId(null);
       setSbsClosingSide(null);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setSbsHandoffNoTransition(false);
+        });
+      });
     }, SBS_ANIM_MS);
   }, [sbsSecondaryId, sbsClosingSide]); // eslint-disable-line
 
@@ -3618,17 +3632,22 @@ export default function App() {
     setSbsClosingSide(null);
   }, []);
 
-  // Backdrop click while in SBS mode: fade BOTH panes out simultaneously
-  // from their SBS anchor positions, then close silently.
-  // sbsBothClosing=true sets splitClosing=true on both panes so the SBS
-  // CSS transitions drive opacity→0 on each pane from its own position
-  // (left slides left, right slides right) over --sbs-anim (360ms).
-  // After SBS_ANIM_MS both are opacity=0; we close everything at once with
-  // no additional noteModalOut flash.
+  // Backdrop click while in SBS mode: close BOTH notes together.
+  // Strict separation of roles:
+  //   - splitClosing → closes ONE pane, survivor recenters (NOT used here)
+  //   - sbsClosingSide → drives the survivor's recenter (NOT used here)
+  //   - isModalClosing + noteModalOut → closes the WHOLE modal (used here)
+  // body.sbs-active stays on so --note-anim-x is still set on each pane;
+  // noteModalOut composes with it and plays from each pane's own anchor
+  // position (left from -50%-12px, right from +50%+12px). The secondary
+  // is forced into closing via the forceClosing prop, which OR-s into its
+  // NoteModal's isModalClosing.
+  const MODAL_FADE_DURATION_SBS = 200; // noteModalOut 180ms + 20ms buffer
   const closeBothSBS = useCallback(() => {
     if (sbsBothClosing) return;
     if (mType === "draw") flushPendingDrawingSave();
     setSbsBothClosing(true);
+    setIsModalClosing(true);
     setTimeout(() => {
       setSbsSecondaryId(null);
       setSbsClosingSide(null);
@@ -3640,7 +3659,7 @@ export default function App() {
       setConfirmDeleteOpen(false);
       setShowModalFmt(false);
       setIsModalClosing(false);
-    }, SBS_ANIM_MS);
+    }, MODAL_FADE_DURATION_SBS);
   }, [sbsBothClosing, mType, flushPendingDrawingSave]); // eslint-disable-line
 
   // Check if the note has been modified from initial state
@@ -4953,14 +4972,12 @@ export default function App() {
     body.classList.toggle("sbs-active", sbsActive);
     body.classList.toggle("sbs-closing-left", sbsActive && sbsClosingSide === "left");
     body.classList.toggle("sbs-closing-right", sbsActive && sbsClosingSide === "right");
-    body.classList.toggle("sbs-both-closing", sbsBothClosing);
     return () => {
       body.classList.remove("sbs-active");
       body.classList.remove("sbs-closing-left");
       body.classList.remove("sbs-closing-right");
-      body.classList.remove("sbs-both-closing");
     };
-  }, [sbsActive, sbsClosingSide, sbsBothClosing]);
+  }, [sbsActive, sbsClosingSide]);
 
   // In SBS mode the left pane's X / scrim click no longer tears down the
   // primary modal — it just animates the left half out and hands B to
@@ -4970,10 +4987,11 @@ export default function App() {
   const modal = (
     <NoteModal
       open={open}
-      isModalClosing={isModalClosing}
+      isModalClosing={isModalClosing || sbsBothClosing}
       splitMode={sbsActive}
       splitSide={sbsActive ? "left" : undefined}
-      splitClosing={sbsBothClosing || (sbsActive && sbsClosingSide === "left")}
+      splitClosing={sbsActive && sbsClosingSide === "left"}
+      handoffNoTransition={sbsHandoffNoTransition}
       dark={dark}
       windowWidth={windowWidth}
       isLandscapeMobile={isLandscapeMobile}
@@ -5535,7 +5553,8 @@ export default function App() {
         <SecondaryNoteInstance
           noteId={sbsSecondaryId}
           splitSide="right"
-          splitClosing={sbsBothClosing || sbsClosingSide === "right"}
+          splitClosing={sbsClosingSide === "right"}
+          forceClosing={sbsBothClosing}
           onRequestClosing={onSbsRightClosing}
           onRequestClose={onSbsRightClosed}
           notes={notes}
