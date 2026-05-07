@@ -140,12 +140,15 @@ html.dark header.glass-card {
   left: 12px;
   right: 12px;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
-  margin: 0 auto;
-  max-width: 960px;
   z-index: 35;
   pointer-events: none;
   display: flex;
   justify-content: center;
+  /* No max-width: the wrapper spans the real available content width
+     (viewport minus left, right, and any sidebar offset). The inner
+     card sits inside as a flex item sized to its content, so it stays
+     compact while the wrapper carries the full budget for overflow
+     detection. */
 }
 .multi-select-dock__inner {
   pointer-events: auto;

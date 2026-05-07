@@ -365,7 +365,9 @@ function NotesUI({
 
       {/* Floating multi-select dock — fixed at the bottom of the viewport,
           overlay-style. Lives outside the scrollable content so it doesn't
-          push layout down or compete with NotesHeader. */}
+          push layout down or compete with NotesHeader. Receives the
+          sidebar geometry so it can offset itself out from under a
+          permanent sidebar and recompute its budget when it toggles. */}
       <MultiSelectToolbar
         multiMode={multiMode}
         dark={dark}
@@ -381,6 +383,8 @@ function NotesUI({
         onSelectAll={onSelectAll}
         onExitMulti={onExitMulti}
         onOpenSideBySide={onOpenSideBySide}
+        sidebarPermanent={sidebarPermanent}
+        sidebarWidth={sidebarWidth}
       />
     </div>
   );

@@ -87,6 +87,12 @@ export default function MultiSelectToolbar({
   onSelectAll,
   onExitMulti,
   onOpenSideBySide,
+  // Sidebar geometry — when the sidebar is rendered as a permanent
+  // column (desktop), the dock must NOT extend under it. We slide its
+  // left edge over by sidebarWidth so the wrapper spans only the
+  // content area, and the ResizeObserver picks up the real budget.
+  sidebarPermanent = false,
+  sidebarWidth = 0,
 }) {
   // ── Refs ────────────────────────────────────────────────────────
   const containerRef = useRef(null); // outer wrapper — drives the budget
@@ -402,10 +408,18 @@ export default function MultiSelectToolbar({
   // mounts via callback ref).
   const colorInOverflow = overflowActions.some((a) => a.id === "color");
 
+  // When the sidebar is permanent, push the dock's left edge past it so
+  // the wrapper spans only the content area. CSS handles the default
+  // (left:12px desktop / 8px mobile) when the sidebar isn't permanent.
+  const dockStyle = sidebarPermanent
+    ? { left: `${(sidebarWidth || 0) + 12}px`, right: "12px" }
+    : undefined;
+
   return (
     <div
       ref={containerRef}
       className={`multi-select-dock${exiting ? " multi-select-dock--exiting" : ""}`}
+      style={dockStyle}
       role="toolbar"
       aria-label={t("multiSelect")}
     >
