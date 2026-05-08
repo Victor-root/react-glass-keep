@@ -574,6 +574,51 @@ The embedded model was a source of bloat and poor UX — shipping dozens of MB o
 - works with local private models (Ollama on LAN) or remote providers (your choice)
 - keeps API keys server-side and secure
 - scales: as better models emerge, users just switch without updating the app
+  
+---
+
+## 🪟 26) Side-by-side note view
+
+GlassKeep now supports opening two notes at the same time in a dedicated side-by-side mode.
+
+### What was added
+- open exactly two selected notes together from the multi-select toolbar
+- dedicated SBS modal layout with a left pane and a right pane
+- responsive pane sizing so the layout remains usable on narrower desktop / laptop screens
+- mobile SBS mode with stacked notes instead of forcing a cramped horizontal layout
+- smooth open / close transitions for both panes
+- closing one note promotes the remaining note back to a normal single-note modal
+- backdrop close still closes both notes together
+- the opposite pane stays mounted when temporarily hidden, preserving its internal state
+
+### Desktop behavior
+- the two notes open as independent panes inside the same modal experience
+- pane width is computed from the available viewport instead of assuming a large 4K screen
+- if one pane is closed, the remaining note recenters and returns to the normal single-note layout
+- closing both panes via backdrop uses a separate path so no centering animation fights the dual-close animation
+
+### Mobile behavior
+- SBS switches to a vertical stacked layout on small screens
+- Android WebView safe-area handling was adjusted so the internal boundary between the two panes stays clean
+- the top pane only keeps top safe-area padding
+- the bottom pane only keeps bottom safe-area padding
+- the remaining note expands cleanly when one pane is closed
+
+### AI assistant integration
+- the per-note AI assistant works inside SBS
+- when AI is opened from the left note, the AI panel uses the right-side slot temporarily
+- when AI is opened from the right note, the AI panel uses the left-side slot temporarily
+- the other note is hidden, not unmounted, so its state is preserved
+- closing the AI panel restores the hidden note after the panel close transition
+- the AI chat behavior itself remains unchanged compared to single-note mode
+
+### Multi-select integration
+- the multi-select toolbar now exposes the side-by-side action when exactly two notes are selected
+- the toolbar was polished into a floating dock-style action bar
+- on mobile, the dock follows the auto-hiding header and preserves scroll position when leaving selection mode
+
+### Why it matters
+This makes GlassKeep more practical for comparison, migration, note cleanup, technical references, and workflows where two notes need to be visible at the same time. It also turns multi-select into something more useful than bulk actions only.
 
 ---
 
