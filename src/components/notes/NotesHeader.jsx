@@ -306,7 +306,7 @@ export default function NotesHeader({
                       viewBox="0 0 64 12"
                     >
                       <path
-                        d="M8 10 H28 C29.5 10 30.5 5 32 5 C33.5 5 34.5 10 36 10 H56"
+                        d="M14 10 H30 C31 10 31.5 5 32 5 C32.5 5 33 10 34 10 H50"
                         stroke="currentColor"
                         fill="none"
                         strokeWidth="1.5"
