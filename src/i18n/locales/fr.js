@@ -892,11 +892,12 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   updateUpToDateDescription: "Vous êtes à jour.",
   updateAvailableDescription:
     "La version v{version} est disponible sur GitHub. Mettez à jour quand vous le souhaitez — vos données ne sont pas affectées.",
-  updateHowToInstall: "Comment mettre à jour",
-  updateStepPull: "Récupérez les dernières modifications de la branche main sur votre serveur.",
-  updateStepBuild: "Lancez npm install (si nécessaire) puis npm run build.",
-  updateStepRestart: "Redémarrez le service GlassKeep.",
-  updateStepNote:
-    "En cas de doute, demandez à la personne qui a installé le serveur — aucune donnée n'est perdue lors d'une mise à jour.",
+  updateRunInstallScript:
+    "Relancez le script d'installation sur votre serveur. Choisissez la commande correspondant à votre installation, puis copiez-la dans un terminal.",
+  updateMethodTerminal: "Installation standard",
+  updateMethodDocker: "Installation Docker",
+  copy: "Copier",
+  copied: "Copié",
+  copyCommand: "Copier la commande",
   openRepo: "Ouvrir le dépôt",
 };

@@ -5703,6 +5703,7 @@ export default function App() {
         onUpdateChecklistItem={onUpdateChecklistItem}
         // Admin panel
         openAdminPanel={openAdminPanel}
+        hasUpdate={!!updateInfo?.updateAvailable && !!currentUser?.is_admin}
         // Settings panel
         openSettingsPanel={openSettingsPanel}
         // header auto-hide (mobile)

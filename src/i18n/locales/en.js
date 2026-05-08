@@ -891,11 +891,12 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   updateUpToDateDescription: "You are running the latest version.",
   updateAvailableDescription:
     "Version v{version} is available on GitHub. Update at your convenience — your data is not affected.",
-  updateHowToInstall: "How to update",
-  updateStepPull: "Pull the latest changes from the main branch on your server.",
-  updateStepBuild: "Run npm install (if needed) and npm run build.",
-  updateStepRestart: "Restart the GlassKeep service.",
-  updateStepNote:
-    "If you are unsure, ask the operator who set up the server — no data is lost during an update.",
+  updateRunInstallScript:
+    "Re-run the install script on your server. Pick the command that matches your setup, then copy and paste it into a terminal.",
+  updateMethodTerminal: "Standard install",
+  updateMethodDocker: "Docker install",
+  copy: "Copy",
+  copied: "Copied",
+  copyCommand: "Copy command",
   openRepo: "Open repository",
 };
