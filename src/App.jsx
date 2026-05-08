@@ -53,6 +53,7 @@ import ChangePasswordModal from "./components/auth/ChangePasswordModal.jsx";
 import TagSidebar from "./components/panels/TagSidebar.jsx";
 import SettingsPanel from "./components/panels/SettingsPanel.jsx";
 import AdminPanel from "./components/panels/AdminPanel.jsx";
+import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import NoteCard from "./components/notes/NoteCard.jsx";
 import AdminView from "./components/notes/AdminView.jsx";
 import NotesUI from "./components/notes/NotesUI.jsx";
@@ -345,6 +346,12 @@ export default function App() {
     setGenericConfirmConfig(config);
     setGenericConfirmOpen(true);
   };
+
+  // GitHub release update notification (admin-only, fail-silent).
+  const updateInfo = useUpdateCheck({
+    token,
+    isAdmin: !!currentUser?.is_admin,
+  });
 
   // Sync-domain refs (owned by autosave, not by modal UI hook)
   const skipNextItemsAutosave = useRef(false);
@@ -5547,6 +5554,7 @@ export default function App() {
         showGenericConfirm={showGenericConfirm}
         showToast={showToast}
         authToken={token}
+        updateInfo={updateInfo}
       />
 
       <NotesUI
@@ -5694,6 +5702,7 @@ export default function App() {
         onUpdateChecklistItem={onUpdateChecklistItem}
         // Admin panel
         openAdminPanel={openAdminPanel}
+        hasUpdate={!!updateInfo?.updateAvailable && !!currentUser?.is_admin}
         // Settings panel
         openSettingsPanel={openSettingsPanel}
         // header auto-hide (mobile)

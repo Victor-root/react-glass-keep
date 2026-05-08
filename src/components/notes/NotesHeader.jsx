@@ -30,6 +30,7 @@ export default function NotesHeader({
   onStartMulti,
   openSettingsPanel,
   openAdminPanel,
+  hasUpdate = false,
   currentUser,
   signOut,
   headerMenuOpen,
@@ -272,14 +273,50 @@ export default function NotesHeader({
             </button>
             <span className={`mx-1 w-px h-5 ${dark ? "bg-gray-600" : "bg-gray-300"}`} />
             {currentUser?.is_admin && (
-              <button
-                onClick={() => openAdminPanel?.()}
-                className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-red-400 hover:text-red-300 hover:bg-red-500/15 focus:ring-red-500" : "text-red-600 hover:text-red-700 hover:bg-red-100 focus:ring-red-400"}`}
-                data-tooltip={t("adminPanel")}
-                aria-label={t("adminPanel")}
-              >
-                <ShieldIcon />
-              </button>
+              <div className="relative flex items-center justify-center">
+                <button
+                  onClick={() => openAdminPanel?.()}
+                  className={`relative p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-red-400 hover:text-red-300 hover:bg-red-500/15 focus:ring-red-500" : "text-red-600 hover:text-red-700 hover:bg-red-100 focus:ring-red-400"}`}
+                  data-tooltip={t("adminPanel")}
+                  aria-label={t("adminPanel")}
+                >
+                  <ShieldIcon />
+                  {hasUpdate && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute top-1 right-1 flex items-center justify-center"
+                    >
+                      <span className="absolute inline-flex w-2.5 h-2.5 rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                      <span
+                        className={`relative inline-flex w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ${dark ? "ring-gray-800" : "ring-white"}`}
+                      />
+                    </span>
+                  )}
+                </button>
+                {hasUpdate && (
+                  <span
+                    className={`absolute top-[calc(100%-10px)] left-1/2 -translate-x-1/2 z-20 inline-flex flex-col items-center px-2 whitespace-nowrap pointer-events-none ${dark ? "text-emerald-400" : "text-emerald-600"}`}
+                  >
+                    <svg
+                      aria-hidden="true"
+                      className="h-3 w-16 opacity-80"
+                      viewBox="0 0 64 12"
+                    >
+                      <path
+                        d="M14 10 H28 C30 10 31 5 32 5 C33 5 34 10 36 10 H50"
+                        stroke="currentColor"
+                        fill="none"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <span className="text-[11px] font-semibold leading-none">
+                      {t("newVersionAvailable")} !
+                    </span>
+                  </span>
+                )}
+              </div>
             )}
             <span className="flex items-center gap-2">
               <UserAvatar
@@ -310,12 +347,18 @@ export default function NotesHeader({
             <button
               ref={headerBtnRef}
               onClick={() => setHeaderMenuOpen((v) => !v)}
-              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+              className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
               data-tooltip={t("menu")}
               aria-haspopup="menu"
               aria-expanded={headerMenuOpen}
             >
               <Kebab />
+              {hasUpdate && currentUser?.is_admin && (
+                <span aria-hidden="true" className="absolute top-1 right-1 flex items-center justify-center">
+                  <span className="absolute inline-flex w-2.5 h-2.5 rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                  <span className={`relative inline-flex w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ${dark ? "ring-gray-800" : "ring-white"}`} />
+                </span>
+              )}
             </button>
 
             {headerMenuOpen && (
@@ -368,13 +411,36 @@ export default function NotesHeader({
                     <span className={dark ? "text-violet-400" : "text-violet-600"}><CheckSquareIcon /></span>{t("multiSelect")}</button>
                   {currentUser?.is_admin && (
                     <button
-                      className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                      className={`flex items-start gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                       onClick={() => {
                         setHeaderMenuOpen(false);
                         openAdminPanel?.();
                       }}
                     >
-                      <span className={dark ? "text-red-400" : "text-red-600"}><ShieldIcon /></span>{t("adminPanel")}</button>
+                      <span className={`relative mt-0.5 shrink-0 ${dark ? "text-red-400" : "text-red-600"}`}>
+                        <ShieldIcon />
+                        {hasUpdate && (
+                          <span aria-hidden="true" className="absolute top-0 right-0 flex items-center justify-center">
+                            <span className="absolute inline-flex w-2 h-2 rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                            <span className={`relative inline-flex w-2 h-2 rounded-full bg-emerald-500 ring-2 ${dark ? "ring-[#222222]" : "ring-white"}`} />
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex flex-col gap-0">
+                        <span>{t("adminPanel")}</span>
+                        {hasUpdate && (
+                          <span className={`flex flex-col text-[11px] font-semibold leading-none ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
+                            {/* line + upward chevron pointing toward "adminPanel" label above */}
+                            <span aria-hidden="true" className="relative block h-3">
+                              <span className="absolute left-0 right-[calc(50%+5px)] top-[7px] h-px bg-current opacity-70" />
+                              <span className="absolute left-[calc(50%+5px)] right-0 top-[7px] h-px bg-current opacity-70" />
+                              <span className="absolute left-1/2 top-[2px] w-2.5 h-2.5 -translate-x-1/2 rotate-45 border-l border-t border-current opacity-70" />
+                            </span>
+                            {t("newVersionAvailable")}
+                          </span>
+                        )}
+                      </span>
+                    </button>
                   )}
                   <button
                     className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "text-red-400 hover:bg-white/10" : "text-red-600 hover:bg-gray-100"}`}

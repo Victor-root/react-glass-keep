@@ -886,4 +886,19 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   noteAiChatQuickExplain: "Expliquer",
   noteAiChatQuickSummarizePrompt: "Résume cette note.",
   noteAiChatQuickExplainPrompt: "Explique cette note.",
+  updateAvailable: "disponible",
+  newVersionAvailable: "Nouvelle version disponible",
+  appVersionSectionTitle: "Version de l'application",
+  updateUpToDateDescription: "Vous êtes à jour.",
+  updateAvailableDescription:
+    "Une nouvelle version est disponible (v{version}). Mettez à jour quand vous le souhaitez, vos données ne seront pas affectées.",
+  updateMethodTerminal: "Installation standard",
+  updateMethodTerminalDescription: "Relancez le script et choisissez l'option 2.",
+  updateMethodDocker: "Installation Docker",
+  updateMethodDockerDescription:
+    "Utilisez la commande ci-dessous pour mettre à jour l'image et redémarrer l'app.",
+  copy: "Copier",
+  copied: "Copié",
+  copyCommand: "Copier la commande",
+  openRepo: "Ouvrir le dépôt",
 };

@@ -129,6 +129,7 @@ function NotesUI({
   onUpdateChecklistItem,
   // Admin panel
   openAdminPanel,
+  hasUpdate = false,
   // Settings panel
   openSettingsPanel,
   // AI props
@@ -257,6 +258,7 @@ function NotesUI({
         onStartMulti={onStartMulti}
         openSettingsPanel={openSettingsPanel}
         openAdminPanel={openAdminPanel}
+        hasUpdate={hasUpdate}
         currentUser={currentUser}
         signOut={signOut}
         headerMenuOpen={headerMenuOpen}

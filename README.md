@@ -66,6 +66,7 @@ Compared to the original project, this fork puts more emphasis on:
 - **🎨 a deeper overhaul of the drawing mode**
 - **💬 configurable AI assistant with local or remote endpoints**
 - **🔐 Server-side encryption & passkeys**
+- **🔔 In-app update notifications**
 
 ---
 
@@ -176,7 +177,11 @@ This fork also keeps the main capabilities that already made the original projec
 
 A native Android companion app is available for GlassKeep, making self-hosted mobile usage more convenient.
 
-**Download:** see the [Releases](https://github.com/Victor-root/glasskeep-enhanced/releases) page
+The Android app is a WebView wrapper for GlassKeep Enhanced and does not necessarily change with every project release.
+
+[Download latest Android APK](https://github.com/Victor-root/glasskeep-enhanced/releases/download/v2.0.0/GlassKeep-v1.0.10.apk)
+
+Current APK version: `1.0.10`
 
 > The Android source code is available in the `android/` directory.
 
@@ -286,7 +291,6 @@ Missing keys will automatically fall back to English.
 ### 🗓️ Planned
 - More translations with better RTL language support
 - Make the Android app available on **F-Droid**
-- **In-app update notifications** when a new release is available, so a self-hosted instance prompts the user to refresh / pull instead of staying silent
 
 ### 💭 Under consideration
 - *(open — suggestions welcome)*
