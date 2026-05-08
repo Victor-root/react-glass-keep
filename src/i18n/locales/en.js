@@ -887,4 +887,15 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   noteAiChatQuickExplainPrompt: "Explain this note.",
   updateAvailable: "available",
   newVersionAvailable: "New version available: v{version}",
+  appVersionSectionTitle: "App version",
+  updateUpToDateDescription: "You are running the latest version.",
+  updateAvailableDescription:
+    "Version v{version} is available on GitHub. Update at your convenience — your data is not affected.",
+  updateHowToInstall: "How to update",
+  updateStepPull: "Pull the latest changes from the main branch on your server.",
+  updateStepBuild: "Run npm install (if needed) and npm run build.",
+  updateStepRestart: "Restart the GlassKeep service.",
+  updateStepNote:
+    "If you are unsure, ask the operator who set up the server — no data is lost during an update.",
+  openRepo: "Open repository",
 };

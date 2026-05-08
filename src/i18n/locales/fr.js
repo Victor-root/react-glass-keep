@@ -888,4 +888,15 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   noteAiChatQuickExplainPrompt: "Explique cette note.",
   updateAvailable: "disponible",
   newVersionAvailable: "Nouvelle version disponible : v{version}",
+  appVersionSectionTitle: "Version de l'application",
+  updateUpToDateDescription: "Vous êtes à jour.",
+  updateAvailableDescription:
+    "La version v{version} est disponible sur GitHub. Mettez à jour quand vous le souhaitez — vos données ne sont pas affectées.",
+  updateHowToInstall: "Comment mettre à jour",
+  updateStepPull: "Récupérez les dernières modifications de la branche main sur votre serveur.",
+  updateStepBuild: "Lancez npm install (si nécessaire) puis npm run build.",
+  updateStepRestart: "Redémarrez le service GlassKeep.",
+  updateStepNote:
+    "En cas de doute, demandez à la personne qui a installé le serveur — aucune donnée n'est perdue lors d'une mise à jour.",
+  openRepo: "Ouvrir le dépôt",
 };

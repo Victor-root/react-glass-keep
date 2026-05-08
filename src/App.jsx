@@ -5532,7 +5532,6 @@ export default function App() {
           setAuth({ ...getAuth(), user: { ...getAuth()?.user, ...updates } });
         }}
         onChangePassword={() => setChangePasswordOpen(true)}
-        updateInfo={updateInfo}
       />
 
       {/* Admin Panel */}

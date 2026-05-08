@@ -5,7 +5,7 @@ import { CloseIcon, ShieldIcon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import EncryptionAdminSection from "../lock/EncryptionAdminSection.jsx";
 import AiAdminSection from "./AiAdminSection.jsx";
-import AppVersionLabel from "../common/AppVersionLabel.jsx";
+import AdminUpdateSection from "../admin/AdminUpdateSection.jsx";
 import { localizeServerError } from "../../utils/serverErrors.js";
 
 // Same shared chip used in the Settings panel: a 36×36 indigo square
@@ -242,6 +242,8 @@ export default function AdminPanel({
         </div>
 
         <div className="p-4 overflow-y-auto h-[calc(100%-64px)]">
+          <AdminUpdateSection updateInfo={updateInfo} />
+
           {/* Pending Registrations — rendered first so admins see the
               actionable items without scrolling. Hidden when the
               queue is empty. */}
@@ -539,9 +541,6 @@ export default function AdminPanel({
             </div>
           </div>
 
-          <div className="mt-6 pb-1 flex justify-end">
-            <AppVersionLabel updateInfo={updateInfo} />
-          </div>
         </div>
       </div>
 
