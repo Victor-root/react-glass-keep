@@ -298,13 +298,12 @@ export default function NotesHeader({
                     type="button"
                     onClick={() => openAdminPanel?.()}
                     aria-label={t("newVersionAvailable")}
-                    className={`absolute top-full left-1/2 -translate-x-1/2 mt-0.5 z-20 flex flex-col items-center whitespace-nowrap cursor-pointer focus:outline-none ${dark ? "text-emerald-400" : "text-emerald-600"}`}
+                    className={`absolute top-[calc(100%+2px)] left-1/2 -translate-x-1/2 z-20 inline-flex flex-col items-center px-2 whitespace-nowrap cursor-pointer focus:outline-none ${dark ? "text-emerald-400 hover:text-emerald-300" : "text-emerald-600 hover:text-emerald-700"}`}
                   >
-                    {/* line + upward chevron */}
-                    <span aria-hidden="true" className="relative block h-3 w-[200px]">
-                      <span className="absolute left-0 right-[calc(50%+5px)] top-[7px] h-px bg-current opacity-70" />
-                      <span className="absolute left-[calc(50%+5px)] right-0 top-[7px] h-px bg-current opacity-70" />
-                      <span className="absolute left-1/2 top-[2px] w-2.5 h-2.5 -translate-x-1/2 rotate-45 border-l border-t border-current opacity-70" />
+                    <span aria-hidden="true" className="relative block h-2 w-full mb-0.5 opacity-80">
+                      <span className="absolute left-0 top-[5px] h-px w-[calc(50%-7px)] bg-current" />
+                      <span className="absolute right-0 top-[5px] h-px w-[calc(50%-7px)] bg-current" />
+                      <span className="absolute left-1/2 top-[2px] h-2 w-2 -translate-x-1/2 rotate-45 border-l border-t border-current bg-transparent" />
                     </span>
                     <span className="text-[11px] font-semibold leading-none">
                       {t("newVersionAvailable")} !
