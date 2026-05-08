@@ -275,20 +275,31 @@ export default function NotesHeader({
             {currentUser?.is_admin && (
               <button
                 onClick={() => openAdminPanel?.()}
-                className={`relative p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-red-400 hover:text-red-300 hover:bg-red-500/15 focus:ring-red-500" : "text-red-600 hover:text-red-700 hover:bg-red-100 focus:ring-red-400"}`}
+                className={`relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${
+                  hasUpdate
+                    ? `flex flex-col items-center gap-0.5 px-1.5 py-1 rounded-xl ${dark ? "text-red-400 hover:text-red-300 hover:bg-red-500/15 focus:ring-red-500" : "text-red-600 hover:text-red-700 hover:bg-red-100 focus:ring-red-400"}`
+                    : `p-2 rounded-full ${dark ? "text-red-400 hover:text-red-300 hover:bg-red-500/15 focus:ring-red-500" : "text-red-600 hover:text-red-700 hover:bg-red-100 focus:ring-red-400"}`
+                }`}
                 data-tooltip={hasUpdate ? t("updateAvailable") : t("adminPanel")}
                 aria-label={t("adminPanel")}
               >
-                <ShieldIcon />
-                {hasUpdate && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute top-1 right-1 flex items-center justify-center"
-                  >
-                    <span className="absolute inline-flex w-2.5 h-2.5 rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex">
+                  <ShieldIcon />
+                  {hasUpdate && (
                     <span
-                      className={`relative inline-flex w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ${dark ? "ring-gray-800" : "ring-white"}`}
-                    />
+                      aria-hidden="true"
+                      className="absolute top-0.5 right-0.5 flex items-center justify-center"
+                    >
+                      <span className="absolute inline-flex w-2 h-2 rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                      <span
+                        className={`relative inline-flex w-2 h-2 rounded-full bg-emerald-500 ring-2 ${dark ? "ring-gray-800" : "ring-white"}`}
+                      />
+                    </span>
+                  )}
+                </span>
+                {hasUpdate && (
+                  <span className="text-[10px] font-semibold leading-none text-emerald-500 dark:text-emerald-400 whitespace-nowrap">
+                    {t("updateAvailable")}
                   </span>
                 )}
               </button>

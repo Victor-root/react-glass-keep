@@ -351,7 +351,6 @@ export default function App() {
   const updateInfo = useUpdateCheck({
     token,
     isAdmin: !!currentUser?.is_admin,
-    showToast,
   });
 
   // Sync-domain refs (owned by autosave, not by modal UI hook)

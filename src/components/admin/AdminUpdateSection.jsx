@@ -36,6 +36,7 @@ function CommandRow({ icon: Icon, label, description, command }) {
 
   return (
     <div className="rounded-lg border border-[var(--border-light)] bg-gray-50 dark:bg-black/30 p-3">
+      {/* Title row: icon + label left, copy button right */}
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
           <Icon className="tabler-icon w-4 h-4" />
@@ -44,7 +45,7 @@ function CommandRow({ icon: Icon, label, description, command }) {
         <button
           type="button"
           onClick={onCopy}
-          className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-white dark:bg-white/10 border border-[var(--border-light)] hover:bg-gray-100 dark:hover:bg-white/15"
+          className="shrink-0 inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-white dark:bg-white/10 border border-[var(--border-light)] hover:bg-gray-100 dark:hover:bg-white/15"
           aria-label={t("copyCommand")}
         >
           {copied ? (
@@ -55,6 +56,7 @@ function CommandRow({ icon: Icon, label, description, command }) {
           {copied ? t("copied") : t("copy")}
         </button>
       </div>
+      {/* Description and command: full width, no icon indentation */}
       {description && (
         <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
           {description}
@@ -86,7 +88,8 @@ export default function AdminUpdateSection({ updateInfo }) {
           : "border-[var(--border-light)]"
       } bg-white/60 dark:bg-white/5 p-4`}
     >
-      <div className="flex items-start gap-3">
+      {/* Header row: icon + title + version badge — stays on one line */}
+      <div className="flex items-center gap-3 mb-3">
         <span
           className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
             updateAvailable
@@ -96,59 +99,56 @@ export default function AdminUpdateSection({ updateInfo }) {
         >
           <TI.Refresh className="tabler-icon w-6 h-6" />
         </span>
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <h4 className="text-base font-semibold">
-              {t("appVersionSectionTitle")}
-            </h4>
-            <span className="text-sm tabular-nums text-gray-500 dark:text-gray-400">
-              v{currentVersion}
-            </span>
-            {updateAvailable && (
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
-                {t("updateAvailable")} · v{latestVersion}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-            {updateAvailable
-              ? t("updateAvailableDescription").replace(
-                  "{version}",
-                  latestVersion,
-                )
-              : t("updateUpToDateDescription")}
-          </p>
-
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 min-w-0">
+          <h4 className="text-base font-semibold shrink-0">
+            {t("appVersionSectionTitle")}
+          </h4>
+          <span className="text-sm tabular-nums text-gray-500 dark:text-gray-400 shrink-0">
+            v{currentVersion}
+          </span>
           {updateAvailable && (
-            <div className="mt-3 space-y-3">
-              <CommandRow
-                icon={TI.Terminal2}
-                label={t("updateMethodTerminal")}
-                description={t("updateMethodTerminalDescription")}
-                command={INSTALL_COMMAND}
-              />
-              <CommandRow
-                icon={TI.BrandDocker}
-                label={t("updateMethodDocker")}
-                description={t("updateMethodDockerDescription")}
-                command={DOCKER_COMMAND}
-              />
-            </div>
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 shrink-0">
+              {t("updateAvailable")} · v{latestVersion}
+            </span>
           )}
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-800 dark:bg-white/10 dark:hover:bg-white/15"
-            >
-              <TI.BrandGithub className="tabler-icon w-4 h-4" />
-              {t("openRepo")}
-              <TI.ExternalLink className="tabler-icon w-3.5 h-3.5 opacity-70" />
-            </a>
-          </div>
         </div>
+      </div>
+
+      {/* All content below is full-width, aligned to the left edge */}
+      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+        {updateAvailable
+          ? t("updateAvailableDescription").replace("{version}", latestVersion)
+          : t("updateUpToDateDescription")}
+      </p>
+
+      {updateAvailable && (
+        <div className="space-y-3 mb-3">
+          <CommandRow
+            icon={TI.Terminal2}
+            label={t("updateMethodTerminal")}
+            description={t("updateMethodTerminalDescription")}
+            command={INSTALL_COMMAND}
+          />
+          <CommandRow
+            icon={TI.BrandDocker}
+            label={t("updateMethodDocker")}
+            description={t("updateMethodDockerDescription")}
+            command={DOCKER_COMMAND}
+          />
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <a
+          href={REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg bg-gray-900 text-white hover:bg-gray-800 dark:bg-white/10 dark:hover:bg-white/15"
+        >
+          <TI.BrandGithub className="tabler-icon w-4 h-4" />
+          {t("openRepo")}
+          <TI.ExternalLink className="tabler-icon w-3.5 h-3.5 opacity-70" />
+        </a>
       </div>
     </div>
   );
