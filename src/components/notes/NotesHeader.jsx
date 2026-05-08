@@ -307,7 +307,7 @@ export default function NotesHeader({
                       preserveAspectRatio="none"
                     >
                       <path
-                        d="M1 12 L1 10.5 Q1 10 2.5 10 H45 C47 10 48.5 6 50 6 C51.5 6 53 10 55 10 H97.5 Q99 10 99 10.5 L99 12"
+                        d="M1 10 H45 C47.5 10 49 5 50 5 C51 5 52.5 10 55 10 H99"
                         stroke="currentColor"
                         fill="none"
                         strokeWidth="1.5"
