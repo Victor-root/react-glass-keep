@@ -296,13 +296,13 @@ export default function NotesHeader({
                 {hasUpdate && (
                   <span
                     aria-label={t("newVersionAvailable")}
-                    className={`absolute top-full left-1/2 -translate-x-1/2 mt-1.5 z-20 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold leading-none whitespace-nowrap border pointer-events-none ${dark ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700"}`}
+                    className={`absolute top-full left-1/2 -translate-x-1/2 mt-0.5 z-20 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold leading-none whitespace-nowrap border pointer-events-none ${dark ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-700"}`}
                   >
                     <span
                       aria-hidden="true"
                       className="absolute -top-1 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[5px] border-r-[5px] border-b-[5px] border-l-transparent border-r-transparent border-b-emerald-500/30"
                     />
-                    {t("newVersionAvailable")}
+                    {t("newVersionAvailable")} !
                   </span>
                 )}
               </div>
@@ -418,8 +418,7 @@ export default function NotesHeader({
                       <span className="flex flex-col gap-0.5">
                         <span>{t("adminPanel")}</span>
                         {hasUpdate && (
-                          <span className={`flex items-center gap-0.5 text-[11px] font-semibold ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
-                            <span aria-hidden="true" className="w-0 h-0 border-t-[4px] border-b-[4px] border-r-[5px] border-t-transparent border-b-transparent border-r-current" />
+                          <span className={`text-[11px] font-semibold ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
                             {t("newVersionAvailable")}
                           </span>
                         )}
