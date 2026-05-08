@@ -154,6 +154,13 @@ Compared to the original project, this fork puts more emphasis on:
 - cleaner integration in the editor, previews, and modals
 - a stronger base for future drawing-related improvements
 
+### 🔔 In-app update notifications
+- in-app display of the running app version
+- admin-only check against the GitHub Releases API (cached server-side, no spam)
+- discreet visual notification in the header when a newer release is available
+- dedicated update section in the admin panel with copy-ready upgrade commands (native install + Docker)
+- fully silent and non-blocking if GitHub is unreachable
+
 ---
 
 ## 🧩 Important Glass Keep features still present
@@ -290,7 +297,6 @@ Missing keys will automatically fall back to English.
 ### 🗓️ Planned
 - More translations with better RTL language support
 - Make the Android app available on **F-Droid**
-- **In-app update notifications** when a new release is available, so a self-hosted instance prompts the user to refresh / pull instead of staying silent
 
 ### 💭 Under consideration
 - *(open — suggestions welcome)*

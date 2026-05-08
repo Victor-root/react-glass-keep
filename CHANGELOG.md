@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.1.0 — 2026-05-09
+
+### Added
+- In-app version display.
+- Admin-only update check against GitHub Releases.
+- Update notification when a newer version is available.
+- Update instructions in the admin panel.
+- Direct Android APK download link in the README.
+
 ## v2.0.0 — 2026-05-08
 
 First official stable release of **GlassKeep Enhanced**.
