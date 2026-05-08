@@ -9,7 +9,7 @@ const INSTALL_COMMAND =
 const DOCKER_COMMAND =
   "cd ~/glasskeep && docker compose pull && docker compose up -d";
 
-function CommandRow({ icon: Icon, label, command }) {
+function CommandRow({ icon: Icon, label, description, command }) {
   const [copied, setCopied] = useState(false);
 
   const onCopy = async () => {
@@ -55,6 +55,11 @@ function CommandRow({ icon: Icon, label, command }) {
           {copied ? t("copied") : t("copy")}
         </button>
       </div>
+      {description && (
+        <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">
+          {description}
+        </p>
+      )}
       <code
         className="block w-full text-xs font-mono text-gray-800 dark:text-gray-100 bg-white dark:bg-black/40 border border-[var(--border-light)] rounded-md px-2 py-1.5 whitespace-nowrap overflow-x-auto"
         title={command}
@@ -116,17 +121,16 @@ export default function AdminUpdateSection({ updateInfo }) {
 
           {updateAvailable && (
             <div className="mt-3 space-y-3">
-              <p className="text-sm text-gray-700 dark:text-gray-200">
-                {t("updateRunInstallScript")}
-              </p>
               <CommandRow
                 icon={TI.Terminal2}
                 label={t("updateMethodTerminal")}
+                description={t("updateMethodTerminalDescription")}
                 command={INSTALL_COMMAND}
               />
               <CommandRow
                 icon={TI.BrandDocker}
                 label={t("updateMethodDocker")}
+                description={t("updateMethodDockerDescription")}
                 command={DOCKER_COMMAND}
               />
             </div>

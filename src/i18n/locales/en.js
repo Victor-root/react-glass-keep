@@ -890,11 +890,12 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   appVersionSectionTitle: "App version",
   updateUpToDateDescription: "You are running the latest version.",
   updateAvailableDescription:
-    "Version v{version} is available on GitHub. Update at your convenience — your data is not affected.",
-  updateRunInstallScript:
-    "Re-run the install script on your server. Pick the command that matches your setup, then copy and paste it into a terminal.",
+    "A new version is available (v{version}). Update at your convenience — your data will not be affected.",
   updateMethodTerminal: "Standard install",
+  updateMethodTerminalDescription: "Re-run the script and choose option 2.",
   updateMethodDocker: "Docker install",
+  updateMethodDockerDescription:
+    "Use the command below to pull the new image and restart the app.",
   copy: "Copy",
   copied: "Copied",
   copyCommand: "Copy command",

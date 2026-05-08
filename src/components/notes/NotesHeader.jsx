@@ -283,8 +283,13 @@ export default function NotesHeader({
                 {hasUpdate && (
                   <span
                     aria-hidden="true"
-                    className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ${dark ? "ring-gray-800" : "ring-white"}`}
-                  />
+                    className="absolute top-1 right-1 flex items-center justify-center"
+                  >
+                    <span className="absolute inline-flex w-2.5 h-2.5 rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                    <span
+                      className={`relative inline-flex w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ${dark ? "ring-gray-800" : "ring-white"}`}
+                    />
+                  </span>
                 )}
               </button>
             )}

@@ -891,11 +891,12 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   appVersionSectionTitle: "Version de l'application",
   updateUpToDateDescription: "Vous êtes à jour.",
   updateAvailableDescription:
-    "La version v{version} est disponible sur GitHub. Mettez à jour quand vous le souhaitez — vos données ne sont pas affectées.",
-  updateRunInstallScript:
-    "Relancez le script d'installation sur votre serveur. Choisissez la commande correspondant à votre installation, puis copiez-la dans un terminal.",
+    "Une nouvelle version est disponible (v{version}). Mettez à jour quand vous le souhaitez, vos données ne seront pas affectées.",
   updateMethodTerminal: "Installation standard",
+  updateMethodTerminalDescription: "Relancez le script et choisissez l'option 2.",
   updateMethodDocker: "Installation Docker",
+  updateMethodDockerDescription:
+    "Utilisez la commande ci-dessous pour mettre à jour l'image et redémarrer l'app.",
   copy: "Copier",
   copied: "Copié",
   copyCommand: "Copier la commande",
