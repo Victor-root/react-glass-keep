@@ -302,12 +302,11 @@ export default function NotesHeader({
                   >
                     <svg
                       aria-hidden="true"
-                      className="h-3 w-full overflow-visible opacity-80"
-                      viewBox="0 0 100 12"
-                      preserveAspectRatio="none"
+                      className="h-3 w-16 opacity-80"
+                      viewBox="0 0 64 12"
                     >
                       <path
-                        d="M1 10 H45 C47.5 10 49 5 50 5 C51 5 52.5 10 55 10 H99"
+                        d="M2 10 H28 C29.5 10 30.5 5 32 5 C33.5 5 34.5 10 36 10 H62"
                         stroke="currentColor"
                         fill="none"
                         strokeWidth="1.5"
