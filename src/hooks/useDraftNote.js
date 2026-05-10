@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { uid } from "../utils/helpers.js";
+import { serializeAudioContent } from "../utils/audioNote.js";
 
 /**
  * useDraftNote — Deferred creation lifecycle for blank notes opened via the
@@ -66,7 +67,7 @@ export default function useDraftNote(ctx) {
             dimensions: drawing?.dimensions || null,
             text: body,
           })
-        : body,
+        : body, // audio: body holds the serialized {clips, text} JSON
       items,
       tags: Array.isArray(ctx.mTagList) ? ctx.mTagList : [],
       images: Array.isArray(ctx.mImages) ? ctx.mImages : [],
@@ -121,6 +122,7 @@ export default function useDraftNote(ctx) {
   const createAndOpenBlankNote = (type) => {
     const tempId = uid();
     const isDraw = type === "draw";
+    const isAudio = type === "audio";
 
     // Inherit the current tag filter context so the new note stays visible
     // under whatever filter the user was browsing. Returns [] for special
@@ -141,6 +143,13 @@ export default function useDraftNote(ctx) {
     ctx.setComposerType("text");
     ctx.setComposerCollapsed(true);
 
+    // Audio notes seed mBody with an empty {clips, text} JSON so the
+    // AudioNoteEditor can read/write directly to mBody without a special
+    // initial-state branch. The autosave effect compares baseline.content
+    // to mBody, so baseline.content must match this seed string exactly —
+    // otherwise the modal would try to PATCH on open with no user action.
+    const initialBody = isAudio ? serializeAudioContent({ clips: [], text: "" }) : "";
+
     // Open the modal in edit mode on a blank state. No IDB/state/enqueue work
     // happens here — materializeDraftIfNeeded() will do it on first real edit.
     ctx.setSidebarOpen(false);
@@ -149,7 +158,7 @@ export default function useDraftNote(ctx) {
     ctx.setMTitle("");
     ctx.setMDrawingData({ paths: [], dimensions: null });
     ctx.prevDrawingRef.current = { paths: [], dimensions: null };
-    ctx.setMBody("");
+    ctx.setMBody(initialBody);
     ctx.skipNextDrawingAutosave.current = true;
     ctx.skipNextItemsAutosave.current = true;
     ctx.setMItems([]);
@@ -161,7 +170,7 @@ export default function useDraftNote(ctx) {
     // Baseline tags MUST match what we just seeded, otherwise the metadata
     // autosave effect would immediately diff and try to patch a note that
     // hasn't been materialised yet.
-    const baselineState = { title: "", content: "", tags: initialTags, images: [], color: "default" };
+    const baselineState = { title: "", content: initialBody, tags: initialTags, images: [], color: "default" };
     ctx.initialModalStateRef.current = baselineState;
     ctx.committedBaselineRef.current = { ...baselineState };
     if (isDraw) ctx.setInitialDrawMode("draw");
@@ -182,6 +191,7 @@ export default function useDraftNote(ctx) {
     handleDirectText: () => createAndOpenBlankNote("text"),
     handleDirectChecklist: () => createAndOpenBlankNote("checklist"),
     handleDirectDraw: () => createAndOpenBlankNote("draw"),
+    handleDirectAudio: () => createAndOpenBlankNote("audio"),
     isDraftId,
   };
 }

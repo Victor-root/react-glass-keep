@@ -3,7 +3,7 @@ import { t } from "../../i18n";
 import { bgFor, solid } from "../../utils/colors.js";
 import { renderSafeMarkdown } from "../../utils/markdown.jsx";
 import { isRichContent, contentToHTML, contentToPlain } from "../../utils/richText.js";
-import { PinOutline, PinFilled, ImageIcon } from "../../icons/index.jsx";
+import { PinOutline, PinFilled, ImageIcon, MicrophoneFilledIcon } from "../../icons/index.jsx";
 import ChecklistRow from "../common/ChecklistRow.jsx";
 import DrawingPreview from "../common/DrawingPreview.jsx";
 import useNoteTouchDrag from "../../hooks/useNoteTouchDrag.js";
@@ -11,6 +11,9 @@ import { getSections, isItem, countItems, countChecked, DEFAULT_SECTION_ID } fro
 import { getNoteIcon, getContentImages } from "../../utils/noteIcon.js";
 import NoteCardFooter from "./NoteCardFooter.jsx";
 import { SECTION_COLORS, hexAlpha } from "../checklist/SectionHeader.jsx";
+import { parseAudioContent, formatDuration } from "../../utils/audioNote.js";
+
+const AUDIO_CARD_MAX_CLIPS = 10;
 
 export default function NoteCard({
   n,
@@ -37,7 +40,16 @@ export default function NoteCard({
 }) {
   const isChecklist = n.type === "checklist";
   const isDraw = n.type === "draw";
+  const isAudio = n.type === "audio";
   const MAX_CHARS = 350;
+  // Card preview shows up to AUDIO_CARD_MAX_CLIPS recordings as a compact
+  // list (mic + name + duration). Clicking anywhere on the card opens the
+  // full modal; the list is purely informative so the user can see what
+  // the note contains without having to open it.
+  const audioClips = useMemo(() => {
+    if (!isAudio) return [];
+    return parseAudioContent(n.content).clips;
+  }, [isAudio, n.content]);
 
   // Compute the preview HTML for text notes. We first turn whatever is in
   // `content` (rich JSON or legacy Markdown) into plain text for the length
@@ -292,7 +304,15 @@ export default function NoteCard({
         </div>
       )}
 
-      {!isChecklist && !isDraw ? (
+      {isAudio ? (
+        audioClips.length > 0 ? (
+          <AudioClipList clips={audioClips} />
+        ) : (
+          <div className="text-xs italic text-gray-500 dark:text-gray-400">
+            {t("audioRecordingEmpty")}
+          </div>
+        )
+      ) : !isChecklist && !isDraw ? (
         <div
           className="text-sm break-words whitespace-pre-wrap overflow-hidden note-content note-content--dense"
           style={{ maxHeight: "280px" }}
@@ -389,6 +409,52 @@ export default function NoteCard({
         );
       })()}
       </div>
+    </div>
+  );
+}
+
+// Closed-card audio preview: a compact list of clips with the mic glyph
+// and the user's clip name (or a default "Recording N" fallback). Capped
+// at AUDIO_CARD_MAX_CLIPS rows so a long note doesn't blow the card out;
+// the leftover count is surfaced as a single trailing line. Purely visual,
+// the parent card owns the click-to-open behaviour.
+function AudioClipList({ clips }) {
+  const visible = clips.slice(0, AUDIO_CARD_MAX_CLIPS);
+  const hidden = Math.max(0, clips.length - AUDIO_CARD_MAX_CLIPS);
+  return (
+    <div className="space-y-1">
+      {visible.map((clip, i) => {
+        const fallbackName = t("audioClipDefaultName").replace("{n}", String(i + 1));
+        const displayName = (clip.name && clip.name.trim()) || fallbackName;
+        const dur = Number.isFinite(clip.duration) ? clip.duration : 0;
+        return (
+          <div
+            key={clip.id || i}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-black/[0.05] dark:bg-white/[0.07] border border-black/[0.06] dark:border-white/[0.06]"
+          >
+            <span
+              className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full text-white shadow-sm"
+              style={{ backgroundColor: "var(--note-color, #7c3aed)" }}
+              aria-hidden="true"
+            >
+              <MicrophoneFilledIcon className="w-3.5 h-3.5" />
+            </span>
+            <span className="flex-1 min-w-0 text-sm font-medium truncate">
+              {displayName}
+            </span>
+            {dur > 0 && (
+              <span className="shrink-0 text-[11px] tabular-nums opacity-70">
+                {formatDuration(dur)}
+              </span>
+            )}
+          </div>
+        );
+      })}
+      {hidden > 0 && (
+        <div className="text-[11px] text-gray-500 dark:text-gray-400 text-center pt-1">
+          {t("audioMoreClips").replace("{count}", String(hidden))}
+        </div>
+      )}
     </div>
   );
 }

@@ -25,8 +25,11 @@ import { getContentImages } from "../../utils/noteIcon.js";
 import { renderSafeMarkdown, linkifyContactsHTML } from "../../utils/markdown.jsx";
 import RichTextEditor from "../richtext/RichTextEditor.jsx";
 import { contentToHTML, serializeRichContent, isRichContent } from "../../utils/richText.js";
-import { modalBgFor, scrollColorsFor, solid, bgFor, toHex } from "../../utils/colors.js";
+import { modalBgFor, scrollColorsFor, solid, bgFor, toHex, audioAccentColor } from "../../utils/colors.js";
 import { setThemeColor } from "../../utils/helpers.js";
+import AudioNoteEditor from "../audio/AudioNoteEditor.jsx";
+import StorageGauge from "../audio/StorageGauge.jsx";
+import { parseAudioContent, totalClipsBytes } from "../../utils/audioNote.js";
 
 export default function NoteModal({
   // visibility / animation
@@ -210,6 +213,7 @@ export default function NoteModal({
   const [drawTransition, setDrawTransition] = React.useState(null); // 'entering' | 'leaving' | null
   const isDrawEdit = mType === 'draw' && drawMode === 'draw';
   const isDrawView = mType === 'draw' && drawMode !== 'draw';
+  const isAudio = mType === 'audio';
 
   // Track draw mode transitions for animation
   const prevDrawEditRef = React.useRef(false);
@@ -450,7 +454,10 @@ export default function NoteModal({
   //   - Mobile / narrow layout: the panel becomes a full-screen overlay
   //     that slides in over the modal from the right.
   const noteAiSidebarLayout = !mobileLayout && windowWidth >= 1024;
-  const noteAiAvailable = aiAssistantEnabled && !isDrawEdit;
+  // Audio notes deliberately don't expose the AI chat panel — there's
+  // nothing meaningful to ask about a raw audio blob, and the kebab/header
+  // entries shouldn't appear there at all.
+  const noteAiAvailable = aiAssistantEnabled && !isDrawEdit && !isAudio;
   const noteAiPanelVisible = noteAiAvailable && noteAiOpen && !isModalClosing;
 
   // Adaptive AI-panel width — fills whatever horizontal space is left
@@ -554,6 +561,7 @@ export default function NoteModal({
           className={`note-modal-anim${isModalClosing ? ' closing' : ''}${handoffNoTransition ? ' note-modal-anim--sbs-handoff' : ''}${suppressOpenReplay ? ' note-modal-anim--sbs-suppress-open-replay' : ''} glass-card rounded-none shadow-none w-full max-w-none ${
             mobileLayout ? ''
             : isDrawEdit ? 'sm:w-screen sm:max-w-none sm:h-screen sm:!rounded-none'
+            : isAudio ? 'sm:w-[92%] sm:max-w-2xl sm:h-[80vh] sm:rounded-2xl'
             : 'sm:w-11/12 sm:max-w-3xl lg:max-w-4xl sm:h-[95vh] sm:rounded-xl'
           }${drawTransition === 'entering' ? ' draw-expand' : drawTransition === 'leaving' ? ' draw-collapse' : ''} flex flex-col relative overflow-hidden`}
           style={{
@@ -573,14 +581,26 @@ export default function NoteModal({
           <div
             ref={modalScrollRef}
             data-modal-scroll
-            className={`relative flex-1 min-h-0 mobile-hide-scrollbar modal-scroll-themed ${isDrawEdit ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overflow-x-auto'}`}
+            className={`relative flex-1 min-h-0 mobile-hide-scrollbar modal-scroll-themed ${isDrawEdit ? 'flex flex-col overflow-hidden' : isAudio ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overflow-x-auto'}`}
             style={(() => {
               const sc = scrollColorsFor(mColor, dark);
               const noteColorBtn = (!dark && (!mColor || mColor === "default"))
                 ? "#a78bfa"
                 : solid(bgFor(mColor, dark));
               const noteColorOpaque = typeof noteColorBtn === "string" ? noteColorBtn.replace(/,\s*[\d.]+\)$/, ', 1)') : noteColorBtn;
-              return { '--sb-thumb': sc.thumb, '--sb-track': sc.track, '--note-color': noteColorBtn, '--note-color-opaque': noteColorOpaque, backgroundColor: 'inherit' };
+              // --audio-accent is a high-contrast variant of the note color
+              // for the audio player. Using --note-color directly produced
+              // play buttons that blended into the modal background in dark
+              // mode (note color == modal bg).
+              const audioAccent = audioAccentColor(mColor, dark);
+              return {
+                '--sb-thumb': sc.thumb,
+                '--sb-track': sc.track,
+                '--note-color': noteColorBtn,
+                '--note-color-opaque': noteColorOpaque,
+                '--audio-accent': audioAccent,
+                backgroundColor: 'inherit',
+              };
             })()}
           >
             <ModalHeader
@@ -662,12 +682,20 @@ export default function NoteModal({
             {/* Content area */}
             <div
               key={isDrawEdit ? 'draw' : viewMode ? 'view' : 'edit'}
-              className={`${isDrawEdit ? "flex-1 min-h-0 flex flex-col" : isDrawView ? "px-6 pt-3 pb-6 max-sm:px-4 max-sm:pt-1 max-sm:pb-4" : "px-6 pt-3 pb-12 max-sm:pt-1 max-sm:pb-4"} ${!isDrawEdit ? "modal-content-fade" : ""}`}
+              className={`${isDrawEdit ? "flex-1 min-h-0 flex flex-col" : isDrawView ? "px-6 pt-3 pb-6 max-sm:px-4 max-sm:pt-1 max-sm:pb-4" : isAudio ? "flex-1 min-h-0 flex flex-col px-4 pt-2 pb-4 sm:px-5 sm:pt-3 sm:pb-5" : "px-6 pt-3 pb-12 max-sm:pt-1 max-sm:pb-4"} ${!isDrawEdit ? "modal-content-fade" : ""}`}
               onClick={onModalBodyClick}
             >
 
-              {/* Text, Checklist, or Drawing */}
-              {mType === "text" ? (
+              {/* Text, Checklist, Drawing, or Audio */}
+              {mType === "audio" ? (
+                <AudioNoteEditor
+                  body={mBody}
+                  setBody={setMBody}
+                  title={mTitle}
+                  color={mColor}
+                  dark={dark}
+                />
+              ) : mType === "text" ? (
                 viewMode ? (
                   <NoteViewContent html={viewHtml} noteViewRef={noteViewRef} />
                 ) : (
@@ -756,8 +784,32 @@ export default function NoteModal({
                 </>
               )}
 
-              {/* Inline Edited stamp: only when scrollable (hidden in draw edit mode) */}
-              {editedStamp && modalScrollable && !(mType === 'draw' && drawMode === 'draw') && (
+              {/* Audio bottom bar: storage gauge on the left (mirror of the
+                  "Edited:" stamp on the right). Always rendered so the
+                  user can read the per-note limit even before they start
+                  recording. The popover auto-flips upward since this row
+                  sits at the bottom of the modal. */}
+              {isAudio && !(mType === 'draw' && drawMode === 'draw') && (
+                <div className="mt-6 text-xs text-gray-600 dark:text-gray-300 flex items-center justify-between gap-3">
+                  <StorageGauge usedBytes={totalClipsBytes(parseAudioContent(mBody).clips)} />
+                  {editedStamp && (
+                    <div className="flex items-center gap-1.5">
+                      <span>{t("editedPrefix")} {editedStamp}</span>
+                      {activeId && (
+                        <span
+                          className="opacity-30 hover:opacity-100 cursor-default transition-opacity"
+                          data-tooltip={`Note ID : ${activeId}`}
+                        >ⓘ</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Inline Edited stamp: scrollable non-audio notes. Audio
+                  uses its own bottom row above so the gauge can sit
+                  opposite the stamp. */}
+              {editedStamp && modalScrollable && !isAudio && !(mType === 'draw' && drawMode === 'draw') && (
                 <div className="mt-6 text-xs text-gray-600 dark:text-gray-300 text-right flex items-center justify-end gap-1.5">
                   <span>{t("editedPrefix")} {editedStamp}</span>
                   {activeId && (
@@ -770,8 +822,10 @@ export default function NoteModal({
               )}
             </div>
 
-            {/* Absolute Edited stamp: only when NOT scrollable (hidden in draw edit mode) */}
-            {editedStamp && !modalScrollable && !(mType === 'draw' && drawMode === 'draw') && (
+            {/* Absolute Edited stamp: only when NOT scrollable (hidden in
+                draw edit mode and for audio notes — those use the inline
+                stamp above so it doesn't overlap body content). */}
+            {editedStamp && !modalScrollable && !isAudio && !(mType === 'draw' && drawMode === 'draw') && (
               <div className="absolute bottom-3 right-4 text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
                 <span className="pointer-events-none">{t("editedPrefix")} {editedStamp}</span>
                 {activeId && (
@@ -1036,3 +1090,4 @@ export default function NoteModal({
     </>
   );
 }
+

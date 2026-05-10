@@ -39,6 +39,7 @@ export default function NotesComposer({
   onDirectDraw,
   onDirectText,
   onDirectChecklist,
+  onDirectAudio,
   fabOpen,
   setFabOpen,
   isDesktop,
@@ -164,23 +165,33 @@ export default function NotesComposer({
       {/* Composer — hidden in trash and archive views */}
       {activeTagFilter !== "TRASHED" && activeTagFilter !== "ARCHIVED" && (
       <div className="px-4 sm:px-6 md:px-8 lg:px-12">
-        <div className="max-w-2xl mx-auto">
-          {isDesktop ? (
+        {isDesktop ? (
+          // Wider wrapper for the desktop creation buttons so adding the 4th
+          // (audio) button doesn't shrink the original three. max-w-4xl
+          // gives ~215px per button — same as the original 3-up layout in
+          // max-w-2xl. Mobile FAB stays inside the standard max-w-2xl.
+          <div className="max-w-4xl mx-auto">
             <NoteCreationButtons
               onCreateText={onDirectText}
               onCreateChecklist={onDirectChecklist}
               onCreateDraw={onDirectDraw}
+              onCreateAudio={onDirectAudio}
             />
-          ) : !multiMode ? (
-            <MobileCreateFab
-              open={fabOpen}
-              setOpen={setFabOpen}
-              onCreateText={onDirectText}
-              onCreateChecklist={onDirectChecklist}
-              onCreateDraw={onDirectDraw}
-            />
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div className="max-w-2xl mx-auto">
+            {!multiMode && (
+              <MobileCreateFab
+                open={fabOpen}
+                setOpen={setFabOpen}
+                onCreateText={onDirectText}
+                onCreateChecklist={onDirectChecklist}
+                onCreateDraw={onDirectDraw}
+                onCreateAudio={onDirectAudio}
+              />
+            )}
+          </div>
+        )}
       </div>
       )}
     </>

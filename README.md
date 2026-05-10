@@ -50,7 +50,7 @@
 
 ---
 
-## 🎯 What this fork mainly focuses on
+## 🎯 Additions in this fork
 
 Compared to the original project, this fork puts more emphasis on:
 
@@ -67,93 +67,11 @@ Compared to the original project, this fork puts more emphasis on:
 - **💬 configurable AI assistant with local or remote endpoints**
 - **🔐 Server-side encryption & passkeys**
 - **🔔 In-app update notifications**
+- **🎙️ audio notes**
 
----
+For a more complete and structured overview of the changes made since the fork, see:
 
-## 🌟 Main additions in this fork
-
-### 🔄 Local-first / offline support
-- create, edit, reorder, pin, archive, trash, and restore notes **without network access**
-- local IndexedDB queue for write operations
-- automatic sync when the server becomes reachable again
-- real-time cross-device sync via SSE
-- visible sync status indicator
-- retry and recovery logic for unstable connections, especially on mobile
-
-### 🗑️ Trash / restore
-- soft delete: notes go to Trash first
-- dedicated **Trash** view
-- notes can be restored to their previous logical state
-- permanent deletion only happens from Trash
-- works for both single-note and multi-select actions
-
-### 📱 Mobile / Android
-- improved mobile grid
-- better modal behavior on phones
-- more direct note creation flow
-- better handling of text overflow and previews
-- clickable phone numbers in full note view on mobile
-- formatting bottom sheet (swipe-to-close, drag handle) for the rich-text editor on phones
-- more polish around touch interactions and small-screen usage
-- native Android wrapper for self-hosted instances
-- first-launch server URL setup
-- pull-to-refresh
-- better Android integration
-- source code included in the `android/` directory
-
-### 🌍 Internationalization
-- proper i18n infrastructure
-- automatic language detection
-- English and French already implemented
-- English fallback when a key is missing
-- cleaner base for adding more languages later
-
-### ✏️ Rich-text editor (live formatting)
-- full WYSIWYG editor (Tiptap) for text notes — replaces the legacy Markdown textarea
-- bold / italic / underline (4 variants + colour) / strike, sub / sup, inline code, code blocks, blockquote, separator, links
-- bullet & ordered lists with independent indent / outdent, alignment, headings (Paragraph + H1 to H5)
-- 28 self-hosted webfonts (Inter, Roboto, Lato, Playfair, JetBrains Mono, …) — no CDN
-- per-block typography presets (size, weight, colour, italic, underline) configurable from the settings, with three switchable profiles and cross-device sync
-- mobile: dedicated "Formatting" bottom sheet with swipe-to-close drag handle, replaces the cramped desktop ribbon on phones
-- Tab from the title focuses the body; Shift+Tab from the body returns to the title
-- empty notes are auto-removed on close (per-type aware: text body, checklist items, drawing strokes — images keep the note alive)
-
-### 📥 Smarter Google Keep import
-- drop the **raw Google Takeout `.zip`** directly — no need to hand-pick the .json files
-- titles, bodies, lists, labels, **colours** (mapped to the closest GlassKeep swatch) and **image attachments** all imported
-- single line breaks and blank lines from the original textContent are preserved (no marked() detour)
-- **server-side deduplication** (fingerprint on title + body + items + images) so re-importing the same export doesn't multiply notes — applies to GlassKeep .json, Markdown imports and Takeout .zip alike
-
-> 📘 Need help generating that `.zip` ? See the step-by-step Google Takeout walkthrough → [`IMPROVEMENTS.md` › How to export your Google Keep notes](./IMPROVEMENTS.md#how-to-export-your-google-keep-notes)
-
-### 🎨 Settings panel revamp
-- every section header and every option now carries a Tabler icon for at-a-glance navigation
-- wider drawer on tablet / desktop, controls right-aligned and stacked under labels on mobile so longer translations never crush the description
-- duplicate the open note in one click from the modal kebab menu
-
-### 🔐 Server-side encryption & passkeys
-- **end-to-end encryption**: notes and settings are encrypted server-side with keys derived from a dedicated admin passphrase (separate from user login passwords)
-- **passkeys authentication**: register and sign in using WebAuthn passkeys (fingerprint, face, hardware keys) for passwordless login
-- encrypted data persists even if the server is compromised
-- passkey registration and management available in the settings panel
-- admin users can enable passkeys for instance-level unlock on encryption-enabled deployments
-
-### 🛠️ Easier self-hosting
-- native install script for Debian / Ubuntu / Proxmox LXC
-- install / update / uninstall support
-- guided setup from the start
-- admin account creation during installation
-- automatic JWT secret generation
-- simple HTTPS handling with three possible approaches:
-  - use a **reverse proxy**
-  - generate a **self-signed certificate**
-  - use your **own SSL certificate**
-
-### 🎨 Drawing mode overhaul
-- major rework of the drawing mode, both technically and in day-to-day usage
-- better separation of drawing-related components
-- cleaner integration in the editor, previews, and modals
-- a stronger base for future drawing-related improvements
+👉 [`IMPROVEMENTS.md`](./IMPROVEMENTS.md)
 
 ---
 
@@ -181,7 +99,7 @@ The Android app is a WebView wrapper for GlassKeep Enhanced and does not necessa
 
 [Download latest Android APK](https://github.com/Victor-root/glasskeep-enhanced/releases/download/v2.0.0/GlassKeep-v1.0.10.apk)
 
-Current APK version: `1.0.10`
+Current APK version: `1.1.0`
 
 > The Android source code is available in the `android/` directory.
 
@@ -319,11 +237,9 @@ Thanks to [nikunjsingh93](https://github.com/nikunjsingh93) for the original pro
 
 ---
 
-## 📚 Detailed changelog and fork history
+## 🙌 Special thanks
 
-For a more complete and structured overview of the changes made since the fork, see:
-
-👉 [`IMPROVEMENTS.md`](./IMPROVEMENTS.md)
+Thanks to [@Rikhtar](https://github.com/Rikhtar) for active testing, bug reports, UX feedback.
 
 ---
 

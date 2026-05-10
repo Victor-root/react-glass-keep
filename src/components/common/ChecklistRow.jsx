@@ -145,7 +145,7 @@ export default function ChecklistRow({
       />
       {readOnly || (!editing && !readOnly) ? (
         <span
-          className={`flex-1 text-sm break-words min-w-0 min-h-[1.25rem] ${preview ? "line-clamp-3" : ""} ${!readOnly ? "cursor-pointer" : ""} ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
+          className={`flex-1 text-sm break-words min-w-0 min-h-[1.25rem] pb-0.5 border-b border-transparent ${preview ? "line-clamp-3" : ""} ${!readOnly ? "cursor-pointer" : ""} ${item.done ? "line-through text-gray-500 dark:text-gray-400" : ""}`}
           onClick={!readOnly ? (e) => {
             e.stopPropagation();
             let offset = item.text.length;

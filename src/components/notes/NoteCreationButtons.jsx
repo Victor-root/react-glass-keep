@@ -1,12 +1,12 @@
 import React from "react";
 import { t } from "../../i18n";
-import { TextNoteIcon, ChecklistIcon, BrushIcon } from "../../icons/index.jsx";
+import { TextNoteIcon, ChecklistIcon, BrushIcon, MicIcon } from "../../icons/index.jsx";
 
 /**
  * Desktop-only note creation buttons.
  * Replaces the collapsed composer rectangle: clicking a button creates a
  * blank note of the matching type and opens the modal in edit mode
- * (see handleDirectText/Checklist/Draw in App.jsx).
+ * (see handleDirectText/Checklist/Draw/Audio in App.jsx).
  *
  * Each button is self-describing (icon tile + title + one-line description
  * + a subtle "+" pill on the right) and uses the app-wide `btn-gradient`
@@ -17,6 +17,7 @@ export default function NoteCreationButtons({
   onCreateText,
   onCreateChecklist,
   onCreateDraw,
+  onCreateAudio,
 }) {
   return (
     <div className="mb-8 flex gap-3">
@@ -43,6 +44,14 @@ export default function NoteCreationButtons({
         icon={<BrushIcon />}
         colorClasses="border-orange-300 bg-gradient-to-br from-rose-200 to-orange-200 text-rose-950 shadow-rose-200/50 hover:from-rose-300 hover:to-orange-300 hover:border-orange-400 hover:shadow-rose-300/60 dark:from-rose-800 dark:to-orange-900 dark:border-orange-500 dark:text-rose-50 dark:shadow-none dark:hover:from-rose-700 dark:hover:to-orange-800 dark:hover:border-orange-400"
         iconBg="bg-white/85 text-rose-600 dark:bg-rose-950/50 dark:text-rose-100"
+      />
+      <CreationButton
+        title={t("audioNote")}
+        description={t("audioNoteDesc")}
+        onClick={onCreateAudio}
+        icon={<MicIcon />}
+        colorClasses="border-fuchsia-300 bg-gradient-to-br from-fuchsia-200 to-pink-300 text-fuchsia-950 shadow-fuchsia-200/50 hover:from-fuchsia-300 hover:to-pink-400 hover:border-fuchsia-400 hover:shadow-fuchsia-300/60 dark:from-fuchsia-800 dark:to-pink-900 dark:border-fuchsia-500 dark:text-fuchsia-50 dark:shadow-none dark:hover:from-fuchsia-700 dark:hover:to-pink-800 dark:hover:border-fuchsia-400"
+        iconBg="bg-white/85 text-fuchsia-600 dark:bg-fuchsia-950/50 dark:text-fuchsia-100"
       />
     </div>
   );

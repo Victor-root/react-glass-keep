@@ -1,5 +1,5 @@
 import React from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { t } from "../../i18n";
 import { Hamburger, SearchIcon, CloseIcon, GridIcon, ListIcon, SunIcon, MoonIcon, CheckSquareIcon, SettingsIcon, ShieldIcon, LogOutIcon, Kebab } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
@@ -167,8 +167,14 @@ export default function NotesHeader({
               className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-600 dark:text-gray-300"
               aria-label={t("search")}
               onClick={() => {
-                setMobileSearchOpen(true);
-                setTimeout(() => mobileSearchRef.current?.focus(), 50);
+                // iOS Safari only opens the soft keyboard when focus() is
+                // called synchronously inside the user-gesture handler.
+                // flushSync forces React to mount the input immediately so
+                // we can focus it within the same click without setTimeout
+                // (which would let Safari drop the gesture context). Android
+                // is unaffected — the call sequence stays equivalent.
+                flushSync(() => setMobileSearchOpen(true));
+                mobileSearchRef.current?.focus();
               }}
             >
               <SearchIcon />
