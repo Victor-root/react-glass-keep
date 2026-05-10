@@ -435,14 +435,22 @@ export default function NotesHeader({
                       <span className="flex flex-col gap-0">
                         <span>{t("adminPanel")}</span>
                         {hasUpdate && (
-                          <span className={`flex flex-col text-[11px] font-semibold leading-none ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
-                            {/* line + upward chevron pointing toward "adminPanel" label above */}
-                            <span aria-hidden="true" className="relative block h-3">
-                              <span className="absolute left-0 right-[calc(50%+5px)] top-[7px] h-px bg-current opacity-70" />
-                              <span className="absolute left-[calc(50%+5px)] right-0 top-[7px] h-px bg-current opacity-70" />
-                              <span className="absolute left-1/2 top-[2px] w-2.5 h-2.5 -translate-x-1/2 rotate-45 border-l border-t border-current opacity-70" />
-                            </span>
-                            {t("newVersionAvailable")}
+                          <span className={`flex flex-col items-center text-[11px] font-semibold leading-none ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
+                            <svg
+                              aria-hidden="true"
+                              className="h-3 w-16 opacity-80"
+                              viewBox="0 0 64 12"
+                            >
+                              <path
+                                d="M14 10 H28 C30 10 31 5 32 5 C33 5 34 10 36 10 H50"
+                                stroke="currentColor"
+                                fill="none"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                            <span>{t("newVersionAvailable")} !</span>
                           </span>
                         )}
                       </span>
