@@ -944,6 +944,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   audioRowDelete: "Supprimer cet enregistrement",
   audioRowDeleteConfirm: "Cliquez à nouveau pour confirmer",
   audioRowRename: "Renommer cet enregistrement",
+  audioMoreClips: "+{count} en plus",
   audioStorageLabel: "Stockage",
   audioStorageGaugeLabel: "Stockage utilisé : {pct}%",
   audioStorageTooltip: "Utilisation du stockage",

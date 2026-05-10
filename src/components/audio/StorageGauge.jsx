@@ -48,7 +48,7 @@ function zoneFor(pct) {
   };
 }
 
-function CircularRing({ pct, color, live, size = 16 }) {
+function CircularRing({ pct, color, live, size = 14 }) {
   const stroke = 2.5;
   const r = (size - stroke) / 2;
   const cx = size / 2;

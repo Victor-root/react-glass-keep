@@ -173,8 +173,10 @@ export default function AudioNoteEditor({ body, setBody, title }) {
         />
       </div>
       {/* Playlist: takes the remaining space and scrolls internally so the
-          modal itself never grows a scrollbar of its own. */}
-      <div className="flex-1 min-h-0 overflow-y-auto modal-scroll-themed">
+          modal itself never grows a scrollbar of its own. The rounded
+          frame lives on THIS container (not on the inner ul) so the
+          themed scrollbar is clipped at the rounded right corners. */}
+      <div className="flex-1 min-h-0 overflow-y-auto modal-scroll-themed rounded-xl border border-black/15 dark:border-white/15 bg-white/55 dark:bg-black/20">
         <ClipList
           clips={clips}
           currentIndex={currentIndex}

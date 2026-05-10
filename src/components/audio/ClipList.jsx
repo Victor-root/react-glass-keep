@@ -31,7 +31,7 @@ export default function ClipList({
     );
   }
   return (
-    <ul className="rounded-xl border border-black/15 dark:border-white/15 bg-white/55 dark:bg-black/20 divide-y divide-black/10 dark:divide-white/10 overflow-hidden">
+    <ul className="divide-y divide-black/10 dark:divide-white/10">
       {clips.map((clip, i) => (
         <ClipRow
           key={clip.id || i}
