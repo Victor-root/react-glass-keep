@@ -97,7 +97,7 @@ A native Android companion app is available for GlassKeep, making self-hosted mo
 
 The Android app is a WebView wrapper for GlassKeep Enhanced and does not necessarily change with every project release.
 
-[Download latest Android APK](https://github.com/Victor-root/glasskeep-enhanced/releases/download/v2.0.0/GlassKeep-v1.0.10.apk)
+[Download latest Android APK](https://github.com/Victor-root/glasskeep-enhanced/releases/download/v2.2.0/GlassKeep-v1.1.0.apk)
 
 Current APK version: `1.1.0`
 
