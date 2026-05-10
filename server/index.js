@@ -56,8 +56,8 @@ const JWT_SECRET = (() => {
 })();
 
 // ---------- Body parsing ----------
-app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+app.use(express.json({ limit: "120mb" }));
+app.use(express.urlencoded({ extended: true, limit: "120mb" }));
 
 // Trust proxy headers (X-Forwarded-Proto / X-Forwarded-For) when:
 //   - the operator explicitly set TRUST_PROXY=true, OR
@@ -396,11 +396,11 @@ function isNewerOrEqual(incomingMs, storedTs) {
 //   v2 (current): { version: 2, clips: [{ audioDataUrl, mimeType, … }, …], text }
 //   v1 (legacy):  { audioDataUrl, mimeType, duration, size, … }
 //
-// Cap the whole serialised content at 16 MB to keep below the 20 MB body
+// Cap the whole serialised content at 110 MB to keep below the 120 MB body
 // limit. Each clip's data URL must use an allowed audio MIME. An empty
 // clips array is accepted — a freshly-created draft can have a title but
 // no recordings yet (the user will record into it).
-const AUDIO_MAX_DATAURL_BYTES = 16 * 1024 * 1024;
+const AUDIO_MAX_DATAURL_BYTES = 110 * 1024 * 1024;
 const ALLOWED_AUDIO_MIME_PREFIXES = [
   "audio/webm",
   "audio/ogg",

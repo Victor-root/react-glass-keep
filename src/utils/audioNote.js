@@ -30,7 +30,7 @@ import { uid } from "./helpers.js";
 // createdAt, text }. parseAudioContent transparently upgrades v1 → v2 on
 // read, so existing notes keep working and re-save in v2 on next edit.
 
-export const AUDIO_MAX_TOTAL_BYTES = 14 * 1024 * 1024; // ~14 MB encoded — leaves headroom under the server 16 MB cap
+export const AUDIO_MAX_TOTAL_BYTES = 100 * 1024 * 1024; // ~100 MB encoded — leaves headroom under the server 110 MB cap
 
 export const ALLOWED_AUDIO_MIME_PREFIXES = [
   "audio/webm",
