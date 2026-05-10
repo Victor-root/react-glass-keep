@@ -35,6 +35,11 @@ export default function AudioPlayer({
   clipCount = 1,
   onPrevClip,
   onNextClip,
+  // playToggleKey: when this number changes (parent calls onPlayClip), the
+  // player toggles play/pause without forcing always-play. Lets the playlist
+  // act like Spotify — click a row to start it, click again to pause.
+  playToggleKey = 0,
+  onPlayingChange,
 }) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -53,6 +58,28 @@ export default function AudioPlayer({
       Number.isFinite(audio?.duration) && audio.duration > 0 ? audio.duration : null,
     );
   }, [audio?.audioDataUrl, audio?.duration]);
+
+  // Bubble play state up so the playlist can show a pause icon on the
+  // currently playing row (Spotify-style "now playing" indicator).
+  useEffect(() => {
+    onPlayingChange?.(playing);
+  }, [playing, onPlayingChange]);
+
+  // Toggle play/pause whenever the parent bumps playToggleKey. Skip the
+  // first render (key=0) so opening a note doesn't auto-play.
+  const playToggleSeenRef = useRef(0);
+  useEffect(() => {
+    if (playToggleKey === playToggleSeenRef.current) return;
+    playToggleSeenRef.current = playToggleKey;
+    if (playToggleKey === 0) return;
+    const el = audioRef.current;
+    if (!el) return;
+    if (el.paused) {
+      el.play().catch(() => { /* autoplay blocked */ });
+    } else {
+      el.pause();
+    }
+  }, [playToggleKey]);
 
   const duration = resolvedDuration ?? 0;
   const ratio =
@@ -431,21 +458,19 @@ function DownloadMenu({ audio, title }) {
   };
 
   return (
-    <div className="relative">
+    <div className="relative w-full">
       <button
         ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-white/15 text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-white/25 shadow-sm border border-black/15 dark:border-white/20 active:scale-[0.98] transition focus:outline-none focus:ring-2 disabled:opacity-60 disabled:cursor-wait"
+        className="w-full px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none inline-flex items-center justify-center gap-2"
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <span style={{ color: `var(--audio-accent, ${FALLBACK_ACCENT})` }}>
-          <DownloadIcon />
-        </span>
+        <DownloadIcon />
         <span>{busy ? t("audioDownloadConverting") : t("audioDownload")}</span>
-        <svg className={`w-3 h-3 transition-transform opacity-70 ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg className={`w-3 h-3 transition-transform opacity-90 ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>

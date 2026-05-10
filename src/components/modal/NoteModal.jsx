@@ -576,7 +576,7 @@ export default function NoteModal({
           <div
             ref={modalScrollRef}
             data-modal-scroll
-            className={`relative flex-1 min-h-0 mobile-hide-scrollbar modal-scroll-themed ${isDrawEdit ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overflow-x-auto'}`}
+            className={`relative flex-1 min-h-0 mobile-hide-scrollbar modal-scroll-themed ${isDrawEdit ? 'flex flex-col overflow-hidden' : isAudio ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overflow-x-auto'}`}
             style={(() => {
               const sc = scrollColorsFor(mColor, dark);
               const noteColorBtn = (!dark && (!mColor || mColor === "default"))
@@ -677,7 +677,7 @@ export default function NoteModal({
             {/* Content area */}
             <div
               key={isDrawEdit ? 'draw' : viewMode ? 'view' : 'edit'}
-              className={`${isDrawEdit ? "flex-1 min-h-0 flex flex-col" : isDrawView ? "px-6 pt-3 pb-6 max-sm:px-4 max-sm:pt-1 max-sm:pb-4" : isAudio ? "px-4 pt-2 pb-4 sm:px-5 sm:pt-3 sm:pb-5" : "px-6 pt-3 pb-12 max-sm:pt-1 max-sm:pb-4"} ${!isDrawEdit ? "modal-content-fade" : ""}`}
+              className={`${isDrawEdit ? "flex-1 min-h-0 flex flex-col" : isDrawView ? "px-6 pt-3 pb-6 max-sm:px-4 max-sm:pt-1 max-sm:pb-4" : isAudio ? "flex-1 min-h-0 flex flex-col px-4 pt-2 pb-4 sm:px-5 sm:pt-3 sm:pb-5" : "px-6 pt-3 pb-12 max-sm:pt-1 max-sm:pb-4"} ${!isDrawEdit ? "modal-content-fade" : ""}`}
               onClick={onModalBodyClick}
             >
 

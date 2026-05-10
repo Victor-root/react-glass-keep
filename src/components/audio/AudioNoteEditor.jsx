@@ -50,6 +50,17 @@ export default function AudioNoteEditor({ body, setBody, title }) {
 
   const [recording, setRecording] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  // Mirrors the player's playing state so the playlist row can show a
+  // "now playing" pause icon. AudioPlayer pushes updates via onPlayingChange.
+  const [playerPlaying, setPlayerPlaying] = useState(false);
+  // Bumped each time the user clicks a clip in the playlist. AudioPlayer
+  // toggles play/pause when the key changes — so clicking the current row
+  // pauses, clicking a different row plays it.
+  const [playToggleKey, setPlayToggleKey] = useState(0);
+  const onPlayClip = useCallback((i) => {
+    setCurrentIndex(i);
+    setPlayToggleKey((k) => k + 1);
+  }, []);
 
   const writeClips = useCallback(
     (nextClips) => {
@@ -138,39 +149,48 @@ export default function AudioNoteEditor({ body, setBody, title }) {
   // meaningful filename like "Meeting.webm".
   const playerTitle = (current?.name && current.name.trim()) || title || "";
   return (
-    <div className="flex flex-col gap-3">
-      <AudioPlayer
-        audio={current}
-        title={playerTitle}
-        variant="hero"
-        showDownload
-        showClipNav={clips.length > 1}
-        clipIndex={currentIndex}
-        clipCount={clips.length}
-        onPrevClip={goPrev}
-        onNextClip={goNext}
-      />
-      <ClipList
-        clips={clips}
-        currentIndex={currentIndex}
-        onSelectClip={(i) => setCurrentIndex(i)}
-        onRenameClip={onRenameIndex}
-        onDeleteClip={onDeleteIndex}
-      />
-      <div className="flex justify-end px-1">
-        <button
-          type="button"
-          onClick={startRecording}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold text-white shadow-md active:scale-[0.98] transition focus:outline-none focus:ring-2 focus:ring-offset-1"
-          style={{ backgroundColor: "var(--audio-accent, #7c3aed)" }}
-          aria-label={t("audioAddRecording")}
-        >
-          <MicIcon />
-          <span>{t("audioAddRecording")}</span>
-        </button>
+    <div className="flex-1 min-h-0 flex flex-col gap-3">
+      {/* Player: fixed at the top of the body, never scrolls. */}
+      <div className="shrink-0">
+        <AudioPlayer
+          audio={current}
+          title={playerTitle}
+          variant="hero"
+          showDownload
+          showClipNav={clips.length > 1}
+          clipIndex={currentIndex}
+          clipCount={clips.length}
+          onPrevClip={goPrev}
+          onNextClip={goNext}
+          playToggleKey={playToggleKey}
+          onPlayingChange={setPlayerPlaying}
+        />
       </div>
+      {/* Playlist: takes the remaining space and scrolls internally so the
+          modal itself never grows a scrollbar of its own. */}
+      <div className="flex-1 min-h-0 overflow-y-auto modal-scroll-themed">
+        <ClipList
+          clips={clips}
+          currentIndex={currentIndex}
+          isPlaying={playerPlaying}
+          onPlayClip={onPlayClip}
+          onRenameClip={onRenameIndex}
+          onDeleteClip={onDeleteIndex}
+        />
+      </div>
+      {/* Add-recording button: full-width gradient CTA, shared theme with
+          "Démarrer l'enregistrement" and "Télécharger l'audio". */}
+      <button
+        type="button"
+        onClick={startRecording}
+        className="w-full px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none inline-flex items-center justify-center gap-2 shrink-0"
+        aria-label={t("audioAddRecording")}
+      >
+        <MicIcon />
+        <span>{t("audioAddRecording")}</span>
+      </button>
       {saveError && (
-        <div role="alert" className="text-sm rounded-lg px-3 py-2 bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
+        <div role="alert" className="text-sm rounded-lg px-3 py-2 bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200 shrink-0">
           {saveError}
         </div>
       )}
@@ -193,11 +213,10 @@ function EmptyState({ onStart }) {
       <button
         type="button"
         onClick={onStart}
-        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-white shadow-md active:scale-[0.98] transition focus:outline-none focus:ring-2 focus:ring-offset-1"
-        style={{ backgroundColor: "var(--audio-accent, #7c3aed)" }}
+        className="w-full px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none inline-flex items-center justify-center gap-2"
       >
         <MicIcon />
-        <span className="text-sm font-semibold">{t("audioStartRecording")}</span>
+        <span>{t("audioStartRecording")}</span>
       </button>
     </div>
   );

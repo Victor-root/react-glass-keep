@@ -1,22 +1,25 @@
 import React, { useEffect, useRef, useState } from "react";
 import { t } from "../../i18n";
-import { Trash } from "../../icons/index.jsx";
+import { Trash, PencilIcon } from "../../icons/index.jsx";
 import { formatDuration } from "../../utils/audioNote.js";
 
 // Playlist-style list of clips in an audio note. Each row shows:
 //  - A row index, that becomes a play indicator when this clip is current.
-//  - The clip name (inline editable on click).
+//  - The clip name (display only — clicking the row plays it; renaming is
+//    triggered by the pencil button on the right so a single tap on the
+//    row never gets in the way of starting playback).
 //  - The clip duration on the right.
-//  - A small delete button on hover/focus.
+//  - A pencil button to rename + a trash button to delete.
 //
-// Clicking the row (outside the name input) selects it as the current clip
-// in the player above. Naming is local-state-buffered while typing; the
-// committed name flows back via onRenameClip on blur / Enter.
+// Clicking the row calls onPlayClip(i): the parent decides whether to make
+// it the current clip and start playback. Clicking pencil/trash stops
+// propagation so they don't double-trigger the row's play action.
 
 export default function ClipList({
   clips,
   currentIndex,
-  onSelectClip,
+  isPlaying = false,
+  onPlayClip,
   onRenameClip,
   onDeleteClip,
 }) {
@@ -35,7 +38,8 @@ export default function ClipList({
           clip={clip}
           index={i}
           isCurrent={i === currentIndex}
-          onSelect={() => onSelectClip(i)}
+          isPlaying={isPlaying && i === currentIndex}
+          onPlay={() => onPlayClip(i)}
           onRename={(name) => onRenameClip(i, name)}
           onDelete={() => onDeleteClip(i)}
         />
@@ -44,7 +48,7 @@ export default function ClipList({
   );
 }
 
-function ClipRow({ clip, index, isCurrent, onSelect, onRename, onDelete }) {
+function ClipRow({ clip, index, isCurrent, isPlaying, onPlay, onRename, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(clip.name || "");
   const inputRef = useRef(null);
@@ -87,19 +91,28 @@ function ClipRow({ clip, index, isCurrent, onSelect, onRename, onDelete }) {
           ? "bg-black/[0.06] dark:bg-white/10"
           : "hover:bg-black/[0.04] dark:hover:bg-white/5"
       }`}
-      onClick={onSelect}
+      onClick={() => {
+        // Renaming an in-progress edit shouldn't trigger play if the user
+        // happens to click outside the input but still inside the row.
+        if (editing) return;
+        onPlay();
+      }}
     >
       <span
         className={`shrink-0 w-7 h-7 rounded-full text-xs font-semibold flex items-center justify-center ${
           isCurrent ? "text-white shadow" : "bg-black/10 dark:bg-white/15 text-gray-700 dark:text-gray-200"
         }`}
         style={isCurrent ? { backgroundColor: "var(--audio-accent, #7c3aed)" } : undefined}
-        aria-label={isCurrent ? t("audioRowPause") : t("audioRowPlay")}
+        aria-hidden="true"
       >
-        {isCurrent ? (
-          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        {isCurrent && isPlaying ? (
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
             <rect x="7" y="5" width="3.5" height="14" rx="0.8" />
             <rect x="13.5" y="5" width="3.5" height="14" rx="0.8" />
+          </svg>
+        ) : isCurrent ? (
+          <svg className="w-3.5 h-3.5 ml-0.5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
           </svg>
         ) : (
           index + 1
@@ -124,20 +137,25 @@ function ClipRow({ clip, index, isCurrent, onSelect, onRename, onDelete }) {
             style={{ caretColor: "var(--audio-accent, #7c3aed)" }}
           />
         ) : (
-          <button
-            type="button"
-            onClick={startEdit}
-            className="block w-full text-left text-sm font-medium truncate hover:underline focus:outline-none focus:underline"
-            data-tooltip={t("audioRowRename")}
-          >
+          <span className="block text-sm font-medium truncate select-none">
             {displayName}
-          </button>
+          </span>
         )}
       </div>
 
       <span className="shrink-0 tabular-nums text-xs font-medium opacity-80">
         {formatDuration(Number.isFinite(clip.duration) ? clip.duration : 0)}
       </span>
+
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); editing ? commit() : startEdit(e); }}
+        aria-label={t("audioRowRename")}
+        data-tooltip={t("audioRowRename")}
+        className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-gray-700 dark:text-gray-200 opacity-60 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 transition focus:outline-none focus:ring-2 focus:opacity-100"
+      >
+        <PencilIcon />
+      </button>
 
       <button
         type="button"
