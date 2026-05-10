@@ -11,14 +11,18 @@ import { sanitizeFilename, triggerBlobDownload } from "../../utils/helpers.js";
 //  - variant="hero" : large, music-app-style layout used inside the
 //                     audio-note modal body.
 //
-// The native <audio> element drives playback under the hood (events,
-// seeking, decoding) but is hidden — we render our own controls so the
-// player matches the surrounding note's color palette via the
-// `--note-color` / `--note-color-opaque` CSS vars set by NoteModal.
+// Color theming reads two CSS vars set by NoteModal:
+//   --audio-accent : high-contrast accent (lightened in dark mode,
+//                    darkened in light mode). Used for the play button
+//                    bg, scrubber fill, and icon tints.
+//   --note-color   : the raw note color for subtle background washes.
+// Falls back to violet when no note color is set.
 //
 // Optional prev/next CLIP buttons (showClipNav) navigate between recordings
 // in a multi-clip audio note. They're separate from the in-clip seek
 // scrubber so users can both step between recordings and seek inside one.
+
+const FALLBACK_ACCENT = "#7c3aed";
 
 export default function AudioPlayer({
   audio,
@@ -26,7 +30,6 @@ export default function AudioPlayer({
   variant = "hero",
   showDownload = true,
   className = "",
-  // Multi-clip navigation (hero variant only)
   showClipNav = false,
   clipIndex = 0,
   clipCount = 1,
@@ -39,7 +42,7 @@ export default function AudioPlayer({
   const [resolvedDuration, setResolvedDuration] = useState(
     Number.isFinite(audio?.duration) && audio.duration > 0 ? audio.duration : null,
   );
-  const [scrubRatio, setScrubRatio] = useState(null); // 0..1 while user drags
+  const [scrubRatio, setScrubRatio] = useState(null);
   const trackRef = useRef(null);
 
   useEffect(() => {
@@ -113,7 +116,7 @@ export default function AudioPlayer({
   };
   const onTrackKeyDown = (e) => {
     if (!duration) return;
-    const step = e.shiftKey ? 5 : 1; // seconds
+    const step = e.shiftKey ? 5 : 1;
     if (e.key === "ArrowLeft") {
       e.preventDefault();
       seekToRatio((currentTime - step) / duration);
@@ -191,20 +194,18 @@ export default function AudioPlayer({
 
 function CardLayout({ ratio, duration, playing, togglePlay, trackRef, onTrackPointerDown, onTrackPointerMove, onTrackPointerUp }) {
   return (
-    <div
-      className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-black/10 dark:border-white/15 bg-black/5 dark:bg-white/10 shadow-sm"
-    >
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-black/15 dark:border-white/15 bg-black/[0.04] dark:bg-white/[0.06] shadow-sm">
       <button
         type="button"
         aria-label={playing ? t("audioPause") : t("audioPlay")}
         onClick={togglePlay}
-        className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full text-white shadow-md active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[var(--note-color,_#a78bfa)]"
-        style={{ backgroundColor: "var(--note-color-opaque, #7c3aed)" }}
+        className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full text-white shadow-md active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-offset-1"
+        style={{ backgroundColor: `var(--audio-accent, ${FALLBACK_ACCENT})` }}
       >
         {playing ? <PauseGlyph /> : <PlayGlyph />}
       </button>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 text-[11px] font-medium opacity-75">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium opacity-80">
           <MicIcon />
           <span>{t("audioRecording")}</span>
         </div>
@@ -220,7 +221,7 @@ function CardLayout({ ratio, duration, playing, togglePlay, trackRef, onTrackPoi
           />
         </div>
       </div>
-      <span className="shrink-0 tabular-nums text-xs font-semibold opacity-80">
+      <span className="shrink-0 tabular-nums text-xs font-semibold opacity-90">
         {formatDuration(duration)}
       </span>
     </div>
@@ -234,34 +235,29 @@ function HeroLayout({
   showClipNav, clipIndex, clipCount, onPrevClip, onNextClip,
 }) {
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl border border-black/10 dark:border-white/15 bg-white/45 dark:bg-black/25 shadow-md backdrop-blur-sm"
-    >
-      {/* Decorative blurred orbs in the note's color, give the card the music-app glow */}
+    <div className="relative overflow-hidden rounded-2xl border border-black/15 dark:border-white/15 bg-white/55 dark:bg-black/35 shadow-md backdrop-blur-sm">
+      {/* Decorative blurred orbs in the accent color, gives the music-app glow */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-10 -right-10 w-36 h-36 rounded-full opacity-50 blur-3xl"
-        style={{ backgroundColor: "var(--note-color-opaque, #a78bfa)" }}
+        className="pointer-events-none absolute -top-10 -right-10 w-36 h-36 rounded-full opacity-40 blur-3xl"
+        style={{ backgroundColor: `var(--audio-accent, ${FALLBACK_ACCENT})` }}
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -bottom-10 -left-10 w-44 h-44 rounded-full opacity-40 blur-3xl"
-        style={{ backgroundColor: "var(--note-color, #a78bfa)" }}
+        className="pointer-events-none absolute -bottom-10 -left-10 w-44 h-44 rounded-full opacity-30 blur-3xl"
+        style={{ backgroundColor: `var(--audio-accent, ${FALLBACK_ACCENT})` }}
       />
 
       <div className="relative px-5 py-5 sm:px-6 sm:py-6 flex flex-col items-center gap-4">
         <div className="flex flex-col items-center gap-2">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg"
-            style={{ backgroundColor: "var(--note-color-opaque, #7c3aed)" }}
+            style={{ backgroundColor: `var(--audio-accent, ${FALLBACK_ACCENT})` }}
           >
             <span className="scale-150"><MicIcon /></span>
           </div>
           {showClipNav && clipCount > 1 && (
-            <div
-              className="text-[11px] uppercase tracking-wider font-semibold opacity-75"
-              aria-live="polite"
-            >
+            <div className="text-[11px] uppercase tracking-wider font-semibold opacity-80" aria-live="polite">
               {t("audioClipCounter")
                 .replace("{current}", String(clipIndex + 1))
                 .replace("{total}", String(clipCount))}
@@ -269,7 +265,6 @@ function HeroLayout({
           )}
         </div>
 
-        {/* Transport row: optional clip nav, big play, optional clip nav */}
         <div className="flex items-center justify-center gap-3 sm:gap-4">
           {showClipNav && (
             <NavButton
@@ -283,11 +278,8 @@ function HeroLayout({
             type="button"
             onClick={togglePlay}
             aria-label={playing ? t("audioPause") : t("audioPlay")}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-full text-white shadow-xl active:scale-95 transition focus:outline-none focus:ring-4"
-            style={{
-              backgroundColor: "var(--note-color-opaque, #7c3aed)",
-              boxShadow: "0 10px 25px -10px var(--note-color-opaque, #7c3aed)",
-            }}
+            className="inline-flex items-center justify-center w-16 h-16 rounded-full text-white shadow-xl active:scale-95 transition focus:outline-none focus:ring-4 focus:ring-offset-1"
+            style={{ backgroundColor: `var(--audio-accent, ${FALLBACK_ACCENT})` }}
           >
             {playing ? <PauseGlyph large /> : <PlayGlyph large />}
           </button>
@@ -301,7 +293,6 @@ function HeroLayout({
           )}
         </div>
 
-        {/* Progress + time */}
         <div className="w-full flex flex-col gap-1.5">
           <ProgressTrack
             ratio={ratio}
@@ -311,7 +302,7 @@ function HeroLayout({
             onPointerUp={onTrackPointerUp}
             onKeyDown={onTrackKeyDown}
           />
-          <div className="flex justify-between text-xs tabular-nums font-medium opacity-80">
+          <div className="flex justify-between text-xs tabular-nums font-medium opacity-90">
             <span>{formatDuration(currentTime)}</span>
             <span>{formatDuration(duration)}</span>
           </div>
@@ -326,6 +317,7 @@ function HeroLayout({
 }
 
 function ProgressTrack({ ratio, trackRef, onPointerDown, onPointerMove, onPointerUp, onKeyDown, compact = false }) {
+  const filledColor = `var(--audio-accent, ${FALLBACK_ACCENT})`;
   return (
     <div
       ref={trackRef}
@@ -340,22 +332,20 @@ function ProgressTrack({ ratio, trackRef, onPointerDown, onPointerMove, onPointe
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       onKeyDown={onKeyDown}
-      className={`relative w-full ${compact ? "h-1.5" : "h-2"} rounded-full bg-black/15 dark:bg-white/15 cursor-pointer touch-none focus:outline-none focus:ring-2 focus:ring-offset-1`}
-      style={{ "--tw-ring-color": "var(--note-color-opaque, #a78bfa)" }}
+      className={`relative w-full ${compact ? "h-1.5" : "h-2"} rounded-full bg-black/20 dark:bg-white/20 cursor-pointer touch-none focus:outline-none`}
     >
       <div
         className="absolute inset-y-0 left-0 rounded-full"
         style={{
           width: `${Math.min(100, Math.max(0, ratio * 100))}%`,
-          backgroundColor: "var(--note-color-opaque, #a78bfa)",
+          backgroundColor: filledColor,
         }}
       />
       <div
-        className={`absolute -top-1.5 ${compact ? "w-3 h-3" : "w-4 h-4"} rounded-full bg-white shadow ring-2 transition-transform`}
+        className={`absolute -top-1.5 ${compact ? "w-3 h-3" : "w-4 h-4"} rounded-full bg-white transition-transform`}
         style={{
           left: `calc(${Math.min(100, Math.max(0, ratio * 100))}% - ${compact ? "6px" : "8px"})`,
-          "--tw-ring-color": "var(--note-color-opaque, #a78bfa)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+          boxShadow: `0 0 0 2px ${filledColor}, 0 1px 3px rgba(0,0,0,0.3)`,
         }}
       />
     </div>
@@ -370,19 +360,11 @@ function NavButton({ direction, onClick, disabled, ariaLabel }) {
       disabled={disabled}
       aria-label={ariaLabel}
       data-tooltip={ariaLabel}
-      className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/60 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 active:scale-95 transition focus:outline-none focus:ring-2 disabled:opacity-30 disabled:cursor-not-allowed"
-      style={{ color: "var(--note-color-opaque, #7c3aed)" }}
+      className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/80 dark:bg-white/15 hover:bg-white dark:hover:bg-white/25 active:scale-95 transition focus:outline-none focus:ring-2 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm border border-black/10 dark:border-white/15"
+      style={{ color: `var(--audio-accent, ${FALLBACK_ACCENT})` }}
     >
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        {direction === "back" ? (
-          <>
-            <polyline points="15 18 9 12 15 6" />
-          </>
-        ) : (
-          <>
-            <polyline points="9 18 15 12 9 6" />
-          </>
-        )}
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+        {direction === "back" ? <polyline points="15 18 9 12 15 6" /> : <polyline points="9 18 15 12 9 6" />}
       </svg>
     </button>
   );
@@ -455,14 +437,15 @@ function DownloadMenu({ audio, title }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70 dark:bg-white/10 text-sm font-medium hover:bg-white dark:hover:bg-white/20 shadow-sm border border-black/10 dark:border-white/15 active:scale-[0.98] transition focus:outline-none focus:ring-2 disabled:opacity-60 disabled:cursor-wait"
-        style={{ color: "var(--note-color-opaque, #7c3aed)" }}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-white/15 text-sm font-medium text-gray-800 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-white/25 shadow-sm border border-black/15 dark:border-white/20 active:scale-[0.98] transition focus:outline-none focus:ring-2 disabled:opacity-60 disabled:cursor-wait"
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        <DownloadIcon />
+        <span style={{ color: `var(--audio-accent, ${FALLBACK_ACCENT})` }}>
+          <DownloadIcon />
+        </span>
         <span>{busy ? t("audioDownloadConverting") : t("audioDownload")}</span>
-        <svg className={`w-3 h-3 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg className={`w-3 h-3 transition-transform opacity-70 ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>

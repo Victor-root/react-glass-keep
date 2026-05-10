@@ -934,4 +934,5 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   audioPrevClip: "Previous recording",
   audioNextClip: "Next recording",
   audioClipCounter: "Recording {current} of {total}",
+  audioFinalizing: "Saving…",
 };

@@ -117,6 +117,33 @@ export const modalBgFor = (colorKey, dark) => {
   return mixWithWhite(solid(base), 0.8, 1);
 };
 
+// High-contrast accent derived from the note color. Used by the audio
+// player so its play button, scrubber fill, and chrome stay visible
+// against the modal background — `solid(bgFor(...))` IS the modal bg in
+// dark mode, so reusing it as a button colour produced invisible UI.
+//
+// Strategy:
+//  - default (no colour): violet, matches the rest of the app's accents.
+//  - dark mode: lighten the note colour by mixing with white. Buttons sit
+//    on top of a dark coloured background, so a brighter hue pops.
+//  - light mode: darken the note colour by mixing with black. Buttons sit
+//    on top of a pastel background, so a deeper hue pops.
+export const audioAccentColor = (colorKey, dark) => {
+  if (!colorKey || colorKey === "default") return dark ? "#a78bfa" : "#7c3aed";
+  const base = bgFor(colorKey, dark);
+  const { r, g, b } = parseRGBA(base);
+  if (dark) {
+    const lr = Math.min(255, Math.round(r + (255 - r) * 0.55));
+    const lg = Math.min(255, Math.round(g + (255 - g) * 0.55));
+    const lb = Math.min(255, Math.round(b + (255 - b) * 0.55));
+    return `rgb(${lr}, ${lg}, ${lb})`;
+  }
+  const dr = Math.round(r * 0.45);
+  const dg = Math.round(g * 0.45);
+  const db = Math.round(b * 0.45);
+  return `rgb(${dr}, ${dg}, ${db})`;
+};
+
 export const scrollColorsFor = (colorKey, dark) => {
   if (!colorKey || colorKey === "default")
     return dark ? { thumb: "#7c3aed", track: "#3b0764" } : { thumb: "#a78bfa", track: "#e3d0ff" };

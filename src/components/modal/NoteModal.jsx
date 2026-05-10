@@ -25,7 +25,7 @@ import { getContentImages } from "../../utils/noteIcon.js";
 import { renderSafeMarkdown, linkifyContactsHTML } from "../../utils/markdown.jsx";
 import RichTextEditor from "../richtext/RichTextEditor.jsx";
 import { contentToHTML, serializeRichContent, isRichContent } from "../../utils/richText.js";
-import { modalBgFor, scrollColorsFor, solid, bgFor, toHex } from "../../utils/colors.js";
+import { modalBgFor, scrollColorsFor, solid, bgFor, toHex, audioAccentColor } from "../../utils/colors.js";
 import { setThemeColor } from "../../utils/helpers.js";
 import AudioNoteEditor from "../audio/AudioNoteEditor.jsx";
 
@@ -556,7 +556,7 @@ export default function NoteModal({
           className={`note-modal-anim${isModalClosing ? ' closing' : ''}${handoffNoTransition ? ' note-modal-anim--sbs-handoff' : ''}${suppressOpenReplay ? ' note-modal-anim--sbs-suppress-open-replay' : ''} glass-card rounded-none shadow-none w-full max-w-none ${
             mobileLayout ? ''
             : isDrawEdit ? 'sm:w-screen sm:max-w-none sm:h-screen sm:!rounded-none'
-            : isAudio ? 'sm:w-[92%] sm:max-w-lg sm:h-auto sm:max-h-[88vh] sm:rounded-2xl'
+            : isAudio ? 'sm:w-[92%] sm:max-w-2xl sm:h-auto sm:max-h-[88vh] sm:rounded-2xl'
             : 'sm:w-11/12 sm:max-w-3xl lg:max-w-4xl sm:h-[95vh] sm:rounded-xl'
           }${drawTransition === 'entering' ? ' draw-expand' : drawTransition === 'leaving' ? ' draw-collapse' : ''} flex flex-col relative overflow-hidden`}
           style={{
@@ -583,7 +583,19 @@ export default function NoteModal({
                 ? "#a78bfa"
                 : solid(bgFor(mColor, dark));
               const noteColorOpaque = typeof noteColorBtn === "string" ? noteColorBtn.replace(/,\s*[\d.]+\)$/, ', 1)') : noteColorBtn;
-              return { '--sb-thumb': sc.thumb, '--sb-track': sc.track, '--note-color': noteColorBtn, '--note-color-opaque': noteColorOpaque, backgroundColor: 'inherit' };
+              // --audio-accent is a high-contrast variant of the note color
+              // for the audio player. Using --note-color directly produced
+              // play buttons that blended into the modal background in dark
+              // mode (note color == modal bg).
+              const audioAccent = audioAccentColor(mColor, dark);
+              return {
+                '--sb-thumb': sc.thumb,
+                '--sb-track': sc.track,
+                '--note-color': noteColorBtn,
+                '--note-color-opaque': noteColorOpaque,
+                '--audio-accent': audioAccent,
+                backgroundColor: 'inherit',
+              };
             })()}
           >
             <ModalHeader
@@ -767,8 +779,10 @@ export default function NoteModal({
                 </>
               )}
 
-              {/* Inline Edited stamp: only when scrollable (hidden in draw edit mode) */}
-              {editedStamp && modalScrollable && !(mType === 'draw' && drawMode === 'draw') && (
+              {/* Inline Edited stamp: when scrollable, OR always for audio
+                  notes (the absolute variant overlaps the body's add/delete
+                  buttons since the modal auto-fits content). */}
+              {editedStamp && (modalScrollable || isAudio) && !(mType === 'draw' && drawMode === 'draw') && (
                 <div className="mt-6 text-xs text-gray-600 dark:text-gray-300 text-right flex items-center justify-end gap-1.5">
                   <span>{t("editedPrefix")} {editedStamp}</span>
                   {activeId && (
@@ -781,8 +795,10 @@ export default function NoteModal({
               )}
             </div>
 
-            {/* Absolute Edited stamp: only when NOT scrollable (hidden in draw edit mode) */}
-            {editedStamp && !modalScrollable && !(mType === 'draw' && drawMode === 'draw') && (
+            {/* Absolute Edited stamp: only when NOT scrollable (hidden in
+                draw edit mode and for audio notes — those use the inline
+                stamp above so it doesn't overlap body content). */}
+            {editedStamp && !modalScrollable && !isAudio && !(mType === 'draw' && drawMode === 'draw') && (
               <div className="absolute bottom-3 right-4 text-xs text-gray-600 dark:text-gray-300 flex items-center gap-1.5">
                 <span className="pointer-events-none">{t("editedPrefix")} {editedStamp}</span>
                 {activeId && (

@@ -935,4 +935,5 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   audioPrevClip: "Enregistrement précédent",
   audioNextClip: "Enregistrement suivant",
   audioClipCounter: "Enregistrement {current} sur {total}",
+  audioFinalizing: "Sauvegarde…",
 };
