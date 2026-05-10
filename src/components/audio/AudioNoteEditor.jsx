@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "../../i18n";
-import { MicIcon, Trash } from "../../icons/index.jsx";
+import { MicIcon } from "../../icons/index.jsx";
 import useAudioRecorder, {
   RECORDER_STATE,
   RECORDER_ERROR,
@@ -15,6 +15,7 @@ import {
   totalClipsBytes,
 } from "../../utils/audioNote.js";
 import AudioPlayer from "./AudioPlayer.jsx";
+import ClipList from "./ClipList.jsx";
 
 // AudioNoteEditor — body of an audio note inside the standard NoteModal.
 //
@@ -75,12 +76,31 @@ export default function AudioNoteEditor({ body, setBody, title }) {
     [clips, writeClips],
   );
 
-  const onDeleteCurrent = useCallback(() => {
-    if (clips.length === 0) return;
-    const next = clips.filter((_, i) => i !== currentIndex);
-    writeClips(next);
-    setCurrentIndex((i) => Math.max(0, Math.min(i, next.length - 1)));
-  }, [clips, currentIndex, writeClips]);
+  const onDeleteIndex = useCallback(
+    (idx) => {
+      if (idx < 0 || idx >= clips.length) return;
+      const next = clips.filter((_, i) => i !== idx);
+      writeClips(next);
+      // Keep the currently-playing clip pointed at a sensible neighbour:
+      // if we deleted what was current (or earlier), shift left by one.
+      setCurrentIndex((cur) => {
+        if (next.length === 0) return 0;
+        if (idx < cur) return Math.max(0, cur - 1);
+        if (idx === cur) return Math.max(0, Math.min(cur, next.length - 1));
+        return Math.min(cur, next.length - 1);
+      });
+    },
+    [clips, writeClips],
+  );
+
+  const onRenameIndex = useCallback(
+    (idx, name) => {
+      if (idx < 0 || idx >= clips.length) return;
+      const next = clips.map((c, i) => (i === idx ? { ...c, name } : c));
+      writeClips(next);
+    },
+    [clips, writeClips],
+  );
 
   const goPrev = useCallback(() => {
     setCurrentIndex((i) => (i > 0 ? i - 1 : 0));
@@ -113,11 +133,15 @@ export default function AudioNoteEditor({ body, setBody, title }) {
   }
 
   const current = clips[Math.min(currentIndex, clips.length - 1)];
+  // Display title used for the download filename: prefer the per-clip name,
+  // fall back to the note title so single-clip downloads still get a
+  // meaningful filename like "Meeting.webm".
+  const playerTitle = (current?.name && current.name.trim()) || title || "";
   return (
     <div className="flex flex-col gap-3">
       <AudioPlayer
         audio={current}
-        title={title}
+        title={playerTitle}
         variant="hero"
         showDownload
         showClipNav={clips.length > 1}
@@ -126,16 +150,14 @@ export default function AudioNoteEditor({ body, setBody, title }) {
         onPrevClip={goPrev}
         onNextClip={goNext}
       />
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-        <button
-          type="button"
-          onClick={onDeleteCurrent}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-semibold text-red-600 dark:text-red-300 bg-white dark:bg-white/10 hover:bg-red-50 dark:hover:bg-red-900/30 border border-red-300/70 dark:border-red-700/50 shadow-sm active:scale-[0.98] transition focus:outline-none focus:ring-2 focus:ring-red-400/60"
-          aria-label={t("audioDeleteClip")}
-        >
-          <Trash />
-          <span>{t("audioDeleteClip")}</span>
-        </button>
+      <ClipList
+        clips={clips}
+        currentIndex={currentIndex}
+        onSelectClip={(i) => setCurrentIndex(i)}
+        onRenameClip={onRenameIndex}
+        onDeleteClip={onDeleteIndex}
+      />
+      <div className="flex justify-end px-1">
         <button
           type="button"
           onClick={startRecording}

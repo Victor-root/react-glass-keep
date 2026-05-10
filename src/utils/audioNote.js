@@ -53,6 +53,7 @@ function normalizeClip(c) {
   if (typeof c.audioDataUrl !== "string" || !c.audioDataUrl.startsWith("data:")) return null;
   return {
     id: typeof c.id === "string" && c.id ? c.id : uid(),
+    name: typeof c.name === "string" ? c.name : "",
     audioDataUrl: c.audioDataUrl,
     mimeType: typeof c.mimeType === "string" ? c.mimeType : "audio/webm",
     duration: Number.isFinite(c.duration) ? Number(c.duration) : null,
@@ -101,9 +102,10 @@ export function serializeAudioContent({ clips, text } = {}) {
 }
 
 // Convenience: build a clip object from a freshly recorded blob payload.
-export function makeClip({ audioDataUrl, mimeType, duration, size }) {
+export function makeClip({ audioDataUrl, mimeType, duration, size, name }) {
   return {
     id: uid(),
+    name: typeof name === "string" ? name : "",
     audioDataUrl,
     mimeType: mimeType || "audio/webm",
     duration: Number.isFinite(duration) ? duration : null,

@@ -936,4 +936,11 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   audioNextClip: "Enregistrement suivant",
   audioClipCounter: "Enregistrement {current} sur {total}",
   audioFinalizing: "Sauvegarde…",
+  audioClipNamePlaceholder: "Enregistrement sans titre",
+  audioClipDefaultName: "Enregistrement {n}",
+  audioPlaylistEmpty: "Aucun enregistrement.",
+  audioRowPlay: "Lire cet enregistrement",
+  audioRowPause: "Pause",
+  audioRowDelete: "Supprimer cet enregistrement",
+  audioRowRename: "Renommer cet enregistrement",
 };

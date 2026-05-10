@@ -6,7 +6,7 @@ import Popover from "../common/Popover.jsx";
 import UserAvatar from "../common/UserAvatar.jsx";
 import AddImageMenu from "./AddImageMenu.jsx";
 import LogoPickerPopover from "./LogoPickerPopover.jsx";
-import { DownloadIcon, ArchiveIcon, Trash, AddImageIcon, Kebab, TextNoteIcon, ChecklistIcon } from "../../icons/index.jsx";
+import { DownloadIcon, ArchiveIcon, Trash, AddImageIcon, Kebab, TextNoteIcon, ChecklistIcon, LogoIcon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { COLOR_ORDER, LIGHT_COLORS } from "../../utils/colors.js";
 import { getNoteIcon, setNoteIcon } from "../../utils/noteIcon.js";
@@ -270,6 +270,60 @@ export default function ModalFooter({
           </>
         )}
 
+        {/* ── Add logo (audio notes only) ──
+              Audio notes don't have a content-image flow, so the regular
+              "Image" affordance is hidden. They still benefit from a logo
+              badge though — the same icon shown on every other note card.
+              We reuse the LogoPickerPopover and the icon-only file input
+              so the rest of the icon flow (library, upload, delete)
+              works identically. */}
+        {mType === "audio" && (
+          <>
+            <input
+              ref={modalIconFileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files && e.target.files[0];
+                if (f && setNoteIconFromFile) await setNoteIconFromFile(f);
+                e.target.value = "";
+              }}
+            />
+            <button
+              ref={imageBtnRef}
+              className={`${btnClass} modal-footer-btn--image focus:outline-none`}
+              onClick={() => setLogoPickerOpen((v) => !v)}
+              data-tooltip={!isDesktop ? (currentNoteIcon ? t("replaceLogo") : t("addLogo")) : undefined}
+            >
+              <LogoIcon />
+              {isDesktop && <span>{currentNoteIcon ? t("replaceLogo") : t("addLogo")}</span>}
+              {currentNoteIcon && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full overflow-hidden">
+                  <img
+                    src={currentNoteIcon.src}
+                    alt=""
+                    className="w-full h-full"
+                    style={{ objectFit: "contain" }}
+                    draggable={false}
+                  />
+                </span>
+              )}
+            </button>
+            <LogoPickerPopover
+              anchorRef={imageBtnRef}
+              open={logoPickerOpen}
+              onClose={() => setLogoPickerOpen(false)}
+              dark={dark}
+              logos={logoLibrary}
+              selectedSrc={currentNoteIcon?.src}
+              onPickExisting={handlePickExistingLogo}
+              onUploadNew={() => modalIconFileRef?.current?.click()}
+              onDeleteLogo={deleteLogoFromLibrary}
+            />
+          </>
+        )}
+
         {/* ── Tag icon + checkbox dropdown ── */}
         <div className="relative">
           <button
@@ -476,10 +530,12 @@ export default function ModalFooter({
           })()}
         </div>
 
-        {/* ── Undo (hidden in draw canvas mode & in text view mode).
+        {/* ── Undo (hidden in draw canvas mode & in text view mode, also
+              hidden for audio notes — undo/redo doesn't apply to audio
+              clips, the playlist has per-row delete instead).
               Checklist notes are always editable, so the buttons stay
               visible regardless of the viewMode flag. ── */}
-        {!(mType === 'draw' && drawMode === 'draw') && (mType === "checklist" || !viewMode) && (
+        {!(mType === 'draw' && drawMode === 'draw') && mType !== "audio" && (mType === "checklist" || !viewMode) && (
         <button
           className={`${btnClass} focus:outline-none ${!canUndo ? "opacity-50 cursor-default" : ""}`}
           onMouseDown={(e) => e.preventDefault()}
@@ -496,7 +552,7 @@ export default function ModalFooter({
         )}
 
         {/* ── Redo (same visibility rule as Undo above) ── */}
-        {!(mType === 'draw' && drawMode === 'draw') && (mType === "checklist" || !viewMode) && (
+        {!(mType === 'draw' && drawMode === 'draw') && mType !== "audio" && (mType === "checklist" || !viewMode) && (
         <button
           className={`${btnClass} focus:outline-none ${!canRedo ? "opacity-50 cursor-default" : ""}`}
           onMouseDown={(e) => e.preventDefault()}
