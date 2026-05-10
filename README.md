@@ -237,7 +237,7 @@ Thanks to [nikunjsingh93](https://github.com/nikunjsingh93) for the original pro
 
 ---
 
-## Special thanks
+## 🙌 Special thanks
 
 Thanks to [@Rikhtar](https://github.com/Rikhtar) for active testing, bug reports, UX feedback.
 

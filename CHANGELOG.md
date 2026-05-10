@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.2.0 — 2026-05-10
+
+### Added
+- Audio notes with MP3, WAV, and original format download options
+- Visual storage gauge for audio tracks
+- Scrubber bar with seek control for audio playback
+- Icon-only "Add Recording" button on mobile, text pill on desktop
+
+### Fixed
+- Checklist item text alignment when entering edit mode
+- iOS Safari search bar keyboard not opening on input focus
+
 ## v2.1.0 — 2026-05-09
 
 ### Added

@@ -622,6 +622,37 @@ This makes GlassKeep more practical for comparison, migration, note cleanup, tec
 
 ---
 
+## 🎙️ 28) Audio notes
+
+GlassKeep now supports recording audio directly within the app, turning voice memos into a first-class note type.
+
+### What was added
+- **audio recording**: record audio directly from the browser using the device microphone
+- **embedded playback**: play back audio with a visual waveform scrubber bar and seek control
+- **multiple download formats**: export audio as MP3, WAV, or the original raw recording
+- **storage management**: visual gauge shows audio storage usage per note (100MB limit per note)
+- **cross-device availability**: audio is synced across devices like any other note type
+- **responsive design**: icon-only recording button on mobile, full text pill button on desktop
+- **platform support**: works on desktop, tablet, and Android WebView; iOS WebKit limitations apply
+
+### Technical implementation
+- audio recording via `MediaRecorder` API with `audio/webm` codec
+- MP3 encoding via `@breezystack/lamejs` for compatibility
+- WebM to MP3 conversion happens client-side before upload
+- Android WebView microphone access via `onPermissionRequest` bridge
+- audio stored as base64 in notes alongside other content
+- per-note 100MB limit (raw audio bytes) enforced on both client and server
+
+### Mobile UX
+- recording button consolidates with other controls to avoid screen clutter
+- mobile layout switches to icon-only styling to preserve space
+- desktop retains a full text button for better discoverability
+
+### Why it matters
+Audio notes provide a faster, more natural way to capture thoughts, especially on mobile or when hands are busy. Unlike external voice memo apps, everything stays in GlassKeep with full sync and encryption support.
+
+---
+
 ## 🔔 27) In-app update notifications
 
 GlassKeep Enhanced now surfaces new releases directly in the app instead of leaving self-hosted instances silently behind upstream.
