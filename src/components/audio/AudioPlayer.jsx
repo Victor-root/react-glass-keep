@@ -9,11 +9,16 @@ import { sanitizeFilename, triggerBlobDownload } from "../../utils/helpers.js";
 // Themed multimedia player for audio notes. Two layouts:
 //  - variant="card" : compact preview shown inside a NoteCard.
 //  - variant="hero" : large, music-app-style layout used inside the
-//                     audio-note modal and the recorder preview.
+//                     audio-note modal body.
 //
 // The native <audio> element drives playback under the hood (events,
 // seeking, decoding) but is hidden — we render our own controls so the
-// player matches the app's gradient/glass aesthetic.
+// player matches the surrounding note's color palette via the
+// `--note-color` / `--note-color-opaque` CSS vars set by NoteModal.
+//
+// Optional prev/next CLIP buttons (showClipNav) navigate between recordings
+// in a multi-clip audio note. They're separate from the in-clip seek
+// scrubber so users can both step between recordings and seek inside one.
 
 export default function AudioPlayer({
   audio,
@@ -21,6 +26,12 @@ export default function AudioPlayer({
   variant = "hero",
   showDownload = true,
   className = "",
+  // Multi-clip navigation (hero variant only)
+  showClipNav = false,
+  clipIndex = 0,
+  clipCount = 1,
+  onPrevClip,
+  onNextClip,
 }) {
   const audioRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -115,13 +126,6 @@ export default function AudioPlayer({
     }
   };
 
-  const skip = (delta) => (e) => {
-    e?.stopPropagation();
-    const el = audioRef.current;
-    if (!el) return;
-    seekToRatio(((el.currentTime || 0) + delta) / Math.max(0.001, duration));
-  };
-
   return (
     <div
       className={variant === "card" ? `audio-player audio-player--card ${className}` : `audio-player audio-player--hero ${className}`}
@@ -134,7 +138,6 @@ export default function AudioPlayer({
           currentTime={scrubRatio != null ? scrubRatio * duration : currentTime}
           playing={playing}
           togglePlay={togglePlay}
-          onSkip={skip}
           onTrackPointerDown={onPointerDown}
           onTrackPointerMove={onPointerMove}
           onTrackPointerUp={onPointerUp}
@@ -143,6 +146,11 @@ export default function AudioPlayer({
           showDownload={showDownload}
           audio={audio}
           title={title}
+          showClipNav={showClipNav}
+          clipIndex={clipIndex}
+          clipCount={clipCount}
+          onPrevClip={onPrevClip}
+          onNextClip={onNextClip}
         />
       ) : (
         <CardLayout
@@ -183,17 +191,20 @@ export default function AudioPlayer({
 
 function CardLayout({ ratio, duration, playing, togglePlay, trackRef, onTrackPointerDown, onTrackPointerMove, onTrackPointerUp }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-fuchsia-200/40 bg-gradient-to-br from-fuchsia-50/80 via-white/40 to-pink-50/80 dark:from-fuchsia-900/30 dark:via-transparent dark:to-pink-900/30 dark:border-fuchsia-700/30 shadow-sm">
+    <div
+      className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-black/10 dark:border-white/15 bg-black/5 dark:bg-white/10 shadow-sm"
+    >
       <button
         type="button"
         aria-label={playing ? t("audioPause") : t("audioPlay")}
         onClick={togglePlay}
-        className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full text-white shadow-md bg-gradient-to-br from-fuchsia-500 to-pink-600 hover:from-fuchsia-600 hover:to-pink-700 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-fuchsia-400"
+        className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full text-white shadow-md active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-[var(--note-color,_#a78bfa)]"
+        style={{ backgroundColor: "var(--note-color-opaque, #7c3aed)" }}
       >
         {playing ? <PauseGlyph /> : <PlayGlyph />}
       </button>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 text-[11px] text-fuchsia-700 dark:text-fuchsia-300 font-medium">
+        <div className="flex items-center gap-1.5 text-[11px] font-medium opacity-75">
           <MicIcon />
           <span>{t("audioRecording")}</span>
         </div>
@@ -205,12 +216,11 @@ function CardLayout({ ratio, duration, playing, togglePlay, trackRef, onTrackPoi
             onPointerMove={onTrackPointerMove}
             onPointerUp={onTrackPointerUp}
             onKeyDown={() => {}}
-            color="fuchsia"
             compact
           />
         </div>
       </div>
-      <span className="shrink-0 tabular-nums text-xs font-semibold text-fuchsia-700 dark:text-fuchsia-200">
+      <span className="shrink-0 tabular-nums text-xs font-semibold opacity-80">
         {formatDuration(duration)}
       </span>
     </div>
@@ -218,38 +228,77 @@ function CardLayout({ ratio, duration, playing, togglePlay, trackRef, onTrackPoi
 }
 
 function HeroLayout({
-  ratio, duration, currentTime, playing, togglePlay, onSkip,
+  ratio, duration, currentTime, playing, togglePlay,
   onTrackPointerDown, onTrackPointerMove, onTrackPointerUp, onTrackKeyDown,
   trackRef, showDownload, audio, title,
+  showClipNav, clipIndex, clipCount, onPrevClip, onNextClip,
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-fuchsia-200/50 dark:border-fuchsia-700/30 bg-gradient-to-br from-fuchsia-100 via-white/60 to-pink-100 dark:from-fuchsia-950/60 dark:via-fuchsia-900/30 dark:to-pink-950/60 shadow-lg">
-      {/* Decorative blurred orbs for the music-app vibe */}
-      <div aria-hidden="true" className="pointer-events-none absolute -top-12 -right-10 w-40 h-40 rounded-full bg-pink-300/40 dark:bg-pink-500/20 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 -left-10 w-44 h-44 rounded-full bg-fuchsia-300/40 dark:bg-fuchsia-500/20 blur-3xl" />
+    <div
+      className="relative overflow-hidden rounded-2xl border border-black/10 dark:border-white/15 bg-white/45 dark:bg-black/25 shadow-md backdrop-blur-sm"
+    >
+      {/* Decorative blurred orbs in the note's color, give the card the music-app glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-10 -right-10 w-36 h-36 rounded-full opacity-50 blur-3xl"
+        style={{ backgroundColor: "var(--note-color-opaque, #a78bfa)" }}
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-10 -left-10 w-44 h-44 rounded-full opacity-40 blur-3xl"
+        style={{ backgroundColor: "var(--note-color, #a78bfa)" }}
+      />
 
-      <div className="relative px-5 py-6 sm:px-6 sm:py-7 flex flex-col items-center gap-4">
+      <div className="relative px-5 py-5 sm:px-6 sm:py-6 flex flex-col items-center gap-4">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-lg bg-gradient-to-br from-fuchsia-500 to-pink-600">
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg"
+            style={{ backgroundColor: "var(--note-color-opaque, #7c3aed)" }}
+          >
             <span className="scale-150"><MicIcon /></span>
           </div>
-          <div className="text-xs uppercase tracking-wider text-fuchsia-700 dark:text-fuchsia-300 font-semibold">
-            {t("audioRecording")}
-          </div>
+          {showClipNav && clipCount > 1 && (
+            <div
+              className="text-[11px] uppercase tracking-wider font-semibold opacity-75"
+              aria-live="polite"
+            >
+              {t("audioClipCounter")
+                .replace("{current}", String(clipIndex + 1))
+                .replace("{total}", String(clipCount))}
+            </div>
+          )}
         </div>
 
-        {/* Transport row */}
+        {/* Transport row: optional clip nav, big play, optional clip nav */}
         <div className="flex items-center justify-center gap-3 sm:gap-4">
-          <SkipButton direction="back" onClick={onSkip(-10)} />
+          {showClipNav && (
+            <NavButton
+              direction="back"
+              onClick={onPrevClip}
+              disabled={clipIndex <= 0}
+              ariaLabel={t("audioPrevClip")}
+            />
+          )}
           <button
             type="button"
             onClick={togglePlay}
             aria-label={playing ? t("audioPause") : t("audioPlay")}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-full text-white shadow-xl bg-gradient-to-br from-fuchsia-500 to-pink-600 hover:from-fuchsia-600 hover:to-pink-700 active:scale-95 transition focus:outline-none focus:ring-4 focus:ring-fuchsia-400/50"
+            className="inline-flex items-center justify-center w-16 h-16 rounded-full text-white shadow-xl active:scale-95 transition focus:outline-none focus:ring-4"
+            style={{
+              backgroundColor: "var(--note-color-opaque, #7c3aed)",
+              boxShadow: "0 10px 25px -10px var(--note-color-opaque, #7c3aed)",
+            }}
           >
             {playing ? <PauseGlyph large /> : <PlayGlyph large />}
           </button>
-          <SkipButton direction="forward" onClick={onSkip(10)} />
+          {showClipNav && (
+            <NavButton
+              direction="forward"
+              onClick={onNextClip}
+              disabled={clipIndex >= clipCount - 1}
+              ariaLabel={t("audioNextClip")}
+            />
+          )}
         </div>
 
         {/* Progress + time */}
@@ -261,9 +310,8 @@ function HeroLayout({
             onPointerMove={onTrackPointerMove}
             onPointerUp={onTrackPointerUp}
             onKeyDown={onTrackKeyDown}
-            color="fuchsia"
           />
-          <div className="flex justify-between text-xs tabular-nums text-fuchsia-800/90 dark:text-fuchsia-100/90 font-medium">
+          <div className="flex justify-between text-xs tabular-nums font-medium opacity-80">
             <span>{formatDuration(currentTime)}</span>
             <span>{formatDuration(duration)}</span>
           </div>
@@ -277,10 +325,7 @@ function HeroLayout({
   );
 }
 
-function ProgressTrack({ ratio, trackRef, onPointerDown, onPointerMove, onPointerUp, onKeyDown, color = "fuchsia", compact = false }) {
-  const filledColor = color === "fuchsia"
-    ? "bg-gradient-to-r from-fuchsia-500 to-pink-600"
-    : "bg-indigo-500";
+function ProgressTrack({ ratio, trackRef, onPointerDown, onPointerMove, onPointerUp, onKeyDown, compact = false }) {
   return (
     <div
       ref={trackRef}
@@ -295,38 +340,47 @@ function ProgressTrack({ ratio, trackRef, onPointerDown, onPointerMove, onPointe
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
       onKeyDown={onKeyDown}
-      className={`relative w-full ${compact ? "h-1.5" : "h-2"} rounded-full bg-fuchsia-200/70 dark:bg-fuchsia-700/30 cursor-pointer touch-none focus:outline-none focus:ring-2 focus:ring-fuchsia-400/60`}
+      className={`relative w-full ${compact ? "h-1.5" : "h-2"} rounded-full bg-black/15 dark:bg-white/15 cursor-pointer touch-none focus:outline-none focus:ring-2 focus:ring-offset-1`}
+      style={{ "--tw-ring-color": "var(--note-color-opaque, #a78bfa)" }}
     >
       <div
-        className={`absolute inset-y-0 left-0 rounded-full ${filledColor}`}
-        style={{ width: `${Math.min(100, Math.max(0, ratio * 100))}%` }}
+        className="absolute inset-y-0 left-0 rounded-full"
+        style={{
+          width: `${Math.min(100, Math.max(0, ratio * 100))}%`,
+          backgroundColor: "var(--note-color-opaque, #a78bfa)",
+        }}
       />
       <div
-        className={`absolute -top-1.5 ${compact ? "w-3 h-3" : "w-4 h-4"} rounded-full bg-white shadow ring-2 ring-fuchsia-500 dark:ring-fuchsia-300 transition-transform`}
-        style={{ left: `calc(${Math.min(100, Math.max(0, ratio * 100))}% - ${compact ? "6px" : "8px"})` }}
+        className={`absolute -top-1.5 ${compact ? "w-3 h-3" : "w-4 h-4"} rounded-full bg-white shadow ring-2 transition-transform`}
+        style={{
+          left: `calc(${Math.min(100, Math.max(0, ratio * 100))}% - ${compact ? "6px" : "8px"})`,
+          "--tw-ring-color": "var(--note-color-opaque, #a78bfa)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.3)",
+        }}
       />
     </div>
   );
 }
 
-function SkipButton({ direction, onClick }) {
+function NavButton({ direction, onClick, disabled, ariaLabel }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={direction === "back" ? "Skip back 10 seconds" : "Skip forward 10 seconds"}
-      className="inline-flex items-center justify-center w-10 h-10 rounded-full text-fuchsia-700 dark:text-fuchsia-200 bg-white/60 dark:bg-fuchsia-900/40 hover:bg-white dark:hover:bg-fuchsia-800/50 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-fuchsia-400/50"
+      disabled={disabled}
+      aria-label={ariaLabel}
+      data-tooltip={ariaLabel}
+      className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/60 dark:bg-white/10 hover:bg-white dark:hover:bg-white/20 active:scale-95 transition focus:outline-none focus:ring-2 disabled:opacity-30 disabled:cursor-not-allowed"
+      style={{ color: "var(--note-color-opaque, #7c3aed)" }}
     >
-      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
         {direction === "back" ? (
           <>
-            <path d="M11 17l-5-5 5-5" />
-            <path d="M18 17l-5-5 5-5" />
+            <polyline points="15 18 9 12 15 6" />
           </>
         ) : (
           <>
-            <path d="M13 17l5-5-5-5" />
-            <path d="M6 17l5-5-5-5" />
+            <polyline points="9 18 15 12 9 6" />
           </>
         )}
       </svg>
@@ -401,7 +455,8 @@ function DownloadMenu({ audio, title }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={busy}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70 dark:bg-fuchsia-900/40 text-fuchsia-700 dark:text-fuchsia-100 text-sm font-medium hover:bg-white dark:hover:bg-fuchsia-800/50 shadow-sm border border-fuchsia-200/60 dark:border-fuchsia-700/40 active:scale-[0.98] transition focus:outline-none focus:ring-2 focus:ring-fuchsia-400/50 disabled:opacity-60 disabled:cursor-wait"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70 dark:bg-white/10 text-sm font-medium hover:bg-white dark:hover:bg-white/20 shadow-sm border border-black/10 dark:border-white/15 active:scale-[0.98] transition focus:outline-none focus:ring-2 disabled:opacity-60 disabled:cursor-wait"
+        style={{ color: "var(--note-color-opaque, #7c3aed)" }}
         aria-haspopup="menu"
         aria-expanded={open}
       >

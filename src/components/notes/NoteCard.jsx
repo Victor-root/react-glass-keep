@@ -41,7 +41,18 @@ export default function NoteCard({
   const isDraw = n.type === "draw";
   const isAudio = n.type === "audio";
   const MAX_CHARS = 350;
-  const audioMeta = useMemo(() => (isAudio ? parseAudioContent(n.content) : null), [isAudio, n.content]);
+  // Card preview shows the FIRST clip — keeps the card compact even when
+  // a note holds multiple recordings. Clip count is surfaced as a small
+  // badge so users see at a glance there's more inside.
+  const audioFirstClip = useMemo(() => {
+    if (!isAudio) return null;
+    const parsed = parseAudioContent(n.content);
+    return parsed.clips[0] || null;
+  }, [isAudio, n.content]);
+  const audioClipCount = useMemo(() => {
+    if (!isAudio) return 0;
+    return parseAudioContent(n.content).clips.length;
+  }, [isAudio, n.content]);
 
   // Compute the preview HTML for text notes. We first turn whatever is in
   // `content` (rich JSON or legacy Markdown) into plain text for the length
@@ -297,8 +308,17 @@ export default function NoteCard({
       )}
 
       {isAudio ? (
-        audioMeta ? (
-          <AudioPlayer audio={audioMeta} title={n.title} variant="card" />
+        audioFirstClip ? (
+          <div className="space-y-1.5">
+            <AudioPlayer audio={audioFirstClip} title={n.title} variant="card" />
+            {audioClipCount > 1 && (
+              <div className="flex justify-end">
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/15 text-gray-700 dark:text-gray-200">
+                  +{audioClipCount - 1}
+                </span>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="text-xs italic text-gray-500 dark:text-gray-400">
             {t("audioRecordingEmpty")}

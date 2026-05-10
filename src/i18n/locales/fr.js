@@ -929,4 +929,10 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   audioReady: "Prêt à sauvegarder",
   audioRequestPermission: "Autoriser le microphone",
   audioFilenameDefault: "note-audio",
+  audioAddRecording: "Ajouter un enregistrement",
+  audioDeleteClip: "Supprimer cet enregistrement",
+  audioNoteEmptyHint: "Appuyez ci-dessous pour commencer à enregistrer. Chaque enregistrement devient un clip de cette note.",
+  audioPrevClip: "Enregistrement précédent",
+  audioNextClip: "Enregistrement suivant",
+  audioClipCounter: "Enregistrement {current} sur {total}",
 };

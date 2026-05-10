@@ -1,23 +1,36 @@
+import { uid } from "./helpers.js";
+
 // Audio note content helpers.
 //
 // Audio notes follow the same on-disk pattern as drawing notes: the audio
 // payload is stored as JSON in the shared `content` column. This keeps
 // type=audio fully compatible with the existing notes table, sync queue,
-// trash/archive/restore flow, labels, pinning, and import/export — no schema
-// or attachment table is needed.
+// trash/archive/restore flow, labels, pinning, and import/export — no
+// schema or attachment table is needed.
 //
-// Shape of `content` for an audio note (string, JSON-encoded):
+// On-disk schema (string, JSON-encoded) for type=audio:
 //
 //   {
-//     audioDataUrl: "data:audio/webm;base64,...",
-//     mimeType:     "audio/webm;codecs=opus",
-//     duration:     12.345,        // seconds, may be null if unknown
-//     size:         102400,        // bytes of the encoded audio
-//     createdAt:    "2026-05-09T...",
-//     text:         ""             // reserved for future transcription
+//     version: 2,
+//     clips: [
+//       {
+//         id: "abc123",
+//         audioDataUrl: "data:audio/webm;base64,...",
+//         mimeType: "audio/webm;codecs=opus",
+//         duration: 12.345,    // seconds, may be null
+//         size: 102400,        // bytes
+//         createdAt: "2026-05-09T..."
+//       },
+//       …
+//     ],
+//     text: ""                 // reserved (future transcription / caption)
 //   }
+//
+// v1 (deprecated, single-clip): { audioDataUrl, mimeType, duration, size,
+// createdAt, text }. parseAudioContent transparently upgrades v1 → v2 on
+// read, so existing notes keep working and re-save in v2 on next edit.
 
-export const AUDIO_MAX_BYTES = 12 * 1024 * 1024; // 12 MB encoded — leaves headroom under the 20 MB body limit
+export const AUDIO_MAX_TOTAL_BYTES = 14 * 1024 * 1024; // ~14 MB encoded — leaves headroom under the server 16 MB cap
 
 export const ALLOWED_AUDIO_MIME_PREFIXES = [
   "audio/webm",
@@ -35,34 +48,83 @@ export function isAllowedAudioMime(mime) {
   return ALLOWED_AUDIO_MIME_PREFIXES.some((p) => lower.startsWith(p));
 }
 
-export function parseAudioContent(raw) {
-  if (!raw) return null;
-  try {
-    const obj = typeof raw === "string" ? JSON.parse(raw) : raw;
-    if (!obj || typeof obj !== "object") return null;
-    if (typeof obj.audioDataUrl !== "string" || !obj.audioDataUrl.startsWith("data:")) return null;
-    return {
-      audioDataUrl: obj.audioDataUrl,
-      mimeType: typeof obj.mimeType === "string" ? obj.mimeType : "audio/webm",
-      duration: Number.isFinite(obj.duration) ? Number(obj.duration) : null,
-      size: Number.isFinite(obj.size) ? Number(obj.size) : null,
-      createdAt: typeof obj.createdAt === "string" ? obj.createdAt : null,
-      text: typeof obj.text === "string" ? obj.text : "",
-    };
-  } catch {
-    return null;
-  }
+function normalizeClip(c) {
+  if (!c || typeof c !== "object") return null;
+  if (typeof c.audioDataUrl !== "string" || !c.audioDataUrl.startsWith("data:")) return null;
+  return {
+    id: typeof c.id === "string" && c.id ? c.id : uid(),
+    audioDataUrl: c.audioDataUrl,
+    mimeType: typeof c.mimeType === "string" ? c.mimeType : "audio/webm",
+    duration: Number.isFinite(c.duration) ? Number(c.duration) : null,
+    size: Number.isFinite(c.size) ? Number(c.size) : null,
+    createdAt: typeof c.createdAt === "string" ? c.createdAt : null,
+  };
 }
 
-export function serializeAudioContent({ audioDataUrl, mimeType, duration, size, text }) {
+// Parse a stored content string into the canonical { clips, text } shape.
+// Always returns a valid object (never throws); empty/invalid inputs come
+// back as { clips: [], text: "" } so callers don't need to defensive-check.
+export function parseAudioContent(raw) {
+  if (!raw) return { clips: [], text: "" };
+  let obj;
+  try {
+    obj = typeof raw === "string" ? JSON.parse(raw) : raw;
+  } catch {
+    return { clips: [], text: "" };
+  }
+  if (!obj || typeof obj !== "object") return { clips: [], text: "" };
+  // v2: clips array
+  if (Array.isArray(obj.clips)) {
+    const clips = obj.clips.map(normalizeClip).filter(Boolean);
+    return {
+      clips,
+      text: typeof obj.text === "string" ? obj.text : "",
+    };
+  }
+  // v1: single clip at the top level
+  if (typeof obj.audioDataUrl === "string" && obj.audioDataUrl.startsWith("data:")) {
+    const c = normalizeClip(obj);
+    return {
+      clips: c ? [c] : [],
+      text: typeof obj.text === "string" ? obj.text : "",
+    };
+  }
+  return { clips: [], text: "" };
+}
+
+export function serializeAudioContent({ clips, text } = {}) {
   return JSON.stringify({
-    audioDataUrl,
-    mimeType: mimeType || "audio/webm",
-    duration: Number.isFinite(duration) ? Number(duration) : null,
-    size: Number.isFinite(size) ? Number(size) : null,
-    createdAt: new Date().toISOString(),
+    version: 2,
+    clips: Array.isArray(clips) ? clips.map(normalizeClip).filter(Boolean) : [],
     text: typeof text === "string" ? text : "",
   });
+}
+
+// Convenience: build a clip object from a freshly recorded blob payload.
+export function makeClip({ audioDataUrl, mimeType, duration, size }) {
+  return {
+    id: uid(),
+    audioDataUrl,
+    mimeType: mimeType || "audio/webm",
+    duration: Number.isFinite(duration) ? duration : null,
+    size: Number.isFinite(size) ? size : null,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function totalClipsBytes(clips) {
+  if (!Array.isArray(clips)) return 0;
+  let total = 0;
+  for (const c of clips) {
+    if (Number.isFinite(c?.size)) total += c.size;
+    else if (typeof c?.audioDataUrl === "string") {
+      // Approximate from the base64 payload length (4/3 ratio).
+      const i = c.audioDataUrl.indexOf(",");
+      const b64Len = i >= 0 ? c.audioDataUrl.length - i - 1 : c.audioDataUrl.length;
+      total += Math.floor(b64Len * 0.75);
+    }
+  }
+  return total;
 }
 
 export function formatDuration(totalSeconds) {
@@ -109,4 +171,10 @@ export async function blobToDataUrl(blob) {
     reader.onload = () => resolve(String(reader.result || ""));
     reader.readAsDataURL(blob);
   });
+}
+
+// True when the parsed content has no playable audio clips.
+export function isAudioContentEmpty(raw) {
+  const parsed = parseAudioContent(raw);
+  return parsed.clips.length === 0;
 }

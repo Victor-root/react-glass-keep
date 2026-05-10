@@ -27,8 +27,7 @@ import RichTextEditor from "../richtext/RichTextEditor.jsx";
 import { contentToHTML, serializeRichContent, isRichContent } from "../../utils/richText.js";
 import { modalBgFor, scrollColorsFor, solid, bgFor, toHex } from "../../utils/colors.js";
 import { setThemeColor } from "../../utils/helpers.js";
-import AudioPlayer from "../audio/AudioPlayer.jsx";
-import { parseAudioContent } from "../../utils/audioNote.js";
+import AudioNoteEditor from "../audio/AudioNoteEditor.jsx";
 
 export default function NoteModal({
   // visibility / animation
@@ -557,7 +556,7 @@ export default function NoteModal({
           className={`note-modal-anim${isModalClosing ? ' closing' : ''}${handoffNoTransition ? ' note-modal-anim--sbs-handoff' : ''}${suppressOpenReplay ? ' note-modal-anim--sbs-suppress-open-replay' : ''} glass-card rounded-none shadow-none w-full max-w-none ${
             mobileLayout ? ''
             : isDrawEdit ? 'sm:w-screen sm:max-w-none sm:h-screen sm:!rounded-none'
-            : isAudio ? 'sm:w-[92%] sm:max-w-md sm:h-auto sm:max-h-[88vh] sm:rounded-2xl'
+            : isAudio ? 'sm:w-[92%] sm:max-w-lg sm:h-auto sm:max-h-[88vh] sm:rounded-2xl'
             : 'sm:w-11/12 sm:max-w-3xl lg:max-w-4xl sm:h-[95vh] sm:rounded-xl'
           }${drawTransition === 'entering' ? ' draw-expand' : drawTransition === 'leaving' ? ' draw-collapse' : ''} flex flex-col relative overflow-hidden`}
           style={{
@@ -672,7 +671,13 @@ export default function NoteModal({
 
               {/* Text, Checklist, Drawing, or Audio */}
               {mType === "audio" ? (
-                <AudioNoteBody body={mBody} title={mTitle} />
+                <AudioNoteEditor
+                  body={mBody}
+                  setBody={setMBody}
+                  title={mTitle}
+                  color={mColor}
+                  dark={dark}
+                />
               ) : mType === "text" ? (
                 viewMode ? (
                   <NoteViewContent html={viewHtml} noteViewRef={noteViewRef} />
@@ -1043,18 +1048,3 @@ export default function NoteModal({
   );
 }
 
-function AudioNoteBody({ body, title }) {
-  const audio = React.useMemo(() => parseAudioContent(body), [body]);
-  if (!audio) {
-    return (
-      <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-        {t("audioRecordingEmpty")}
-      </div>
-    );
-  }
-  return (
-    <div className="py-3 sm:py-4">
-      <AudioPlayer audio={audio} title={title} variant="hero" />
-    </div>
-  );
-}

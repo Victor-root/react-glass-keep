@@ -62,8 +62,7 @@ import ToastContainer from "./components/common/ToastContainer.jsx";
 import FloatingCardsBackground from "./components/common/FloatingCardsBackground.jsx";
 import NoteModal from "./components/modal/NoteModal.jsx";
 import SecondaryNoteInstance from "./components/modal/SecondaryNoteInstance.jsx";
-import AudioRecorderModal from "./components/audio/AudioRecorderModal.jsx";
-import { serializeAudioContent, parseAudioContent, extensionForMime } from "./utils/audioNote.js";
+import { parseAudioContent, isAudioContentEmpty, extensionForMime } from "./utils/audioNote.js";
 import { dataUrlToBlob } from "./utils/audioConvert.js";
 import useModalState from "./hooks/useModalState.js";
 import useDraftNote from "./hooks/useDraftNote.js";
@@ -1154,9 +1153,6 @@ export default function App() {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   // FAB open state (lifted for Android back button support)
   const [fabOpen, setFabOpen] = useState(false);
-  // Audio recorder modal — separate flow from the deferred-draft create path
-  // (audio always materialises from a real recording, not a blank modal).
-  const [audioRecorderOpen, setAudioRecorderOpen] = useState(false);
 
 
   useEffect(() => {
@@ -3226,11 +3222,15 @@ export default function App() {
   /** -------- Download single note .md (or audio file for audio notes) -------- */
   const handleDownloadNote = async (note) => {
     if (note?.type === "audio") {
-      const audio = parseAudioContent(note.content);
-      if (audio?.audioDataUrl) {
+      const parsed = parseAudioContent(note.content);
+      // Multi-clip notes still download from the kebab as a single file —
+      // the first clip. The themed player offers per-clip downloads with
+      // an explicit format choice (original / WAV); that's the richer UX.
+      const clip = parsed.clips[0];
+      if (clip?.audioDataUrl) {
         try {
-          const blob = dataUrlToBlob(audio.audioDataUrl);
-          const ext = extensionForMime(audio.mimeType || blob.type);
+          const blob = dataUrlToBlob(clip.audioDataUrl);
+          const ext = extensionForMime(clip.mimeType || blob.type);
           const fname = sanitizeFilename(note.title || `audio-${note.id}`) + "." + ext;
           await triggerBlobDownload(fname, blob);
           return;
@@ -3565,6 +3565,7 @@ export default function App() {
     handleDirectText,
     handleDirectChecklist,
     handleDirectDraw,
+    handleDirectAudio,
   } = useDraftNote({
     activeId,
     currentUser,
@@ -3585,72 +3586,6 @@ export default function App() {
     idbPutNote, invalidateNotesCache, sortNotesByRecency,
     getInitialTags: getInitialTagsForNewNote,
   });
-
-  // Audio note create flow. Audio doesn't fit the deferred-draft pattern
-  // (no recording → no note), so we materialise the note directly on save
-  // from AudioRecorderModal. Mirrors useDraftNote.materializeDraftIfNeeded
-  // for the persistence steps so sync/IDB/state all stay aligned.
-  const handleDirectAudio = useCallback(() => {
-    setFabOpen(false);
-    setAudioRecorderOpen(true);
-  }, []);
-  const handleSaveAudioNote = useCallback(
-    async ({ title, audioDataUrl, mimeType, duration, size }) => {
-      const id = uid();
-      const nowIso = new Date().toISOString();
-      const initialTags = getInitialTagsForNewNote() || [];
-      const content = serializeAudioContent({
-        audioDataUrl,
-        mimeType,
-        duration,
-        size,
-      });
-      const newNote = {
-        id,
-        type: "audio",
-        title: (title || "").trim(),
-        content,
-        items: [],
-        tags: initialTags,
-        images: [],
-        color: "default",
-        pinned: false,
-        position: Date.now(),
-        timestamp: nowIso,
-        updated_at: nowIso,
-        client_updated_at: nowIso,
-      };
-      const localNote = {
-        ...newNote,
-        user_id: currentUser?.id,
-        archived: false,
-        trashed: false,
-      };
-      const leaseId = acquireLocalLease(String(id));
-      try {
-        await idbPutNote(localNote, currentUser?.id, sessionId);
-      } catch (e) {
-        console.error("IndexedDB put failed for audio note:", e);
-      }
-      setNotes((prev) =>
-        sortNotesByRecency([localNote, ...(Array.isArray(prev) ? prev : [])]),
-      );
-      invalidateNotesCache();
-      await enqueueWithLease(
-        String(id),
-        { type: "create", noteId: id, payload: newNote },
-        leaseId,
-      );
-      setAudioRecorderOpen(false);
-    },
-    [
-      acquireLocalLease,
-      enqueueWithLease,
-      currentUser,
-      sessionId,
-      getInitialTagsForNewNote,
-    ],
-  );
 
   const openModal = (id) => {
     const n = notes.find((x) => String(x.id) === String(id));
@@ -3709,7 +3644,10 @@ export default function App() {
     initialModalStateRef.current = baselineState;
     committedBaselineRef.current = { ...baselineState };
 
-    setViewMode(true);
+    // Audio notes have no read/edit distinction — the AudioNoteEditor always
+    // shows the player + recorder controls regardless of viewMode. Open in
+    // edit mode so the experience is identical to creating a new audio note.
+    setViewMode(n.type !== "audio");
     setModalMenuOpen(false);
     setOpen(true);
 
@@ -4018,12 +3956,16 @@ export default function App() {
   // concern — the underlying mBody/mTitle state is equally dirty either way.
   useEffect(() => {
     if (!open || !activeId) return;
-    if (mType !== "text" && mType !== "checklist") return;
+    if (mType !== "text" && mType !== "checklist" && mType !== "audio") return;
     const initial = initialModalStateRef.current;
     if (!initial) return;
 
     const titleChanged = initial.title !== mTitle.trim();
-    const bodyAppliesToType = mType === "text";
+    // Audio notes piggyback on the text autosave path: their `content` field
+    // is the serialised {clips, text} JSON stored in mBody. Treat it like
+    // text-note content so PATCH carries the JSON when clips are added or
+    // removed, materialising the draft on first recording.
+    const bodyAppliesToType = mType === "text" || mType === "audio";
     const contentChanged = bodyAppliesToType && initial.content !== mBody;
     if (!titleChanged && !contentChanged) return;
 
@@ -4279,7 +4221,9 @@ export default function App() {
         ? !contentToPlain(mBody).trim()
         : mType === "checklist"
           ? !Array.isArray(mItems) || mItems.length === 0
-          : !mBody?.trim() && drawPaths.length === 0;
+          : mType === "audio"
+            ? isAudioContentEmpty(mBody)
+            : !mBody?.trim() && drawPaths.length === 0;
       const titleEmpty = !mTitle?.trim();
       const noImages = !Array.isArray(mImages) || mImages.length === 0;
       if (titleEmpty && bodyEmpty && noImages) {
@@ -4384,7 +4328,10 @@ export default function App() {
     // Runs for both view and edit mode: a user may edit, toggle to view
     // to preview before the 1s debounce fires, then close — the change is
     // still dirty in mBody/mTitle and must be flushed.
-    if (activeId && mType === "text") {
+    // Audio shares this path: its mBody is the {clips, text} JSON, so a
+    // freshly-recorded clip whose autosave hasn't fired yet still gets
+    // flushed here on close.
+    if (activeId && (mType === "text" || mType === "audio")) {
       const baseline = committedBaselineRef.current;
       if (baseline) {
         const patch = {};
@@ -4394,7 +4341,7 @@ export default function App() {
         if (JSON.stringify(baseline.tags) !== JSON.stringify(mTagList)) patch.tags = mTagList;
         if (JSON.stringify(baseline.images) !== JSON.stringify(mImages)) patch.images = mImages;
         if (Object.keys(patch).length > 0) {
-          autoSaveTextNote(activeId, patch);
+          autoSaveTextNote(activeId, patch, undefined, mType);
         }
       }
     }
@@ -4428,9 +4375,11 @@ export default function App() {
     const noteId = String(activeId);
     const nowIso = new Date().toISOString();
 
-    if (mType === "text") {
-      // Text notes: use targeted patch with only changed fields.
+    if (mType === "text" || mType === "audio") {
+      // Text + audio notes: use targeted patch with only changed fields.
       // Use committedBaselineRef so a failed autosave is retried here.
+      // Audio's mBody is the serialised {clips, text} JSON; same diff logic
+      // applies — the JSON string changes when clips are added/removed.
       const patch = {};
       const baseline = committedBaselineRef.current;
       if (baseline) {
@@ -4445,7 +4394,7 @@ export default function App() {
       }
 
       if (Object.keys(patch).length > 0) {
-        autoSaveTextNote(activeId, patch);
+        autoSaveTextNote(activeId, patch, undefined, mType);
       }
     } else {
       // Checklist / Drawing: keep full update (they manage their own local-first flows)
@@ -5862,13 +5811,6 @@ export default function App() {
       />
 
       <ToastContainer toasts={toasts} />
-
-      <AudioRecorderModal
-        open={audioRecorderOpen}
-        dark={dark}
-        onClose={() => setAudioRecorderOpen(false)}
-        onSave={handleSaveAudioNote}
-      />
 
       {/* Forced password change (first login with temp password) */}
       {mustChangePassword && (

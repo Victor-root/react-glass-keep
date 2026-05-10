@@ -391,11 +391,15 @@ function isNewerOrEqual(incomingMs, storedTs) {
   return incomingMs >= storedParsed.ms;
 }
 
-// Audio note validation. The audio payload is stored as JSON inside `content`
-// (same shape as drawing notes): { audioDataUrl, mimeType, duration, size, … }.
-// We cap the encoded data URL at 16 MB to keep below the 20 MB body limit
-// and reject MIME types that aren't audio. Returns null if valid, otherwise
-// an error message string for a 400 response.
+// Audio note validation. The audio payload is stored as JSON inside `content`.
+// Two on-disk shapes are accepted:
+//   v2 (current): { version: 2, clips: [{ audioDataUrl, mimeType, … }, …], text }
+//   v1 (legacy):  { audioDataUrl, mimeType, duration, size, … }
+//
+// Cap the whole serialised content at 16 MB to keep below the 20 MB body
+// limit. Each clip's data URL must use an allowed audio MIME. An empty
+// clips array is accepted — a freshly-created draft can have a title but
+// no recordings yet (the user will record into it).
 const AUDIO_MAX_DATAURL_BYTES = 16 * 1024 * 1024;
 const ALLOWED_AUDIO_MIME_PREFIXES = [
   "audio/webm",
@@ -406,6 +410,12 @@ const ALLOWED_AUDIO_MIME_PREFIXES = [
   "audio/x-wav",
   "audio/aac",
 ];
+function isAllowedAudioDataUrl(url) {
+  if (typeof url !== "string" || !url.startsWith("data:")) return false;
+  const mimeMatch = url.match(/^data:([^;,]+)[;,]/);
+  const mime = (mimeMatch ? mimeMatch[1] : "").toLowerCase();
+  return ALLOWED_AUDIO_MIME_PREFIXES.some((p) => mime.startsWith(p));
+}
 function validateAudioContent(raw) {
   if (typeof raw !== "string" || !raw) return "Audio note has no content";
   if (raw.length > AUDIO_MAX_DATAURL_BYTES) return "Audio recording is too large";
@@ -418,16 +428,20 @@ function validateAudioContent(raw) {
   if (!parsed || typeof parsed !== "object") {
     return "Audio note content is not an object";
   }
-  const url = parsed.audioDataUrl;
-  if (typeof url !== "string" || !url.startsWith("data:")) {
-    return "Audio note is missing an audio data URL";
+  // v2: clips array. Empty is valid (title-only draft).
+  if (Array.isArray(parsed.clips)) {
+    for (const c of parsed.clips) {
+      if (!c || typeof c !== "object") return "Audio clip is not an object";
+      if (!isAllowedAudioDataUrl(c.audioDataUrl)) return "Unsupported audio MIME type";
+    }
+    return null;
   }
-  const mimeMatch = url.match(/^data:([^;,]+)[;,]/);
-  const mime = (mimeMatch ? mimeMatch[1] : "").toLowerCase();
-  if (!ALLOWED_AUDIO_MIME_PREFIXES.some((p) => mime.startsWith(p))) {
-    return "Unsupported audio MIME type";
+  // v1: single audioDataUrl
+  if ("audioDataUrl" in parsed) {
+    if (!isAllowedAudioDataUrl(parsed.audioDataUrl)) return "Unsupported audio MIME type";
+    return null;
   }
-  return null;
+  return "Audio note is missing recordings";
 }
 
 // Serialize a DB row into the canonical JSON note object returned by all endpoints.
