@@ -402,9 +402,13 @@ function NavButton({ direction, onClick, disabled, ariaLabel }) {
 }
 
 function PlayGlyph({ large = false }) {
-  // Tiny optical alignment: the play triangle reads as visually
-  // off-centre inside a circular button without a small left nudge.
-  return <PlayFilledIcon className={large ? "w-7 h-7 ml-1" : "w-4 h-4 ml-0.5"} />;
+  // Optical centring inside the circular play button. We avoid `ml-*`
+  // (which alters layout) and use a purely visual translate instead.
+  return (
+    <PlayFilledIcon
+      className={large ? "w-7 h-7 -translate-x-0.5" : "w-4 h-4 -translate-x-px"}
+    />
+  );
 }
 
 function PauseGlyph({ large = false }) {

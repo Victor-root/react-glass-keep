@@ -124,7 +124,7 @@ function ClipRow({ clip, index, isCurrent, isPlaying, onPlay, onRename, onDelete
       }}
     >
       <span
-        className={`shrink-0 w-7 h-7 rounded-full text-xs font-semibold flex items-center justify-center ${
+        className={`shrink-0 w-7 h-7 rounded-full text-xs font-semibold inline-flex items-center justify-center leading-none tabular-nums ${
           isCurrent ? "text-white shadow" : "bg-black/10 dark:bg-white/15 text-gray-700 dark:text-gray-200"
         }`}
         style={isCurrent ? { backgroundColor: "var(--audio-accent, #7c3aed)" } : undefined}
@@ -133,7 +133,7 @@ function ClipRow({ clip, index, isCurrent, isPlaying, onPlay, onRename, onDelete
         {isCurrent && isPlaying ? (
           <PauseFilledIcon className="w-3.5 h-3.5" />
         ) : isCurrent ? (
-          <PlayFilledIcon className="w-3.5 h-3.5 ml-0.5" />
+          <PlayFilledIcon className="w-3.5 h-3.5 -translate-x-px" />
         ) : (
           index + 1
         )}
