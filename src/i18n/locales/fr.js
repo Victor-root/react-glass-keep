@@ -942,5 +942,6 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   audioRowPlay: "Lire cet enregistrement",
   audioRowPause: "Pause",
   audioRowDelete: "Supprimer cet enregistrement",
+  audioRowDeleteConfirm: "Cliquez à nouveau pour confirmer",
   audioRowRename: "Renommer cet enregistrement",
 };

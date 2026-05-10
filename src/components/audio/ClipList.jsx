@@ -51,6 +51,11 @@ export default function ClipList({
 function ClipRow({ clip, index, isCurrent, isPlaying, onPlay, onRename, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(clip.name || "");
+  // Mirror the section-header confirm-on-second-click delete: the trash
+  // button flips to a checkmark on first click, deletes on second click,
+  // and auto-resets after 3 seconds of inaction.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const confirmTimerRef = useRef(null);
   const inputRef = useRef(null);
 
   // Sync local draft when the parent changes the clip name from elsewhere
@@ -59,6 +64,26 @@ function ClipRow({ clip, index, isCurrent, isPlaying, onPlay, onRename, onDelete
   useEffect(() => {
     if (!editing) setDraft(clip.name || "");
   }, [clip.name, editing]);
+
+  // Auto-cancel the pending delete confirm after 3s — same window as the
+  // checklist section header, so the muscle memory is consistent.
+  useEffect(() => {
+    if (!confirmingDelete) return;
+    confirmTimerRef.current = setTimeout(() => setConfirmingDelete(false), 3000);
+    return () => {
+      if (confirmTimerRef.current) {
+        clearTimeout(confirmTimerRef.current);
+        confirmTimerRef.current = null;
+      }
+    };
+  }, [confirmingDelete]);
+
+  const handleDeleteClick = (e) => {
+    e.stopPropagation();
+    if (!confirmingDelete) { setConfirmingDelete(true); return; }
+    setConfirmingDelete(false);
+    onDelete();
+  };
 
   const startEdit = (e) => {
     e?.stopPropagation();
@@ -154,12 +179,22 @@ function ClipRow({ clip, index, isCurrent, isPlaying, onPlay, onRename, onDelete
 
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        aria-label={t("audioRowDelete")}
-        data-tooltip={t("audioRowDelete")}
-        className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full text-red-600 dark:text-red-300 opacity-60 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/40 active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-red-400/50 focus:opacity-100"
+        onClick={handleDeleteClick}
+        aria-label={confirmingDelete ? t("audioRowDeleteConfirm") : t("audioRowDelete")}
+        data-tooltip={confirmingDelete ? t("audioRowDeleteConfirm") : t("audioRowDelete")}
+        className={`shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full transition active:scale-95 focus:outline-none focus:ring-2 focus:opacity-100 ${
+          confirmingDelete
+            ? "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-200 opacity-100 ring-1 ring-red-400/60 focus:ring-red-400/50"
+            : "text-red-600 dark:text-red-300 opacity-60 group-hover:opacity-100 hover:bg-red-100 dark:hover:bg-red-900/40 focus:ring-red-400/50"
+        }`}
       >
-        <Trash />
+        {confirmingDelete ? (
+          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+        ) : (
+          <Trash />
+        )}
       </button>
     </li>
   );

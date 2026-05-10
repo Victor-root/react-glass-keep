@@ -941,5 +941,6 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   audioRowPlay: "Play this recording",
   audioRowPause: "Pause",
   audioRowDelete: "Delete this recording",
+  audioRowDeleteConfirm: "Click again to confirm",
   audioRowRename: "Rename this recording",
 };
