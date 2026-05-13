@@ -93,7 +93,7 @@ This fork also keeps the main capabilities that already made the original projec
 
 ---
 
-## 📱 Android app
+## 📱 Android app + 📺 Android TV 
 
 A native Android companion app is available for GlassKeep, making self-hosted mobile usage more convenient.
 
