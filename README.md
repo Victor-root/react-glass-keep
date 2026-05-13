@@ -106,7 +106,7 @@ The **same APK also runs on Android TV** — the app detects leanback hardware (
 
 The launcher icon, the Android TV banner, the PWA install icon, and the favicon have all been redrawn from a single master so the app looks coherent across every surface.
 
-[Download latest Android APK](https://github.com/Victor-root/glasskeep-enhanced/releases/download/v2.2.0/GlassKeep-v1.1.0.apk)
+[Download latest Android APK](https://github.com/Victor-root/glasskeep-enhanced/releases/download/v2.3.0/GlassKeep-v1.2.0.apk)
 
 Current APK version: `1.2.0`
 
