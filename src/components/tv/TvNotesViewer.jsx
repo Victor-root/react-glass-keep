@@ -197,24 +197,11 @@ export default function TvNotesViewer({
           remote does. Hidden once the user has opened at least one note
           (they get the idea). */}
       {!openNote && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 18,
-            right: 24,
-            display: "flex",
-            gap: 16,
-            opacity: 0.55,
-            fontSize: 14,
-            color: "#9ca3af",
-            pointerEvents: "none",
-            zIndex: 60,
-          }}
-        >
+        <div className="tv-remote-hint" aria-hidden="true">
           <span>← → ↑ ↓ navigate</span>
           <span>OK open</span>
           <span>Back exit</span>
-          {/* Hint sign-out lives in the sidebar for now; surfaced here only if no other UI does. */}
+          {/* Sign-out lives in the sidebar — keep this row purely informational. */}
           {onSignOut && null}
         </div>
       )}

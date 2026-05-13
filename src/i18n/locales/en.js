@@ -26,6 +26,8 @@ export const en = {
   tvLoginHint: "Sign in once on your TV — your notes will appear, ready to read.",
   tvEmptyHint: "Once you create notes from your phone or the web app they'll show up here, ready to read on the big screen.",
   tvExitButton: "Use phone layout",
+  tvManualLogin: "Sign in with another account",
+  tvIdentifier: "Email or username",
   sessionExpired: "Session expired. Please log in again.",
   requestTimeout: "Request timeout. Please check your connection.",
   networkError: "Network error.",

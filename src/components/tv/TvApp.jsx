@@ -50,6 +50,25 @@ export default function TvApp() {
     typeof navigator === "undefined" ? true : navigator.onLine
   );
 
+  // Public login profiles (Jellyfin-style avatar list). Lets users sign
+  // in by picking their face + typing the password — no email required,
+  // which matters because the original phone account may not have one.
+  const [loginProfiles, setLoginProfiles] = useState([]);
+  useEffect(() => {
+    if (token) return; // already signed in, profiles list is irrelevant
+    let cancelled = false;
+    (async () => {
+      try {
+        const profiles = await api("/login/profiles");
+        if (cancelled) return;
+        setLoginProfiles(Array.isArray(profiles) ? profiles : []);
+      } catch {
+        if (!cancelled) setLoginProfiles([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [token]);
+
   // Mark <html data-tv="1"> + inject the TV stylesheet before the first
   // paint. useLayoutEffect makes sure the regular phone UI never flashes
   // through if TvApp mounts under a non-TV route by accident.
@@ -125,8 +144,7 @@ export default function TvApp() {
     return () => window.removeEventListener("auth-expired", onAuthExpired);
   }, []);
 
-  const signIn = useCallback(async (email, password) => {
-    const res = await api("/login", { method: "POST", body: { email, password } });
+  const completeLogin = useCallback((res) => {
     if (!res?.token) throw new Error("No token returned");
     const sessionWithId = {
       ...res,
@@ -136,6 +154,31 @@ export default function TvApp() {
     setSession(sessionWithId);
     setAuth(sessionWithId);
   }, []);
+
+  // Manual login. Phone accounts may have either an email or only a
+  // username — let the user type whichever they remember and pick the
+  // right field automatically. Presence of '@' is a good-enough proxy
+  // (the server already accepts both shapes via /login).
+  const signInManual = useCallback(async (identifier, password) => {
+    const id = String(identifier || "").trim();
+    if (!id) throw new Error("Identifier required");
+    const body = id.includes("@")
+      ? { email: id, password }
+      : { user_id: id, password };
+    const res = await api("/login", { method: "POST", body });
+    completeLogin(res);
+  }, [completeLogin]);
+
+  // Profile-based login (matches the phone's Jellyfin-style avatar
+  // picker). user_id is the public profile id returned by
+  // /login/profiles, no email needed.
+  const signInById = useCallback(async (userId, password) => {
+    const res = await api("/login", {
+      method: "POST",
+      body: { user_id: userId, password },
+    });
+    completeLogin(res);
+  }, [completeLogin]);
 
   const signOut = useCallback(() => {
     setSession(null);
@@ -153,10 +196,12 @@ export default function TvApp() {
     window.dispatchEvent(new Event("tv-mode-changed"));
   }, []);
 
-  if (!currentUser?.email) {
+  if (!currentUser) {
     return (
       <TvLogin
-        onLogin={signIn}
+        profiles={loginProfiles}
+        onLoginManual={signInManual}
+        onLoginById={signInById}
         allowExit={!window.__isAndroidTV}
         onExitTvMode={exitTvMode}
       />

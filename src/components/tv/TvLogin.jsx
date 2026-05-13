@@ -1,46 +1,83 @@
 import React, { useEffect, useRef, useState } from "react";
 import { t } from "../../i18n";
 import useSpatialFocus from "./useSpatialFocus.js";
+import UserAvatar from "../common/UserAvatar.jsx";
 
-// Minimal couch-friendly login. Phones get the full LoginView with
-// passkeys, secret keys, "create account" and a slogan animation; on
-// a TV we only need the two text inputs and a submit button — anything
-// fancier is just more focus traps for the remote to fight.
-//
-// The component is intentionally dumb: it captures email/password and
-// hands them to the parent's `onLogin(email, password)` exactly like
-// the phone flow does. The parent (TvApp.jsx) keeps the auth wiring.
+// Couch-friendly login. Mirrors the phone's three-step flow but keeps
+// it focused on what works with a remote:
+//   1. "profiles" — Jellyfin-style avatar grid (no email needed). This
+//      is the default whenever /login/profiles returned something.
+//   2. "password" — once a profile is picked, prompt only for the
+//      password and submit via onLoginById(profile.id, password).
+//   3. "manual"   — fallback for accounts that don't appear in the
+//      public profile list. Single identifier field (auto-detects
+//      email vs username by '@') + password, submits via onLoginManual.
 
-export default function TvLogin({ onLogin, allowExit, onExitTvMode }) {
-  const [email, setEmail] = useState("");
+export default function TvLogin({
+  profiles,
+  onLoginManual,
+  onLoginById,
+  allowExit,
+  onExitTvMode,
+}) {
+  const hasProfiles = Array.isArray(profiles) && profiles.length > 0;
+  const [mode, setMode] = useState(hasProfiles ? "profiles" : "manual");
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
-  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
+  const firstProfileRef = useRef(null);
+  const identifierRef = useRef(null);
+
+  // Update default mode when profiles arrive after first render.
+  useEffect(() => {
+    if (hasProfiles && mode === "manual" && !identifier && !password) {
+      setMode("profiles");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasProfiles]);
 
   useSpatialFocus({
     enabled: true,
     onBack: () => {
+      if (mode === "password") {
+        setMode("profiles");
+        setPassword("");
+        setError(null);
+        return;
+      }
+      if (mode === "manual" && hasProfiles) {
+        setMode("profiles");
+        setError(null);
+        return;
+      }
       if (allowExit && typeof onExitTvMode === "function") onExitTvMode();
     },
   });
 
+  // Park initial focus on a sensible element for each mode.
   useEffect(() => {
     const id = requestAnimationFrame(() => {
-      if (emailRef.current) {
-        window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target: emailRef.current } }));
+      let target = null;
+      if (mode === "profiles") target = firstProfileRef.current;
+      else if (mode === "password") target = passwordRef.current;
+      else if (mode === "manual") target = identifierRef.current;
+      if (target instanceof HTMLElement) {
+        window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target } }));
       }
     });
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [mode, selectedProfile]);
 
-  const submit = async (e) => {
+  const submitProfile = async (e) => {
     e?.preventDefault?.();
-    if (busy) return;
+    if (busy || !selectedProfile) return;
     setError(null);
     setBusy(true);
     try {
-      await onLogin(email.trim(), password);
+      await onLoginById(selectedProfile.id, password);
     } catch (err) {
       setError(err?.message || t("signInError") || "Sign-in failed");
     } finally {
@@ -48,31 +85,213 @@ export default function TvLogin({ onLogin, allowExit, onExitTvMode }) {
     }
   };
 
+  const submitManual = async (e) => {
+    e?.preventDefault?.();
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await onLoginManual(identifier, password);
+    } catch (err) {
+      setError(err?.message || t("signInError") || "Sign-in failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (mode === "profiles") {
+    return (
+      <div className="tv-screen">
+        <div className="tv-login">
+          <div className="tv-login__card" style={{ maxWidth: 920 }}>
+            <div className="tv-login__title">GlassKeep TV</div>
+            <div style={{ color: "#9ca3af", fontSize: 18 }}>
+              {t("selectProfile") || "Pick your profile"}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+                gap: 18,
+                marginTop: 10,
+              }}
+            >
+              {profiles.map((profile, idx) => (
+                <button
+                  key={profile.id}
+                  ref={idx === 0 ? firstProfileRef : null}
+                  type="button"
+                  className="tv-focusable"
+                  onClick={() => {
+                    setSelectedProfile(profile);
+                    setPassword("");
+                    setError(null);
+                    setMode("password");
+                  }}
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 18,
+                    padding: "22px 14px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 12,
+                    color: "#e5e7eb",
+                  }}
+                >
+                  <UserAvatar
+                    name={profile.name}
+                    avatarUrl={profile.avatar_url}
+                    size="w-20 h-20"
+                    textSize="text-3xl"
+                    dark
+                  />
+                  <span
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      maxWidth: "100%",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {profile.name || profile.email || profile.id}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              className="tv-btn tv-focusable tv-focusable--flat"
+              onClick={() => {
+                setMode("manual");
+                setError(null);
+              }}
+              style={{ alignSelf: "center", marginTop: 8 }}
+            >
+              {t("tvManualLogin") || "Sign in with another account"}
+            </button>
+
+            {allowExit && (
+              <button
+                type="button"
+                className="tv-btn tv-focusable tv-focusable--flat"
+                onClick={onExitTvMode}
+                style={{ alignSelf: "center" }}
+              >
+                {t("tvExitButton") || "Use phone layout"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "password") {
+    return (
+      <div className="tv-screen">
+        <div className="tv-login">
+          <form className="tv-login__card" onSubmit={submitProfile}>
+            <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+              <UserAvatar
+                name={selectedProfile?.name}
+                avatarUrl={selectedProfile?.avatar_url}
+                size="w-20 h-20"
+                textSize="text-3xl"
+                dark
+              />
+              <div>
+                <div className="tv-login__title" style={{ fontSize: 30 }}>
+                  {selectedProfile?.name || selectedProfile?.id}
+                </div>
+                <div style={{ color: "#9ca3af", fontSize: 16 }}>
+                  {t("password") || "Password"}
+                </div>
+              </div>
+            </div>
+
+            <div className="tv-login__row">
+              <label htmlFor="tv-password" className="tv-login__label">
+                {t("password") || "Password"}
+              </label>
+              <input
+                id="tv-password"
+                ref={passwordRef}
+                type="password"
+                autoComplete="current-password"
+                className="tv-login__input tv-focusable tv-focusable--flat"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoFocus
+                required
+              />
+            </div>
+
+            {error && <div className="tv-login__error">{error}</div>}
+
+            <button
+              type="submit"
+              className="tv-btn tv-btn--primary tv-login__submit tv-focusable tv-focusable--flat"
+              disabled={busy}
+            >
+              {busy ? (t("signingIn") || "Signing in…") : (t("signIn") || "Sign in")}
+            </button>
+
+            <button
+              type="button"
+              className="tv-btn tv-focusable tv-focusable--flat"
+              onClick={() => {
+                setMode("profiles");
+                setPassword("");
+                setError(null);
+              }}
+              style={{ alignSelf: "center" }}
+            >
+              ← {t("selectProfile") || "Pick another profile"}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Manual mode (email OR username).
   return (
     <div className="tv-screen">
       <div className="tv-login">
-        <form className="tv-login__card" onSubmit={submit}>
+        <form className="tv-login__card" onSubmit={submitManual}>
           <div className="tv-login__title">GlassKeep TV</div>
           <div style={{ color: "#9ca3af", fontSize: 18 }}>
             {t("tvLoginHint") || "Sign in once on your TV — your notes will appear, ready to read."}
           </div>
 
           <div className="tv-login__row">
-            <label htmlFor="tv-email" className="tv-login__label">{t("email") || "Email"}</label>
+            <label htmlFor="tv-identifier" className="tv-login__label">
+              {t("tvIdentifier") || "Email or username"}
+            </label>
             <input
-              id="tv-email"
-              ref={emailRef}
-              type="email"
-              autoComplete="email"
+              id="tv-identifier"
+              ref={identifierRef}
+              type="text"
+              autoComplete="username"
+              spellCheck="false"
+              autoCapitalize="off"
               className="tv-login__input tv-focusable tv-focusable--flat"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               required
             />
           </div>
 
           <div className="tv-login__row">
-            <label htmlFor="tv-password" className="tv-login__label">{t("password") || "Password"}</label>
+            <label htmlFor="tv-password" className="tv-login__label">
+              {t("password") || "Password"}
+            </label>
             <input
               id="tv-password"
               type="password"
@@ -93,6 +312,20 @@ export default function TvLogin({ onLogin, allowExit, onExitTvMode }) {
           >
             {busy ? (t("signingIn") || "Signing in…") : (t("signIn") || "Sign in")}
           </button>
+
+          {hasProfiles && (
+            <button
+              type="button"
+              className="tv-btn tv-focusable tv-focusable--flat"
+              onClick={() => {
+                setMode("profiles");
+                setError(null);
+              }}
+              style={{ alignSelf: "center" }}
+            >
+              ← {t("selectProfile") || "Pick a profile"}
+            </button>
+          )}
 
           {allowExit && (
             <button

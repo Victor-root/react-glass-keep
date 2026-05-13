@@ -26,6 +26,8 @@ export const fr = {
   tvLoginHint: "Connectez-vous une fois sur votre TV — vos notes apparaîtront, prêtes à être lues.",
   tvEmptyHint: "Quand vous créerez des notes depuis votre téléphone ou l'app web, elles s'afficheront ici, prêtes à être consultées sur grand écran.",
   tvExitButton: "Mode téléphone",
+  tvManualLogin: "Se connecter avec un autre compte",
+  tvIdentifier: "Email ou identifiant",
   sessionExpired: "Session expirée. Veuillez vous reconnecter.",
   requestTimeout: "Délai dépassé. Vérifiez votre connexion.",
   networkError: "Erreur réseau.",

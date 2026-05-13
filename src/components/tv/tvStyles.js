@@ -20,6 +20,18 @@ export const TV_STYLE_ID = "tv-mode-styles";
 
 export const TV_CSS = `
 /* ------- Root layer ------- */
+:root {
+  /* Android TV "title-safe" area is officially the inner 90% of the
+     screen — older TVs and some Sony Bravias overscan up to 5% per
+     edge. Channel every horizontal/vertical inset through these
+     variables so nothing important (buttons, status pill, focus ring,
+     scrollbars) ever sits behind the bezel. Bumped for the focus
+     scale (1.025) so the largest version of an edge card still fits
+     inside the visible area. */
+  --tv-safe-x: 5vw;
+  --tv-safe-y: 5vh;
+  --tv-focus-pad: 14px;
+}
 html[data-tv="1"], html[data-tv="1"] body {
   background: #0b0d12 !important;
   color: #e5e7eb;
@@ -30,6 +42,12 @@ html[data-tv="1"], html[data-tv="1"] body {
   overflow: hidden !important;
   height: 100vh;
   width: 100vw;
+  margin: 0;
+  /* Box-sizing inheritance — keep paddings inside the safe area. */
+  box-sizing: border-box;
+}
+html[data-tv="1"] *, html[data-tv="1"] *::before, html[data-tv="1"] *::after {
+  box-sizing: border-box;
 }
 html[data-tv="1"] body {
   background: radial-gradient(circle at 20% 0%, #1a1530 0%, #0b0d12 55%, #06070b 100%) !important;
@@ -51,10 +69,15 @@ html[data-tv="1"] .tv-focusable {
   position: relative;
   transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
   cursor: default;
+  /* Origin centered on the element so the scale-up grows evenly and
+     doesn't push the right/bottom edge past the safe area. */
+  transform-origin: center center;
 }
 html[data-tv="1"] .tv-focusable:focus,
 html[data-tv="1"] .tv-focusable[data-tv-focused="true"] {
-  transform: scale(1.04);
+  /* Scale kept small (1.025) so even an edge card stays inside the
+     5% safe area. The glow ring does the heavy lifting visually. */
+  transform: scale(1.025);
   box-shadow:
     0 0 0 4px rgba(167, 139, 250, 0.95),
     0 0 24px 6px rgba(124, 58, 237, 0.55),
@@ -68,22 +91,26 @@ html[data-tv="1"] .tv-focusable.tv-focusable--flat[data-tv-focused="true"] {
 }
 
 /* ------- TV-only utility classes ------- */
-html[data-tv="1"] .tv-overscan { padding: 4vh 4vw; }
+html[data-tv="1"] .tv-overscan { padding: var(--tv-safe-y) var(--tv-safe-x); }
 html[data-tv="1"] .tv-screen {
   height: 100vh;
   width: 100vw;
+  max-width: 100vw;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 html[data-tv="1"] .tv-header {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 28px 4vw 20px 4vw;
+  padding: var(--tv-safe-y) var(--tv-safe-x) 20px;
   background: linear-gradient(180deg, rgba(11, 13, 18, 0.92) 0%, rgba(11, 13, 18, 0.0) 100%);
   position: relative;
   z-index: 20;
+  flex-wrap: wrap;
 }
 html[data-tv="1"] .tv-header__title {
   font-size: 32px;
@@ -112,18 +139,26 @@ html[data-tv="1"] .tv-header__count {
 /* ------- Main split layout ------- */
 html[data-tv="1"] .tv-layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 300px 1fr;
   gap: 16px;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0 4vw 4vh 4vw;
+  /* Horizontal safe area handled at the layout level; vertical safe
+     area at the bottom only — the header already accounts for the top. */
+  padding: 0 var(--tv-safe-x) var(--tv-safe-y);
+}
+@media (max-width: 1280px) {
+  html[data-tv="1"] .tv-layout { grid-template-columns: 240px 1fr; }
 }
 html[data-tv="1"] .tv-sidebar {
   display: flex;
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
-  padding: 8px 4px 24px 0;
+  /* Inner padding so the focus ring on the first/last item doesn't
+     get clipped by the scroll container. */
+  padding: var(--tv-focus-pad) var(--tv-focus-pad) 24px 0;
+  min-width: 0;
 }
 html[data-tv="1"] .tv-sidebar__group-label {
   font-size: 13px;
@@ -145,6 +180,7 @@ html[data-tv="1"] .tv-sidebar__item {
   color: #d1d5db;
   text-align: left;
   width: 100%;
+  scroll-margin: 24px 0;
 }
 html[data-tv="1"] .tv-sidebar__item[data-active="true"] {
   background: linear-gradient(90deg, rgba(99, 102, 241, 0.25), rgba(124, 58, 237, 0.18));
@@ -165,12 +201,14 @@ html[data-tv="1"] .tv-sidebar__item-count {
 /* ------- Notes grid ------- */
 html[data-tv="1"] .tv-notes-scroll {
   overflow-y: auto;
-  padding: 12px 12px 80px 12px;
+  overflow-x: hidden;
+  /* Outer padding gives the focus glow room on every side without
+     pushing content outside the safe area. */
+  padding: var(--tv-focus-pad) var(--tv-focus-pad) 90px var(--tv-focus-pad);
   scroll-behavior: smooth;
-  /* Push the focused card up from the bottom edge so it doesn't sit
-     under the gradient fade. */
   scroll-padding-top: 40px;
-  scroll-padding-bottom: 80px;
+  scroll-padding-bottom: 100px;
+  min-width: 0;
 }
 html[data-tv="1"] .tv-section-title {
   font-size: 18px;
@@ -184,13 +222,15 @@ html[data-tv="1"] .tv-notes-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 22px;
-  padding: 4px 12px;
+  /* Inner padding so neighbouring cards aren't clipped by the focus
+     ring expanding inside an overflow:hidden container. */
+  padding: 6px 6px 14px;
 }
-@media (max-width: 1700px) {
-  html[data-tv="1"] .tv-notes-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
   html[data-tv="1"] .tv-notes-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  html[data-tv="1"] .tv-notes-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ------- Note card (closed) ------- */
@@ -198,6 +238,7 @@ html[data-tv="1"] .tv-card {
   border-radius: 22px;
   padding: 22px 22px 18px;
   min-height: 220px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -206,6 +247,13 @@ html[data-tv="1"] .tv-card {
   position: relative;
   overflow: hidden;
   text-align: left;
+  /* scrollIntoView lands the focused card away from the absolute
+     viewport edges, so the glow ring and the +2.5% scale never sit
+     under the gradient fade or the bezel. */
+  scroll-margin-top: 80px;
+  scroll-margin-bottom: 100px;
+  scroll-margin-left: 24px;
+  scroll-margin-right: 24px;
 }
 html[data-tv="1"] .tv-card__title {
   font-size: 22px;
@@ -298,7 +346,10 @@ html[data-tv="1"] .tv-detail {
   background: rgba(6, 7, 11, 0.86);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  padding: 4vh 6vw;
+  /* Detail honors the same safe-area budget as everything else.
+     Slightly larger horizontal inset (1.2×) for a more cinematic frame
+     without bleeding past the title-safe area. */
+  padding: var(--tv-safe-y) calc(var(--tv-safe-x) * 1.2);
   animation: tv-detail-in 220ms ease-out;
 }
 @keyframes tv-detail-in {
@@ -314,12 +365,14 @@ html[data-tv="1"] .tv-detail__card {
   overflow: hidden;
   box-shadow: 0 32px 96px -16px rgba(0, 0, 0, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 0;
 }
 html[data-tv="1"] .tv-detail__header {
   display: flex;
   align-items: center;
   gap: 16px;
   padding: 28px 42px 12px;
+  flex-wrap: wrap;
 }
 html[data-tv="1"] .tv-detail__title {
   font-size: 36px;
@@ -528,4 +581,29 @@ html[data-tv="1"] .tv-status {
 html[data-tv="1"] .tv-status__dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
 html[data-tv="1"] .tv-status__dot--offline { background: #f59e0b; }
 html[data-tv="1"] .tv-status__dot--error { background: #ef4444; }
+
+/* Remote-control hint at the bottom of the home screen. Pinned to the
+   safe-area corner, never overlapping cards (pointer-events: none),
+   and wraps if the screen is narrow so the right edge can't push it
+   off-screen. */
+html[data-tv="1"] .tv-remote-hint {
+  position: fixed;
+  bottom: var(--tv-safe-y);
+  right: var(--tv-safe-x);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 18px;
+  max-width: 60vw;
+  opacity: 0.55;
+  font-size: 14px;
+  color: #9ca3af;
+  pointer-events: none;
+  z-index: 60;
+}
+
+/* Cap the absolute width/height of any fixed-positioned TV layer so
+   nothing leaks out through transform/scale. */
+html[data-tv="1"] .tv-detail,
+html[data-tv="1"] .tv-screen { max-width: 100vw; max-height: 100vh; }
 `;
