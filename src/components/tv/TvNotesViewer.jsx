@@ -73,15 +73,17 @@ function savePref(key, value) {
   try { localStorage.setItem(key, value); } catch { /* ignore */ }
 }
 
-// Column count depends on available width (sidebar open vs closed
-// matters here — we feed sidebarVisible into the calc).
+// Column count from viewport width × sidebar state. Aimed at roughly
+// 240-280px per card on 1080p with the sidebar closed (7 cols), so
+// each card stays readable at couch distance without feeling cramped.
 function pickColumnCount(width, sidebarOpen) {
-  const usable = sidebarOpen ? width - 260 : width - 60;
-  if (usable < 700) return 2;
-  if (usable < 1100) return 3;
-  if (usable < 1500) return 4;
-  if (usable < 1900) return 5;
-  return 6;
+  const usable = sidebarOpen ? width - 260 : width - 50;
+  if (usable < 600) return 2;
+  if (usable < 850) return 3;
+  if (usable < 1100) return 4;
+  if (usable < 1400) return 5;
+  if (usable < 1700) return 6;
+  return 7;
 }
 
 function HeaderUserChip({ currentUser }) {
