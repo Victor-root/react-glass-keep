@@ -6,7 +6,7 @@ import TvNoteDetail from "./TvNoteDetail.jsx";
 import TvSidebar from "./TvSidebar.jsx";
 import useSpatialFocus from "./useSpatialFocus.js";
 import { getContentImages } from "../../utils/noteIcon.js";
-import { Menu, LayoutGrid, Rows3, Sun, Moon } from "lucide-react";
+import { Menu, LayoutGrid, Rows3, Sun, Moon, ChevronLeft, ChevronRight } from "lucide-react";
 
 // TV-mode "home" screen.
 //
@@ -88,6 +88,61 @@ function pickColumnCount(width) {
   return 7;
 }
 
+// Two-cards-at-a-time pager. The user explicitly asked for fixed
+// viewport (no half-cards peeking, no smooth scroll) — just two
+// cards, two arrows, click an arrow and the page flips by 2.
+function TvPager({ notes, onActivate }) {
+  const PAGE_SIZE = 2;
+  const [page, setPage] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(notes.length / PAGE_SIZE));
+  // Clamp the current page back to range when the source list shrinks
+  // (e.g. a filter activated). React state isn't ideal for this — a
+  // single useEffect keeps it cheap and avoids derived-state bugs.
+  useEffect(() => {
+    if (page >= totalPages) setPage(Math.max(0, totalPages - 1));
+  }, [page, totalPages]);
+
+  const start = page * PAGE_SIZE;
+  const slice = notes.slice(start, start + PAGE_SIZE);
+  const canPrev = page > 0;
+  const canNext = page < totalPages - 1;
+
+  return (
+    <div className="tv-pager">
+      <button
+        type="button"
+        className="tv-pager__arrow tv-focusable tv-focusable--flat"
+        aria-label="Previous page"
+        disabled={!canPrev}
+        onClick={() => canPrev && setPage((p) => Math.max(0, p - 1))}
+      >
+        <ChevronLeft size={32} />
+      </button>
+      <div className="tv-pager__page">
+        {slice.map((n) => (
+          <TvNoteCard key={n.id} note={n} variant="carousel" onActivate={onActivate} />
+        ))}
+        {/* Fill empty slot(s) on the last page so the grid keeps two columns. */}
+        {slice.length < PAGE_SIZE && Array.from({ length: PAGE_SIZE - slice.length }).map((_, i) => (
+          <div key={`pad-${i}`} aria-hidden="true" />
+        ))}
+      </div>
+      <button
+        type="button"
+        className="tv-pager__arrow tv-focusable tv-focusable--flat"
+        aria-label="Next page"
+        disabled={!canNext}
+        onClick={() => canNext && setPage((p) => Math.min(totalPages - 1, p + 1))}
+      >
+        <ChevronRight size={32} />
+      </button>
+      <div className="tv-pager__indicator" aria-hidden="true">
+        {page + 1} / {totalPages}
+      </div>
+    </div>
+  );
+}
+
 function HeaderUserChip({ currentUser }) {
   const initial = (currentUser?.name?.[0] || currentUser?.email?.[0] || "?").toUpperCase();
   const label = currentUser?.name || currentUser?.email || "";
@@ -114,13 +169,21 @@ export default function TvNotesViewer({
   const [filter, setFilter] = useState({ type: "all" });
   const [openNote, setOpenNote] = useState(null);
   const [sidebarVisible, setSidebarVisible] = useState(() => loadPref(STORAGE_SIDEBAR, "closed") === "open");
+  // Remember the *preference* (= the state set by the hamburger button)
+  // separately from the *current* state. Left-edge reveal toggles the
+  // current state but never updates the preference, so closing via
+  // right-edge only kicks in when the user prefers the sidebar hidden.
+  const sidebarPrefHiddenRef = useRef(loadPref(STORAGE_SIDEBAR, "closed") !== "open");
   const [viewMode, setViewMode] = useState(() => loadPref(STORAGE_VIEW, "grid") === "carousel" ? "carousel" : "grid");
   const [theme, setTheme] = useState(() => loadPref(STORAGE_THEME, "dark") === "light" ? "light" : "dark");
   const clock = useClock();
   const width = useViewportWidth();
   const detailHistoryRef = useRef(null);
 
-  useEffect(() => { savePref(STORAGE_SIDEBAR, sidebarVisible ? "open" : "closed"); }, [sidebarVisible]);
+  // NOTE: do NOT auto-persist sidebarVisible. The preference is only
+  // updated when the user explicitly toggles the hamburger (or the
+  // remote MENU key). Auto-revealing the rail by D-pad-left shouldn't
+  // change the stored default.
   useEffect(() => { savePref(STORAGE_VIEW, viewMode); }, [viewMode]);
 
   // Reflect the theme on <html> so all CSS rules under
@@ -198,9 +261,56 @@ export default function TvNotesViewer({
       if (openNote) { closeDetail(); return; }
       if (sidebarVisible) setSidebarVisible(false);
     },
+    onEdgeReached: (direction, anchor) => {
+      if (direction === "left") {
+        // Left from the leftmost card → pop the rail open.
+        if (!sidebarVisible) revealSidebarFromEdge();
+        return;
+      }
+      if (direction === "right") {
+        const inSidebar = anchor?.closest?.(".tv-sidebar");
+        if (inSidebar && sidebarVisible) hideSidebarFromEdge();
+      }
+    },
   });
 
-  const toggleSidebar = useCallback(() => setSidebarVisible((v) => !v), []);
+  // Hamburger / MENU-key toggle updates BOTH the current state and
+  // the stored preference (so the next launch lands on the user's
+  // last explicit choice).
+  const toggleSidebar = useCallback(() => {
+    setSidebarVisible((v) => {
+      const next = !v;
+      savePref(STORAGE_SIDEBAR, next ? "open" : "closed");
+      sidebarPrefHiddenRef.current = !next;
+      return next;
+    });
+  }, []);
+
+  // Left-edge: reveal the sidebar (without touching the preference)
+  // and drop focus on its first focusable so the user can browse it.
+  const revealSidebarFromEdge = useCallback(() => {
+    setSidebarVisible(true);
+    requestAnimationFrame(() => {
+      const first = document.querySelector(".tv-sidebar .tv-focusable");
+      if (first instanceof HTMLElement) {
+        window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target: first } }));
+      }
+    });
+  }, []);
+
+  // Right-edge: only auto-hide if the user prefers the rail hidden.
+  // Otherwise leave it open — they've asked for the rail to stay.
+  const hideSidebarFromEdge = useCallback(() => {
+    if (!sidebarPrefHiddenRef.current) return;
+    setSidebarVisible(false);
+    requestAnimationFrame(() => {
+      // Drop focus on the first card so the user lands somewhere useful.
+      const firstCard = document.querySelector("[data-note-id]");
+      if (firstCard instanceof HTMLElement) {
+        window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target: firstCard } }));
+      }
+    });
+  }, []);
   const toggleView = useCallback(() => setViewMode((v) => v === "grid" ? "carousel" : "grid"), []);
   const toggleTheme = useCallback(() => setTheme((t) => t === "dark" ? "light" : "dark"), []);
 
@@ -284,11 +394,7 @@ export default function TvNotesViewer({
               </div>
             </div>
           ) : viewMode === "carousel" ? (
-            <div className="tv-carousel">
-              {visible.map((n) => (
-                <TvNoteCard key={n.id} note={n} variant="carousel" onActivate={openDetail} />
-              ))}
-            </div>
+            <TvPager notes={visible} onActivate={openDetail} />
           ) : (
             <Masonry
               breakpointCols={colCount}

@@ -126,9 +126,11 @@ function focusFirst() {
   if (first) focusElement(first);
 }
 
-export default function useSpatialFocus({ enabled, onBack } = {}) {
+export default function useSpatialFocus({ enabled, onBack, onEdgeReached } = {}) {
   const onBackRef = useRef(onBack);
   onBackRef.current = onBack;
+  const onEdgeReachedRef = useRef(onEdgeReached);
+  onEdgeReachedRef.current = onEdgeReached;
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -138,7 +140,13 @@ export default function useSpatialFocus({ enabled, onBack } = {}) {
       }
     });
 
-    let keyLockUntil = 0; // simple throttle to ignore repeated keydowns under 30ms apart
+    // Throttle key auto-repeats. 30ms was the original target but the
+    // CSS focus transition takes 130ms and the Shield can't repaint
+    // that fast — the user reported the cursor "disappearing" while
+    // holding Down. 110ms lets the focus glow visibly land on every
+    // step (still ~9 moves/sec, well within usable range).
+    let keyLockUntil = 0;
+    const REPEAT_LOCK_MS = 110;
     const handler = (e) => {
       const active = document.activeElement;
       const isEditable = active && (
@@ -150,14 +158,23 @@ export default function useSpatialFocus({ enabled, onBack } = {}) {
 
       if (DPAD_KEYS.has(e.key)) {
         const now = performance.now();
-        if (now < keyLockUntil) { e.preventDefault(); return; }
-        keyLockUntil = now + 30;
+        // Apply the lock to auto-repeats only — a single tap is fast
+        // enough to always go through.
+        if (e.repeat && now < keyLockUntil) { e.preventDefault(); return; }
+        keyLockUntil = now + REPEAT_LOCK_MS;
         e.preventDefault();
         const dir = e.key.replace("Arrow", "").toLowerCase();
         const anchor = active && active.matches?.(FOCUSABLE_SELECTOR) ? active : lastFocusedRef;
         const next = pickNextFocus(anchor, dir);
-        if (next) focusElement(next);
-        else if (!active || !active.matches?.(FOCUSABLE_SELECTOR)) focusFirst();
+        if (next) {
+          focusElement(next);
+        } else if (typeof onEdgeReachedRef.current === "function") {
+          // No candidate in this direction — let the parent decide
+          // (open / close sidebar, etc).
+          onEdgeReachedRef.current(dir, anchor);
+        } else if (!active || !active.matches?.(FOCUSABLE_SELECTOR)) {
+          focusFirst();
+        }
         return;
       }
       if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
