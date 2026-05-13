@@ -11,8 +11,8 @@ android {
         applicationId = "com.glasskeep.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 27
-        versionName = "1.7.5"
+        versionCode = 5
+        versionName = "1.2.0"
     }
 
     buildTypes {
