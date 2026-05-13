@@ -6,7 +6,7 @@ import TvNoteDetail from "./TvNoteDetail.jsx";
 import TvSidebar from "./TvSidebar.jsx";
 import useSpatialFocus from "./useSpatialFocus.js";
 import { getContentImages } from "../../utils/noteIcon.js";
-import { Menu, LayoutGrid, Rows3, Sun, Moon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Menu, LayoutGrid, Rows3, Sun, Moon, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 
 // TV-mode "home" screen.
 //
@@ -135,20 +135,98 @@ function TvPager({ slice, hasPrev, hasNext, onActivate }) {
   );
 }
 
-function HeaderUserChip({ currentUser }) {
+// Clickable header chip + popover. Tapping it opens a small menu
+// (currently just "Sign out"); the menu closes on outside click, Back
+// key, or after the user picks an item.
+function HeaderUserChip({ currentUser, onSignOut }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
   const initial = (currentUser?.name?.[0] || currentUser?.email?.[0] || "?").toUpperCase();
   const label = currentUser?.name || currentUser?.email || "";
+
+  // Close on click outside.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDocClick = (e) => {
+      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("touchstart", onDocClick);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("touchstart", onDocClick);
+    };
+  }, [open]);
+
+  // Once open, drop focus onto the first menu item so D-pad works.
+  useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() => {
+      const first = wrapRef.current?.querySelector(".tv-header__user-menu-item");
+      if (first instanceof HTMLElement) {
+        window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target: first } }));
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
+  // Back / Esc closes the menu — capture phase + stopImmediatePropagation
+  // so useSpatialFocus.onBack (which would close the sidebar or detail
+  // viewer) doesn't fire instead.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape" || e.key === "Backspace" || e.key === "GoBack") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        setOpen(false);
+        // Move focus back onto the chip button so the user has a
+        // sensible D-pad anchor after closing.
+        const btn = wrapRef.current?.querySelector(".tv-header__user");
+        if (btn instanceof HTMLElement) {
+          window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target: btn } }));
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [open]);
+
   return (
-    <span className="tv-header__user" aria-label={label}>
-      <span className="tv-header__avatar">
-        {currentUser?.avatar_url
-          ? <img src={currentUser.avatar_url} alt="" />
-          : <span>{initial}</span>}
-      </span>
-      <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {label}
-      </span>
-    </span>
+    <div className="tv-header__user-menu-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className="tv-header__user tv-focusable tv-focusable--flat"
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="tv-header__avatar">
+          {currentUser?.avatar_url
+            ? <img src={currentUser.avatar_url} alt="" />
+            : <span>{initial}</span>}
+        </span>
+        <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {label}
+        </span>
+      </button>
+      {open && (
+        <div className="tv-header__user-menu" role="menu">
+          {typeof onSignOut === "function" && (
+            <button
+              type="button"
+              className="tv-header__user-menu-item tv-focusable tv-focusable--flat"
+              role="menuitem"
+              onClick={() => { setOpen(false); onSignOut(); }}
+            >
+              <span className="tv-header__user-menu-item-icon"><LogOut size={14} /></span>
+              <span>{t("logout") || "Sign out"}</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -427,7 +505,7 @@ export default function TvNotesViewer({
         )}
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
           <span className="tv-header__count">{filterLabel} · {visible.length}</span>
-          <HeaderUserChip currentUser={currentUser} />
+          <HeaderUserChip currentUser={currentUser} onSignOut={onSignOut} />
         </div>
       </header>
 
@@ -440,7 +518,6 @@ export default function TvNotesViewer({
             closeDetail();
           }}
           onExit={onExitTvMode}
-          onSignOut={onSignOut}
         />
 
         <main className={`tv-notes-scroll${viewMode === "carousel" ? " tv-notes-scroll--pager" : ""}`} aria-label={filterLabel}>

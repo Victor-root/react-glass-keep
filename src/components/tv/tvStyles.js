@@ -124,6 +124,53 @@ html[data-tv="1"] .tv-header__user {
   border: 1px solid rgba(255, 255, 255, 0.07);
   font-size: 12px;
   color: #e5e7eb;
+  cursor: default;
+}
+/* User-popover menu — sits below the avatar chip, anchored to its
+   right edge so it doesn't bleed off the screen on narrow TVs. */
+html[data-tv="1"] .tv-header__user-menu-wrap {
+  position: relative;
+}
+html[data-tv="1"] .tv-header__user-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  padding: 6px;
+  background: rgba(20, 22, 32, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 14px 32px -12px rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 100;
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-header__user-menu {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+html[data-tv="1"] .tv-header__user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #e5e7eb;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  width: 100%;
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-header__user-menu-item { color: #1f2937; }
+html[data-tv="1"] .tv-header__user-menu-item-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  opacity: 0.85;
 }
 html[data-tv="1"] .tv-header__avatar {
   width: 26px;

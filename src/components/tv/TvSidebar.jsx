@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { t } from "../../i18n";
 import { getContentImages } from "../../utils/noteIcon.js";
-import { Files, ImageIcon, Hash, Settings as SettingsIcon, LogOut } from "lucide-react";
+import { Files, ImageIcon, Hash, Settings as SettingsIcon } from "lucide-react";
 
 // Filter rail for the TV viewer. Real lucide icons, no emoji, no pin
 // filter (the closed card no longer shows a pin so the standalone
@@ -14,7 +14,6 @@ export default function TvSidebar({
   filter,
   onSelectFilter,
   onExit,
-  onSignOut,
 }) {
   const grouped = useMemo(() => {
     const tagCounts = new Map();
@@ -87,29 +86,21 @@ export default function TvSidebar({
         </>
       )}
 
-      {(typeof onExit === "function" || typeof onSignOut === "function") && (
+      {/* Sign-out moved to the header avatar popover. Sidebar keeps
+          only the layout-related exit (used in browser preview) — and
+          even that is hidden in the TV WebView so the rail stays
+          focused on filters. */}
+      {typeof onExit === "function" && (
         <>
           <div className="tv-sidebar__group-label">{t("settings") || "Settings"}</div>
-          {typeof onSignOut === "function" && (
-            <button
-              type="button"
-              className="tv-sidebar__item tv-focusable tv-focusable--flat"
-              onClick={onSignOut}
-            >
-              <span className="tv-sidebar__item-icon"><LogOut size={16} /></span>
-              <span className="tv-sidebar__item-label">{t("logout") || "Sign out"}</span>
-            </button>
-          )}
-          {typeof onExit === "function" && (
-            <button
-              type="button"
-              className="tv-sidebar__item tv-focusable tv-focusable--flat"
-              onClick={onExit}
-            >
-              <span className="tv-sidebar__item-icon"><SettingsIcon size={16} /></span>
-              <span className="tv-sidebar__item-label">{t("tvExitButton") || "Phone layout"}</span>
-            </button>
-          )}
+          <button
+            type="button"
+            className="tv-sidebar__item tv-focusable tv-focusable--flat"
+            onClick={onExit}
+          >
+            <span className="tv-sidebar__item-icon"><SettingsIcon size={16} /></span>
+            <span className="tv-sidebar__item-label">{t("tvExitButton") || "Phone layout"}</span>
+          </button>
         </>
       )}
     </aside>
