@@ -170,21 +170,47 @@ function HeaderUserChip({ currentUser, onSignOut }) {
     return () => cancelAnimationFrame(id);
   }, [open]);
 
-  // Back / Esc closes the menu — capture phase + stopImmediatePropagation
-  // so useSpatialFocus.onBack (which would close the sidebar or detail
-  // viewer) doesn't fire instead.
+  // While the popover is open we run a focus trap in capture phase so
+  // useSpatialFocus never sees the D-pad keys:
+  //   - Up / Down cycle between the chip and the menu item(s) only
+  //   - Left / Right are swallowed (no escape sideways)
+  //   - Back / Esc / GoBack close the popover and return focus to chip
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => {
+      // Back / Esc / GoBack: close + restore focus on chip.
       if (e.key === "Escape" || e.key === "Backspace" || e.key === "GoBack") {
         e.preventDefault();
         e.stopImmediatePropagation();
         setOpen(false);
-        // Move focus back onto the chip button so the user has a
-        // sensible D-pad anchor after closing.
         const btn = wrapRef.current?.querySelector(".tv-header__user");
         if (btn instanceof HTMLElement) {
           window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target: btn } }));
+        }
+        return;
+      }
+      // Lateral nav: just absorb so focus can't leave the popover.
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+      }
+      // Vertical nav: walk the focusables inside the wrap.
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        const wrap = wrapRef.current;
+        if (!wrap) return;
+        const list = Array.from(wrap.querySelectorAll(".tv-focusable"))
+          .filter((el) => el.offsetParent !== null);
+        if (!list.length) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const idx = list.indexOf(document.activeElement);
+        let nextIdx = idx;
+        if (e.key === "ArrowDown") nextIdx = Math.min(list.length - 1, (idx < 0 ? -1 : idx) + 1);
+        else nextIdx = Math.max(0, (idx < 0 ? list.length : idx) - 1);
+        const target = list[nextIdx];
+        if (target instanceof HTMLElement) {
+          window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target } }));
         }
       }
     };
