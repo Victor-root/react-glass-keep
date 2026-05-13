@@ -6,7 +6,7 @@ import { renderSafeMarkdown } from "../../utils/markdown.jsx";
 import { getSections, isItem, DEFAULT_SECTION_ID } from "../../utils/checklist.js";
 import { getContentImages, getNoteIcon } from "../../utils/noteIcon.js";
 import { parseAudioContent, formatDuration } from "../../utils/audioNote.js";
-import { Mic, X } from "lucide-react";
+import { Mic } from "lucide-react";
 
 function isColorDark(rgba) {
   const { r, g, b } = parseRGBA(rgba);
@@ -43,26 +43,13 @@ function formatDate(iso) {
   } catch { return ""; }
 }
 
-export default function TvNoteDetail({ note, onClose }) {
-  const closeRef = useRef(null);
+// onClose is kept in the signature for backward compatibility but the
+// detail no longer renders any clickable close affordance — Back / Esc
+// (handled by TvNotesViewer's useSpatialFocus.onBack) is the way out.
+export default function TvNoteDetail({ note /* , onClose */ }) {
   const bg = bgFor(note?.color, true);
   const isDark = note ? isColorDark(bg) : true;
-
-  // Focus the BODY on mount, not the close button. That way the user
-  // can scroll the note immediately with Up/Down — the previous setup
-  // landed on the X and any D-pad press tried to leave the dialog
-  // entirely, so the user couldn't read past the fold.
   const bodyRef = useRef(null);
-  useEffect(() => {
-    if (!note) return undefined;
-    const id = requestAnimationFrame(() => {
-      const target = bodyRef.current;
-      if (target instanceof HTMLElement) {
-        window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target } }));
-      }
-    });
-    return () => cancelAnimationFrame(id);
-  }, [note]);
 
   const bodyHtml = useMemo(() => (note ? buildBodyHtml(note) : ""), [note]);
   const imgs = useMemo(() => (note ? getContentImages(note.images) : []), [note]);
@@ -144,21 +131,11 @@ export default function TvNoteDetail({ note, onClose }) {
           <div className="tv-detail__meta">
             {formatDate(note.updated_at || note.created_at)}
           </div>
-          <button
-            ref={closeRef}
-            type="button"
-            className="tv-detail__close tv-focusable tv-focusable--flat"
-            onClick={onClose}
-            aria-label={t("close")}
-          >
-            <X size={18} />
-          </button>
         </header>
 
         <div
           ref={bodyRef}
-          tabIndex={0}
-          className="tv-detail__body tv-focusable tv-focusable--flat tv-allow-select"
+          className="tv-detail__body tv-allow-select"
           style={{ outline: "none" }}
         >
           {imgs.length > 0 && (
