@@ -77,13 +77,13 @@ export default function TvNoteDetail({ note, onClose }) {
   }, [note]);
 
   // Keyboard scroll while the detail viewer is open. Runs in capture
-  // phase + stopImmediatePropagation so useSpatialFocus (registered in
-  // bubble phase on document) never sees the keystroke — otherwise it
-  // would try to move focus to a sibling card "behind" the dialog and
-  // the body would never scroll.
+  // phase with stopImmediatePropagation so useSpatialFocus never sees
+  // the keystroke — that's what was leaking Down past the bottom of
+  // the body and scrolling the masonry grid behind the dialog.
   //
-  // Up at the very top of the body still falls through to the focus
-  // loop, so the user can land on the close (X) button to dismiss.
+  // Down always consumed (even at the very bottom: no-op rather than
+  // pass-through). Up at the very top falls through to the focus loop
+  // so the user can land on the close (X) button and dismiss with OK.
   useEffect(() => {
     if (!note) return undefined;
     const onKey = (e) => {
@@ -93,19 +93,19 @@ export default function TvNoteDetail({ note, onClose }) {
       if (!el) return;
       const atTop = el.scrollTop <= 0;
       const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-      // Let the focus loop take over only at the boundaries so the user
-      // can D-pad onto the close button (top) or stay put (bottom).
       if (e.key === "ArrowUp" || e.key === "PageUp") {
-        if (atTop) return;
+        if (atTop) return; // let focus loop reach the X button
         e.preventDefault();
         e.stopImmediatePropagation();
         el.scrollBy({ top: -el.clientHeight * 0.8, behavior: "smooth" });
         return;
       }
-      if (e.key === "ArrowDown" || e.key === "PageDown") {
-        if (atBottom) return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
+      // Down / PageDown: always swallow the event so the masonry
+      // behind the dialog never scrolls. At the bottom we just do
+      // nothing — the user uses Back / Esc / D-pad onto X to leave.
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (!atBottom) {
         el.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
       }
     };

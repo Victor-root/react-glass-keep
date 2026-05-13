@@ -135,8 +135,32 @@ export default function TvNotesViewer({
   const visible = useMemo(() => partitionNotes(notes, filter), [notes, filter]);
   const colCount = useMemo(() => pickColumnCount(width), [width]);
 
+  // Remember the card the user activated so we can drop focus back on
+  // it when the detail closes — otherwise the focus loop snaps to the
+  // first focusable on screen (the hamburger) and the user has to
+  // re-navigate down to where they were.
+  const lastFocusedNoteIdRef = useRef(null);
   const closeDetail = useCallback(() => setOpenNote(null), []);
-  const openDetail = useCallback((note) => setOpenNote(note), []);
+  const openDetail = useCallback((note) => {
+    lastFocusedNoteIdRef.current = note.id;
+    setOpenNote(note);
+  }, []);
+
+  // Detail viewer just closed — refocus the originating card. We wait
+  // a frame so the masonry/carousel layer is mounted again before we
+  // try to grab a ref to it.
+  useEffect(() => {
+    if (openNote) return undefined;
+    const id = lastFocusedNoteIdRef.current;
+    if (!id) return undefined;
+    const raf = requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-note-id="${CSS.escape(id)}"]`);
+      if (el instanceof HTMLElement) {
+        window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target: el } }));
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [openNote]);
 
   // Back key: push a history marker on detail-open, listen popstate.
   useEffect(() => {

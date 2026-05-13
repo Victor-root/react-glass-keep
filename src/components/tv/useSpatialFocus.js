@@ -41,15 +41,36 @@ function isFocusable(el) {
   return true;
 }
 
+// Return a coarse "zone" label so vertical D-pad nav stays inside its
+// own area (sidebar / detail viewer / main content). Left/Right
+// transitions between zones are still fine — that's how the user
+// crosses from the sidebar to the notes pane in the first place.
+function zoneOf(el) {
+  if (!el) return "main";
+  if (el.closest(".tv-sidebar")) return "sidebar";
+  if (el.closest(".tv-detail")) return "detail";
+  return "main";
+}
+
 function pickNextFocus(current, direction) {
   const all = Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR))
     .filter(isFocusable);
   if (!all.length) return null;
   if (!current || !current.isConnected) return all[0];
   const cur = getRect(current);
+  // Vertical nav inside the sidebar / detail stays scoped to that
+  // zone — otherwise reaching the bottom of the tag list used to
+  // jump focus into the notes grid, which felt like a teleport.
+  let pool = all;
+  if (direction === "up" || direction === "down") {
+    const curZone = zoneOf(current);
+    if (curZone === "sidebar" || curZone === "detail") {
+      pool = all.filter((el) => zoneOf(el) === curZone);
+    }
+  }
   let best = null;
   let bestScore = Infinity;
-  for (const el of all) {
+  for (const el of pool) {
     if (el === current) continue;
     const r = getRect(el);
     let primary, lateral, passes = false;

@@ -276,22 +276,22 @@ html[data-tv="1"] .tv-carousel {
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   padding: 12px 4px 60px;
-  /* Make the row tall enough to fit ~2x the grid card height. */
   min-height: 460px;
   align-items: stretch;
 }
 html[data-tv="1"] .tv-carousel .tv-card {
-  /* Each carousel card is roughly 2x a grid card → 3 visible per
-     1080p with the sidebar closed (1844px / 600 ≈ 3). */
-  flex: 0 0 600px;
+  /* Card width = (viewport - 2 inner gaps) / 3, so exactly three full
+     cards fit per viewport regardless of sidebar state. The user
+     flicks Right / Left to slide one card at a time (scroll-snap-align
+     start). No half-cards peeking past the edge. */
+  flex: 0 0 calc((100% - 2 * var(--tv-gap)) / 3);
   scroll-snap-align: start;
-  scroll-snap-stop: always;
   min-height: 100%;
   max-height: none;
 }
-@media (max-width: 1400px) {
-  html[data-tv="1"] .tv-carousel .tv-card { flex-basis: 500px; }
-  html[data-tv="1"] .tv-carousel { min-height: 420px; }
+@media (max-width: 1100px) {
+  /* Narrower screens drop to 2 cards per viewport so each one stays readable. */
+  html[data-tv="1"] .tv-carousel .tv-card { flex-basis: calc((100% - 1 * var(--tv-gap)) / 2); }
 }
 html[data-tv="1"] .tv-carousel .tv-card__title { font-size: 22px; }
 html[data-tv="1"] .tv-carousel .tv-card__preview {
@@ -420,9 +420,16 @@ html[data-tv="1"] .tv-card__images--multi { grid-template-columns: 1fr 1fr; }
 html[data-tv="1"] .tv-card__images img {
   width: 100%;
   height: 80px;
-  object-fit: cover;
+  /* 'contain' (not 'cover') matches the phone / desktop closed cards:
+     show the whole image with letterboxing rather than cropping the
+     left & right edges. Cover was making landscape screenshots
+     unrecognisable on TV. */
+  object-fit: contain;
   border-radius: 7px;
   background: rgba(0,0,0,0.15);
+}
+html[data-tv="1"] .tv-carousel .tv-card__images img {
+  object-fit: contain;
 }
 
 /* ------- Note detail (FULLSCREEN) ------- */
