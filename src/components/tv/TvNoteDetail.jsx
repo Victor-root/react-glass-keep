@@ -7,6 +7,7 @@ import { getSections, isItem, DEFAULT_SECTION_ID } from "../../utils/checklist.j
 import { getContentImages, getNoteIcon } from "../../utils/noteIcon.js";
 import { parseAudioContent, formatDuration } from "../../utils/audioNote.js";
 import { Mic } from "lucide-react";
+import DrawingPreview from "../common/DrawingPreview.jsx";
 
 function isColorDark(rgba) {
   const { r, g, b } = parseRGBA(rgba);
@@ -61,6 +62,15 @@ export default function TvNoteDetail({ note /* , onClose */ }) {
   const checklistSections = useMemo(() => {
     if (!note || note.type !== "checklist") return null;
     return getSections(note.items);
+  }, [note]);
+  const hasStrokes = useMemo(() => {
+    if (!note || note.type !== "draw") return false;
+    try {
+      const parsed = typeof note.content === "string" ? JSON.parse(note.content) : note.content;
+      if (Array.isArray(parsed)) return parsed.some((p) => p?.points?.length);
+      if (Array.isArray(parsed?.paths)) return parsed.paths.some((p) => p?.points?.length);
+      return false;
+    } catch { return false; }
   }, [note]);
 
   // Keyboard scroll while the detail viewer is open. Runs in capture
@@ -168,12 +178,36 @@ export default function TvNoteDetail({ note /* , onClose */ }) {
             <ChecklistBody sections={checklistSections} />
           ) : note.type === "audio" ? (
             <AudioBody clips={audioClips} />
+          ) : note.type === "draw" ? (
+            <>
+              {bodyHtml && (
+                <div
+                  style={{ marginBottom: 16 }}
+                  dangerouslySetInnerHTML={{ __html: bodyHtml }}
+                />
+              )}
+              {hasStrokes ? (
+                <div className="tv-detail__draw">
+                  <DrawingPreview
+                    data={note.content}
+                    width={1600}
+                    height={1400}
+                    darkMode={isDark}
+                    maxPages={5}
+                  />
+                </div>
+              ) : !bodyHtml && (
+                <div style={{ opacity: 0.6, fontStyle: "italic" }}>
+                  {t("drawing")}
+                </div>
+              )}
+            </>
           ) : (
             bodyHtml ? (
               <div dangerouslySetInnerHTML={{ __html: bodyHtml }} />
             ) : (
               <div style={{ opacity: 0.6, fontStyle: "italic" }}>
-                {note.type === "draw" ? t("drawing") : t("noNotesYet")}
+                {t("noNotesYet")}
               </div>
             )
           )}

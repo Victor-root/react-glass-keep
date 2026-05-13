@@ -7,6 +7,7 @@ import { getNoteIcon, getContentImages } from "../../utils/noteIcon.js";
 import { Image as ImageLucide, Mic, Pencil, CheckSquare } from "lucide-react";
 import { countItems, countChecked, isItem } from "../../utils/checklist.js";
 import { parseAudioContent } from "../../utils/audioNote.js";
+import DrawingPreview from "../common/DrawingPreview.jsx";
 
 // Closed note card for TV. Renders into the dark 10-foot palette and
 // is wrapped in React.memo so an unrelated parent rerender (clock tick,
@@ -69,6 +70,18 @@ function TvNoteCardImpl({ note, variant = "grid", onActivate }) {
       .slice(0, limit);
     return { total, done, unchecked };
   }, [isChecklist, note.items, isCarousel]);
+
+  // Pre-parse the drawing payload once per render so we know whether
+  // to show the canvas, just the companion text, or the fallback.
+  const hasStrokes = useMemo(() => {
+    if (!isDraw) return false;
+    try {
+      const parsed = typeof note.content === "string" ? JSON.parse(note.content) : note.content;
+      if (Array.isArray(parsed)) return parsed.some((p) => p?.points?.length);
+      if (Array.isArray(parsed?.paths)) return parsed.paths.some((p) => p?.points?.length);
+      return false;
+    } catch { return false; }
+  }, [isDraw, note.content]);
 
   const handleActivate = (e) => {
     e?.preventDefault?.();
@@ -163,16 +176,32 @@ function TvNoteCardImpl({ note, variant = "grid", onActivate }) {
           </div>
         </div>
       ) : isDraw ? (
-        <div className="tv-card__preview">
-          {previewHtml ? (
-            <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
-          ) : (
-            <div style={{ opacity: 0.7, fontStyle: "italic", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Pencil size={12} />
-              {t("drawing")}
+        <>
+          {previewHtml && (
+            <div
+              className="tv-card__preview"
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
+          )}
+          {hasStrokes ? (
+            <div className="tv-card__draw">
+              <DrawingPreview
+                data={note.content}
+                width={isCarousel ? 700 : 480}
+                height={isCarousel ? 420 : 320}
+                darkMode={isDark}
+                maxPages={1}
+              />
+            </div>
+          ) : !previewHtml && (
+            <div className="tv-card__preview">
+              <div style={{ opacity: 0.7, fontStyle: "italic", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Pencil size={12} />
+                {t("drawing")}
+              </div>
             </div>
           )}
-        </div>
+        </>
       ) : (
         previewHtml && (
           <div

@@ -561,6 +561,46 @@ html[data-tv="1"] .tv-carousel .tv-card__images img {
   object-fit: contain;
 }
 
+/* Drawing thumbnail on the closed card. DrawingPreview's inner wrapper
+   uses Tailwind's w-[90%]; we strip the side margin in TV cards so the
+   canvas fills the card width (the card already pads internally). */
+html[data-tv="1"] .tv-card__draw {
+  margin: 4px 0 2px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.15);
+}
+html[data-tv="1"] .tv-card__draw > div {
+  width: 100% !important;
+}
+html[data-tv="1"] .tv-card__draw canvas {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+}
+
+/* Drawing in the fullscreen detail viewer. Full available width,
+   capped height so very tall drawings stay scrollable instead of
+   eating the whole vertical space. */
+html[data-tv="1"] .tv-detail__draw {
+  margin: 10px 0 6px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
+}
+html[data-tv="1"] .tv-detail__draw > div {
+  width: 100% !important;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+html[data-tv="1"] .tv-detail__draw canvas {
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 72vh;
+  object-fit: contain;
+}
+
 /* ------- Note detail (FULLSCREEN) ------- */
 html[data-tv="1"] .tv-detail {
   position: fixed;
