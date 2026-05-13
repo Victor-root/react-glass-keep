@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api, getAuth, setAuth } from "../../utils/api.js";
 import { TV_CSS, TV_STYLE_ID } from "./tvStyles.js";
 import TvLogin from "./TvLogin.jsx";
@@ -45,6 +45,7 @@ export default function TvApp() {
   const currentUser = session?.user || null;
 
   const [notes, setNotes] = useState([]);
+  const notesEtagRef = useRef("");
   const [loadError, setLoadError] = useState(null);
   const [isOnline, setIsOnline] = useState(() =>
     typeof navigator === "undefined" ? true : navigator.onLine
@@ -89,11 +90,18 @@ export default function TvApp() {
     try {
       const data = await api("/notes", { token });
       const list = Array.isArray(data?.notes) ? data.notes : Array.isArray(data) ? data : [];
-      setNotes(list);
+      // Cheap signature: id+updated_at per note. If nothing actually
+      // changed since the last poll, skip setState so React doesn't
+      // re-render the whole grid on a no-op tick — big perf win on
+      // older Shields where re-rendering 100+ cards is ~150ms.
+      const sig = list.map((n) => `${n.id}:${n.updated_at || n.created_at || ""}`).join("|");
+      if (sig !== notesEtagRef.current) {
+        notesEtagRef.current = sig;
+        setNotes(list);
+      }
       setLoadError(null);
     } catch (err) {
       if (err?.isAuthError || err?.status === 401) {
-        // Token expired — fall back to login.
         setSession(null);
         setAuth(null);
         return;

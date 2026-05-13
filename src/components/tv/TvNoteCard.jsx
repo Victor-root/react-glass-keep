@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { memo, useMemo } from "react";
 import { t } from "../../i18n";
 import { bgFor, solid, parseRGBA } from "../../utils/colors.js";
 import { renderSafeMarkdown } from "../../utils/markdown.jsx";
@@ -8,16 +8,16 @@ import { Image as ImageLucide, Mic, Pencil, CheckSquare } from "lucide-react";
 import { countItems, countChecked, isItem } from "../../utils/checklist.js";
 import { parseAudioContent } from "../../utils/audioNote.js";
 
+// Closed note card for TV. Renders into the dark 10-foot palette and
+// is wrapped in React.memo so an unrelated parent rerender (clock tick,
+// filter change) never re-mounts the grid — important on older Shield
+// hardware where each card costs ~3ms to first-paint.
+
 const PREVIEW_MAX_CHARS = 360;
 
-// Pick text color (light/dark) based on background luminance — the
-// closed-TV palette gets a mix of pastel and saturated note colours
-// and we always render against the dark 10-foot theme, so contrast
-// has to be recomputed per card.
 function isColorDark(rgba) {
   const { r, g, b } = parseRGBA(rgba);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance < 0.55;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.55;
 }
 
 function buildPreviewHtml(n) {
@@ -41,11 +41,9 @@ function buildPreviewHtml(n) {
   return "";
 }
 
-export default function TvNoteCard({ note, onActivate }) {
-  // Dark-only TV theme always uses the dark palette as a base; we still
-  // honour the user-picked note colour for visual identity (the red
-  // sticker note stays red on TV) but the contrast helper picks
-  // black/white text per-card.
+function TvNoteCardImpl({ note, variant = "grid", onActivate }) {
+  const isList = variant === "list";
+
   const bg = bgFor(note.color, true);
   const isDark = isColorDark(bg);
 
@@ -65,20 +63,17 @@ export default function TvNoteCard({ note, onActivate }) {
     if (!isChecklist) return null;
     const total = countItems(note.items);
     const done = countChecked(note.items);
+    const limit = isList ? 3 : 5;
     const unchecked = (note.items || [])
       .filter(it => isItem(it) && !it.done)
-      .slice(0, 5);
+      .slice(0, limit);
     return { total, done, unchecked };
-  }, [isChecklist, note.items]);
+  }, [isChecklist, note.items, isList]);
 
   const handleActivate = (e) => {
     e?.preventDefault?.();
     onActivate?.(note);
   };
-
-  // The pin/pin-popup is deliberately *not* rendered on TV — there's
-  // no pointer to reach it and the user explicitly asked for it gone.
-  // Pinning still happens on phone; we just hide the UI cue here.
 
   return (
     <button
@@ -89,17 +84,19 @@ export default function TvNoteCard({ note, onActivate }) {
       data-note-id={note.id}
       aria-label={note.title || (isChecklist ? t("checklist") : t("note"))}
     >
-      {icon && (
+      {icon && !isList && (
         <img
           src={icon.src}
           alt=""
           aria-hidden="true"
+          loading="lazy"
+          decoding="async"
           style={{
             position: "absolute",
-            top: 8,
-            right: 8,
-            width: 22,
-            height: 22,
+            top: 6,
+            right: 6,
+            width: 20,
+            height: 20,
             objectFit: "contain",
             pointerEvents: "none",
           }}
@@ -107,21 +104,21 @@ export default function TvNoteCard({ note, onActivate }) {
       )}
 
       {note.title && (
-        <h3 className="tv-card__title" style={{ paddingRight: icon ? 26 : 0 }}>
+        <h3 className="tv-card__title" style={{ paddingRight: icon && !isList ? 24 : 0 }}>
           {note.title}
         </h3>
       )}
 
       {imgs.length > 0 && (
-        <div className={`tv-card__images${imgs.length > 1 ? " tv-card__images--multi" : ""}`}>
-          {imgs.slice(0, 2).map((im) => (
-            <img key={im.id} src={im.src} alt={im.name || ""} />
+        <div className={`tv-card__images${imgs.length > 1 && !isList ? " tv-card__images--multi" : ""}`}>
+          {imgs.slice(0, isList ? 1 : 2).map((im) => (
+            <img key={im.id} src={im.src} alt={im.name || ""} loading="lazy" decoding="async" />
           ))}
         </div>
       )}
 
       {isChecklist && checklistSummary ? (
-        <div className="tv-card__preview" style={{ fontSize: 12.5 }}>
+        <div className="tv-card__preview">
           {checklistSummary.unchecked.length === 0 && checklistSummary.total > 0 ? (
             <div style={{ opacity: 0.7, fontStyle: "italic" }}>
               {t("completedFraction")
@@ -133,23 +130,13 @@ export default function TvNoteCard({ note, onActivate }) {
               {checklistSummary.unchecked.map((it) => (
                 <li
                   key={it.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 6,
-                    margin: "2px 0",
-                  }}
+                  style={{ display: "flex", alignItems: "flex-start", gap: 6, margin: "2px 0" }}
                 >
                   <span
                     aria-hidden="true"
                     style={{
-                      flexShrink: 0,
-                      width: 11,
-                      height: 11,
-                      marginTop: 3,
-                      border: "1.5px solid currentColor",
-                      borderRadius: 3,
-                      opacity: 0.75,
+                      flexShrink: 0, width: 10, height: 10, marginTop: 3,
+                      border: "1.5px solid currentColor", borderRadius: 3, opacity: 0.75,
                     }}
                   />
                   <span style={{ flex: 1, lineHeight: 1.3 }}>{it.text}</span>
@@ -164,9 +151,9 @@ export default function TvNoteCard({ note, onActivate }) {
           )}
         </div>
       ) : isAudio ? (
-        <div className="tv-card__preview" style={{ fontSize: 12.5 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
-            <Mic size={14} />
+        <div className="tv-card__preview">
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
+            <Mic size={12} />
             <span>{audioClips.length || 0} {t("audioRecording")}</span>
           </div>
         </div>
@@ -176,7 +163,7 @@ export default function TvNoteCard({ note, onActivate }) {
             <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
           ) : (
             <div style={{ opacity: 0.7, fontStyle: "italic", display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <Pencil size={14} />
+              <Pencil size={12} />
               {t("drawing")}
             </div>
           )}
@@ -193,13 +180,13 @@ export default function TvNoteCard({ note, onActivate }) {
       <div className="tv-card__footer">
         {imgs.length > 0 && !isDraw && (
           <span className="tv-card__badge">
-            <ImageLucide size={11} />
+            <ImageLucide size={10} />
             {imgs.length}
           </span>
         )}
         {isChecklist && checklistSummary && (
           <span className="tv-card__badge">
-            <CheckSquare size={11} />
+            <CheckSquare size={10} />
             {checklistSummary.done}/{checklistSummary.total}
           </span>
         )}
@@ -213,3 +200,9 @@ export default function TvNoteCard({ note, onActivate }) {
     </button>
   );
 }
+
+// React.memo's shallow comparison is enough: TvNotesViewer always
+// passes the same note object reference until something actually
+// changes (the polling loader replaces the whole array with new
+// objects only when the server payload differs).
+export default memo(TvNoteCardImpl);

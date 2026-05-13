@@ -5,15 +5,22 @@ import TvNoteDetail from "./TvNoteDetail.jsx";
 import TvSidebar from "./TvSidebar.jsx";
 import useSpatialFocus from "./useSpatialFocus.js";
 import { getContentImages } from "../../utils/noteIcon.js";
-import { Menu } from "lucide-react";
+import { Menu, LayoutGrid, Rows } from "lucide-react";
 
 // TV-mode "home" screen. Owns:
-//  - filter state (all / images / tag)
-//  - sidebar visibility (toggled by the hamburger button)
+//  - filter state, view mode (grid/list), sidebar visibility
 //  - detail viewer state + Back key wiring via window.history
-//  - spatial focus loop (useSpatialFocus)
+//  - spatial focus loop
 //
-// Notes come in already loaded so this stays a pure consumer.
+// Persisted preferences:
+//  - tv-view-mode    : "grid" | "list"
+//  - tv-sidebar      : "open" | "closed"   (defaults to closed)
+//
+// Sidebar is closed by default — the user is here to read notes, not
+// browse tags. They can pop the rail in any time with the hamburger.
+
+const STORAGE_VIEW = "tv-view-mode";
+const STORAGE_SIDEBAR = "tv-sidebar";
 
 function useClock() {
   const [now, setNow] = useState(() => new Date());
@@ -25,9 +32,6 @@ function useClock() {
 }
 
 function sortNotes(list) {
-  // Pinned still rank first inside the flat grid — there's just no
-  // dedicated "Pinned" section header any more. Stable within each
-  // bucket via updated_at desc fallback.
   return [...list].sort((a, b) => {
     if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
     const at = a.updated_at || a.created_at || "";
@@ -36,21 +40,10 @@ function sortNotes(list) {
   });
 }
 
-function partitionNotes(notes, filter, search) {
-  const q = String(search || "").trim().toLowerCase();
-  const matchesSearch = (n) => {
-    if (!q) return true;
-    const haystack = [
-      n.title || "",
-      typeof n.content === "string" ? n.content : "",
-      Array.isArray(n.tags) ? n.tags.join(" ") : "",
-    ].join(" ").toLowerCase();
-    return haystack.includes(q);
-  };
+function partitionNotes(notes, filter) {
   const list = notes.filter((n) => {
     if (!n) return false;
     if (n.archived || n.trashed) return false;
-    if (!matchesSearch(n)) return false;
     if (!filter || filter.type === "all") return true;
     if (filter.type === "images") return getContentImages(n.images).length > 0;
     if (filter.type === "tag") return Array.isArray(n.tags) && n.tags.includes(filter.value);
@@ -59,36 +52,57 @@ function partitionNotes(notes, filter, search) {
   return sortNotes(list);
 }
 
+function loadPref(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v == null ? fallback : v;
+  } catch { return fallback; }
+}
+function savePref(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* ignore */ }
+}
+
+function HeaderUserChip({ currentUser }) {
+  const initial = (currentUser?.name?.[0] || currentUser?.email?.[0] || "?").toUpperCase();
+  const label = currentUser?.name || currentUser?.email || "";
+  return (
+    <span className="tv-header__user" aria-label={label}>
+      <span className="tv-header__avatar">
+        {currentUser?.avatar_url
+          ? <img src={currentUser.avatar_url} alt="" />
+          : <span>{initial}</span>}
+      </span>
+      <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {label}
+      </span>
+    </span>
+  );
+}
+
 export default function TvNotesViewer({
   notes,
   currentUser,
   onSignOut,
   onExitTvMode,
-  isOnline,
-  sseConnected,
-  syncState,
 }) {
   const [filter, setFilter] = useState({ type: "all" });
   const [openNote, setOpenNote] = useState(null);
-  const [sidebarVisible, setSidebarVisible] = useState(true);
-  const [search] = useState("");
+  const [sidebarVisible, setSidebarVisible] = useState(() => loadPref(STORAGE_SIDEBAR, "closed") === "open");
+  const [viewMode, setViewMode] = useState(() => loadPref(STORAGE_VIEW, "grid") === "list" ? "list" : "grid");
   const clock = useClock();
   const detailHistoryRef = useRef(null);
 
-  const visible = useMemo(
-    () => partitionNotes(notes, filter, search),
-    [notes, filter, search]
-  );
+  useEffect(() => { savePref(STORAGE_SIDEBAR, sidebarVisible ? "open" : "closed"); }, [sidebarVisible]);
+  useEffect(() => { savePref(STORAGE_VIEW, viewMode); }, [viewMode]);
+
+  const visible = useMemo(() => partitionNotes(notes, filter), [notes, filter]);
 
   const closeDetail = useCallback(() => setOpenNote(null), []);
   const openDetail = useCallback((note) => setOpenNote(note), []);
 
-  // Back key handling. The Android wrapper turns KEYCODE_BACK into a
-  // window.history.back() call, so wiring popstate covers both the
-  // physical Back button on the remote AND a stray Escape on a desktop
-  // browser. We push a sentinel state when a detail opens and pop it
-  // when the detail closes by any other means, keeping the history
-  // stack tidy.
+  // Back key (KEYCODE_BACK → window.history.back()). Push a marker on
+  // detail-open and listen popstate to close. The cleanup branch rewinds
+  // the history we pushed so we never leak a phantom entry.
   useEffect(() => {
     if (!openNote) {
       detailHistoryRef.current = null;
@@ -99,17 +113,12 @@ export default function TvNotesViewer({
     detailHistoryRef.current = marker;
 
     const onPop = () => {
-      // popstate fires AFTER the navigation has happened — at this
-      // point we just need to drop the open note.
       detailHistoryRef.current = null;
       setOpenNote(null);
     };
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
-      // If we're tearing down because the user closed via the in-page
-      // button (not popstate), rewind the history we pushed so it
-      // doesn't accumulate "phantom" entries.
       if (detailHistoryRef.current && window.history.state?.tvDetail === marker.tvDetail) {
         window.history.back();
       }
@@ -117,8 +126,7 @@ export default function TvNotesViewer({
     };
   }, [openNote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync the open-note object when the source list changes (a remote
-  // edit replaces the reference) and drop it if the note vanished.
+  // Track remote edits to the open note.
   useEffect(() => {
     if (!openNote) return;
     const stillThere = notes.find((n) => n.id === openNote.id);
@@ -129,22 +137,16 @@ export default function TvNotesViewer({
     }
   }, [notes, openNote, closeDetail]);
 
-  // D-pad / Back fallback for browsers where popstate doesn't fire
-  // (e.g. iframe previews). useSpatialFocus handles Esc/Backspace.
   useSpatialFocus({
     enabled: true,
     onBack: () => {
-      if (openNote) {
-        closeDetail();
-        return;
-      }
-      if (!sidebarVisible) {
-        setSidebarVisible(true);
-      }
+      if (openNote) { closeDetail(); return; }
+      if (sidebarVisible) setSidebarVisible(false);
     },
   });
 
   const toggleSidebar = useCallback(() => setSidebarVisible((v) => !v), []);
+  const toggleView = useCallback(() => setViewMode((v) => v === "grid" ? "list" : "grid"), []);
 
   const timeStr = clock.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   const dateStr = clock.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
@@ -156,19 +158,6 @@ export default function TvNotesViewer({
     return "";
   })();
 
-  let statusLabel = t("syncOnline") || "Online";
-  let statusVariant = "";
-  if (!isOnline) {
-    statusLabel = t("syncOffline") || "Offline";
-    statusVariant = "tv-status__dot--offline";
-  } else if (syncState === "error") {
-    statusLabel = t("syncError") || "Sync error";
-    statusVariant = "tv-status__dot--error";
-  } else if (!sseConnected) {
-    statusVariant = "tv-status__dot--offline";
-    statusLabel = t("syncReconnecting") || "Reconnecting…";
-  }
-
   return (
     <div className="tv-screen">
       <header className="tv-header">
@@ -178,22 +167,23 @@ export default function TvNotesViewer({
           aria-label={t("toggleSidebar") || "Toggle sidebar"}
           onClick={toggleSidebar}
         >
-          <Menu size={20} />
+          <Menu size={18} />
+        </button>
+        <button
+          type="button"
+          className="tv-header__viewtoggle tv-focusable tv-focusable--flat"
+          aria-label={t("toggleView") || "Toggle view"}
+          onClick={toggleView}
+        >
+          {viewMode === "grid" ? <Rows size={18} /> : <LayoutGrid size={18} />}
         </button>
         <div className="tv-header__title-wrap">
           <div className="tv-header__title">GlassKeep</div>
-          <div className="tv-header__subtitle">
-            {currentUser?.name || currentUser?.email || ""} · {dateStr} · {timeStr}
-          </div>
+          <div className="tv-header__subtitle">{dateStr} · {timeStr}</div>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-          <span className="tv-status">
-            <span className={`tv-status__dot ${statusVariant}`} />
-            {statusLabel}
-          </span>
-          <span className="tv-header__count">
-            {filterLabel} · {visible.length}
-          </span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="tv-header__count">{filterLabel} · {visible.length}</span>
+          <HeaderUserChip currentUser={currentUser} />
         </div>
       </header>
 
@@ -219,9 +209,9 @@ export default function TvNotesViewer({
               </div>
             </div>
           ) : (
-            <div className="tv-notes-grid">
+            <div className={viewMode === "list" ? "tv-notes-list" : "tv-notes-grid"}>
               {visible.map((n) => (
-                <TvNoteCard key={n.id} note={n} onActivate={openDetail} />
+                <TvNoteCard key={n.id} note={n} variant={viewMode} onActivate={openDetail} />
               ))}
             </div>
           )}

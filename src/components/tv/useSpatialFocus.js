@@ -2,43 +2,35 @@ import { useEffect, useRef } from "react";
 
 // 2D spatial navigation for the D-pad / arrow keys.
 //
-// Without this, Chromium tab order zig-zags through the page in DOM
-// order — which sends focus across the whole sidebar before it reaches
-// the first note. We pick the closest focusable in the requested
-// direction by geometry instead, the way Android TV's framework does.
-//
-// Activation rules:
-//  - Only runs while `enabled` is true. App.jsx wires this to "TV mode".
-//  - Arrow keys / D-pad codes hijack the default browser behaviour.
-//  - Enter / Space activate the focused element (click).
-//  - Back (browser back key, Esc, KEYCODE_BACK as keyboard event) calls
-//    the onBack callback so the consumer can pop a detail view, etc.
-//  - "tv-focus" custom event lets callers imperatively focus a node
-//    (e.g. when a new note detail mounts).
+// Picks the closest focusable in the requested direction by geometry
+// (the way Android TV's framework does), not by tab order. Tuned for
+// older Shield hardware:
+//  - keydown handler runs in capture phase so the throttle hits before
+//    React's synthetic events
+//  - scrollIntoView uses block:"nearest" without smooth — smooth scroll
+//    on the Shield webview can stall for 200-300ms per row
+//  - candidate scan ignores the viewport bounds; otherwise the user
+//    gets stuck on the last visible row (no row below is "visible")
+//  - data-tv-focused attribute is only swapped on the previous & next
+//    elements, never the whole tree, to avoid a CSS recalc storm
 
 const FOCUSABLE_SELECTOR = ".tv-focusable";
+const DPAD_KEYS = new Set([
+  "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+  "Up", "Down", "Left", "Right",
+]);
 
 function getRect(el) {
   const r = el.getBoundingClientRect();
   return {
     cx: r.left + r.width / 2,
     cy: r.top + r.height / 2,
-    left: r.left,
-    right: r.right,
-    top: r.top,
-    bottom: r.bottom,
-    width: r.width,
-    height: r.height,
+    left: r.left, right: r.right, top: r.top, bottom: r.bottom,
+    width: r.width, height: r.height,
   };
 }
 
 function isFocusable(el) {
-  // "Focusable" here means "the element exists, is laid out and isn't
-  // hidden". We deliberately do NOT require it to be inside the
-  // viewport — the whole point of D-pad navigation is that we let the
-  // user scroll the next row into view by pressing Down, so candidates
-  // below the fold MUST be eligible. Otherwise the user gets stuck on
-  // the last visible row (the symptom reported on the Shield).
   if (!el || !el.isConnected) return false;
   if (el.getAttribute("aria-hidden") === "true") return false;
   if (el.hasAttribute("disabled")) return false;
@@ -60,9 +52,7 @@ function pickNextFocus(current, direction) {
   for (const el of all) {
     if (el === current) continue;
     const r = getRect(el);
-    let primary; // distance along the axis we're moving on
-    let lateral; // perpendicular offset (penalised)
-    let passes = false;
+    let primary, lateral, passes = false;
     if (direction === "right") {
       primary = r.left - cur.right;
       lateral = Math.abs(r.cy - cur.cy);
@@ -81,40 +71,31 @@ function pickNextFocus(current, direction) {
       passes = r.bottom <= cur.top + 8;
     }
     if (!passes || primary < 0) continue;
-    // Weighted score: lateral offset hurts more than along-axis distance
-    // so the "natural" candidate (the one straight ahead) wins.
     const score = primary + lateral * 2;
-    if (score < bestScore) {
-      bestScore = score;
-      best = el;
-    }
+    if (score < bestScore) { bestScore = score; best = el; }
   }
   return best;
 }
 
+let lastFocusedRef = null; // module-scoped: only one TV viewer alive at a time
 function focusElement(el) {
   if (!el) return;
+  if (lastFocusedRef && lastFocusedRef !== el) {
+    lastFocusedRef.removeAttribute("data-tv-focused");
+  }
   if (typeof el.focus === "function") {
-    try {
-      el.focus({ preventScroll: false });
-    } catch {
-      el.focus();
-    }
+    try { el.focus({ preventScroll: false }); }
+    catch { el.focus(); }
   }
   el.setAttribute("data-tv-focused", "true");
-  // Clear the attribute from siblings — pure focus state is also tracked
-  // by :focus, the attribute is just a CSS fallback for elements that
-  // can't keep focus across rerenders (focus is lost on unmount).
-  document.querySelectorAll(`${FOCUSABLE_SELECTOR}[data-tv-focused="true"]`)
-    .forEach((other) => {
-      if (other !== el) other.removeAttribute("data-tv-focused");
-    });
-  // Scroll the element into view smoothly — TV viewers expect content
-  // to glide rather than jump.
+  lastFocusedRef = el;
   if (typeof el.scrollIntoView === "function") {
     try {
-      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
-    } catch { /* older WebViews — skip smooth scroll */ }
+      // Non-smooth scroll: smooth is too laggy on older Shield WebViews
+      // (each step triggers a paint). Instant scroll lets the focus
+      // transition (scale + glow) be the only animation.
+      el.scrollIntoView({ block: "nearest", inline: "nearest" });
+    } catch { /* WebViews missing the options bag — skip */ }
   }
 }
 
@@ -124,28 +105,20 @@ function focusFirst() {
   if (first) focusElement(first);
 }
 
-const DPAD_KEYS = new Set([
-  "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
-  "Up", "Down", "Left", "Right",
-]);
-
 export default function useSpatialFocus({ enabled, onBack } = {}) {
   const onBackRef = useRef(onBack);
   onBackRef.current = onBack;
 
   useEffect(() => {
     if (!enabled) return undefined;
-    // Make sure something is focused so the very first key press has
-    // an anchor to move from. Defer one frame so the initial render's
-    // .tv-focusable elements are already mounted.
     const id = requestAnimationFrame(() => {
       if (!document.activeElement || document.activeElement === document.body) {
         focusFirst();
       }
     });
 
+    let keyLockUntil = 0; // simple throttle to ignore repeated keydowns under 30ms apart
     const handler = (e) => {
-      // Let inputs swallow arrow keys (caret navigation, etc).
       const active = document.activeElement;
       const isEditable = active && (
         active.tagName === "INPUT" ||
@@ -155,9 +128,13 @@ export default function useSpatialFocus({ enabled, onBack } = {}) {
       if (isEditable) return;
 
       if (DPAD_KEYS.has(e.key)) {
+        const now = performance.now();
+        if (now < keyLockUntil) { e.preventDefault(); return; }
+        keyLockUntil = now + 30;
         e.preventDefault();
         const dir = e.key.replace("Arrow", "").toLowerCase();
-        const next = pickNextFocus(active && active.matches?.(FOCUSABLE_SELECTOR) ? active : null, dir);
+        const anchor = active && active.matches?.(FOCUSABLE_SELECTOR) ? active : lastFocusedRef;
+        const next = pickNextFocus(anchor, dir);
         if (next) focusElement(next);
         else if (!active || !active.matches?.(FOCUSABLE_SELECTOR)) focusFirst();
         return;
@@ -174,7 +151,6 @@ export default function useSpatialFocus({ enabled, onBack } = {}) {
           e.preventDefault();
           onBackRef.current();
         }
-        return;
       }
     };
     document.addEventListener("keydown", handler);
