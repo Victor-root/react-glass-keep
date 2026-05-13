@@ -35,7 +35,7 @@
   </tr>
 </table>
 
-### 📱 Mobile
+### 📱 Mobile 
 
 <table width="100%">
   <tr>
@@ -47,6 +47,9 @@
     <td align="center"><img src="https://github.com/user-attachments/assets/d7ab134f-77bf-40a0-8b6f-2b56895ba47c" width="185" /></td>
   </tr>
 </table>
+
+### 📺 TV
+<img width="1280" height="720" alt="image" src="https://github.com/user-attachments/assets/a27ccb79-3197-42e5-9b7f-bd3583443685" />
 
 ---
 
