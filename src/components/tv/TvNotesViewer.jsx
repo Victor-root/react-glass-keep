@@ -6,7 +6,7 @@ import TvNoteDetail from "./TvNoteDetail.jsx";
 import TvSidebar from "./TvSidebar.jsx";
 import useSpatialFocus from "./useSpatialFocus.js";
 import { getContentImages } from "../../utils/noteIcon.js";
-import { Menu, LayoutGrid, Rows3 } from "lucide-react";
+import { Menu, LayoutGrid, Rows3, Sun, Moon } from "lucide-react";
 
 // TV-mode "home" screen.
 //
@@ -22,6 +22,7 @@ import { Menu, LayoutGrid, Rows3 } from "lucide-react";
 
 const STORAGE_VIEW = "tv-view-mode";
 const STORAGE_SIDEBAR = "tv-sidebar";
+const STORAGE_THEME = "tv-theme";
 
 function useClock() {
   const [now, setNow] = useState(() => new Date());
@@ -73,16 +74,17 @@ function savePref(key, value) {
   try { localStorage.setItem(key, value); } catch { /* ignore */ }
 }
 
-// Column count from viewport width × sidebar state. Aimed at roughly
-// 240-280px per card on 1080p with the sidebar closed (7 cols), so
-// each card stays readable at couch distance without feeling cramped.
-function pickColumnCount(width, sidebarOpen) {
-  const usable = sidebarOpen ? width - 260 : width - 50;
-  if (usable < 600) return 2;
-  if (usable < 850) return 3;
-  if (usable < 1100) return 4;
-  if (usable < 1400) return 5;
-  if (usable < 1700) return 6;
+// Column count from viewport width — independent of sidebar state so
+// toggling the rail doesn't force the masonry to re-bucket every card
+// (the root cause of the 3-4s freeze on older Shields). With ~7 cols
+// at 1080p, each card still gets a comfortable ~220-260px regardless
+// of whether the sidebar is open.
+function pickColumnCount(width) {
+  if (width < 700) return 2;
+  if (width < 950) return 3;
+  if (width < 1200) return 4;
+  if (width < 1500) return 5;
+  if (width < 1800) return 6;
   return 7;
 }
 
@@ -113,6 +115,7 @@ export default function TvNotesViewer({
   const [openNote, setOpenNote] = useState(null);
   const [sidebarVisible, setSidebarVisible] = useState(() => loadPref(STORAGE_SIDEBAR, "closed") === "open");
   const [viewMode, setViewMode] = useState(() => loadPref(STORAGE_VIEW, "grid") === "carousel" ? "carousel" : "grid");
+  const [theme, setTheme] = useState(() => loadPref(STORAGE_THEME, "dark") === "light" ? "light" : "dark");
   const clock = useClock();
   const width = useViewportWidth();
   const detailHistoryRef = useRef(null);
@@ -120,8 +123,17 @@ export default function TvNotesViewer({
   useEffect(() => { savePref(STORAGE_SIDEBAR, sidebarVisible ? "open" : "closed"); }, [sidebarVisible]);
   useEffect(() => { savePref(STORAGE_VIEW, viewMode); }, [viewMode]);
 
+  // Reflect the theme on <html> so all CSS rules under
+  // html[data-tv-theme="..."] flip atomically.
+  useEffect(() => {
+    savePref(STORAGE_THEME, theme);
+    if (theme === "light") document.documentElement.setAttribute("data-tv-theme", "light");
+    else document.documentElement.removeAttribute("data-tv-theme");
+    return () => document.documentElement.removeAttribute("data-tv-theme");
+  }, [theme]);
+
   const visible = useMemo(() => partitionNotes(notes, filter), [notes, filter]);
-  const colCount = useMemo(() => pickColumnCount(width, sidebarVisible), [width, sidebarVisible]);
+  const colCount = useMemo(() => pickColumnCount(width), [width]);
 
   const closeDetail = useCallback(() => setOpenNote(null), []);
   const openDetail = useCallback((note) => setOpenNote(note), []);
@@ -166,6 +178,18 @@ export default function TvNotesViewer({
 
   const toggleSidebar = useCallback(() => setSidebarVisible((v) => !v), []);
   const toggleView = useCallback(() => setViewMode((v) => v === "grid" ? "carousel" : "grid"), []);
+  const toggleTheme = useCallback(() => setTheme((t) => t === "dark" ? "light" : "dark"), []);
+
+  // The Android wrapper forwards KEYCODE_MENU (the "options" / "kebab"
+  // key on most TV remotes — the same one Android TV uses to open the
+  // settings rail in its home launcher) as a custom 'tv-menu-key'
+  // window event. Wire it to the sidebar so the user gets the same
+  // muscle memory as system apps.
+  useEffect(() => {
+    const onMenuKey = () => toggleSidebar();
+    window.addEventListener("tv-menu-key", onMenuKey);
+    return () => window.removeEventListener("tv-menu-key", onMenuKey);
+  }, [toggleSidebar]);
 
   const timeStr = clock.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   const dateStr = clock.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
@@ -195,6 +219,14 @@ export default function TvNotesViewer({
           onClick={toggleView}
         >
           {viewMode === "grid" ? <Rows3 size={18} /> : <LayoutGrid size={18} />}
+        </button>
+        <button
+          type="button"
+          className="tv-header__themetoggle tv-focusable tv-focusable--flat"
+          aria-label={t("toggleTheme") || "Toggle theme"}
+          onClick={toggleTheme}
+        >
+          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
         </button>
         <div className="tv-header__title-wrap">
           <div className="tv-header__title">GlassKeep</div>

@@ -48,14 +48,15 @@ export default function TvNoteDetail({ note, onClose }) {
   const bg = bgFor(note?.color, true);
   const isDark = note ? isColorDark(bg) : true;
 
-  // Focus the close button on mount so Enter / OK exits the viewer
-  // without any extra D-pad input. The scroll body itself is also
-  // focusable (tabindex=0) so the user can land on it via Down and
-  // scroll a long note line by line.
+  // Focus the BODY on mount, not the close button. That way the user
+  // can scroll the note immediately with Up/Down — the previous setup
+  // landed on the X and any D-pad press tried to leave the dialog
+  // entirely, so the user couldn't read past the fold.
+  const bodyRef = useRef(null);
   useEffect(() => {
     if (!note) return undefined;
     const id = requestAnimationFrame(() => {
-      const target = closeRef.current;
+      const target = bodyRef.current;
       if (target instanceof HTMLElement) {
         window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target } }));
       }
@@ -75,25 +76,42 @@ export default function TvNoteDetail({ note, onClose }) {
     return getSections(note.items);
   }, [note]);
 
-  // Keyboard scroll for the long-note body — when focus is on the
-  // body element, Up/Down step it through the content instead of
-  // jumping to a sibling card.
-  const bodyRef = useRef(null);
+  // Keyboard scroll while the detail viewer is open. Runs in capture
+  // phase + stopImmediatePropagation so useSpatialFocus (registered in
+  // bubble phase on document) never sees the keystroke — otherwise it
+  // would try to move focus to a sibling card "behind" the dialog and
+  // the body would never scroll.
+  //
+  // Up at the very top of the body still falls through to the focus
+  // loop, so the user can land on the close (X) button to dismiss.
   useEffect(() => {
+    if (!note) return undefined;
     const onKey = (e) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp" &&
+          e.key !== "PageDown" && e.key !== "PageUp") return;
       const el = bodyRef.current;
-      if (!el || document.activeElement !== el) return;
-      if (e.key === "ArrowDown" || e.key === "PageDown") {
+      if (!el) return;
+      const atTop = el.scrollTop <= 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+      // Let the focus loop take over only at the boundaries so the user
+      // can D-pad onto the close button (top) or stay put (bottom).
+      if (e.key === "ArrowUp" || e.key === "PageUp") {
+        if (atTop) return;
         e.preventDefault();
-        el.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
-      } else if (e.key === "ArrowUp" || e.key === "PageUp") {
-        e.preventDefault();
+        e.stopImmediatePropagation();
         el.scrollBy({ top: -el.clientHeight * 0.8, behavior: "smooth" });
+        return;
+      }
+      if (e.key === "ArrowDown" || e.key === "PageDown") {
+        if (atBottom) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        el.scrollBy({ top: el.clientHeight * 0.8, behavior: "smooth" });
       }
     };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
-  }, []);
+  }, [note]);
 
   if (!note) return null;
 

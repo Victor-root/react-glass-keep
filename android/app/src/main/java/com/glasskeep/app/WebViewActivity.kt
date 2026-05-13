@@ -473,6 +473,17 @@ class WebViewActivity : AppCompatActivity() {
             }
             return true
         }
+        // "More options" / "Menu" key on most TV remotes (also the same
+        // key that opens the system settings rail in the Android TV
+        // launcher). Forward it to the webapp as a custom event so the
+        // TV viewer can use it to toggle its sidebar — same muscle
+        // memory as native apps.
+        if (keyCode == android.view.KeyEvent.KEYCODE_MENU) {
+            webView.evaluateJavascript(
+                "window.dispatchEvent(new CustomEvent('tv-menu-key'));", null
+            )
+            return true
+        }
         return super.onKeyDown(keyCode, event)
     }
 

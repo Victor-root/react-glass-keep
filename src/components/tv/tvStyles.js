@@ -7,10 +7,10 @@ export const TV_STYLE_ID = "tv-mode-styles";
 export const TV_CSS = `
 /* ------- Root ------- */
 :root {
-  /* Vertical safe area is generous because most consumer TVs still
-     overscan 4-5% top/bottom — the header was being clipped before. */
+  /* Header sits at 3vh from the top — most TVs only overscan 2-3%
+     vertically and the previous 5.5vh was leaving a visible gap. */
   --tv-safe-x: 2vw;
-  --tv-safe-y: 5.5vh;
+  --tv-safe-y: 3vh;
   --tv-focus-pad: 14px;
   --tv-gap: 14px;
 }
@@ -28,6 +28,14 @@ html[data-tv="1"], html[data-tv="1"] body {
 html[data-tv="1"] body {
   background: radial-gradient(circle at 20% 0%, #1a1530 0%, #0b0d12 55%, #06070b 100%) !important;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+/* Light theme override — flipped via data-tv-theme on <html>. */
+html[data-tv="1"][data-tv-theme="light"], html[data-tv="1"][data-tv-theme="light"] body {
+  background: #f3f4f6 !important;
+  color: #1f2937;
+}
+html[data-tv="1"][data-tv-theme="light"] body {
+  background: radial-gradient(circle at 20% 0%, #ede9fe 0%, #f3f4f6 55%, #e5e7eb 100%) !important;
 }
 html[data-tv="1"] *, html[data-tv="1"] *::before, html[data-tv="1"] *::after {
   box-sizing: border-box;
@@ -75,12 +83,13 @@ html[data-tv="1"] .tv-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: var(--tv-safe-y) var(--tv-safe-x) 8px;
+  padding: var(--tv-safe-y) var(--tv-safe-x) 6px;
   position: relative;
   z-index: 20;
 }
 html[data-tv="1"] .tv-header__hamburger,
-html[data-tv="1"] .tv-header__viewtoggle {
+html[data-tv="1"] .tv-header__viewtoggle,
+html[data-tv="1"] .tv-header__themetoggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -143,17 +152,21 @@ html[data-tv="1"] .tv-header__count {
 }
 
 /* ------- Main split layout ------- */
+/* Bottom safe area is 0 — user wants the cards to reach the bezel.
+   The notes-scroll keeps its own padding-bottom for breathing room. */
 html[data-tv="1"] .tv-layout {
   display: grid;
   grid-template-columns: 230px 1fr;
   gap: 12px;
   flex: 1 1 auto;
   min-height: 0;
-  padding: 0 var(--tv-safe-x) var(--tv-safe-y);
-  transition: grid-template-columns 200ms ease, gap 200ms ease;
+  padding: 0 var(--tv-safe-x) 0;
+  /* NO transition on grid-template-columns — the previous 200ms
+     animation was forcing a reflow of the masonry grid for the entire
+     duration, which made the Shield grind for 3-4s. Toggle is now
+     instant: snappier perceptually, way less CPU. */
 }
 html[data-tv="1"] .tv-layout--sidebar-hidden {
-  /* gap collapses too — every available pixel goes to the notes pane. */
   grid-template-columns: 0 1fr;
   gap: 0;
 }
@@ -164,15 +177,11 @@ html[data-tv="1"] .tv-sidebar {
   overflow-y: auto;
   padding: 8px 8px 24px 8px;
   min-width: 0;
-  opacity: 1;
-  transition: opacity 180ms ease, visibility 0s 0ms;
 }
 html[data-tv="1"] .tv-layout--sidebar-hidden .tv-sidebar {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transition: opacity 160ms ease, visibility 0s 160ms;
-  padding: 0;
+  /* display:none kills the slot entirely — no rendering work for a
+     hidden sidebar. Better than visibility/opacity for the Shield. */
+  display: none;
 }
 html[data-tv="1"] .tv-sidebar__group-label {
   font-size: 9px;
@@ -665,4 +674,61 @@ html[data-tv="1"] .tv-login__error {
 }
 html[data-tv="1"] .tv-detail,
 html[data-tv="1"] .tv-screen { max-width: 100vw; max-height: 100vh; }
+
+/* ===== LIGHT THEME OVERRIDES =====
+   Everything below only fires when html[data-tv-theme="light"]. The
+   dark palette above is the default. */
+html[data-tv="1"][data-tv-theme="light"] .tv-header__hamburger,
+html[data-tv="1"][data-tv-theme="light"] .tv-header__viewtoggle,
+html[data-tv="1"][data-tv-theme="light"] .tv-header__themetoggle {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #1f2937;
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-header__subtitle { color: #4b5563; }
+html[data-tv="1"][data-tv-theme="light"] .tv-header__user {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #1f2937;
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-header__count {
+  color: #5b21b6;
+  background: rgba(167, 139, 250, 0.18);
+  border-color: rgba(124, 58, 237, 0.35);
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-sidebar__group-label { color: #6b7280; }
+html[data-tv="1"][data-tv-theme="light"] .tv-sidebar__item {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(0, 0, 0, 0.06);
+  color: #1f2937;
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-sidebar__item[data-active="true"] {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.18), rgba(124, 58, 237, 0.12));
+  border-color: rgba(124, 58, 237, 0.45);
+  color: #4c1d95;
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-sidebar__item-count {
+  color: #4b5563;
+  background: rgba(0, 0, 0, 0.05);
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-detail { background: #f3f4f6; }
+html[data-tv="1"][data-tv-theme="light"] .tv-detail__body code {
+  background: rgba(0, 0, 0, 0.06);
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-detail__body pre {
+  background: rgba(0, 0, 0, 0.06);
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-detail__close {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-checklist__item {
+  background: rgba(0, 0, 0, 0.04);
+}
+html[data-tv="1"][data-tv-theme="light"] .tv-empty { color: #4b5563; }
+html[data-tv="1"][data-tv-theme="light"] .tv-status {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #374151;
+}
 `;
