@@ -1,20 +1,19 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { t } from "../../i18n";
 import TvNoteCard from "./TvNoteCard.jsx";
 import TvNoteDetail from "./TvNoteDetail.jsx";
 import TvSidebar from "./TvSidebar.jsx";
 import useSpatialFocus from "./useSpatialFocus.js";
 import { getContentImages } from "../../utils/noteIcon.js";
+import { Menu } from "lucide-react";
 
-// The TV-mode "home" screen. Owns:
-//  - the current filter (all / pinned / images / tag)
-//  - the currently-open note (detail overlay)
-//  - the spatial focus loop (via useSpatialFocus)
-//  - a clock + connection pill in the header for the 10-foot ambience
+// TV-mode "home" screen. Owns:
+//  - filter state (all / images / tag)
+//  - sidebar visibility (toggled by the hamburger button)
+//  - detail viewer state + Back key wiring via window.history
+//  - spatial focus loop (useSpatialFocus)
 //
-// It receives notes already loaded and a reload callback so it never
-// needs to know about the sync engine, IndexedDB layer or auth — those
-// stay in App.jsx. Add nothing UI-shaped here that isn't TV-specific.
+// Notes come in already loaded so this stays a pure consumer.
 
 function useClock() {
   const [now, setNow] = useState(() => new Date());
@@ -23,6 +22,18 @@ function useClock() {
     return () => clearInterval(id);
   }, []);
   return now;
+}
+
+function sortNotes(list) {
+  // Pinned still rank first inside the flat grid — there's just no
+  // dedicated "Pinned" section header any more. Stable within each
+  // bucket via updated_at desc fallback.
+  return [...list].sort((a, b) => {
+    if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+    const at = a.updated_at || a.created_at || "";
+    const bt = b.updated_at || b.created_at || "";
+    return bt.localeCompare(at);
+  });
 }
 
 function partitionNotes(notes, filter, search) {
@@ -41,18 +52,11 @@ function partitionNotes(notes, filter, search) {
     if (n.archived || n.trashed) return false;
     if (!matchesSearch(n)) return false;
     if (!filter || filter.type === "all") return true;
-    if (filter.type === "pinned") return !!n.pinned;
-    if (filter.type === "images") {
-      return getContentImages(n.images).length > 0;
-    }
-    if (filter.type === "tag") {
-      return Array.isArray(n.tags) && n.tags.includes(filter.value);
-    }
+    if (filter.type === "images") return getContentImages(n.images).length > 0;
+    if (filter.type === "tag") return Array.isArray(n.tags) && n.tags.includes(filter.value);
     return true;
   });
-  const pinned = list.filter((n) => n.pinned);
-  const others = list.filter((n) => !n.pinned);
-  return { pinned, others, total: list.length };
+  return sortNotes(list);
 }
 
 export default function TvNotesViewer({
@@ -66,10 +70,12 @@ export default function TvNotesViewer({
 }) {
   const [filter, setFilter] = useState({ type: "all" });
   const [openNote, setOpenNote] = useState(null);
-  const [search] = useState(""); // search input wired up later if desired
+  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [search] = useState("");
   const clock = useClock();
+  const detailHistoryRef = useRef(null);
 
-  const { pinned, others, total } = useMemo(
+  const visible = useMemo(
     () => partitionNotes(notes, filter, search),
     [notes, filter, search]
   );
@@ -77,15 +83,42 @@ export default function TvNotesViewer({
   const closeDetail = useCallback(() => setOpenNote(null), []);
   const openDetail = useCallback((note) => setOpenNote(note), []);
 
-  useSpatialFocus({
-    enabled: true,
-    onBack: () => {
-      if (openNote) closeDetail();
-    },
-  });
+  // Back key handling. The Android wrapper turns KEYCODE_BACK into a
+  // window.history.back() call, so wiring popstate covers both the
+  // physical Back button on the remote AND a stray Escape on a desktop
+  // browser. We push a sentinel state when a detail opens and pop it
+  // when the detail closes by any other means, keeping the history
+  // stack tidy.
+  useEffect(() => {
+    if (!openNote) {
+      detailHistoryRef.current = null;
+      return undefined;
+    }
+    const marker = { tvDetail: openNote.id, ts: Date.now() };
+    window.history.pushState(marker, "");
+    detailHistoryRef.current = marker;
 
-  // Reset the open note if it disappears from the filter (e.g. archived
-  // from another device while the detail was visible).
+    const onPop = () => {
+      // popstate fires AFTER the navigation has happened — at this
+      // point we just need to drop the open note.
+      detailHistoryRef.current = null;
+      setOpenNote(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      // If we're tearing down because the user closed via the in-page
+      // button (not popstate), rewind the history we pushed so it
+      // doesn't accumulate "phantom" entries.
+      if (detailHistoryRef.current && window.history.state?.tvDetail === marker.tvDetail) {
+        window.history.back();
+      }
+      detailHistoryRef.current = null;
+    };
+  }, [openNote?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync the open-note object when the source list changes (a remote
+  // edit replaces the reference) and drop it if the note vanished.
   useEffect(() => {
     if (!openNote) return;
     const stillThere = notes.find((n) => n.id === openNote.id);
@@ -96,12 +129,28 @@ export default function TvNotesViewer({
     }
   }, [notes, openNote, closeDetail]);
 
+  // D-pad / Back fallback for browsers where popstate doesn't fire
+  // (e.g. iframe previews). useSpatialFocus handles Esc/Backspace.
+  useSpatialFocus({
+    enabled: true,
+    onBack: () => {
+      if (openNote) {
+        closeDetail();
+        return;
+      }
+      if (!sidebarVisible) {
+        setSidebarVisible(true);
+      }
+    },
+  });
+
+  const toggleSidebar = useCallback(() => setSidebarVisible((v) => !v), []);
+
   const timeStr = clock.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
   const dateStr = clock.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
 
   const filterLabel = (() => {
     if (!filter || filter.type === "all") return t("allNotes") || "All notes";
-    if (filter.type === "pinned") return t("pinned");
     if (filter.type === "images") return t("image") || "Images";
     if (filter.type === "tag") return `#${filter.value}`;
     return "";
@@ -123,24 +172,32 @@ export default function TvNotesViewer({
   return (
     <div className="tv-screen">
       <header className="tv-header">
-        <div>
+        <button
+          type="button"
+          className="tv-header__hamburger tv-focusable tv-focusable--flat"
+          aria-label={t("toggleSidebar") || "Toggle sidebar"}
+          onClick={toggleSidebar}
+        >
+          <Menu size={20} />
+        </button>
+        <div className="tv-header__title-wrap">
           <div className="tv-header__title">GlassKeep</div>
           <div className="tv-header__subtitle">
             {currentUser?.name || currentUser?.email || ""} · {dateStr} · {timeStr}
           </div>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
           <span className="tv-status">
             <span className={`tv-status__dot ${statusVariant}`} />
             {statusLabel}
           </span>
           <span className="tv-header__count">
-            {filterLabel} · {total}
+            {filterLabel} · {visible.length}
           </span>
         </div>
       </header>
 
-      <div className="tv-layout">
+      <div className={`tv-layout${sidebarVisible ? "" : " tv-layout--sidebar-hidden"}`}>
         <TvSidebar
           notes={notes}
           filter={filter}
@@ -149,10 +206,11 @@ export default function TvNotesViewer({
             closeDetail();
           }}
           onExit={onExitTvMode}
+          onSignOut={onSignOut}
         />
 
         <main className="tv-notes-scroll" aria-label={filterLabel}>
-          {total === 0 ? (
+          {visible.length === 0 ? (
             <div className="tv-empty">
               <div className="tv-empty__title">{t("noNotesYet") || "No notes yet"}</div>
               <div className="tv-empty__hint">
@@ -161,50 +219,16 @@ export default function TvNotesViewer({
               </div>
             </div>
           ) : (
-            <>
-              {pinned.length > 0 && (
-                <>
-                  <div className="tv-section-title">📌 {t("pinned")}</div>
-                  <div className="tv-notes-grid">
-                    {pinned.map((n) => (
-                      <TvNoteCard key={n.id} note={n} onActivate={openDetail} />
-                    ))}
-                  </div>
-                </>
-              )}
-              {others.length > 0 && (
-                <>
-                  {pinned.length > 0 && (
-                    <div className="tv-section-title">{t("others")}</div>
-                  )}
-                  <div className="tv-notes-grid">
-                    {others.map((n) => (
-                      <TvNoteCard key={n.id} note={n} onActivate={openDetail} />
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
+            <div className="tv-notes-grid">
+              {visible.map((n) => (
+                <TvNoteCard key={n.id} note={n} onActivate={openDetail} />
+              ))}
+            </div>
           )}
         </main>
       </div>
 
-      {openNote && (
-        <TvNoteDetail note={openNote} onClose={closeDetail} />
-      )}
-
-      {/* Tiny footer hint — Android TV users expect to see what the
-          remote does. Hidden once the user has opened at least one note
-          (they get the idea). */}
-      {!openNote && (
-        <div className="tv-remote-hint" aria-hidden="true">
-          <span>← → ↑ ↓ navigate</span>
-          <span>OK open</span>
-          <span>Back exit</span>
-          {/* Sign-out lives in the sidebar — keep this row purely informational. */}
-          {onSignOut && null}
-        </div>
-      )}
+      {openNote && <TvNoteDetail note={openNote} onClose={closeDetail} />}
     </div>
   );
 }

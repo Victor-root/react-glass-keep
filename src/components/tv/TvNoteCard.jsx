@@ -4,17 +4,16 @@ import { bgFor, solid, parseRGBA } from "../../utils/colors.js";
 import { renderSafeMarkdown } from "../../utils/markdown.jsx";
 import { isRichContent, contentToHTML } from "../../utils/richText.js";
 import { getNoteIcon, getContentImages } from "../../utils/noteIcon.js";
-import { PinFilled, ImageIcon, MicrophoneFilledIcon } from "../../icons/index.jsx";
+import { Image as ImageLucide, Mic, Pencil, CheckSquare } from "lucide-react";
 import { countItems, countChecked, isItem } from "../../utils/checklist.js";
 import { parseAudioContent } from "../../utils/audioNote.js";
 
 const PREVIEW_MAX_CHARS = 360;
 
-// Decide whether a color background is light or dark, so we can pick the
-// matching text colour (white on red/blue, dark on yellow/sand/...). The
-// existing card uses Tailwind's dark mode, but in TV mode we ignore the
-// system dark setting and always render against the deep-black 10-foot
-// theme — so we need to recompute the contrast per-card.
+// Pick text color (light/dark) based on background luminance — the
+// closed-TV palette gets a mix of pastel and saturated note colours
+// and we always render against the dark 10-foot theme, so contrast
+// has to be recomputed per card.
 function isColorDark(rgba) {
   const { r, g, b } = parseRGBA(rgba);
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
@@ -43,9 +42,10 @@ function buildPreviewHtml(n) {
 }
 
 export default function TvNoteCard({ note, onActivate }) {
-  // TV layout is dark-only — we still let the user's chosen note color
-  // bleed through (red/yellow/green stickers etc), but we sample it from
-  // the TV-friendly palette and decide text contrast per-card.
+  // Dark-only TV theme always uses the dark palette as a base; we still
+  // honour the user-picked note colour for visual identity (the red
+  // sticker note stays red on TV) but the contrast helper picks
+  // black/white text per-card.
   const bg = bgFor(note.color, true);
   const isDark = isColorDark(bg);
 
@@ -67,7 +67,7 @@ export default function TvNoteCard({ note, onActivate }) {
     const done = countChecked(note.items);
     const unchecked = (note.items || [])
       .filter(it => isItem(it) && !it.done)
-      .slice(0, 6);
+      .slice(0, 5);
     return { total, done, unchecked };
   }, [isChecklist, note.items]);
 
@@ -75,6 +75,10 @@ export default function TvNoteCard({ note, onActivate }) {
     e?.preventDefault?.();
     onActivate?.(note);
   };
+
+  // The pin/pin-popup is deliberately *not* rendered on TV — there's
+  // no pointer to reach it and the user explicitly asked for it gone.
+  // Pinning still happens on phone; we just hide the UI cue here.
 
   return (
     <button
@@ -85,12 +89,6 @@ export default function TvNoteCard({ note, onActivate }) {
       data-note-id={note.id}
       aria-label={note.title || (isChecklist ? t("checklist") : t("note"))}
     >
-      {note.pinned && (
-        <span className="tv-card__pin" aria-label={t("pinned")}>
-          <PinFilled className="w-4 h-4" />
-        </span>
-      )}
-
       {icon && (
         <img
           src={icon.src}
@@ -98,10 +96,10 @@ export default function TvNoteCard({ note, onActivate }) {
           aria-hidden="true"
           style={{
             position: "absolute",
-            top: 14,
-            right: note.pinned ? 56 : 14,
-            width: 32,
-            height: 32,
+            top: 8,
+            right: 8,
+            width: 22,
+            height: 22,
             objectFit: "contain",
             pointerEvents: "none",
           }}
@@ -109,11 +107,13 @@ export default function TvNoteCard({ note, onActivate }) {
       )}
 
       {note.title && (
-        <h3 className="tv-card__title">{note.title}</h3>
+        <h3 className="tv-card__title" style={{ paddingRight: icon ? 26 : 0 }}>
+          {note.title}
+        </h3>
       )}
 
       {imgs.length > 0 && (
-        <div className="tv-card__images">
+        <div className={`tv-card__images${imgs.length > 1 ? " tv-card__images--multi" : ""}`}>
           {imgs.slice(0, 2).map((im) => (
             <img key={im.id} src={im.src} alt={im.name || ""} />
           ))}
@@ -121,7 +121,7 @@ export default function TvNoteCard({ note, onActivate }) {
       )}
 
       {isChecklist && checklistSummary ? (
-        <div className="tv-card__preview" style={{ fontSize: 16 }}>
+        <div className="tv-card__preview" style={{ fontSize: 12.5 }}>
           {checklistSummary.unchecked.length === 0 && checklistSummary.total > 0 ? (
             <div style={{ opacity: 0.7, fontStyle: "italic" }}>
               {t("completedFraction")
@@ -136,37 +136,37 @@ export default function TvNoteCard({ note, onActivate }) {
                   style={{
                     display: "flex",
                     alignItems: "flex-start",
-                    gap: 10,
-                    margin: "4px 0",
+                    gap: 6,
+                    margin: "2px 0",
                   }}
                 >
                   <span
                     aria-hidden="true"
                     style={{
                       flexShrink: 0,
-                      width: 16,
-                      height: 16,
-                      marginTop: 4,
-                      border: "2px solid currentColor",
-                      borderRadius: 4,
-                      opacity: 0.8,
+                      width: 11,
+                      height: 11,
+                      marginTop: 3,
+                      border: "1.5px solid currentColor",
+                      borderRadius: 3,
+                      opacity: 0.75,
                     }}
                   />
-                  <span style={{ flex: 1, lineHeight: 1.35 }}>{it.text}</span>
+                  <span style={{ flex: 1, lineHeight: 1.3 }}>{it.text}</span>
                 </li>
               ))}
               {checklistSummary.total > checklistSummary.unchecked.length && (
-                <li style={{ opacity: 0.65, marginTop: 6, fontSize: 14 }}>
-                  +{checklistSummary.total - checklistSummary.unchecked.length} {t("moreItems").replace("{count}", "")}
+                <li style={{ opacity: 0.65, marginTop: 4, fontSize: 11 }}>
+                  +{checklistSummary.total - checklistSummary.unchecked.length}
                 </li>
               )}
             </ul>
           )}
         </div>
       ) : isAudio ? (
-        <div className="tv-card__preview" style={{ fontSize: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 600 }}>
-            <MicrophoneFilledIcon className="w-5 h-5" />
+        <div className="tv-card__preview" style={{ fontSize: 12.5 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
+            <Mic size={14} />
             <span>{audioClips.length || 0} {t("audioRecording")}</span>
           </div>
         </div>
@@ -175,7 +175,10 @@ export default function TvNoteCard({ note, onActivate }) {
           {previewHtml ? (
             <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
           ) : (
-            <div style={{ opacity: 0.7, fontStyle: "italic" }}>{t("drawing")}</div>
+            <div style={{ opacity: 0.7, fontStyle: "italic", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Pencil size={14} />
+              {t("drawing")}
+            </div>
           )}
         </div>
       ) : (
@@ -190,8 +193,14 @@ export default function TvNoteCard({ note, onActivate }) {
       <div className="tv-card__footer">
         {imgs.length > 0 && !isDraw && (
           <span className="tv-card__badge">
-            <ImageIcon className="w-3.5 h-3.5" />
+            <ImageLucide size={11} />
             {imgs.length}
+          </span>
+        )}
+        {isChecklist && checklistSummary && (
+          <span className="tv-card__badge">
+            <CheckSquare size={11} />
+            {checklistSummary.done}/{checklistSummary.total}
           </span>
         )}
         {Array.isArray(note.tags) && note.tags.length > 0 && (
@@ -204,4 +213,3 @@ export default function TvNoteCard({ note, onActivate }) {
     </button>
   );
 }
-

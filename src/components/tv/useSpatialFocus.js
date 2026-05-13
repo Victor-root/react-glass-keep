@@ -32,16 +32,18 @@ function getRect(el) {
   };
 }
 
-function isVisible(el) {
+function isFocusable(el) {
+  // "Focusable" here means "the element exists, is laid out and isn't
+  // hidden". We deliberately do NOT require it to be inside the
+  // viewport — the whole point of D-pad navigation is that we let the
+  // user scroll the next row into view by pressing Down, so candidates
+  // below the fold MUST be eligible. Otherwise the user gets stuck on
+  // the last visible row (the symptom reported on the Shield).
   if (!el || !el.isConnected) return false;
   if (el.getAttribute("aria-hidden") === "true") return false;
   if (el.hasAttribute("disabled")) return false;
   const r = el.getBoundingClientRect();
   if (r.width === 0 || r.height === 0) return false;
-  // Only require *some* portion of the candidate to be on-screen — we'll
-  // scroll the focused element back into view afterwards.
-  if (r.bottom < 0 || r.top > window.innerHeight) return false;
-  if (r.right < 0 || r.left > window.innerWidth) return false;
   const style = window.getComputedStyle(el);
   if (style.visibility === "hidden" || style.display === "none") return false;
   return true;
@@ -49,7 +51,7 @@ function isVisible(el) {
 
 function pickNextFocus(current, direction) {
   const all = Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR))
-    .filter(isVisible);
+    .filter(isFocusable);
   if (!all.length) return null;
   if (!current || !current.isConnected) return all[0];
   const cur = getRect(current);
@@ -118,7 +120,7 @@ function focusElement(el) {
 
 function focusFirst() {
   const first = Array.from(document.querySelectorAll(FOCUSABLE_SELECTOR))
-    .find(isVisible);
+    .find(isFocusable);
   if (first) focusElement(first);
 }
 

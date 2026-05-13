@@ -6,7 +6,7 @@ import { renderSafeMarkdown } from "../../utils/markdown.jsx";
 import { getSections, isItem, DEFAULT_SECTION_ID } from "../../utils/checklist.js";
 import { getContentImages, getNoteIcon } from "../../utils/noteIcon.js";
 import { parseAudioContent, formatDuration } from "../../utils/audioNote.js";
-import { MicrophoneFilledIcon, PinFilled } from "../../icons/index.jsx";
+import { Mic, ArrowLeft } from "lucide-react";
 
 function isColorDark(rgba) {
   const { r, g, b } = parseRGBA(rgba);
@@ -117,13 +117,10 @@ export default function TvNoteDetail({ note, onClose }) {
               src={icon.src}
               alt=""
               aria-hidden="true"
-              style={{ width: 56, height: 56, objectFit: "contain", flexShrink: 0 }}
+              style={{ width: 36, height: 36, objectFit: "contain", flexShrink: 0 }}
             />
           )}
           <h1 className="tv-detail__title">
-            {note.pinned && (
-              <PinFilled className="w-6 h-6" style={{ display: "inline-block", marginRight: 14, verticalAlign: "middle", opacity: 0.85 }} />
-            )}
             {note.title || (note.type === "checklist" ? t("checklist") : t("note"))}
           </h1>
           <div className="tv-detail__meta">
@@ -137,7 +134,8 @@ export default function TvNoteDetail({ note, onClose }) {
             aria-label={t("close")}
             style={{ marginLeft: 12 }}
           >
-            ← {t("close")}
+            <ArrowLeft size={14} />
+            {t("close")}
           </button>
         </header>
 
@@ -191,19 +189,19 @@ export default function TvNoteDetail({ note, onClose }) {
             <div style={{
               display: "flex",
               flexWrap: "wrap",
-              gap: 10,
-              marginTop: 24,
-              paddingTop: 18,
+              gap: 8,
+              marginTop: 18,
+              paddingTop: 14,
               borderTop: "1px solid rgba(255,255,255,0.12)",
             }}>
               {note.tags.map((tag) => (
                 <span
                   key={tag}
                   style={{
-                    padding: "6px 14px",
+                    padding: "4px 10px",
                     borderRadius: 999,
                     background: "rgba(255,255,255,0.12)",
-                    fontSize: 18,
+                    fontSize: 13,
                   }}
                 >
                   #{tag}
