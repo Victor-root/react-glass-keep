@@ -981,6 +981,11 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   selfUpdateYes: "oui",
   selfUpdateNo: "non",
   selfUpdateEmpty: "—",
+  selfUpdateLogTitle: "Journal technique",
+  selfUpdateLogEmpty: "Pas encore de sortie — le script va commencer à écrire ici dans un instant.",
+  selfUpdateLogFontAssets: "{count} polices web",
+  selfUpdateLogShowFonts: "afficher",
+  selfUpdateLogHideFonts: "masquer",
   selfUpdateKeepOpenHint:
     "Gardez cette fenêtre ouverte jusqu'à la fin.",
   selfUpdateDockerHintIntro:

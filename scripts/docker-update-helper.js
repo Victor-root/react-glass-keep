@@ -18,14 +18,35 @@
 
 const fs = require("fs");
 const http = require("http");
+const path = require("path");
 
 const DOCKER_SOCK = process.env.DOCKER_SOCKET || "/var/run/docker.sock";
 const MAIN_CONTAINER = process.env.MAIN_CONTAINER;
 const TARGET_IMAGE = process.env.TARGET_IMAGE;
 const STATUS_FILE = process.env.STATUS_FILE || "/data/.update-status.json";
+const LOG_FILE =
+    process.env.LOG_FILE || path.join(path.dirname(STATUS_FILE), ".update.log");
 const FROM_VERSION = process.env.FROM_VERSION || null;
 const TO_VERSION = process.env.TO_VERSION || null;
 const STARTED_AT = process.env.STARTED_AT || new Date().toISOString();
+
+// Mirror stdout/stderr to the same /data/.update.log file that
+// self-update.sh writes to, so the admin's "Show details" panel can
+// surface the same kind of expert output for Docker installs.
+try { fs.writeFileSync(LOG_FILE, ""); } catch { /* ignore */ }
+const _appendLog = (s) => {
+    try { fs.appendFileSync(LOG_FILE, s + "\n"); } catch { /* ignore */ }
+};
+const _origLog = console.log.bind(console);
+const _origErr = console.error.bind(console);
+console.log = (...args) => {
+    _origLog(...args);
+    _appendLog(args.map(String).join(" "));
+};
+console.error = (...args) => {
+    _origErr(...args);
+    _appendLog(args.map(String).join(" "));
+};
 
 const TOTAL_STEPS = 5;
 let CURRENT_STEP = 0;

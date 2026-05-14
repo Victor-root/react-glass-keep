@@ -1,6 +1,143 @@
 import React, { useEffect, useState } from "react";
 import { t } from "../../i18n";
+import { API_BASE } from "../../utils/api.js";
 import TI from "../../icons/editor/index.jsx";
+
+// Asset listing lines vite emits at the end of every build. There can
+// be hundreds of them for the @fontsource packages, and they drown
+// out the lines that actually matter (the JS bundle size, the
+// warnings). Detect and collapse them into a single expandable group.
+const FONT_ASSET_RE = /^dist\/assets\/.+\.(woff2?|otf|ttf|eot)\s/;
+
+function processLog(text) {
+    if (!text) return [];
+    const out = [];
+    let fonts = [];
+    const flush = () => {
+        if (fonts.length > 0) {
+            out.push({ type: "fonts", count: fonts.length, lines: fonts });
+            fonts = [];
+        }
+    };
+    for (const line of text.split("\n")) {
+        if (FONT_ASSET_RE.test(line)) {
+            fonts.push(line);
+        } else {
+            flush();
+            out.push({ type: "line", text: line });
+        }
+    }
+    flush();
+    // Drop trailing empty lines for tidiness.
+    while (
+        out.length > 0 &&
+        out[out.length - 1].type === "line" &&
+        out[out.length - 1].text === ""
+    ) {
+        out.pop();
+    }
+    return out;
+}
+
+function FontGroup({ count, lines }) {
+    const [open, setOpen] = useState(false);
+    const action = open ? t("selfUpdateLogHideFonts") : t("selfUpdateLogShowFonts");
+    const label = t("selfUpdateLogFontAssets").replace("{count}", count);
+    return (
+        <div className="text-gray-500 dark:text-gray-400">
+            <button
+                type="button"
+                onClick={() => setOpen((o) => !o)}
+                className="inline-flex items-center gap-1 hover:text-gray-700 dark:hover:text-gray-200"
+            >
+                <span className="opacity-70">{open ? "▼" : "▶"}</span>
+                <span className="italic">+ {label}</span>
+                <span className="opacity-60">({action})</span>
+            </button>
+            {open && (
+                <div className="pl-4 mt-0.5 opacity-70">
+                    {lines.map((l, i) => (
+                        <div key={i} className="whitespace-pre">
+                            {l}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function TechnicalLog({ token, phase, showDetails }) {
+    const [text, setText] = useState("");
+
+    useEffect(() => {
+        if (!showDetails || !token) return;
+        let cancelled = false;
+        let timer = null;
+
+        const fetchOnce = async () => {
+            if (cancelled) return;
+            try {
+                const res = await fetch(`${API_BASE}/admin/self-update/log`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (cancelled) return;
+                if (res.status === 204) {
+                    setText("");
+                } else if (res.ok) {
+                    const raw = await res.text();
+                    if (!cancelled) setText(raw);
+                }
+            } catch {
+                /* ignore — the modal is not the place to surface a fetch hiccup */
+            }
+            const active =
+                phase === "starting" ||
+                phase === "running" ||
+                phase === "waiting_for_server";
+            if (!cancelled && active) {
+                timer = setTimeout(fetchOnce, 2000);
+            }
+        };
+
+        fetchOnce();
+        return () => {
+            cancelled = true;
+            if (timer) clearTimeout(timer);
+        };
+    }, [showDetails, token, phase]);
+
+    const items = processLog(text);
+
+    return (
+        <div className="mt-3 rounded-lg border border-[var(--border-light)] bg-gray-50 dark:bg-black/30 p-3 text-[11px] font-mono text-gray-700 dark:text-gray-200">
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+                {t("selfUpdateLogTitle")}
+            </div>
+            <div className="max-h-72 overflow-auto -mx-1 px-1">
+                {items.length === 0 ? (
+                    <div className="opacity-60 italic">
+                        {t("selfUpdateLogEmpty")}
+                    </div>
+                ) : (
+                    items.map((it, i) =>
+                        it.type === "fonts" ? (
+                            <FontGroup
+                                key={i}
+                                count={it.count}
+                                lines={it.lines}
+                            />
+                        ) : (
+                            <div key={i} className="whitespace-pre">
+                                {it.text || " "}
+                            </div>
+                        )
+                    )
+                )}
+            </div>
+        </div>
+    );
+}
 
 // =============================================================================
 //  SelfUpdateProgress
@@ -135,7 +272,7 @@ function StateIcon({ phase }) {
     );
 }
 
-export default function SelfUpdateProgress({ selfUpdate }) {
+export default function SelfUpdateProgress({ selfUpdate, token }) {
     const { phase, status, startError, dismiss, acknowledge, isActive } =
         selfUpdate;
     const [showDetails, setShowDetails] = useState(false);
@@ -363,6 +500,13 @@ export default function SelfUpdateProgress({ selfUpdate }) {
                                 hideIfEmpty={!status?.rolledBack && status?.state !== "rolled_back"}
                             />
                         </div>
+                    )}
+                    {showDetails && (
+                        <TechnicalLog
+                            token={token}
+                            phase={phase}
+                            showDetails={showDetails}
+                        />
                     )}
                 </div>
 

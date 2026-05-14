@@ -54,6 +54,18 @@ function attachSelfUpdateRoutes(app, { auth, adminOnly, log = console } = {}) {
         });
     });
 
+    // Raw stdout/stderr of the current / most recent update. Used by
+    // the expert "details" panel to surface git / npm / vite output.
+    // Returns 204 if no update has ever been run on this instance.
+    app.get("/api/admin/self-update/log", auth, adminOnly, (_req, res) => {
+        const r = orchestrator.readLog();
+        if (!r.ok) {
+            if (r.reason === "not-found") return res.status(204).end();
+            return res.status(500).json({ error: r.reason });
+        }
+        return res.type("text/plain").send(r.text);
+    });
+
     // Mark the current terminal outcome as seen by the admin so the
     // progress modal does not pop again on the next refresh / login.
     // Server-side state (not localStorage) so private browsing,

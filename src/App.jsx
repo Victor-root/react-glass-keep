@@ -5829,7 +5829,7 @@ export default function App() {
         onClose={() => setGenericConfirmOpen(false)}
       />
 
-      <SelfUpdateProgress selfUpdate={selfUpdate} />
+      <SelfUpdateProgress selfUpdate={selfUpdate} token={token} />
 
       <ToastContainer toasts={toasts} />
 

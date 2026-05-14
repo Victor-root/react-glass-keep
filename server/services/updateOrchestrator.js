@@ -330,6 +330,34 @@ function findDataMount(ownInspect) {
     return null;
 }
 
+// Returns the tail of the script's stdout/stderr log (capped to keep
+// the response small). The script truncates the file at every run so
+// the content always belongs to the current / most recent update.
+function readLog({ maxBytes = 256 * 1024 } = {}) {
+    const logPath = path.join(getDataDir(), ".update.log");
+    try {
+        const stats = fs.statSync(logPath);
+        const start = Math.max(0, stats.size - maxBytes);
+        const buf = Buffer.alloc(stats.size - start);
+        const fd = fs.openSync(logPath, "r");
+        try {
+            fs.readSync(fd, buf, 0, buf.length, start);
+        } finally {
+            fs.closeSync(fd);
+        }
+        let text = buf.toString("utf8");
+        // Drop a partial first line if we truncated mid-line.
+        if (start > 0) {
+            const nl = text.indexOf("\n");
+            if (nl >= 0) text = text.slice(nl + 1);
+        }
+        return { ok: true, text, truncated: start > 0, size: stats.size };
+    } catch (e) {
+        if (e.code === "ENOENT") return { ok: false, reason: "not-found" };
+        return { ok: false, reason: e.message };
+    }
+}
+
 // Marks the current terminal status as "seen by the admin" so the
 // progress modal does not pop again on the next refresh / login.
 // Only stamps the file when the recorded endedAt matches the one the
@@ -389,6 +417,7 @@ module.exports = {
     detectMode,
     getMode,
     readStatus,
+    readLog,
     isUpdateInProgress,
     startUpdate,
     acknowledgeStatus,
