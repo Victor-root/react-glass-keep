@@ -34,6 +34,46 @@ function stepLabel(state) {
     return key ? t(key) : state || "";
 }
 
+function modeLabel(mode) {
+    if (mode === "native") return t("selfUpdateDetailModeNative");
+    if (mode === "docker") return t("selfUpdateDetailModeDocker");
+    return mode || t("selfUpdateEmpty");
+}
+
+function formatDuration(startISO, endISO) {
+    if (!startISO || !endISO) return t("selfUpdateEmpty");
+    const s = Date.parse(startISO);
+    const e = Date.parse(endISO);
+    if (Number.isNaN(s) || Number.isNaN(e) || e < s) return t("selfUpdateEmpty");
+    const ms = e - s;
+    if (ms < 1000) return `${ms} ms`;
+    const totalSec = Math.round(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s2 = totalSec % 60;
+    return m > 0 ? `${m}m ${s2}s` : `${s2}s`;
+}
+
+// Renders a single label/value row for the expert details panel.
+// Hidden when the value is empty so the panel stays compact for
+// runs that did not produce certain fields (no error, no rollback).
+function DetailRow({ label, value, monoValue = true, hideIfEmpty = false }) {
+    if (hideIfEmpty && (value === null || value === undefined || value === "")) {
+        return null;
+    }
+    const v =
+        value === null || value === undefined || value === ""
+            ? t("selfUpdateEmpty")
+            : value;
+    return (
+        <div className="grid grid-cols-[max-content_1fr] gap-x-3 items-baseline">
+            <span className="opacity-60">{label}:</span>
+            <span className={monoValue ? "font-mono break-all" : "break-words"}>
+                {v}
+            </span>
+        </div>
+    );
+}
+
 function ProgressBar({ step, total, terminal, success }) {
     const safeTotal = Math.max(1, total || 1);
     const pct =
@@ -154,6 +194,30 @@ export default function SelfUpdateProgress({ selfUpdate }) {
         } catch {
             /* best-effort — reload anyway */
         }
+        // Hard refresh: tear down the PWA service worker and CacheStorage
+        // before reloading so the browser actually fetches the new
+        // bundle from the network rather than serving the freshly-
+        // updated old assets from the SW cache.
+        try {
+            if ("serviceWorker" in navigator) {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(
+                    regs.map((r) => r.unregister().catch(() => {}))
+                );
+            }
+        } catch {
+            /* ignore — SW may be unavailable */
+        }
+        try {
+            if (typeof caches !== "undefined" && caches.keys) {
+                const names = await caches.keys();
+                await Promise.all(
+                    names.map((n) => caches.delete(n).catch(() => {}))
+                );
+            }
+        } catch {
+            /* ignore — CacheStorage may be unavailable */
+        }
         try {
             window.location.reload();
         } catch {
@@ -239,42 +303,65 @@ export default function SelfUpdateProgress({ selfUpdate }) {
                     </button>
                     {showDetails && (
                         <div className="mt-2 rounded-lg border border-[var(--border-light)] bg-gray-50 dark:bg-black/30 p-3 text-xs font-mono text-gray-700 dark:text-gray-200 space-y-1">
-                            <div>
-                                <span className="opacity-60">mode:</span>{" "}
-                                {status?.mode || selfUpdate.mode || "?"}
-                            </div>
-                            <div>
-                                <span className="opacity-60">state:</span>{" "}
-                                {status?.state || phase}
-                            </div>
-                            <div>
-                                <span className="opacity-60">step:</span> {step} /{" "}
-                                {totalSteps}
-                            </div>
-                            <div>
-                                <span className="opacity-60">from:</span>{" "}
-                                {status?.fromVersion || "?"}{" "}
-                                <span className="opacity-60">→ to:</span>{" "}
-                                {status?.toVersion || "?"}
-                            </div>
-                            {status?.message && (
-                                <div>
-                                    <span className="opacity-60">message:</span>{" "}
-                                    {status.message}
-                                </div>
-                            )}
-                            {status?.startedAt && (
-                                <div>
-                                    <span className="opacity-60">startedAt:</span>{" "}
-                                    {status.startedAt}
-                                </div>
-                            )}
-                            {status?.endedAt && (
-                                <div>
-                                    <span className="opacity-60">endedAt:</span>{" "}
-                                    {status.endedAt}
-                                </div>
-                            )}
+                            <DetailRow
+                                label={t("selfUpdateDetailMode")}
+                                value={modeLabel(status?.mode || selfUpdate.mode)}
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailState")}
+                                value={stepLabel(status?.state) || (status?.state || phase)}
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailStep")}
+                                value={`${step} / ${totalSteps}`}
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailFromVersion")}
+                                value={status?.fromVersion ? `v${status.fromVersion}` : null}
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailToVersion")}
+                                value={status?.toVersion ? `v${status.toVersion}` : null}
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailMessage")}
+                                value={status?.message}
+                                monoValue={false}
+                                hideIfEmpty
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailStartedAt")}
+                                value={status?.startedAt}
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailEndedAt")}
+                                value={status?.endedAt}
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailDuration")}
+                                value={formatDuration(status?.startedAt, status?.endedAt)}
+                                hideIfEmpty
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailAcknowledgedAt")}
+                                value={status?.acknowledgedAt}
+                                hideIfEmpty
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailError")}
+                                value={status?.error || startError}
+                                monoValue={false}
+                                hideIfEmpty
+                            />
+                            <DetailRow
+                                label={t("selfUpdateDetailRolledBack")}
+                                value={
+                                    status?.rolledBack
+                                        ? t("selfUpdateYes")
+                                        : t("selfUpdateNo")
+                                }
+                                hideIfEmpty={!status?.rolledBack && status?.state !== "rolled_back"}
+                            />
                         </div>
                     )}
                 </div>
