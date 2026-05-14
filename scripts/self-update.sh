@@ -174,6 +174,9 @@ rollback() {
     if [[ -f "$BACKUP_DIR/package-lock.json" ]]; then
         cp "$BACKUP_DIR/package-lock.json" "$INSTALL_DIR/package-lock.json"
     fi
+    # Snapshot served its purpose — wipe whatever's left so we don't
+    # leak disk usage onto the data dir between updates.
+    rm -rf "$BACKUP_DIR"
     # restart (not start): with the new step order the main service
     # may still be running on the half-updated checkout, so we always
     # bounce it to make sure it's running the restored code.

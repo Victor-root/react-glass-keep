@@ -98,6 +98,14 @@ function SystemMonitor({ token, active }) {
         let timer = null;
         const tick = async () => {
             if (cancelled) return;
+            // Bound each fetch so a CPU-starved server doesn't park
+            // the gauge on its previous value for 30 s while the
+            // browser quietly waits. If the server is too busy to
+            // answer in 5 s, we abort and re-tick — values stay on
+            // their last reading but the polling loop keeps a
+            // predictable cadence.
+            const ctrl = new AbortController();
+            const tHandle = setTimeout(() => ctrl.abort(), 5000);
             try {
                 // cache:no-store + a fresh _t every call guarantee the
                 // browser hits the network instead of returning the
@@ -109,6 +117,7 @@ function SystemMonitor({ token, active }) {
                     {
                         headers: { Authorization: `Bearer ${token}` },
                         cache: "no-store",
+                        signal: ctrl.signal,
                     }
                 );
                 if (!cancelled && res.ok) {
@@ -116,7 +125,9 @@ function SystemMonitor({ token, active }) {
                     if (!cancelled && data) setInfo(data);
                 }
             } catch {
-                /* keep showing the last value */
+                /* abort or network hiccup — keep showing the last value */
+            } finally {
+                clearTimeout(tHandle);
             }
             if (!cancelled) timer = setTimeout(tick, 1000);
         };
@@ -256,12 +267,18 @@ function TechnicalLog({ token, phase, showDetails, onTextChanged }) {
 
         const fetchOnce = async () => {
             if (cancelled) return;
+            // Same bound as the system endpoint — the build can stall
+            // the server's event loop badly enough that a default
+            // fetch would wait minutes.
+            const ctrl = new AbortController();
+            const tHandle = setTimeout(() => ctrl.abort(), 5000);
             try {
                 const res = await fetch(
                     `${API_BASE}/admin/self-update/log?_t=${Date.now()}`,
                     {
                         headers: { Authorization: `Bearer ${token}` },
                         cache: "no-store",
+                        signal: ctrl.signal,
                     }
                 );
                 if (cancelled) return;
@@ -273,6 +290,8 @@ function TechnicalLog({ token, phase, showDetails, onTextChanged }) {
                 }
             } catch {
                 /* ignore — the modal is not the place to surface a fetch hiccup */
+            } finally {
+                clearTimeout(tHandle);
             }
             // Re-poll only while the update is still running. Once
             // we hit a terminal state we fetched the final log
