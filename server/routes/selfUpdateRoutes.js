@@ -111,6 +111,15 @@ function attachSelfUpdateRoutes(app, { auth, adminOnly, log = console } = {}) {
     // is wrong. os.freemem()/os.loadavg() are syscalls so this stays
     // responsive even while npm install is hogging the CPU.
     app.get("/api/admin/self-update/system", auth, adminOnly, (_req, res) => {
+        // Forbid every layer of caching — browsers, the PWA's service
+        // worker, intermediate proxies. Without this a 200 response
+        // with no cache headers can be served from the browser's HTTP
+        // cache for a refetch of the same URL, which would freeze the
+        // gauge on its first reading.
+        res.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        res.set("Pragma", "no-cache");
+        res.set("Expires", "0");
+
         const totalMem = os.totalmem();
         const freeMem = os.freemem();
         const usedMem = Math.max(0, totalMem - freeMem);

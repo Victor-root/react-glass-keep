@@ -99,9 +99,18 @@ function SystemMonitor({ token, active }) {
         const tick = async () => {
             if (cancelled) return;
             try {
-                const res = await fetch(`${API_BASE}/admin/self-update/system`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                // cache:no-store + a fresh _t every call guarantee the
+                // browser hits the network instead of returning the
+                // same response from its HTTP cache. Without this the
+                // gauges look frozen because every poll resolves to
+                // the very first reading.
+                const res = await fetch(
+                    `${API_BASE}/admin/self-update/system?_t=${Date.now()}`,
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                        cache: "no-store",
+                    }
+                );
                 if (!cancelled && res.ok) {
                     const data = await res.json().catch(() => null);
                     if (!cancelled && data) setInfo(data);
@@ -231,9 +240,13 @@ function TechnicalLog({ token, phase, showDetails, onTextChanged }) {
         const fetchOnce = async () => {
             if (cancelled) return;
             try {
-                const res = await fetch(`${API_BASE}/admin/self-update/log`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+                const res = await fetch(
+                    `${API_BASE}/admin/self-update/log?_t=${Date.now()}`,
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                        cache: "no-store",
+                    }
+                );
                 if (cancelled) return;
                 if (res.status === 204) {
                     setText("");
