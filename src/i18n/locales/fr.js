@@ -1034,6 +1034,12 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   changelogModalTitle: "Quoi de neuf",
   changelogModalSubtitle: "Mises à jour et changements au fil des versions",
   changelogModalClose: "Fermer",
+  changelogTranslateButton: "Traduire avec l'IA",
+  changelogTranslateInProgress: "Traduction en cours...",
+  changelogShowOriginal: "Afficher l'original",
+  changelogShowTranslated: "Afficher la traduction",
+  changelogTranslateUnavailable: "L'IA n'est pas configurée",
+  changelogTranslateFailed: "Échec de la traduction — réessayez plus tard.",
   selfUpdateKeepOpenHint:
     "Gardez cette fenêtre ouverte jusqu'à la fin.",
   selfUpdateDockerHintIntro:

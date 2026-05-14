@@ -2,8 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import changelogRaw from "../../../CHANGELOG.md?raw";
-import { t } from "../../i18n";
+import { t, locale } from "../../i18n";
 import TI from "../../icons/editor/index.jsx";
+import { api, getAuth } from "../../utils/api.js";
 
 // =============================================================================
 //  ChangelogModal
@@ -59,11 +60,9 @@ export function openChangelog() {
     }
 }
 
-// Compile the markdown once at module load — it is identical for every
-// render and parsing 5 KB of changelog on every mount would be silly.
-const compiledChangelog = (() => {
+function compileMarkdown(md) {
     try {
-        const html = marked.parse(String(changelogRaw || ""), {
+        const html = marked.parse(String(md || ""), {
             breaks: false,
             gfm: true,
         });
@@ -71,10 +70,37 @@ const compiledChangelog = (() => {
     } catch {
         return "";
     }
-})();
+}
+
+// Compile the bundled changelog once at module load — it is identical
+// for every render and parsing 5 KB of changelog on every mount would
+// be silly. AI-translated variants are compiled on the fly when the
+// user clicks "Translate with AI".
+const compiledChangelog = compileMarkdown(changelogRaw);
+
+// True when the requesting user has a usable AI config (either the
+// shared "server" provider opted-in by the admin, or their own custom
+// endpoint). The "Translate with AI" button stays visible but disabled
+// when this is false, so the feature is always discoverable.
+async function fetchAiAvailable(token) {
+    try {
+        const cfg = await api("/user/ai/settings", { token, timeoutMs: 4000 });
+        if (!cfg || !cfg.enabled || !cfg.adminAiEnabled) return false;
+        if (cfg.mode === "server") return !!cfg.serverAiAvailable;
+        if (cfg.mode === "custom") return !!cfg.baseUrl && !!cfg.model;
+        return false;
+    } catch {
+        return false;
+    }
+}
 
 export default function ChangelogModal() {
     const [open, setOpen] = useState(false);
+    const [aiAvailable, setAiAvailable] = useState(false);
+    const [translating, setTranslating] = useState(false);
+    const [translatedRaw, setTranslatedRaw] = useState(null);
+    const [translateError, setTranslateError] = useState(null);
+    const [showOriginal, setShowOriginal] = useState(false);
 
     useEffect(() => {
         if (readShowFlag()) {
@@ -82,6 +108,61 @@ export default function ChangelogModal() {
             setOpen(true);
         }
     }, []);
+
+    // Pull the AI availability flag once the modal opens so the
+    // translate button starts in the right enabled / disabled state.
+    // Only the bundled `en` text can be skipped here — but we still
+    // probe because the user may want to translate EN → other (and
+    // a future locale could ship with EN bundled by default).
+    useEffect(() => {
+        if (!open) return;
+        let cancelled = false;
+        const token = getAuth()?.token || null;
+        (async () => {
+            const ok = await fetchAiAvailable(token);
+            if (!cancelled) setAiAvailable(ok);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [open]);
+
+    // Whenever the modal closes (or re-opens), drop the local
+    // translation state so the next session starts fresh. Keeping
+    // the cache on the server means re-translating is instant.
+    useEffect(() => {
+        if (!open) {
+            setTranslatedRaw(null);
+            setTranslateError(null);
+            setShowOriginal(false);
+            setTranslating(false);
+        }
+    }, [open]);
+
+    const onTranslate = async () => {
+        if (translating || !aiAvailable) return;
+        setTranslateError(null);
+        setTranslating(true);
+        try {
+            const token = getAuth()?.token || null;
+            // 90 s on the client matches the 60 s server-side cap
+            // plus a safety margin for a slow local LLM.
+            const r = await api("/ai/translate-changelog", {
+                method: "POST",
+                body: { content: String(changelogRaw || ""), lang: locale },
+                token,
+                timeoutMs: 90_000,
+            });
+            const text = r && typeof r.translated === "string" ? r.translated : "";
+            if (!text) throw new Error("empty");
+            setTranslatedRaw(text);
+            setShowOriginal(false);
+        } catch (e) {
+            setTranslateError(e?.message || "translate failed");
+        } finally {
+            setTranslating(false);
+        }
+    };
 
     // On-demand opener: any module can dispatch the OPEN_EVENT to
     // pop the modal (currently the "View changelog" link in the
@@ -104,7 +185,15 @@ export default function ChangelogModal() {
         };
     }, [open]);
 
-    const html = useMemo(() => compiledChangelog, []);
+    // Translated markdown is compiled on the fly; the original is
+    // pre-compiled once at module load. The "Show original" toggle
+    // flips between the two without re-parsing the source.
+    const translatedHtml = useMemo(
+        () => (translatedRaw ? compileMarkdown(translatedRaw) : ""),
+        [translatedRaw],
+    );
+    const displayHtml =
+        translatedRaw && !showOriginal ? translatedHtml : compiledChangelog;
 
     if (!open) return null;
 
@@ -215,9 +304,58 @@ export default function ChangelogModal() {
                         <TI.X className="tabler-icon w-5 h-5" />
                     </button>
                 </div>
+                {/* AI translation toolbar. The button is always rendered
+                    so the feature is discoverable; it just sits disabled
+                    when the user has no working AI config. After a
+                    successful translation, a secondary toggle lets the
+                    user flip back to the original English source. */}
+                <div className="flex items-center flex-wrap gap-2 px-5 py-2 border-b border-[var(--border-light)] bg-white/40 dark:bg-white/5">
+                    {/* Wrapper carries data-tooltip so the global
+                        TooltipPortal can show a hint even when the
+                        button itself is disabled (browsers swallow
+                        pointer events on disabled buttons, so the
+                        attribute would not fire on the button alone). */}
+                    <span
+                        data-tooltip={
+                            !aiAvailable
+                                ? t("changelogTranslateUnavailable")
+                                : undefined
+                        }
+                    >
+                        <button
+                            type="button"
+                            onClick={onTranslate}
+                            disabled={!aiAvailable || translating}
+                            className="inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none"
+                        >
+                            <TI.Sparkles
+                                className={`tabler-icon w-4 h-4 ${translating ? "animate-spin" : ""}`}
+                            />
+                            {translating
+                                ? t("changelogTranslateInProgress")
+                                : t("changelogTranslateButton")}
+                        </button>
+                    </span>
+                    {translatedRaw && !translating && (
+                        <button
+                            type="button"
+                            onClick={() => setShowOriginal((v) => !v)}
+                            className="inline-flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-white/10 border border-[var(--border-light)] hover:bg-gray-100 dark:hover:bg-white/15"
+                        >
+                            {showOriginal
+                                ? t("changelogShowTranslated")
+                                : t("changelogShowOriginal")}
+                        </button>
+                    )}
+                    {translateError && (
+                        <span className="text-xs text-red-600 dark:text-red-300">
+                            {t("changelogTranslateFailed")}
+                        </span>
+                    )}
+                </div>
                 <div
                     className="gk-changelog overflow-y-auto px-6 py-5 text-sm text-gray-800 dark:text-gray-100"
-                    dangerouslySetInnerHTML={{ __html: html }}
+                    dangerouslySetInnerHTML={{ __html: displayHtml }}
                 />
             </div>
         </div>
