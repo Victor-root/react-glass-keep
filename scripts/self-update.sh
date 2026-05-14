@@ -20,6 +20,9 @@ set -o pipefail
 INSTALL_DIR="${INSTALL_DIR:-/opt/glass-keep/app}"
 DATA_DIR="${DATA_DIR:-/opt/glass-keep/data}"
 SERVICE_NAME="${SERVICE_NAME:-glass-keep}"
+# Branch to pull from. Defaults to main; can be overridden via /opt/glass-keep/.env
+# (`UPDATE_BRANCH=...`) to track a custom fork or pre-release branch.
+TARGET_BRANCH="${UPDATE_BRANCH:-main}"
 STATUS_FILE="${UPDATE_STATUS_FILE:-${DATA_DIR}/.update-status.json}"
 LOG_FILE="${UPDATE_LOG_FILE:-${DATA_DIR}/.update.log}"
 LOCK_FILE="${UPDATE_LOCK_FILE:-${DATA_DIR}/.update.lock}"
@@ -156,11 +159,12 @@ systemctl stop "$SERVICE_NAME"
 CURRENT_STEP=2
 CURRENT_ACTION="downloading the latest version"
 write_status "fetching" "$CURRENT_STEP" "Downloading the latest version..." ""
+echo "[self-update] target branch: $TARGET_BRANCH"
 (
     cd "$INSTALL_DIR"
     # Guard against local edits leaking into the rebuild.
-    git fetch --depth=1 origin main
-    git reset --hard origin/main
+    git fetch --depth=1 origin "$TARGET_BRANCH"
+    git reset --hard "origin/$TARGET_BRANCH"
 )
 
 TO_VERSION="$(read_version_from_pkg "$INSTALL_DIR/package.json")"

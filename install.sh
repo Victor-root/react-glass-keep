@@ -1115,6 +1115,10 @@ ADMIN_EMAILS=${GLASSKEEP_ADMIN_LOGIN}
 ALLOW_REGISTRATION=false
 HTTPS_ENABLED=$([[ "$SSL_MODE" == "proxy" ]] && echo "false" || echo "true")
 TRUST_PROXY=$([[ "$SSL_MODE" == "proxy" ]] && echo "true" || echo "false")
+# Optional: pull self-updates from a different branch (default: main).
+# Useful for tracking a pre-release branch or a custom fork. Restart the
+# service after changing this. Leave commented for the standard behavior.
+# UPDATE_BRANCH=main
 EOF
     case "$SSL_MODE" in
         selfsigned) printf 'SSL_CERT=%s/cert.pem\nSSL_KEY=%s/key.pem\n' "$ssl_dir" "$ssl_dir" >> "$ENV_FILE" ;;
@@ -1391,15 +1395,36 @@ show_install_summary() {
         fi
     fi
 
+    # Compute the label column width so every value's colon lines up,
+    # regardless of how long the translated labels are. Makes the panel
+    # stay readable in any language without per-string manual padding.
+    local labels=(
+        "$MSG_SUMMARY_NODE"
+        "$MSG_SUMMARY_APP"
+        "$MSG_SUMMARY_BUNDLE"
+        "$MSG_SUMMARY_SERVICE"
+        "$MSG_SUMMARY_UPDATER"
+        "$MSG_SUMMARY_DATA"
+        "$MSG_SUMMARY_ENC"
+        "$MSG_SUMMARY_HTTPS"
+    )
+    local label_width=0 lbl
+    for lbl in "${labels[@]}"; do
+        (( ${#lbl} > label_width )) && label_width=${#lbl}
+    done
+    summary_row() {
+        printf "%s%-*s%s : %s" "$TEAL" "$label_width" "$1" "$RESET" "$2"
+    }
+
     panel "$INDIGO" "$MSG_SUMMARY_TITLE" \
-        "${TEAL}${MSG_SUMMARY_NODE}${RESET}        ${BOLD}${node_ver}${RESET}" \
-        "${TEAL}${MSG_SUMMARY_APP}${RESET}     ${BOLD}${INSTALL_DIR}${RESET} ${GRAY}(${commit})${RESET}" \
-        "${TEAL}${MSG_SUMMARY_BUNDLE}${RESET}      ${BOLD}${bundle}${RESET}" \
-        "${TEAL}${MSG_SUMMARY_SERVICE}${RESET} ${BOLD}${SERVICE_NAME}${RESET}" \
-        "${TEAL}${MSG_SUMMARY_UPDATER}${RESET} ${BOLD}${UPDATER_SERVICE_NAME}${RESET} ${GRAY}(${MSG_SUMMARY_UPDATER_NOTE})${RESET}" \
-        "${TEAL}${MSG_SUMMARY_DATA}${RESET}      ${BOLD}${DATA_DIR}${RESET} ${GRAY}(${MSG_SUMMARY_DATA_NOTE})${RESET}" \
-        "${TEAL}${MSG_SUMMARY_ENC}${RESET} ${enc_status}" \
-        "${TEAL}${MSG_SUMMARY_HTTPS}${RESET}            ${BOLD}${https_label}${RESET}"
+        "$(summary_row "$MSG_SUMMARY_NODE"    "${BOLD}${node_ver}${RESET}")" \
+        "$(summary_row "$MSG_SUMMARY_APP"     "${BOLD}${INSTALL_DIR}${RESET} ${GRAY}(${commit})${RESET}")" \
+        "$(summary_row "$MSG_SUMMARY_BUNDLE"  "${BOLD}${bundle}${RESET}")" \
+        "$(summary_row "$MSG_SUMMARY_SERVICE" "${BOLD}${SERVICE_NAME}${RESET}")" \
+        "$(summary_row "$MSG_SUMMARY_UPDATER" "${BOLD}${UPDATER_SERVICE_NAME}${RESET} ${GRAY}(${MSG_SUMMARY_UPDATER_NOTE})${RESET}")" \
+        "$(summary_row "$MSG_SUMMARY_DATA"    "${BOLD}${DATA_DIR}${RESET} ${GRAY}(${MSG_SUMMARY_DATA_NOTE})${RESET}")" \
+        "$(summary_row "$MSG_SUMMARY_ENC"     "$enc_status")" \
+        "$(summary_row "$MSG_SUMMARY_HTTPS"   "${BOLD}${https_label}${RESET}")"
 }
 
 # Pull a hostname out of a PEM-encoded certificate. Tries the SAN
