@@ -240,6 +240,8 @@ export function useSelfUpdate({ token, isAdmin }) {
                                 else if (r.status.state === "error") setPhase("error");
                                 else if (r.status.state === "rolled_back")
                                     setPhase("rolled_back");
+                                else if (r.status.state === "cancelled")
+                                    setPhase("cancelled");
                                 break;
                             }
                             if (isActiveState(r.status)) {

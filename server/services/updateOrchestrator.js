@@ -96,7 +96,7 @@ function readStatus() {
 function isUpdateInProgress() {
     const s = readStatus();
     if (!s) return false;
-    if (["success", "error", "rolled_back"].includes(s.state)) return false;
+    if (["success", "error", "rolled_back", "cancelled"].includes(s.state)) return false;
     try {
         const stat = fs.statSync(getStatusFilePath());
         const ageMs = Date.now() - stat.mtimeMs;
@@ -374,7 +374,7 @@ function readLog({ maxBytes = 256 * 1024 } = {}) {
 function acknowledgeStatus(endedAt) {
     const current = readStatus();
     if (!current) return { ok: false, reason: "no-status" };
-    if (!["success", "error", "rolled_back"].includes(current.state)) {
+    if (!["success", "error", "rolled_back", "cancelled"].includes(current.state)) {
         return { ok: false, reason: "not-terminal" };
     }
     if (!current.endedAt || current.endedAt !== endedAt) {
