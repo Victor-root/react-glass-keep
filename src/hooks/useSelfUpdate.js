@@ -347,10 +347,17 @@ export function useSelfUpdate({ token, isAdmin }) {
         if (status?.endedAt) await postAcknowledge(token, status.endedAt);
     }, [status, token]);
 
-    const dismiss = useCallback(() => {
-        // Used after a terminal state to close the overlay locally and
-        // mark the server-side status as seen.
-        if (status?.endedAt) postAcknowledge(token, status.endedAt);
+    const dismiss = useCallback(async () => {
+        // Wait for the server-side acknowledgement to land BEFORE
+        // closing the modal locally. Without the await the fetch
+        // was fire-and-forget — a user who refreshed within the
+        // ~100 ms it took to land got the modal back because the
+        // status file did not yet have acknowledgedAt stamped on it.
+        // postAcknowledge already swallows its own errors, so the
+        // promise always resolves and the modal always closes.
+        if (status?.endedAt) {
+            await postAcknowledge(token, status.endedAt);
+        }
         stoppedRef.current = true;
         setPhase("idle");
         setStartError(null);
