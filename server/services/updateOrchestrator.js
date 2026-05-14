@@ -109,12 +109,14 @@ function isUpdateInProgress() {
 
 function writeInitialStatus({ fromVersion, toVersion }) {
     const mode = detectMode();
-    // Native does the heavy lifting before stopping the service, so it
-    // exposes 4 user-visible steps; docker still has 5 (pull + the
-    // container swap dance). Each updater later rewrites this file
-    // with its own totalSteps, but matching the initial value avoids
-    // a brief flicker in the progress bar denominator.
-    const totalSteps = mode === "docker" ? 5 : 4;
+    // Native exposes 4 visible steps (fetch / install / build /
+    // restart). Docker exposes only 2 — the pull and the swap-and-
+    // healthcheck — because the rest of the swap dance happens while
+    // the API server is offline and would never reach the frontend.
+    // Each updater later rewrites this file with its own totalSteps,
+    // but matching the initial value avoids a flicker in the
+    // progress bar denominator.
+    const totalSteps = mode === "docker" ? 2 : 4;
     const data = {
         mode,
         state: "queued",

@@ -48,7 +48,7 @@ console.error = (...args) => {
     _appendLog(args.map(String).join(" "));
 };
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 2;
 let CURRENT_STEP = 0;
 let PRE_RENAMED_NAME = null; // name we renamed the old container to (for rollback)
 
@@ -303,25 +303,35 @@ async function rollback() {
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
+// Docker exposes only TWO user-visible steps because the rest of the
+// swap (stop / rename / create / start) inherently happens while the
+// main container's API server is offline — the modal can't poll
+// during that window, so showing those steps as a separate counter
+// would be misleading. The expert "Journal technique" still surfaces
+// every intermediate action via plain console.log lines for anyone
+// who wants to follow along.
+//
+// Step 1 — fetching: pull the new image.
+// Step 2 — starting_service: swap containers + wait for healthy.
+//          Bumped BEFORE the swap so when the new container comes
+//          online and the frontend reconnects, the status file
+//          already reflects the right step (no flicker back to 1/2).
 async function main() {
     writeStatus("preparing", 0, "Preparing update...");
 
     // Sanity check: confirm the main container exists and grab its config.
     CURRENT_STEP = 1;
     writeStatus("fetching", CURRENT_STEP, "Downloading the latest image...");
-    // Settle delay: gives the frontend a fighting chance to poll and
-    // show the "fetching" state before we charge into the pull. When
-    // the registry is local (test setup) the pull itself can complete
-    // in under 100 ms — without this pause, the modal would jump
-    // straight from "queued" to "success" through the brief network
-    // outage of the swap.
-    await sleep(800);
     const oldInspect = await inspectContainer(MAIN_CONTAINER);
     await dockerPullImage(TARGET_IMAGE);
 
-    // Step 2: stop the running container.
     CURRENT_STEP = 2;
-    writeStatus("stopping_service", CURRENT_STEP, "Stopping the running container...");
+    writeStatus("starting_service", CURRENT_STEP, "Restarting the app...");
+
+    // The next four actions happen while the main container is down.
+    // No writeStatus calls — they would never reach the frontend
+    // anyway — but each step is logged so the journal stays detailed.
+    console.log("[docker-update-helper] stopping main container");
     try {
         await dockerRequest("POST", `/containers/${encodeURIComponent(MAIN_CONTAINER)}/stop?t=15`);
     } catch (e) {
@@ -329,31 +339,24 @@ async function main() {
         if (!/304/.test(e.message) && !/already/i.test(e.message)) throw e;
     }
 
-    // Step 3: rename old container so we can create the new one under
-    // the original name.
-    CURRENT_STEP = 3;
     PRE_RENAMED_NAME = `${MAIN_CONTAINER}-pre-update-${Date.now()}`;
-    writeStatus("renaming", CURRENT_STEP, "Preparing for the new version...");
+    console.log(`[docker-update-helper] renaming old container to ${PRE_RENAMED_NAME}`);
     await dockerRequest(
         "POST",
         `/containers/${encodeURIComponent(MAIN_CONTAINER)}/rename?name=${encodeURIComponent(PRE_RENAMED_NAME)}`
     );
 
-    // Step 4: create + start a new container with the new image.
-    CURRENT_STEP = 4;
-    writeStatus("creating", CURRENT_STEP, "Starting the new version...");
+    console.log("[docker-update-helper] creating new container with the new image");
     const createCfg = buildCreateConfig(oldInspect, TARGET_IMAGE);
     const created = await dockerRequest(
         "POST",
         `/containers/create?name=${encodeURIComponent(MAIN_CONTAINER)}`,
         createCfg
     );
+    console.log(`[docker-update-helper] starting new container ${created.Id}`);
     await dockerRequest("POST", `/containers/${encodeURIComponent(created.Id)}/start`);
 
-    // Step 5: wait for the new container to be healthy (or just Running
-    // if no healthcheck is configured).
-    CURRENT_STEP = 5;
-    writeStatus("starting_service", CURRENT_STEP, "Waiting for the new version to come up...");
+    console.log("[docker-update-helper] waiting for the new container to be healthy");
     const ok = await waitHealthy(created.Id, 90_000);
     if (!ok) {
         throw new Error("new container did not become healthy in 90s");
