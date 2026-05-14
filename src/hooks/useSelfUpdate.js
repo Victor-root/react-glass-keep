@@ -95,6 +95,11 @@ export function useSelfUpdate({ token, isAdmin }) {
     const [status, setStatus] = useState(null);
     const [phase, setPhase] = useState("idle"); // idle|starting|running|waiting_for_server|success|error|rolled_back
     const [startError, setStartError] = useState(null);
+    // Set when polls start timing out but the server is most likely
+    // just busy (slow CPU during install/build). Lets the modal show a
+    // "this is slow, hang on" hint instead of the misleading
+    // "the application is restarting" message.
+    const [slowResponse, setSlowResponse] = useState(false);
     const pollingRef = useRef(false);
     const stoppedRef = useRef(false);
 
@@ -182,11 +187,25 @@ export function useSelfUpdate({ token, isAdmin }) {
             if (pollingRef.current) return;
             pollingRef.current = true;
             stoppedRef.current = false;
+            setSlowResponse(false);
 
-            // Track consecutive transient errors so we can flip the UI
-            // into "waiting_for_server" without flickering on every
-            // network blip.
+            // States that genuinely take the API server offline (the
+            // restart itself). When polls fail while the last known
+            // state is one of these, we're really waiting for the
+            // server to come back. For any other active state
+            // (fetching / installing / building) a failed poll just
+            // means the CPU is busy crunching and the server is
+            // responding too slowly — we keep the modal as-is and
+            // hint at the slowness instead of crying "restarting".
+            const SERVER_DOWN_STATES = new Set([
+                "starting_service",
+                "stopping_service",
+                "renaming",
+                "creating",
+            ]);
+
             let consecutiveTransient = 0;
+            let lastKnownState = null;
             // Cap the loop so a stuck status file does not poll forever.
             const startTs = Date.now();
             const MAX_MS = 10 * 60 * 1000;
@@ -197,7 +216,12 @@ export function useSelfUpdate({ token, isAdmin }) {
                     if (r.ok) {
                         consecutiveTransient = 0;
                         if (r.status) {
+                            lastKnownState = r.status.state;
                             setStatus(r.status);
+                            // A successful poll clears the slow flag —
+                            // the server caught up, the user can see
+                            // real progress again.
+                            setSlowResponse(false);
                             if (isTerminalState(r.status)) {
                                 if (r.status.state === "success") setPhase("success");
                                 else if (r.status.state === "error") setPhase("error");
@@ -218,11 +242,20 @@ export function useSelfUpdate({ token, isAdmin }) {
                     } else if (r.transient) {
                         consecutiveTransient += 1;
                         if (consecutiveTransient >= 2) {
-                            setPhase((p) =>
-                                p === "running" || p === "starting"
-                                    ? "waiting_for_server"
-                                    : p
-                            );
+                            const serverGoingDown =
+                                !lastKnownState ||
+                                SERVER_DOWN_STATES.has(lastKnownState);
+                            if (serverGoingDown) {
+                                setPhase((p) =>
+                                    p === "running" || p === "starting"
+                                        ? "waiting_for_server"
+                                        : p
+                                );
+                            } else {
+                                // Server is up but busy — surface the
+                                // hint instead of flipping to "waiting".
+                                setSlowResponse(true);
+                            }
                         }
                     } else {
                         // Non-transient HTTP error (401, 500 etc.) — stop polling.
@@ -318,6 +351,7 @@ export function useSelfUpdate({ token, isAdmin }) {
         startUpdate,
         dismiss,
         acknowledge,
+        slowResponse,
         isActive:
             phase === "starting" ||
             phase === "running" ||

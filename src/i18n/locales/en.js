@@ -986,6 +986,12 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   selfUpdateLogFontAssets: "{count} font assets",
   selfUpdateLogShowFonts: "show",
   selfUpdateLogHideFonts: "hide",
+  selfUpdateSlowStepHint:
+    "This step can take several minutes on machines with limited RAM or CPU. Keep this window open.",
+  selfUpdateSlowResponseHint:
+    "The server is taking longer than usual to respond — the build is probably hogging the CPU. The update is still progressing, hang on.",
+  selfUpdateRamLabel: "RAM",
+  selfUpdateRamSaturated: "almost full",
   changelogModalTitle: "What's new",
   changelogModalSubtitle: "Updates and changes across versions",
   changelogModalClose: "Close",

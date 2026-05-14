@@ -987,6 +987,12 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   selfUpdateLogFontAssets: "{count} polices web",
   selfUpdateLogShowFonts: "afficher",
   selfUpdateLogHideFonts: "masquer",
+  selfUpdateSlowStepHint:
+    "Cette étape peut prendre plusieurs minutes sur des machines avec peu de RAM ou de CPU. Gardez cette fenêtre ouverte.",
+  selfUpdateSlowResponseHint:
+    "Le serveur met plus de temps que d'habitude à répondre — la compilation accapare probablement le CPU. La mise à jour avance toujours, patientez.",
+  selfUpdateRamLabel: "RAM",
+  selfUpdateRamSaturated: "presque saturée",
   changelogModalTitle: "Quoi de neuf",
   changelogModalSubtitle: "Mises à jour et changements au fil des versions",
   changelogModalClose: "Fermer",

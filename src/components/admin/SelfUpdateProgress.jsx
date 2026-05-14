@@ -68,6 +68,98 @@ function FontGroup({ count, lines }) {
     );
 }
 
+// Compact RAM / CPU load monitor shown next to the progress bar while
+// an update is in flight. The values come from `/api/admin/self-
+// update/system` which the server exposes for exactly this purpose;
+// we poll every 2 seconds (slower than the status poll because RAM
+// drift over 500 ms intervals is not interesting). Polling is gated
+// on a hard error count so a couple of timeouts during a heavy build
+// don't blank the readout — it just keeps showing the last value.
+const HIGH_RAM_THRESHOLD = 90; // % — flips the bar to red + warning
+const ELEVATED_RAM_THRESHOLD = 75; // % — flips the bar to amber
+
+function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes < 0) return "—";
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+    if (bytes < 1024 * 1024 * 1024)
+        return `${Math.round(bytes / (1024 * 1024))} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function SystemMonitor({ token, active }) {
+    const [info, setInfo] = useState(null);
+
+    useEffect(() => {
+        if (!active || !token) {
+            setInfo(null);
+            return;
+        }
+        let cancelled = false;
+        let timer = null;
+        const tick = async () => {
+            if (cancelled) return;
+            try {
+                const res = await fetch(`${API_BASE}/admin/self-update/system`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!cancelled && res.ok) {
+                    const data = await res.json().catch(() => null);
+                    if (!cancelled && data) setInfo(data);
+                }
+            } catch {
+                /* keep showing the last value */
+            }
+            if (!cancelled) timer = setTimeout(tick, 2000);
+        };
+        tick();
+        return () => {
+            cancelled = true;
+            if (timer) clearTimeout(timer);
+        };
+    }, [active, token]);
+
+    if (!active || !info) return null;
+
+    const percent = Math.min(100, Math.max(0, info.mem.percent || 0));
+    const elevated = percent >= ELEVATED_RAM_THRESHOLD;
+    const high = percent >= HIGH_RAM_THRESHOLD;
+    const barClass = high
+        ? "bg-red-500"
+        : elevated
+          ? "bg-amber-500"
+          : "bg-emerald-500";
+    const labelClass = high
+        ? "text-red-600 dark:text-red-300 font-medium"
+        : elevated
+          ? "text-amber-600 dark:text-amber-300"
+          : "text-gray-500 dark:text-gray-400";
+
+    return (
+        <div className="mt-3 text-xs">
+            <div className={`flex items-center justify-between mb-1 ${labelClass}`}>
+                <span className="inline-flex items-center gap-1.5">
+                    <span aria-hidden="true">💾</span>
+                    {t("selfUpdateRamLabel")}
+                    {high && (
+                        <span className="ml-1 font-semibold">
+                            · {t("selfUpdateRamSaturated")}
+                        </span>
+                    )}
+                </span>
+                <span className="tabular-nums">
+                    {formatBytes(info.mem.used)} / {formatBytes(info.mem.total)} ({percent.toFixed(0)}%)
+                </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                <div
+                    className={`h-full transition-[width] duration-500 ${barClass}`}
+                    style={{ width: `${percent}%` }}
+                />
+            </div>
+        </div>
+    );
+}
+
 function TechnicalLog({ token, phase, showDetails }) {
     const [text, setText] = useState("");
     const scrollRef = useRef(null);
@@ -299,8 +391,15 @@ function StateIcon({ phase }) {
 }
 
 export default function SelfUpdateProgress({ selfUpdate, token }) {
-    const { phase, status, startError, dismiss, acknowledge, isActive } =
-        selfUpdate;
+    const {
+        phase,
+        status,
+        startError,
+        dismiss,
+        acknowledge,
+        isActive,
+        slowResponse,
+    } = selfUpdate;
     const [showDetails, setShowDetails] = useState(false);
 
     // Lock body scroll while the overlay is shown.
@@ -450,6 +549,35 @@ export default function SelfUpdateProgress({ selfUpdate, token }) {
                             terminal={true}
                             success={success}
                         />
+                    )}
+
+                    {/* Static hint for the long-running steps. The
+                        build especially can crawl on a 256 MB / 1 vCPU
+                        host and we want the admin to know that's
+                        expected rather than wondering if it's hung. */}
+                    {!terminal &&
+                        (status?.state === "installing" ||
+                            status?.state === "building") && (
+                            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                                {t("selfUpdateSlowStepHint")}
+                            </p>
+                        )}
+
+                    {/* Stronger warning surfaced by the hook when
+                        successive status polls time out while we are
+                        still in a server-up state — the server is
+                        likely CPU-starved, not down. */}
+                    {!terminal && slowResponse && (
+                        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                            {t("selfUpdateSlowResponseHint")}
+                        </p>
+                    )}
+
+                    {/* Live RAM gauge, polled separately from the
+                        status. Only visible while the update is
+                        active so it does not clutter terminal states. */}
+                    {!terminal && (
+                        <SystemMonitor token={token} active={isActive} />
                     )}
 
                     {errorMessage && (error || rolledBack) && (

@@ -10,6 +10,7 @@
 //  the instance (when encryption is on) before they can update.
 // =============================================================================
 
+const os = require("os");
 const orchestrator = require("../services/updateOrchestrator");
 const pkg = require("../../package.json");
 
@@ -59,6 +60,37 @@ function attachSelfUpdateRoutes(app, { auth, adminOnly, log = console } = {}) {
             // would suppress the success modal of a completed in-app
             // update.
             runningVersion: pkg.version,
+        });
+    });
+
+    // Cheap snapshot of host RAM + CPU load. The progress modal polls
+    // this while an update is running so the admin can tell whether
+    // the build is just slow because the box is under-provisioned
+    // (256 MB LXC, single vCPU...) rather than wondering if something
+    // is wrong. os.freemem()/os.loadavg() are syscalls so this stays
+    // responsive even while npm install is hogging the CPU.
+    app.get("/api/admin/self-update/system", auth, adminOnly, (_req, res) => {
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const usedMem = Math.max(0, totalMem - freeMem);
+        const loadavg = os.loadavg();
+        const cpuCount = (os.cpus() || []).length || 1;
+        return res.json({
+            mem: {
+                total: totalMem,
+                free: freeMem,
+                used: usedMem,
+                percent: totalMem > 0 ? (usedMem / totalMem) * 100 : 0,
+            },
+            cpu: {
+                count: cpuCount,
+                // loadavg[0] = 1-minute load average. Normalise by CPU
+                // count so the value is comparable across hosts.
+                load1: loadavg[0] || 0,
+                load5: loadavg[1] || 0,
+                load15: loadavg[2] || 0,
+            },
+            uptimeSec: Math.floor(os.uptime()),
         });
     });
 
