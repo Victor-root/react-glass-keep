@@ -96,7 +96,8 @@ function StateIcon({ phase }) {
 }
 
 export default function SelfUpdateProgress({ selfUpdate }) {
-    const { phase, status, startError, dismiss, isActive } = selfUpdate;
+    const { phase, status, startError, dismiss, acknowledge, isActive } =
+        selfUpdate;
     const [showDetails, setShowDetails] = useState(false);
 
     // Lock body scroll while the overlay is shown.
@@ -146,6 +147,9 @@ export default function SelfUpdateProgress({ selfUpdate }) {
 
     const onReload = () => {
         try {
+            // Acknowledge BEFORE reloading so the freshly-mounted hook
+            // sees the ack in localStorage and doesn't re-open the modal.
+            if (typeof acknowledge === "function") acknowledge();
             window.location.reload();
         } catch {
             /* noop */

@@ -27,7 +27,7 @@ STATUS_FILE="${UPDATE_STATUS_FILE:-${DATA_DIR}/.update-status.json}"
 LOG_FILE="${UPDATE_LOG_FILE:-${DATA_DIR}/.update.log}"
 LOCK_FILE="${UPDATE_LOCK_FILE:-${DATA_DIR}/.update.lock}"
 
-TOTAL_STEPS=5
+TOTAL_STEPS=4
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 PREV_COMMIT=""
 FROM_VERSION=""
@@ -108,12 +108,16 @@ rollback() {
     (
         cd "$INSTALL_DIR" || exit 1
         git reset --hard "$PREV_COMMIT" || true
-        # Same NODE_ENV trick as step 3 — without it the rollback would
-        # rebuild a stripped install and leave the operator stuck.
+        # Same NODE_ENV trick as the install step — without it the
+        # rollback would rebuild a stripped install and leave the
+        # operator stuck.
         NODE_ENV=development npm install --silent --include=dev || true
         npm run build || true
     )
-    systemctl start "$SERVICE_NAME" || true
+    # restart (not start): with the new step order the main service
+    # may still be running on the half-updated checkout, so we always
+    # bounce it to make sure it's running the restored code.
+    systemctl restart "$SERVICE_NAME" || true
     ROLLED_BACK=1
 }
 
@@ -149,14 +153,17 @@ fi
 PREV_COMMIT="$(cd "$INSTALL_DIR" && git rev-parse HEAD 2>/dev/null || true)"
 echo "[self-update] previous commit: $PREV_COMMIT"
 
-# ── Step 1: stop the service ─────────────────────────────────────────────────
-CURRENT_STEP=1
-CURRENT_ACTION="stopping the running service"
-write_status "stopping_service" "$CURRENT_STEP" "Stopping the running service..." ""
-systemctl stop "$SERVICE_NAME"
+# Step order rationale: we do all the "heavy" work (git pull, npm
+# install, npm build) BEFORE stopping the service. The frontend is
+# polling /api/admin/self-update/status, so as long as glass-keep is
+# up the user sees real-time progress. We only cut the service for
+# the final restart, which is brief (~2 s). Running git/npm in place
+# is safe because the live Node process keeps its modules in memory —
+# it doesn't re-read source files at runtime, so we can update them
+# under its feet without breaking anything.
 
-# ── Step 2: pull the latest code ─────────────────────────────────────────────
-CURRENT_STEP=2
+# ── Step 1: pull the latest code ─────────────────────────────────────────────
+CURRENT_STEP=1
 CURRENT_ACTION="downloading the latest version"
 write_status "fetching" "$CURRENT_STEP" "Downloading the latest version..." ""
 echo "[self-update] target branch: $TARGET_BRANCH"
@@ -170,8 +177,8 @@ echo "[self-update] target branch: $TARGET_BRANCH"
 TO_VERSION="$(read_version_from_pkg "$INSTALL_DIR/package.json")"
 echo "[self-update] new package.json version: ${TO_VERSION:-unknown}"
 
-# ── Step 3: install dependencies ─────────────────────────────────────────────
-CURRENT_STEP=3
+# ── Step 2: install dependencies ─────────────────────────────────────────────
+CURRENT_STEP=2
 CURRENT_ACTION="installing dependencies"
 write_status "installing" "$CURRENT_STEP" "Installing dependencies..." ""
 (
@@ -185,8 +192,8 @@ write_status "installing" "$CURRENT_STEP" "Installing dependencies..." ""
     NODE_ENV=development npm install --silent --include=dev
 )
 
-# ── Step 4: build the front-end ──────────────────────────────────────────────
-CURRENT_STEP=4
+# ── Step 3: build the front-end ──────────────────────────────────────────────
+CURRENT_STEP=3
 CURRENT_ACTION="building the application"
 write_status "building" "$CURRENT_STEP" "Building the application..." ""
 (
@@ -194,11 +201,13 @@ write_status "building" "$CURRENT_STEP" "Building the application..." ""
     npm run build
 )
 
-# ── Step 5: start the service back ───────────────────────────────────────────
-CURRENT_STEP=5
+# ── Step 4: restart the service ──────────────────────────────────────────────
+# This is the only moment the app is unreachable. The frontend will
+# briefly show "waiting for the server" here before resuming.
+CURRENT_STEP=4
 CURRENT_ACTION="restarting the service"
 write_status "starting_service" "$CURRENT_STEP" "Restarting the service..." ""
-systemctl start "$SERVICE_NAME"
+systemctl restart "$SERVICE_NAME"
 
 # Give the service a moment to come up. Healthcheck-ish.
 sleep 2

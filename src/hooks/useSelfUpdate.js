@@ -34,6 +34,29 @@ const ACTIVE_STATES = new Set([
 
 const TERMINAL_STATES = new Set(["success", "error", "rolled_back"]);
 
+// The server keeps the last update's status file around for history.
+// We track which terminal outcome the user has already seen in
+// localStorage so a page refresh after success/error doesn't pop the
+// modal again. The ack is keyed by the status's endedAt timestamp,
+// so a brand-new update (different endedAt) is shown as expected.
+const ACK_KEY = "glass-keep-self-update-ack";
+
+function readAck() {
+    try {
+        return localStorage.getItem(ACK_KEY);
+    } catch {
+        return null;
+    }
+}
+
+function writeAck(endedAt) {
+    try {
+        if (endedAt) localStorage.setItem(ACK_KEY, endedAt);
+    } catch {
+        /* localStorage unavailable — fall back to "always show" */
+    }
+}
+
 function isActiveState(s) {
     return !!s && ACTIVE_STATES.has(s.state);
 }
@@ -99,7 +122,17 @@ export function useSelfUpdate({ token, isAdmin }) {
                 if (cancelled) return;
                 if (r.ok && r.status) {
                     setStatus(r.status);
-                    if (r.status.inProgress || isActiveState(r.status)) {
+                    const ack = readAck();
+                    // Skip re-opening the modal if the user already
+                    // acknowledged this exact terminal outcome (e.g.
+                    // clicked Reload after a successful update).
+                    const alreadyAcknowledged =
+                        TERMINAL_STATES.has(r.status.state) &&
+                        r.status.endedAt &&
+                        ack === r.status.endedAt;
+                    if (alreadyAcknowledged) {
+                        // stay idle
+                    } else if (r.status.inProgress || isActiveState(r.status)) {
                         setPhase("running");
                     } else if (r.status.state === "success") {
                         setPhase("success");
@@ -229,14 +262,21 @@ export function useSelfUpdate({ token, isAdmin }) {
         [mode, token]
     );
 
+    const acknowledge = useCallback(() => {
+        // Record that the current terminal outcome has been seen so a
+        // subsequent reload of the page does not re-open the modal.
+        if (status?.endedAt) writeAck(status.endedAt);
+    }, [status]);
+
     const dismiss = useCallback(() => {
         // Used after a terminal state to close the overlay. We deliberately
         // do NOT clear the status from the server (it stays as the last
         // run's outcome) — but the local phase resets to idle.
+        if (status?.endedAt) writeAck(status.endedAt);
         stoppedRef.current = true;
         setPhase("idle");
         setStartError(null);
-    }, []);
+    }, [status]);
 
     return {
         mode,
@@ -247,6 +287,7 @@ export function useSelfUpdate({ token, isAdmin }) {
         startError,
         startUpdate,
         dismiss,
+        acknowledge,
         isActive:
             phase === "starting" ||
             phase === "running" ||

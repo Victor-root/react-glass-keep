@@ -108,11 +108,18 @@ function isUpdateInProgress() {
 }
 
 function writeInitialStatus({ fromVersion, toVersion }) {
+    const mode = detectMode();
+    // Native does the heavy lifting before stopping the service, so it
+    // exposes 4 user-visible steps; docker still has 5 (pull + the
+    // container swap dance). Each updater later rewrites this file
+    // with its own totalSteps, but matching the initial value avoids
+    // a brief flicker in the progress bar denominator.
+    const totalSteps = mode === "docker" ? 5 : 4;
     const data = {
-        mode: detectMode(),
+        mode,
         state: "queued",
         step: 0,
-        totalSteps: 5,
+        totalSteps,
         message: "Update queued...",
         startedAt: new Date().toISOString(),
         endedAt: null,
