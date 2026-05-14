@@ -123,24 +123,30 @@ export function useSelfUpdate({ token, isAdmin }) {
                 if (r.ok && r.status) {
                     setStatus(r.status);
                     const ack = readAck();
-                    // Skip re-opening the modal if the user already
-                    // acknowledged this exact terminal outcome (e.g.
-                    // clicked Reload after a successful update).
+                    const isTerminal = TERMINAL_STATES.has(r.status.state);
                     const alreadyAcknowledged =
-                        TERMINAL_STATES.has(r.status.state) &&
+                        isTerminal &&
                         r.status.endedAt &&
                         ack === r.status.endedAt;
-                    if (alreadyAcknowledged) {
-                        // stay idle
-                    } else if (r.status.inProgress || isActiveState(r.status)) {
+                    // Resolve the phase explicitly on every mount so a
+                    // stale React state from before a logout / refresh
+                    // can't survive into the new session.
+                    if (r.status.inProgress || isActiveState(r.status)) {
                         setPhase("running");
+                    } else if (alreadyAcknowledged) {
+                        setPhase("idle");
                     } else if (r.status.state === "success") {
                         setPhase("success");
                     } else if (r.status.state === "error") {
                         setPhase("error");
                     } else if (r.status.state === "rolled_back") {
                         setPhase("rolled_back");
+                    } else {
+                        setPhase("idle");
                     }
+                } else {
+                    // No status file at all → make sure we are idle.
+                    setPhase("idle");
                 }
             } catch {
                 /* ignored */
