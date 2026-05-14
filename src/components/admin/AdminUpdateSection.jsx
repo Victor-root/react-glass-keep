@@ -139,6 +139,11 @@ export default function AdminUpdateSection({
 
   const canOneClick = updateAvailable && oneClickAvailable && !isUpdateRunning;
 
+  // Manual update commands are hidden behind a toggle so the panel
+  // stays focused on the one-click flow. The toggle keeps both
+  // command rows together — admin chooses whether to expand them.
+  const [showManualCommands, setShowManualCommands] = useState(false);
+
   const onClickUpdateNow = () => {
     if (!latestVersion) return;
     const fire = () => {
@@ -208,9 +213,11 @@ export default function AdminUpdateSection({
 
       {updateAvailable && (
         <>
-          {/* Primary action: one-click update when available. */}
-          {oneClickAvailable && (
-            <div className="mb-3">
+          {/* Action row: one-click (green) + manual toggle (black). The
+              black button shares the green button's shape, animations
+              and shadow weight so they read as a paired set. */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {oneClickAvailable && (
               <button
                 type="button"
                 onClick={onClickUpdateNow}
@@ -222,10 +229,26 @@ export default function AdminUpdateSection({
                   ? t("selfUpdateRunning")
                   : t("selfUpdateButton")}
               </button>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-                {t("selfUpdateButtonHint")}
-              </p>
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowManualCommands((v) => !v)}
+              aria-expanded={showManualCommands}
+              className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-black shadow-md shadow-gray-700/40 dark:shadow-none hover:shadow-lg hover:shadow-gray-700/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
+            >
+              <TI.Terminal2 className="tabler-icon w-4 h-4" />
+              {t("selfUpdateManualButton")}
+              <TI.ChevronDown
+                className={`tabler-icon w-4 h-4 transition-transform duration-200 ${
+                  showManualCommands ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          </div>
+          {oneClickAvailable && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 -mt-1.5">
+              {t("selfUpdateButtonHint")}
+            </p>
           )}
 
           {/* Docker + no socket = guide the admin to add the one missing line */}
@@ -236,20 +259,22 @@ export default function AdminUpdateSection({
             )}
 
           {/* Manual commands stay around as a fallback for either mode. */}
-          <div className="space-y-3 mb-3">
-            <CommandRow
-              icon={TI.Terminal2}
-              label={t("updateMethodTerminal")}
-              description={t("updateMethodTerminalDescription")}
-              command={INSTALL_COMMAND}
-            />
-            <CommandRow
-              icon={TI.BrandDocker}
-              label={t("updateMethodDocker")}
-              description={t("updateMethodDockerDescription")}
-              command={DOCKER_COMMAND}
-            />
-          </div>
+          {showManualCommands && (
+            <div className="space-y-3 mb-3">
+              <CommandRow
+                icon={TI.Terminal2}
+                label={t("updateMethodTerminal")}
+                description={t("updateMethodTerminalDescription")}
+                command={INSTALL_COMMAND}
+              />
+              <CommandRow
+                icon={TI.BrandDocker}
+                label={t("updateMethodDocker")}
+                description={t("updateMethodDockerDescription")}
+                command={DOCKER_COMMAND}
+              />
+            </div>
+          )}
         </>
       )}
 

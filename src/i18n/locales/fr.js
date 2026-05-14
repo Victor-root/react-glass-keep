@@ -927,6 +927,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   selfUpdateRunning: "Mise à jour en cours...",
   selfUpdateButtonHint:
     "Installe la nouvelle version et redémarre l'application — vos données sont conservées.",
+  selfUpdateManualButton: "Mettre à jour manuellement",
   selfUpdateConfirmTitle: "Mettre à jour vers la v{version} ?",
   selfUpdateConfirmMessage:
     "L'application sera indisponible quelques instants pendant l'installation et le redémarrage. Vos notes et comptes sont conservés. Continuer ?",

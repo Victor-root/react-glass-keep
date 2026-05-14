@@ -926,6 +926,7 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   selfUpdateRunning: "Update in progress...",
   selfUpdateButtonHint:
     "Installs the new version and restarts the app — your data is preserved.",
+  selfUpdateManualButton: "Update manually",
   selfUpdateConfirmTitle: "Update to v{version}?",
   selfUpdateConfirmMessage:
     "The app will briefly go offline while the new version is installed and the service restarts. Your notes and accounts are preserved. Continue?",
