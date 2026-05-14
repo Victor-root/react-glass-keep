@@ -88,10 +88,19 @@ function formatBytes(bytes) {
 
 function SystemMonitor({ token, active }) {
     const [info, setInfo] = useState(null);
+    // Number of consecutive failed (or aborted-too-slow) polls
+    // since the last successful read. We flip the UI to "stale" when
+    // this gets high enough — the gauges keep showing the last
+    // valid values (still useful info) but it's clear they no
+    // longer reflect reality. Common cause: the build has hijacked
+    // every available CPU cycle and the API server can no longer
+    // answer in time.
+    const [staleStreak, setStaleStreak] = useState(0);
 
     useEffect(() => {
         if (!active || !token) {
             setInfo(null);
+            setStaleStreak(0);
             return;
         }
         let cancelled = false;
@@ -106,6 +115,7 @@ function SystemMonitor({ token, active }) {
             // predictable cadence.
             const ctrl = new AbortController();
             const tHandle = setTimeout(() => ctrl.abort(), 5000);
+            let ok = false;
             try {
                 // cache:no-store + a fresh _t every call guarantee the
                 // browser hits the network instead of returning the
@@ -122,14 +132,20 @@ function SystemMonitor({ token, active }) {
                 );
                 if (!cancelled && res.ok) {
                     const data = await res.json().catch(() => null);
-                    if (!cancelled && data) setInfo(data);
+                    if (!cancelled && data) {
+                        setInfo(data);
+                        ok = true;
+                    }
                 }
             } catch {
                 /* abort or network hiccup — keep showing the last value */
             } finally {
                 clearTimeout(tHandle);
             }
-            if (!cancelled) timer = setTimeout(tick, 1000);
+            if (!cancelled) {
+                setStaleStreak((n) => (ok ? 0 : n + 1));
+                timer = setTimeout(tick, 1000);
+            }
         };
         tick();
         return () => {
@@ -176,8 +192,20 @@ function SystemMonitor({ token, active }) {
           ? "text-amber-600 dark:text-amber-300"
           : "text-gray-500 dark:text-gray-400";
 
+    // After ~3 consecutive failed polls the server has lost the
+    // ability to keep up — the gauges still display the last good
+    // values (informative: "the system WAS at 99 % when we last
+    // heard"), but we badge them so the admin doesn't think the
+    // numbers reflect the current second.
+    const isStale = staleStreak >= 3;
+
     return (
         <div className="mt-3 space-y-2 text-xs">
+            {isStale && (
+                <p className="text-amber-600 dark:text-amber-400 italic">
+                    {t("selfUpdateGaugesStale")}
+                </p>
+            )}
             <div>
                 <div className={`flex items-center justify-between mb-1 ${labelClass}`}>
                     <span className="inline-flex items-center gap-1.5">

@@ -1010,6 +1010,8 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
     "Le serveur met plus de temps que d'habitude à répondre — la compilation accapare probablement le CPU. La mise à jour avance toujours, patientez.",
   selfUpdateRamLabel: "RAM",
   selfUpdateRamSaturated: "presque saturée",
+  selfUpdateGaugesStale:
+    "Dernières mesures connues — le serveur est trop occupé pour les rafraîchir.",
   selfUpdateCpuLabel: "Charge CPU",
   selfUpdateCpuSaturated: "saturée",
   selfUpdateCpuCore: "cœur",

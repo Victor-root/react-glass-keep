@@ -52,6 +52,19 @@ if ! flock -n 9; then
     exit 2
 fi
 
+# ── Scheduling courtesy ──────────────────────────────────────────────────────
+# Demote ourselves (and our children — nice / oom_score_adj are
+# inherited via fork) so the main glass-keep process keeps a usable
+# slice of CPU during the heavy build step, and so the OOM killer
+# goes after the updater first if memory pressure spikes. Without
+# this, on a 1-2 vCPU host the npm install + vite build can starve
+# the API server enough that the admin panel stops being able to
+# poll status / system gauges entirely.
+renice -n 10 -p $$ >/dev/null 2>&1 || true
+if [[ -w "/proc/$$/oom_score_adj" ]]; then
+    echo 500 > "/proc/$$/oom_score_adj" 2>/dev/null || true
+fi
+
 # ── Status writer (atomic) ───────────────────────────────────────────────────
 # Uses a small node one-liner so we get correct JSON escaping for
 # arbitrary user-facing strings without re-implementing JSON in bash.
