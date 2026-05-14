@@ -71,6 +71,7 @@ Compared to the original project, this fork puts more emphasis on:
 - **💬 configurable AI assistant with local or remote endpoints**
 - **🔐 Server-side encryption & passkeys**
 - **🔔 In-app update notifications**
+- **🚀 one-click in-app update** — admin clicks the "Update now" button, the app pulls the new version, restores from a snapshot if the build fails (no rebuild needed on OOM), shows a live RAM / swap / CPU monitor + a cancel button while it runs, and pops the full changelog on the new version once the reload completes
 - **🎙️ audio notes**
 - **🖼️ refreshed logo and icons across the web app, PWA, favicon, and Android launcher / TV banner**
 

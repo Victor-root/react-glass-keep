@@ -25,8 +25,23 @@ export default function GenericConfirmDialog({ open, dark, config, onClose }) {
 
   const variantClass = VARIANT_CLASSES[resolveVariant(config)] || VARIANT_CLASSES.default;
 
+  // Default z-50 is fine for confirmations triggered from regular
+  // UI, but if the caller is already inside a higher-stacked modal
+  // (e.g. the self-update progress overlay sits at z-9999) it can
+  // pass `config.zIndex` so the confirm dialog actually appears on
+  // top instead of being trapped under its parent backdrop. We use
+  // an inline style so the value is always honoured — Tailwind
+  // doesn't compile classes built from runtime strings.
+  const stackingStyle =
+    typeof config?.zIndex === "number" && config.zIndex > 0
+      ? { zIndex: config.zIndex }
+      : undefined;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={stackingStyle}
+    >
       <div
         className="absolute inset-0 bg-black/40"
         onClick={onClose}

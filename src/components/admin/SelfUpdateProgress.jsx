@@ -686,6 +686,9 @@ export default function SelfUpdateProgress({
                 confirmText: t("selfUpdateCancelConfirmButton"),
                 cancelText: t("cancel"),
                 variant: "danger",
+                // Sit above the self-update modal (z-9999) so the
+                // confirm dialog isn't trapped under its backdrop.
+                zIndex: 10000,
                 onConfirm: fire,
             });
         } else {
