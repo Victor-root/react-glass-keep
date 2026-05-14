@@ -134,18 +134,17 @@ function SystemMonitor({ token, active }) {
           ? "text-amber-600 dark:text-amber-300"
           : "text-gray-500 dark:text-gray-400";
 
-    // CPU load. loadavg[0] is the 1-minute load average from the OS.
-    // Normalised by the CPU count it maps to a familiar "0..100% per
-    // core" gauge: 1.0 on a 1-core box = fully busy, 2.0 = overloaded
-    // with one task waiting in the queue. Capped at 200% for display
-    // (the bar itself clips at 100% but the percentage label tells
-    // the truth).
+    // CPU usage as a real 0-100 % derived server-side from a delta
+    // of /proc/stat tick counters. We hide the bar entirely if the
+    // server can't compute it yet (first poll has no previous
+    // sample, so percent is null); the next 2-second tick fills it
+    // in. Much more honest than scaling load-avg, which can stay
+    // above 100 % long after the CPU is back to idle.
     const cpuCount = info.cpu?.count || 1;
-    const cpuLoad = info.cpu?.load1 || 0;
-    const cpuPercentRaw = (cpuLoad / cpuCount) * 100;
-    const cpuPercent = Math.min(200, Math.max(0, cpuPercentRaw));
-    const cpuElevated = cpuPercent >= 70;
-    const cpuHigh = cpuPercent >= 100;
+    const cpuPercent =
+        typeof info.cpu?.percent === "number" ? info.cpu.percent : null;
+    const cpuElevated = cpuPercent !== null && cpuPercent >= 70;
+    const cpuHigh = cpuPercent !== null && cpuPercent >= 90;
     const cpuBarClass = cpuHigh
         ? "bg-red-500"
         : cpuElevated
@@ -181,28 +180,33 @@ function SystemMonitor({ token, active }) {
                     />
                 </div>
             </div>
-            <div>
-                <div className={`flex items-center justify-between mb-1 ${cpuLabelClass}`}>
-                    <span className="inline-flex items-center gap-1.5">
-                        <span aria-hidden="true">⚙️</span>
-                        {t("selfUpdateCpuLabel")}
-                        {cpuHigh && (
-                            <span className="ml-1 font-semibold">
-                                · {t("selfUpdateCpuSaturated")}
-                            </span>
-                        )}
-                    </span>
-                    <span className="tabular-nums">
-                        {cpuLoad.toFixed(2)} / {cpuCount} {cpuCount > 1 ? t("selfUpdateCpuCores") : t("selfUpdateCpuCore")} ({cpuPercentRaw.toFixed(0)}%)
-                    </span>
+            {cpuPercent !== null && (
+                <div>
+                    <div className={`flex items-center justify-between mb-1 ${cpuLabelClass}`}>
+                        <span className="inline-flex items-center gap-1.5">
+                            <span aria-hidden="true">⚙️</span>
+                            {t("selfUpdateCpuLabel")}
+                            {cpuHigh && (
+                                <span className="ml-1 font-semibold">
+                                    · {t("selfUpdateCpuSaturated")}
+                                </span>
+                            )}
+                        </span>
+                        <span className="tabular-nums">
+                            {cpuPercent.toFixed(0)}% ({cpuCount}{" "}
+                            {cpuCount > 1
+                                ? t("selfUpdateCpuCores")
+                                : t("selfUpdateCpuCore")})
+                        </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                        <div
+                            className={`h-full transition-[width] duration-500 ${cpuBarClass}`}
+                            style={{ width: `${cpuPercent}%` }}
+                        />
+                    </div>
                 </div>
-                <div className="h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
-                    <div
-                        className={`h-full transition-[width] duration-500 ${cpuBarClass}`}
-                        style={{ width: `${Math.min(100, cpuPercent)}%` }}
-                    />
-                </div>
-            </div>
+            )}
         </div>
     );
 }
@@ -716,13 +720,18 @@ export default function SelfUpdateProgress({ selfUpdate, token }) {
                             />
                         </div>
                     )}
-                    {showDetails && (
+                    {/* Always-mounted (hidden via CSS) so the
+                        accumulated log + scroll position survive a
+                        toggle of "Show details". The polling effect
+                        inside is gated on `showDetails` so we don't
+                        chat with the server while the log is hidden. */}
+                    <div className={showDetails ? "" : "hidden"}>
                         <TechnicalLog
                             token={token}
                             phase={phase}
                             showDetails={showDetails}
                         />
-                    )}
+                    </div>
                 </div>
 
                 <div className="flex-shrink-0 px-6 py-4 border-t border-[var(--border-light)] flex flex-wrap items-center justify-end gap-2">

@@ -14,6 +14,26 @@ const os = require("os");
 const orchestrator = require("../services/updateOrchestrator");
 const pkg = require("../../package.json");
 
+// Snapshot of cumulative CPU times across all cores at the time the
+// /system endpoint was last queried. Re-used as the "previous" point
+// when computing the next CPU usage delta. Discarded if older than
+// CPU_SNAP_STALE_MS so a long pause between polls (admin closed and
+// re-opened the modal) does not produce a misleading "average since
+// last open" value.
+let lastCpuSnap = null;
+const CPU_SNAP_STALE_MS = 30 * 1000;
+
+function snapCpuTimes() {
+    const cpus = os.cpus() || [];
+    let total = 0;
+    let idle = 0;
+    for (const c of cpus) {
+        for (const k of Object.keys(c.times)) total += c.times[k];
+        idle += c.times.idle;
+    }
+    return { total, idle, at: Date.now() };
+}
+
 function parseSemver(v) {
     if (!v) return null;
     const m = String(v).trim().replace(/^v/i, "").match(/^(\d+)\.(\d+)\.(\d+)/);
@@ -73,8 +93,31 @@ function attachSelfUpdateRoutes(app, { auth, adminOnly, log = console } = {}) {
         const totalMem = os.totalmem();
         const freeMem = os.freemem();
         const usedMem = Math.max(0, totalMem - freeMem);
-        const loadavg = os.loadavg();
         const cpuCount = (os.cpus() || []).length || 1;
+
+        // CPU usage as a real 0-100 % derived from the delta of
+        // cumulative tick counters between this call and the
+        // previous one. Returns null on the very first sample (or
+        // when the previous sample is too old to be meaningful) —
+        // the frontend hides the CPU bar until a valid percentage
+        // is available. Much more intuitive than load-avg / cores,
+        // which can read above 100 % long after the CPU itself
+        // has calmed down (load average is a slow-decaying queue
+        // length, not an instantaneous usage).
+        const snap = snapCpuTimes();
+        let cpuPercent = null;
+        if (lastCpuSnap && snap.at - lastCpuSnap.at < CPU_SNAP_STALE_MS) {
+            const totalDelta = snap.total - lastCpuSnap.total;
+            const idleDelta = snap.idle - lastCpuSnap.idle;
+            if (totalDelta > 0) {
+                cpuPercent = Math.max(
+                    0,
+                    Math.min(100, ((totalDelta - idleDelta) / totalDelta) * 100)
+                );
+            }
+        }
+        lastCpuSnap = snap;
+
         return res.json({
             mem: {
                 total: totalMem,
@@ -84,11 +127,7 @@ function attachSelfUpdateRoutes(app, { auth, adminOnly, log = console } = {}) {
             },
             cpu: {
                 count: cpuCount,
-                // loadavg[0] = 1-minute load average. Normalise by CPU
-                // count so the value is comparable across hosts.
-                load1: loadavg[0] || 0,
-                load5: loadavg[1] || 0,
-                load15: loadavg[2] || 0,
+                percent: cpuPercent,
             },
             uptimeSec: Math.floor(os.uptime()),
         });
