@@ -56,6 +56,7 @@ import AdminPanel from "./components/panels/AdminPanel.jsx";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useSelfUpdate } from "./hooks/useSelfUpdate.js";
 import SelfUpdateProgress from "./components/admin/SelfUpdateProgress.jsx";
+import ChangelogModal from "./components/admin/ChangelogModal.jsx";
 import NoteCard from "./components/notes/NoteCard.jsx";
 import AdminView from "./components/notes/AdminView.jsx";
 import NotesUI from "./components/notes/NotesUI.jsx";
@@ -5830,6 +5831,8 @@ export default function App() {
       />
 
       <SelfUpdateProgress selfUpdate={selfUpdate} token={token} />
+
+      <ChangelogModal />
 
       <ToastContainer toasts={toasts} />
 

@@ -986,6 +986,9 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   selfUpdateLogFontAssets: "{count} polices web",
   selfUpdateLogShowFonts: "afficher",
   selfUpdateLogHideFonts: "masquer",
+  changelogModalTitle: "Quoi de neuf",
+  changelogModalSubtitle: "Mises à jour et changements au fil des versions",
+  changelogModalClose: "Fermer",
   selfUpdateKeepOpenHint:
     "Gardez cette fenêtre ouverte jusqu'à la fin.",
   selfUpdateDockerHintIntro:

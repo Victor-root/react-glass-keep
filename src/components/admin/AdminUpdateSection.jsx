@@ -156,6 +156,7 @@ export default function AdminUpdateSection({
         ),
         confirmText: t("selfUpdateConfirmButton"),
         cancelText: t("cancel"),
+        variant: "success",
         onConfirm: fire,
       });
     } else {

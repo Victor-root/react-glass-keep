@@ -121,6 +121,25 @@ export function useSelfUpdate({ token, isAdmin }) {
                     const isTerminal = TERMINAL_STATES.has(r.status.state);
                     const alreadyAcknowledged =
                         isTerminal && !!r.status.acknowledgedAt;
+                    // The "success" modal must only resurface for an
+                    // update that this app actually went through —
+                    // i.e. the running version equals what the
+                    // recorded update targeted. If the operator
+                    // upgraded out-of-band (CLI / docker compose pull)
+                    // the old success record is no longer relevant
+                    // and the modal would lie about who did the work.
+                    const currentVersion =
+                        typeof __APP_VERSION__ !== "undefined"
+                            ? String(__APP_VERSION__).replace(/^v/i, "")
+                            : null;
+                    const targetVersion = r.status?.toVersion
+                        ? String(r.status.toVersion).replace(/^v/i, "")
+                        : null;
+                    const successFromInAppUpdate =
+                        r.status.state === "success" &&
+                        !!currentVersion &&
+                        !!targetVersion &&
+                        currentVersion === targetVersion;
                     // Resolve the phase explicitly on every mount so a
                     // stale React state from before a logout / refresh
                     // can't survive into the new session.
@@ -129,7 +148,7 @@ export function useSelfUpdate({ token, isAdmin }) {
                     } else if (alreadyAcknowledged) {
                         setPhase("idle");
                     } else if (r.status.state === "success") {
-                        setPhase("success");
+                        setPhase(successFromInAppUpdate ? "success" : "idle");
                     } else if (r.status.state === "error") {
                         setPhase("error");
                     } else if (r.status.state === "rolled_back") {

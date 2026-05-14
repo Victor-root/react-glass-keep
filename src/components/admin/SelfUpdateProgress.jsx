@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { t } from "../../i18n";
 import { API_BASE } from "../../utils/api.js";
 import TI from "../../icons/editor/index.jsx";
+import { markChangelogToShow } from "./ChangelogModal.jsx";
 
 // Asset listing lines vite emits at the end of every build. There can
 // be hundreds of them for the @fontsource packages, and they drown
@@ -356,6 +357,12 @@ export default function SelfUpdateProgress({ selfUpdate, token }) {
         } catch {
             /* best-effort — reload anyway */
         }
+        // Tell the post-reload session that the user just came back
+        // from a successful in-app update, so the ChangelogModal can
+        // pop on first mount. The flag is keyed in localStorage and
+        // cleared as soon as the modal reads it, so a CLI update or
+        // a manual refresh later never re-triggers it.
+        try { markChangelogToShow(); } catch { /* ignore */ }
         // Hard refresh: tear down the PWA service worker and CacheStorage
         // before reloading so the browser actually fetches the new
         // bundle from the network rather than serving the freshly-
