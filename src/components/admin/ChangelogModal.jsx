@@ -356,7 +356,7 @@ export default function ChangelogModal() {
                 .gk-changelog strong { font-weight: 600; }
             `}</style>
             <div
-                className="w-full max-w-2xl max-h-[85vh] rounded-2xl border border-[var(--border-light)] bg-white dark:bg-[var(--bg-elevated,#1a1a1f)] shadow-2xl flex flex-col overflow-hidden"
+                className="w-full max-w-2xl h-[85vh] rounded-2xl border border-[var(--border-light)] bg-white dark:bg-[var(--bg-elevated,#1a1a1f)] shadow-2xl flex flex-col overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-[var(--border-light)] bg-white/60 dark:bg-white/5">
@@ -440,7 +440,7 @@ export default function ChangelogModal() {
                     )}
                 </div>
                 <div
-                    className="gk-changelog overflow-y-auto px-6 py-5 text-sm text-gray-800 dark:text-gray-100"
+                    className="gk-changelog flex-1 min-h-0 overflow-y-auto px-6 py-5 text-sm text-gray-800 dark:text-gray-100"
                     dangerouslySetInnerHTML={{ __html: displayHtml }}
                 />
             </div>
