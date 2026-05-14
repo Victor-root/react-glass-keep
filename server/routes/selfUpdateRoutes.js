@@ -15,14 +15,185 @@ const os = require("os");
 const orchestrator = require("../services/updateOrchestrator");
 const pkg = require("../../package.json");
 
-// Snapshot of cumulative CPU times across all cores at the time the
-// /system endpoint was last queried. Re-used as the "previous" point
-// when computing the next CPU usage delta. Discarded if older than
-// CPU_SNAP_STALE_MS so a long pause between polls (admin closed and
-// re-opened the modal) does not produce a misleading "average since
-// last open" value.
+// Snapshots of cumulative CPU times at the time the /system endpoint
+// was last queried. Re-used as the "previous" point when computing the
+// next CPU usage delta. Discarded if older than CPU_SNAP_STALE_MS so
+// a long pause between polls (admin closed and re-opened the modal)
+// does not produce a misleading "average since last open" value.
+//
+// We keep two independent snapshots — cgroup-based and /proc-based —
+// because they measure different things (container-scoped vs host-
+// wide) and the fallback chain inside the handler may swap between
+// them across requests.
 let lastCpuSnap = null;
+let lastCgroupCpuSnap = null;
 const CPU_SNAP_STALE_MS = 30 * 1000;
+
+// cgroup v1 reports "no limit" as a huge sentinel close to 2^63.
+// Anything above 1 PB is treated as "unlimited" — no real-world
+// container has more than that, and the value is a sentinel.
+const CGROUP_NO_LIMIT_THRESHOLD = 1024 ** 5;
+
+// ── /proc / cgroup readers ─────────────────────────────────────────────────
+//
+// Why cgroup at all? Inside a Docker container (and even inside an LXC
+// running another containerised app) /proc and os.* return the kernel's
+// global view — i.e. the values of the physical host, not the container.
+// lxcfs covers that for plain LXC but does not propagate into a nested
+// Docker container, so a Docker-in-LXC setup ends up showing the
+// Proxmox host's RAM / CPU. cgroup is the kernel's accounting layer
+// and reflects the actual limits applied at every nesting level, so
+// it gives the right answer in both LXC and Docker.
+
+function readSysFile(path) {
+    try {
+        return fs.readFileSync(path, "utf8");
+    } catch {
+        return null;
+    }
+}
+
+function parseCgroupLimit(s) {
+    // Returns the parsed byte count, or null when the cgroup has no
+    // limit configured at this level (either the literal "max" string
+    // in v2, or the huge sentinel value in v1).
+    if (s === null || s === undefined) return null;
+    const t = String(s).trim();
+    if (!t || t === "max") return null;
+    const n = parseInt(t, 10);
+    if (!Number.isFinite(n) || n <= 0 || n > CGROUP_NO_LIMIT_THRESHOLD) return null;
+    return n;
+}
+
+function readCgroupMemory() {
+    // Returns { total, used } in bytes or null when no cgroup memory
+    // limit is set. "used" excludes page cache so the gauge tracks
+    // what would actually OOM the container — matches `docker stats`
+    // and `kubectl top pod`, NOT raw memory.current which is inflated
+    // by reclaimable file cache.
+    //
+    // — cgroup v2 (unified hierarchy) —
+    const v2Max = readSysFile("/sys/fs/cgroup/memory.max");
+    const v2Cur = readSysFile("/sys/fs/cgroup/memory.current");
+    if (v2Max !== null && v2Cur !== null) {
+        const total = parseCgroupLimit(v2Max);
+        const current = parseInt(String(v2Cur).trim(), 10);
+        if (total !== null && Number.isFinite(current)) {
+            const stat = readSysFile("/sys/fs/cgroup/memory.stat") || "";
+            const fileMatch = stat.match(/^file\s+(\d+)/m);
+            const fileCache = fileMatch ? parseInt(fileMatch[1], 10) : 0;
+            return { total, used: Math.max(0, current - fileCache) };
+        }
+    }
+    // — cgroup v1 —
+    const v1MaxStr = readSysFile("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+    const v1CurStr = readSysFile("/sys/fs/cgroup/memory/memory.usage_in_bytes");
+    if (v1MaxStr !== null && v1CurStr !== null) {
+        const total = parseCgroupLimit(v1MaxStr);
+        const current = parseInt(String(v1CurStr).trim(), 10);
+        if (total !== null && Number.isFinite(current)) {
+            const stat = readSysFile("/sys/fs/cgroup/memory/memory.stat") || "";
+            const cacheMatch = stat.match(/^cache\s+(\d+)/m);
+            const cache = cacheMatch ? parseInt(cacheMatch[1], 10) : 0;
+            return { total, used: Math.max(0, current - cache) };
+        }
+    }
+    return null;
+}
+
+function readCgroupSwap() {
+    // Returns { total, used } in bytes or null when no swap accounting
+    // is configured for this cgroup.
+    //
+    // — cgroup v2 —
+    const v2MaxStr = readSysFile("/sys/fs/cgroup/memory.swap.max");
+    const v2CurStr = readSysFile("/sys/fs/cgroup/memory.swap.current");
+    if (v2MaxStr !== null && v2CurStr !== null) {
+        const total = parseCgroupLimit(v2MaxStr);
+        const used = parseInt(String(v2CurStr).trim(), 10);
+        if (total !== null && Number.isFinite(used)) {
+            return { total, used };
+        }
+    }
+    // — cgroup v1 (memsw = memory + swap combined) —
+    const memswMaxStr = readSysFile("/sys/fs/cgroup/memory/memory.memsw.limit_in_bytes");
+    const memswUsageStr = readSysFile("/sys/fs/cgroup/memory/memory.memsw.usage_in_bytes");
+    const memMaxStr = readSysFile("/sys/fs/cgroup/memory/memory.limit_in_bytes");
+    const memUsageStr = readSysFile("/sys/fs/cgroup/memory/memory.usage_in_bytes");
+    if (memswMaxStr !== null && memMaxStr !== null && memswUsageStr !== null && memUsageStr !== null) {
+        const memswMax = parseCgroupLimit(memswMaxStr);
+        const memMax = parseCgroupLimit(memMaxStr);
+        const memswUsage = parseInt(String(memswUsageStr).trim(), 10);
+        const memUsage = parseInt(String(memUsageStr).trim(), 10);
+        if (
+            memswMax !== null &&
+            memMax !== null &&
+            memswMax > memMax &&
+            Number.isFinite(memswUsage) &&
+            Number.isFinite(memUsage)
+        ) {
+            return {
+                total: memswMax - memMax,
+                used: Math.max(0, memswUsage - memUsage),
+            };
+        }
+    }
+    return null;
+}
+
+function readCgroupCpuCount() {
+    // Returns the effective allocated CPU count (float, e.g. 2.0 or
+    // 0.5) derived from the cgroup CPU quota, or null when no quota
+    // is set (the container can use as many CPUs as the host has).
+    //
+    // — cgroup v2 — cpu.max contains "quota period" or "max period"
+    const v2 = readSysFile("/sys/fs/cgroup/cpu.max");
+    if (v2) {
+        const parts = String(v2).trim().split(/\s+/);
+        if (parts.length >= 2 && parts[0] !== "max") {
+            const quota = parseInt(parts[0], 10);
+            const period = parseInt(parts[1], 10);
+            if (quota > 0 && period > 0) return quota / period;
+        }
+    }
+    // — cgroup v1 — cfs_quota_us / cfs_period_us
+    const quotaStr = readSysFile("/sys/fs/cgroup/cpu/cpu.cfs_quota_us");
+    const periodStr = readSysFile("/sys/fs/cgroup/cpu/cpu.cfs_period_us");
+    if (quotaStr !== null && periodStr !== null) {
+        const quota = parseInt(String(quotaStr).trim(), 10);
+        const period = parseInt(String(periodStr).trim(), 10);
+        if (quota > 0 && period > 0) return quota / period;
+    }
+    return null;
+}
+
+function snapCgroupCpu() {
+    // Returns { usageNsec, at } or null. Tracks the cumulative CPU
+    // time consumed by THIS cgroup specifically — works the same in
+    // LXC and Docker because cgroup is the kernel's source of truth
+    // independent of /proc virtualization.
+    //
+    // — cgroup v2 — cpu.stat has usage_usec
+    const v2 = readSysFile("/sys/fs/cgroup/cpu.stat");
+    if (v2) {
+        const m = String(v2).match(/^usage_usec\s+(\d+)/m);
+        if (m) {
+            const usec = parseInt(m[1], 10);
+            if (Number.isFinite(usec)) {
+                return { usageNsec: usec * 1000, at: Date.now() };
+            }
+        }
+    }
+    // — cgroup v1 — cpuacct.usage is in nanoseconds already
+    const v1 = readSysFile("/sys/fs/cgroup/cpuacct/cpuacct.usage");
+    if (v1) {
+        const n = parseInt(String(v1).trim(), 10);
+        if (Number.isFinite(n)) {
+            return { usageNsec: n, at: Date.now() };
+        }
+    }
+    return null;
+}
 
 // Read CPU times directly from /proc/stat instead of going through
 // os.cpus(), which silently drops the iowait / softirq / steal /
@@ -31,11 +202,8 @@ const CPU_SNAP_STALE_MS = 30 * 1000;
 // percentage — particularly noticeable inside LXC / Docker where
 // iowait can be a significant slice of the workload.
 //
-// We use the aggregate first line ("cpu  user nice system idle
-// iowait irq softirq steal guest guest_nice") so a single call
-// gives us a system-wide reading that matches what `top` reports.
-// Idle counts both literal idle AND iowait — the CPU is available
-// in both cases, just waiting on a different queue.
+// Used as a fallback when cgroup CPU stats are not available
+// (rare: cgroup is normally enabled wherever this app runs).
 function snapCpuTimes() {
     try {
         const text = fs.readFileSync("/proc/stat", "utf8");
@@ -120,55 +288,113 @@ function attachSelfUpdateRoutes(app, { auth, adminOnly, log = console } = {}) {
         res.set("Pragma", "no-cache");
         res.set("Expires", "0");
 
-        const totalMem = os.totalmem();
-        const freeMem = os.freemem();
-        const usedMem = Math.max(0, totalMem - freeMem);
-        const cpuCount = (os.cpus() || []).length || 1;
-        // Swap info — same source as `free -h`. Returns null when no
-        // swap is configured so the frontend can hide the bar
-        // entirely rather than rendering an awkward 0/0.
+        // ── Memory ─────────────────────────────────────────────────────
+        // Prefer cgroup memory accounting — it reflects the limits
+        // actually enforced on this process tree, whereas os.totalmem()
+        // returns the host kernel's view (= the Proxmox host's RAM,
+        // not the LXC's, when running inside a Docker container that
+        // does not inherit lxcfs).
+        const cgMem = readCgroupMemory();
+        const totalMem = cgMem ? cgMem.total : os.totalmem();
+        const usedMem = cgMem
+            ? cgMem.used
+            : Math.max(0, os.totalmem() - os.freemem());
+        const freeMem = Math.max(0, totalMem - usedMem);
+
+        // ── Swap ───────────────────────────────────────────────────────
+        // Same logic: try cgroup first (accurate per-container), fall
+        // back to /proc/meminfo for setups where cgroup swap is not
+        // exposed. Returns null when no swap is configured so the
+        // frontend hides the bar instead of rendering an awkward 0/0.
         let swap = null;
-        try {
-            const meminfo = fs.readFileSync("/proc/meminfo", "utf8");
-            const totalMatch = meminfo.match(/^SwapTotal:\s+(\d+)/m);
-            const freeMatch = meminfo.match(/^SwapFree:\s+(\d+)/m);
-            const swapTotal = totalMatch ? parseInt(totalMatch[1], 10) * 1024 : 0;
-            const swapFree = freeMatch ? parseInt(freeMatch[1], 10) * 1024 : 0;
-            if (swapTotal > 0) {
-                const swapUsed = Math.max(0, swapTotal - swapFree);
-                swap = {
-                    total: swapTotal,
-                    free: swapFree,
-                    used: swapUsed,
-                    percent: (swapUsed / swapTotal) * 100,
-                };
+        const cgSwap = readCgroupSwap();
+        if (cgSwap && cgSwap.total > 0) {
+            swap = {
+                total: cgSwap.total,
+                used: cgSwap.used,
+                free: Math.max(0, cgSwap.total - cgSwap.used),
+                percent: (cgSwap.used / cgSwap.total) * 100,
+            };
+        } else if (!cgMem) {
+            // Only consult /proc/meminfo when we are also falling back
+            // for memory — mixing cgroup memory with host-wide swap
+            // would compare two different scopes.
+            try {
+                const meminfo = fs.readFileSync("/proc/meminfo", "utf8");
+                const totalMatch = meminfo.match(/^SwapTotal:\s+(\d+)/m);
+                const freeMatch = meminfo.match(/^SwapFree:\s+(\d+)/m);
+                const swapTotal = totalMatch ? parseInt(totalMatch[1], 10) * 1024 : 0;
+                const swapFree = freeMatch ? parseInt(freeMatch[1], 10) * 1024 : 0;
+                if (swapTotal > 0) {
+                    const swapUsed = Math.max(0, swapTotal - swapFree);
+                    swap = {
+                        total: swapTotal,
+                        free: swapFree,
+                        used: swapUsed,
+                        percent: (swapUsed / swapTotal) * 100,
+                    };
+                }
+            } catch {
+                /* /proc/meminfo unreachable — leave swap as null */
             }
-        } catch {
-            /* /proc/meminfo unreachable — leave swap as null */
         }
 
+        // ── CPU ────────────────────────────────────────────────────────
+        // Effective CPU count: cgroup quota when set, else os.cpus().
+        // The percent is computed against this effective count so a
+        // single-vCPU container pegging its core reads ~100 % rather
+        // than ~25 % on a 4-core host.
+        const cgCpuCount = readCgroupCpuCount();
+        const cpuCount = cgCpuCount !== null
+            ? cgCpuCount
+            : (os.cpus() || []).length || 1;
+
         // CPU usage as a real 0-100 % derived from the delta of
-        // cumulative tick counters between this call and the
-        // previous one. Returns null on the very first sample (or
-        // when the previous sample is too old to be meaningful) —
-        // the frontend hides the CPU bar until a valid percentage
-        // is available. Much more intuitive than load-avg / cores,
-        // which can read above 100 % long after the CPU itself
-        // has calmed down (load average is a slow-decaying queue
-        // length, not an instantaneous usage).
-        const snap = snapCpuTimes();
+        // cumulative counters between this call and the previous one.
+        // Returns null on the very first sample (or when the previous
+        // sample is too old to be meaningful) — the frontend hides
+        // the CPU bar until a valid percentage is available. Much
+        // more intuitive than load-avg / cores, which can read above
+        // 100 % long after the CPU itself has calmed down (load
+        // average is a slow-decaying queue length, not an
+        // instantaneous usage).
         let cpuPercent = null;
-        if (snap && lastCpuSnap && snap.at - lastCpuSnap.at < CPU_SNAP_STALE_MS) {
-            const totalDelta = snap.total - lastCpuSnap.total;
-            const idleDelta = snap.idle - lastCpuSnap.idle;
-            if (totalDelta > 0) {
+        const cgSnap = snapCgroupCpu();
+        if (cgSnap && lastCgroupCpuSnap && cgSnap.at - lastCgroupCpuSnap.at < CPU_SNAP_STALE_MS) {
+            const usageDeltaNsec = cgSnap.usageNsec - lastCgroupCpuSnap.usageNsec;
+            const elapsedNsec = (cgSnap.at - lastCgroupCpuSnap.at) * 1e6;
+            if (elapsedNsec > 0 && usageDeltaNsec >= 0) {
                 cpuPercent = Math.max(
                     0,
-                    Math.min(100, ((totalDelta - idleDelta) / totalDelta) * 100)
+                    Math.min(
+                        100,
+                        (usageDeltaNsec / elapsedNsec / cpuCount) * 100
+                    )
                 );
             }
         }
-        if (snap) lastCpuSnap = snap;
+        if (cgSnap) lastCgroupCpuSnap = cgSnap;
+
+        // Fallback to /proc/stat only when cgroup cpu accounting is
+        // not exposed. Tracked separately because the /proc-based
+        // tick deltas and cgroup nsec deltas are not interchangeable.
+        if (cpuPercent === null && !cgSnap) {
+            const snap = snapCpuTimes();
+            if (snap && lastCpuSnap && snap.at - lastCpuSnap.at < CPU_SNAP_STALE_MS) {
+                const totalDelta = snap.total - lastCpuSnap.total;
+                const idleDelta = snap.idle - lastCpuSnap.idle;
+                if (totalDelta > 0) {
+                    cpuPercent = Math.max(
+                        0,
+                        Math.min(
+                            100,
+                            ((totalDelta - idleDelta) / totalDelta) * 100
+                        )
+                    );
+                }
+            }
+            if (snap) lastCpuSnap = snap;
+        }
 
         return res.json({
             mem: {
