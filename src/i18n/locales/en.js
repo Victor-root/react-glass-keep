@@ -1009,6 +1009,8 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
     "The server is taking longer than usual to respond — the build is probably hogging the CPU. The update is still progressing, hang on.",
   selfUpdateRamLabel: "RAM",
   selfUpdateRamSaturated: "almost full",
+  selfUpdateSwapLabel: "Swap",
+  selfUpdateSwapSaturated: "almost full",
   selfUpdateGaugesStale:
     "Last known readings — the server is too busy to refresh them right now.",
   selfUpdateCpuLabel: "CPU load",

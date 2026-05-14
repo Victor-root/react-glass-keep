@@ -95,6 +95,7 @@ import brandGithubSvg     from "./tabler/brand-github.svg?raw";
 import brandDockerSvg     from "./tabler/brand-docker.svg?raw";
 import cpuSvg             from "./tabler/cpu.svg?raw";
 import ramSvg             from "./tabler/ram.svg?raw";
+import arrowsDownUpSvg    from "./tabler/arrows-down-up.svg?raw";
 
 // Cache of sanitised markup keyed by the raw SVG string. The transformation
 // only depends on the SVG source, so each icon is processed exactly once.
@@ -214,6 +215,7 @@ export const TI = {
   BrandDocker:          (p) => <TablerIcon svg={brandDockerSvg} {...p} />,
   Cpu:                  (p) => <TablerIcon svg={cpuSvg} {...p} />,
   Ram:                  (p) => <TablerIcon svg={ramSvg} {...p} />,
+  Swap:                 (p) => <TablerIcon svg={arrowsDownUpSvg} {...p} />,
 };
 
 export default TI;

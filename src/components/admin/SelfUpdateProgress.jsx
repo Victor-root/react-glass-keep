@@ -170,6 +170,28 @@ function SystemMonitor({ token, active }) {
           ? "text-amber-600 dark:text-amber-300"
           : "text-gray-500 dark:text-gray-400";
 
+    // Swap. The server returns null when no swap is configured so we
+    // can suppress the row entirely instead of rendering a meaningless
+    // 0/0. Thresholds are deliberately more lenient than RAM — some
+    // swap usage during a build is healthy (it's exactly why we have
+    // swap), so the bar only goes amber past 50 % and red past 90 %.
+    const swap = info.swap;
+    const swapPercent = swap
+        ? Math.min(100, Math.max(0, swap.percent || 0))
+        : 0;
+    const swapElevated = swap && swapPercent >= 50;
+    const swapHigh = swap && swapPercent >= 90;
+    const swapBarClass = swapHigh
+        ? "bg-red-500"
+        : swapElevated
+          ? "bg-amber-500"
+          : "bg-emerald-500";
+    const swapLabelClass = swapHigh
+        ? "text-red-600 dark:text-red-300 font-medium"
+        : swapElevated
+          ? "text-amber-600 dark:text-amber-300"
+          : "text-gray-500 dark:text-gray-400";
+
     // CPU usage as a real 0-100 % derived server-side from a delta
     // of /proc/stat tick counters. We hide the bar entirely if the
     // server can't compute it yet (first poll has no previous
@@ -228,6 +250,30 @@ function SystemMonitor({ token, active }) {
                     />
                 </div>
             </div>
+            {swap && (
+                <div>
+                    <div className={`flex items-center justify-between mb-1 ${swapLabelClass}`}>
+                        <span className="inline-flex items-center gap-1.5">
+                            <TI.Swap className="tabler-icon w-3.5 h-3.5" />
+                            {t("selfUpdateSwapLabel")}
+                            {swapHigh && (
+                                <span className="ml-1 font-semibold">
+                                    · {t("selfUpdateSwapSaturated")}
+                                </span>
+                            )}
+                        </span>
+                        <span className="tabular-nums">
+                            {formatBytes(swap.used)} / {formatBytes(swap.total)} ({swapPercent.toFixed(0)}%)
+                        </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                        <div
+                            className={`h-full transition-[width] duration-500 ${swapBarClass}`}
+                            style={{ width: `${swapPercent}%` }}
+                        />
+                    </div>
+                </div>
+            )}
             {cpuPercent !== null && (
                 <div>
                     <div className={`flex items-center justify-between mb-1 ${cpuLabelClass}`}>

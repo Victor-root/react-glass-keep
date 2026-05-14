@@ -124,6 +124,28 @@ function attachSelfUpdateRoutes(app, { auth, adminOnly, log = console } = {}) {
         const freeMem = os.freemem();
         const usedMem = Math.max(0, totalMem - freeMem);
         const cpuCount = (os.cpus() || []).length || 1;
+        // Swap info — same source as `free -h`. Returns null when no
+        // swap is configured so the frontend can hide the bar
+        // entirely rather than rendering an awkward 0/0.
+        let swap = null;
+        try {
+            const meminfo = fs.readFileSync("/proc/meminfo", "utf8");
+            const totalMatch = meminfo.match(/^SwapTotal:\s+(\d+)/m);
+            const freeMatch = meminfo.match(/^SwapFree:\s+(\d+)/m);
+            const swapTotal = totalMatch ? parseInt(totalMatch[1], 10) * 1024 : 0;
+            const swapFree = freeMatch ? parseInt(freeMatch[1], 10) * 1024 : 0;
+            if (swapTotal > 0) {
+                const swapUsed = Math.max(0, swapTotal - swapFree);
+                swap = {
+                    total: swapTotal,
+                    free: swapFree,
+                    used: swapUsed,
+                    percent: (swapUsed / swapTotal) * 100,
+                };
+            }
+        } catch {
+            /* /proc/meminfo unreachable — leave swap as null */
+        }
 
         // CPU usage as a real 0-100 % derived from the delta of
         // cumulative tick counters between this call and the
@@ -155,6 +177,7 @@ function attachSelfUpdateRoutes(app, { auth, adminOnly, log = console } = {}) {
                 used: usedMem,
                 percent: totalMem > 0 ? (usedMem / totalMem) * 100 : 0,
             },
+            swap,
             cpu: {
                 count: cpuCount,
                 percent: cpuPercent,
