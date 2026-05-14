@@ -545,6 +545,5 @@ module.exports = {
         getLockFilePath,
         getDataDir,
         dockerSocketAvailable,
-        dockerApi,
     },
 };

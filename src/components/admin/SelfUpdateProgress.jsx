@@ -868,10 +868,14 @@ export default function SelfUpdateProgress({
                         </p>
                     )}
 
-                    {/* Live RAM gauge, polled separately from the
-                        status. Only visible while the update is
-                        active so it does not clutter terminal states. */}
-                    {!terminal && (
+                    {/* Live RAM / Swap / CPU gauges, polled separately
+                        from the status. Only visible on native installs
+                        and while the update is active — in Docker mode
+                        we hide them entirely because the readings only
+                        ever reflect this single container, not the
+                        host, and showing a partial picture is worse
+                        than showing none. */}
+                    {!terminal && mode !== "docker" && (
                         <SystemMonitor token={token} active={isActive} />
                     )}
 
