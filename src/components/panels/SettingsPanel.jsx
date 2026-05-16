@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { t, getLanguageOverride, setLanguageOverride, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS } from "../../i18n";
 import { api } from "../../utils/api.js";
 import { localizeServerError } from "../../utils/serverErrors.js";
 import UserAvatar from "../common/UserAvatar.jsx";
+import Popover from "../common/Popover.jsx";
 import { SunIcon, MoonIcon, FloatingCardsIcon, SettingsIcon, CloseIcon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { fileToCompressedDataURL } from "../../utils/helpers.js";
@@ -68,6 +69,8 @@ export default function SettingsPanel({
   const [profileShowOnLogin, setProfileShowOnLogin] = useState(true);
   // "" represents "Automatic" (no override → follow browser/OS).
   const [languageChoice, setLanguageChoice] = useState(() => getLanguageOverride() || "");
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const languageBtnRef = useRef(null);
   // typographyModalOpen / setTypographyModalOpen come from App.jsx props
   // (see destructure above) — lifted to plug into the centralised
   // overlay back-button stack.
@@ -273,10 +276,10 @@ export default function SettingsPanel({
             </button>
 
             {/* Language picker — "" means automatic (follow browser/OS).
-                Uses a native <select> so it scales to any number of
-                languages without UI changes. Persists to the server via
-                PATCH /user/profile and reloads so the module-level i18n
-                dictionary picks up the change. */}
+                Custom dropdown (Popover) so the surface matches the rest
+                of the panel theming. Scales to any number of languages.
+                Persists to the server via PATCH /user/profile and reloads
+                so the module-level i18n dictionary picks up the change. */}
             <div className="mt-3 flex items-center justify-between gap-3 px-3">
               <div className="flex items-center gap-3 min-w-0">
                 <RowIcon icon={TI.World} />
@@ -285,18 +288,64 @@ export default function SettingsPanel({
                   <div className="text-sm text-gray-500">{t("languageDesc")}</div>
                 </div>
               </div>
-              <select
-                value={languageChoice}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                className="shrink-0 self-center px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              <button
+                ref={languageBtnRef}
+                type="button"
+                onClick={() => setLanguageMenuOpen((v) => !v)}
+                className="shrink-0 inline-flex items-center justify-between gap-2 min-w-[9rem] px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                aria-haspopup="listbox"
+                aria-expanded={languageMenuOpen}
               >
-                <option value="">{t("languageAuto")}</option>
-                {SUPPORTED_LANGUAGES.map((code) => (
-                  <option key={code} value={code}>
-                    {LANGUAGE_NATIVE_LABELS[code] || code}
-                  </option>
-                ))}
-              </select>
+                <span>
+                  {languageChoice
+                    ? LANGUAGE_NATIVE_LABELS[languageChoice] || languageChoice
+                    : t("languageAuto")}
+                </span>
+                <TI.ChevronDown
+                  className={`tabler-icon w-4 h-4 transition-transform ${languageMenuOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              <Popover
+                anchorRef={languageBtnRef}
+                open={languageMenuOpen}
+                onClose={() => setLanguageMenuOpen(false)}
+                offset={6}
+              >
+                <ul
+                  className="min-w-[10rem] rounded-xl border border-[var(--border-light)] bg-white dark:bg-[#222222] text-gray-800 dark:text-gray-100 shadow-xl py-1.5 overflow-hidden"
+                  role="listbox"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {[
+                    { value: "", label: t("languageAuto") },
+                    ...SUPPORTED_LANGUAGES.map((code) => ({
+                      value: code,
+                      label: LANGUAGE_NATIVE_LABELS[code] || code,
+                    })),
+                  ].map((opt) => {
+                    const selected = languageChoice === opt.value;
+                    return (
+                      <li key={opt.value || "auto"} role="option" aria-selected={selected}>
+                        <button
+                          type="button"
+                          className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
+                            selected
+                              ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                              : "hover:bg-black/5 dark:hover:bg-white/10"
+                          }`}
+                          onClick={() => {
+                            setLanguageMenuOpen(false);
+                            handleLanguageChange(opt.value);
+                          }}
+                        >
+                          <span>{opt.label}</span>
+                          {selected && <TI.Check className="tabler-icon w-4 h-4 shrink-0" />}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Popover>
             </div>
 
             {/* Passkeys / WebAuthn — register, rename, delete, and (for
