@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { t } from "../../i18n";
+import { t, getLanguageOverride, setLanguageOverride, SUPPORTED_LANGUAGES } from "../../i18n";
 import { api } from "../../utils/api.js";
 import { localizeServerError } from "../../utils/serverErrors.js";
 import UserAvatar from "../common/UserAvatar.jsx";
@@ -66,6 +66,8 @@ export default function SettingsPanel({
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [overridePositions, setOverridePositions] = useState(true);
   const [profileShowOnLogin, setProfileShowOnLogin] = useState(true);
+  // "" represents "Automatic" (no override → follow browser/OS).
+  const [languageChoice, setLanguageChoice] = useState(() => getLanguageOverride() || "");
   // typographyModalOpen / setTypographyModalOpen come from App.jsx props
   // (see destructure above) — lifted to plug into the centralised
   // overlay back-button stack.
@@ -75,10 +77,33 @@ export default function SettingsPanel({
   React.useEffect(() => {
     if (open && token) {
       api("/user/profile", { token }).then((data) => {
-        if (data) setProfileShowOnLogin(data.show_on_login !== false);
+        if (!data) return;
+        setProfileShowOnLogin(data.show_on_login !== false);
+        // Server is the source of truth for language too; reflect it in
+        // the picker so the segmented control matches the saved choice.
+        setLanguageChoice(SUPPORTED_LANGUAGES.includes(data.language) ? data.language : "");
       }).catch(() => {});
     }
   }, [open, token]);
+
+  const handleLanguageChange = async (next) => {
+    const previous = languageChoice;
+    if (next === previous) return;
+    setLanguageChoice(next);
+    try {
+      await api("/user/profile", {
+        method: "PATCH",
+        body: { language: next || null },
+        token,
+      });
+      setLanguageOverride(next || null);
+      // Strings are bound at module load — reload so the new dict is used.
+      window.location.reload();
+    } catch (err) {
+      setLanguageChoice(previous);
+      showToast?.(localizeServerError(err.message, "languageSaveFailed"), "error");
+    }
+  };
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -246,6 +271,38 @@ export default function SettingsPanel({
                 <div className="text-sm text-gray-500">{t("changePasswordDesc")}</div>
               </div>
             </button>
+
+            {/* Language picker — "" means automatic (follow browser/OS).
+                Persists to the server via PATCH /user/profile and reloads
+                so the module-level i18n dictionary picks up the change. */}
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 px-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <RowIcon icon={TI.World} />
+                <div className="min-w-0">
+                  <div className="font-medium">{t("languageLabel")}</div>
+                  <div className="text-sm text-gray-500">{t("languageDesc")}</div>
+                </div>
+              </div>
+              <div className="flex-shrink-0 inline-flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 self-end sm:self-auto">
+                {[
+                  { value: "", label: t("languageAuto") },
+                  { value: "fr", label: t("languageFr") },
+                  { value: "en", label: t("languageEn") },
+                ].map((opt) => (
+                  <button
+                    key={opt.value || "auto"}
+                    className={`px-3 py-1.5 text-sm font-semibold transition-all duration-200 ${
+                      languageChoice === opt.value
+                        ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
+                        : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    }`}
+                    onClick={() => handleLanguageChange(opt.value)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Passkeys / WebAuthn — register, rename, delete, and (for
                 admins on a PRF-capable, unlocked instance) promote a

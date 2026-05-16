@@ -620,6 +620,12 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   // Password change
   changePassword: "Changer le mot de passe",
   changePasswordDesc: "Modifier le mot de passe de votre compte",
+  languageLabel: "Langue",
+  languageDesc: "Choisir la langue d'affichage de l'application",
+  languageAuto: "Automatique",
+  languageFr: "Français",
+  languageEn: "English",
+  languageSaveFailed: "Impossible de sauvegarder la langue.",
   changePasswordRequired: "Changement de mot de passe requis",
   changePasswordRequiredDesc: "Votre compte a un mot de passe temporaire. Veuillez choisir un nouveau mot de passe pour continuer.",
   currentPassword: "Mot de passe actuel",

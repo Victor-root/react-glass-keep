@@ -223,6 +223,11 @@ CREATE INDEX IF NOT EXISTS idx_logos_user ON logos(user_id);
       if (!names.has("must_change_password")) {
         db.exec(`ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0`);
       }
+      if (!names.has("language")) {
+        // NULL = automatic (detect from browser). Otherwise an explicit
+        // tag like "fr" or "en". Stored as TEXT to remain forward-compatible.
+        db.exec(`ALTER TABLE users ADD COLUMN language TEXT`);
+      }
     });
     tx();
   } catch {
@@ -1118,7 +1123,7 @@ app.post("/api/login", (req, res) => {
   const token = signToken(user);
   const response = {
     token,
-    user: { id: user.id, name: user.name, email: user.email, is_admin: !!user.is_admin, avatar_url: user.avatar_url || null },
+    user: { id: user.id, name: user.name, email: user.email, is_admin: !!user.is_admin, avatar_url: user.avatar_url || null, language: user.language || null },
   };
   if (user.must_change_password) response.must_change_password = true;
   res.json(response);
@@ -1162,7 +1167,7 @@ app.post("/api/login/secret", (req, res) => {
       const token = signToken(u);
       const response = {
         token,
-        user: { id: u.id, name: u.name, email: u.email, is_admin: !!u.is_admin, avatar_url: fullUser?.avatar_url || null },
+        user: { id: u.id, name: u.name, email: u.email, is_admin: !!u.is_admin, avatar_url: fullUser?.avatar_url || null, language: fullUser?.language || null },
       };
       if (fullUser?.must_change_password) response.must_change_password = true;
       return res.json(response);
@@ -1220,17 +1225,47 @@ app.get("/api/user/profile", auth, (req, res) => {
     is_admin: !!user.is_admin,
     avatar_url: user.avatar_url || null,
     show_on_login: user.show_on_login !== 0,
+    language: user.language || null,
   });
 });
 
-// Update show_on_login preference (authenticated)
+// Update profile preferences (authenticated). Currently accepts
+// show_on_login and language; both are optional so the client can patch
+// one at a time.
 app.patch("/api/user/profile", auth, (req, res) => {
-  const { show_on_login } = req.body || {};
-  if (typeof show_on_login !== "boolean") {
-    return res.status(400).json({ error: "show_on_login must be a boolean." });
+  const body = req.body || {};
+  const updates = [];
+  const params = [];
+
+  if (Object.prototype.hasOwnProperty.call(body, "show_on_login")) {
+    if (typeof body.show_on_login !== "boolean") {
+      return res.status(400).json({ error: "show_on_login must be a boolean." });
+    }
+    updates.push("show_on_login = ?");
+    params.push(body.show_on_login ? 1 : 0);
   }
-  db.prepare("UPDATE users SET show_on_login = ? WHERE id = ?").run(show_on_login ? 1 : 0, req.user.id);
-  res.json({ ok: true, show_on_login });
+
+  if (Object.prototype.hasOwnProperty.call(body, "language")) {
+    const lang = body.language;
+    if (lang !== null && lang !== "" && lang !== "fr" && lang !== "en") {
+      return res.status(400).json({ error: "language must be null, \"fr\" or \"en\"." });
+    }
+    updates.push("language = ?");
+    params.push(lang ? lang : null);
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ error: "No supported field provided." });
+  }
+  params.push(req.user.id);
+  db.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`).run(...params);
+
+  const user = getUserById.get(req.user.id);
+  res.json({
+    ok: true,
+    show_on_login: user.show_on_login !== 0,
+    language: user.language || null,
+  });
 });
 
 // ---------- Change Password (authenticated, any user) ----------
