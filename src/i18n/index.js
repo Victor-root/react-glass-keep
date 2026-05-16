@@ -1,9 +1,23 @@
 import { en } from "./locales/en";
 import { fr } from "./locales/fr";
 
-function detectLanguage() {
-  const lang = (navigator.language || "en").toLowerCase();
-  if (lang.startsWith("fr")) return "fr";
+// Pick the first supported language from the user's prioritized list.
+// `navigator.languages` reflects the user's content-language preferences
+// (e.g. Firefox's "Preferred languages" panel), which can differ from the
+// browser UI language exposed by `navigator.language`. Fall back to
+// `navigator.language` and then "en" if nothing usable is set.
+export function detectLanguage() {
+  const candidates = [];
+  if (typeof navigator !== "undefined") {
+    if (Array.isArray(navigator.languages)) candidates.push(...navigator.languages);
+    if (navigator.language) candidates.push(navigator.language);
+  }
+  for (const raw of candidates) {
+    if (!raw) continue;
+    const tag = String(raw).toLowerCase();
+    if (tag.startsWith("fr")) return "fr";
+    if (tag.startsWith("en")) return "en";
+  }
   return "en";
 }
 
