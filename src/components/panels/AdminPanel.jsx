@@ -139,22 +139,37 @@ export default function AdminPanel({
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
 
-  const handleRestart = async () => {
-    setIsRestarting(true);
-    try {
-      const res = await fetch("/api/admin/restart", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        showToast(data.error || t("error"), "error");
-      }
-    } catch {
-      showToast(t("error"), "error");
-    } finally {
-      setIsRestarting(false);
-    }
+  const handleRestart = () => {
+    showGenericConfirm({
+      title: t("restartServerTitle"),
+      message: t("restartServerConfirm"),
+      confirmText: t("restartServerConfirmBtn"),
+      danger: true,
+      onConfirm: async () => {
+        setIsRestarting(true);
+        try {
+          const res = await fetch("/api/admin/restart", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${authToken}` },
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            showToast(data.error || t("error"), "error");
+            return;
+          }
+          showToast(t("restartServerSuccess"), "info");
+        } catch (err) {
+          // Network drop is expected: the server process dies before responding.
+          if (err instanceof TypeError) {
+            showToast(t("restartServerSuccess"), "info");
+          } else {
+            showToast(t("error"), "error");
+          }
+        } finally {
+          setIsRestarting(false);
+        }
+      },
+    });
   };
 
   const handleCreateUser = async (e) => {
@@ -254,13 +269,13 @@ export default function AdminPanel({
           </h3>
           <div className="flex items-center gap-2">
             <button
-              className="px-3 py-1.5 text-sm flex items-center gap-1.5 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none"
+              className="w-9 h-9 flex items-center justify-center rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none"
               onClick={handleRestart}
               disabled={isRestarting}
               data-tooltip={t("restartServer")}
+              aria-label={t("restartServer")}
             >
               <TI.Refresh className={`tabler-icon w-4 h-4${isRestarting ? " animate-spin" : ""}`} />
-              {t("restartServer")}
             </button>
             <button
               className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/10"
