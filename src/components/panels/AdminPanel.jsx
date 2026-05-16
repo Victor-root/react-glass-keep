@@ -232,6 +232,8 @@ export default function AdminPanel({
           }
 
           // Poll /api/health until it fails → server is stopped.
+          // AbortController caps each attempt at 3 s so a hanging TCP
+          // connection doesn't block detection of the server going down.
           const deadline = Date.now() + 30_000;
           const poll = async () => {
             if (Date.now() > deadline) {
@@ -241,11 +243,14 @@ export default function AdminPanel({
               return;
             }
             try {
-              await fetch("/api/health");
-              // Still up — keep polling.
+              const ctrl = new AbortController();
+              const t0 = setTimeout(() => ctrl.abort(), 3000);
+              await fetch("/api/health", { signal: ctrl.signal });
+              clearTimeout(t0);
+              // Still responding — keep polling.
               setTimeout(poll, 1500);
             } catch {
-              // Server is down → confirmed stopped.
+              // Fetch failed or aborted → server is down.
               setIsShuttingDown(false);
               setShutdownPhase("done");
             }
