@@ -2688,8 +2688,24 @@ app.get("/api/health", (_req, res) => res.json({
 // ---------- Static (production) ----------
 if (NODE_ENV === "production") {
   const dist = path.join(__dirname, "..", "dist");
-  app.use(express.static(dist));
+
+  // Hashed assets (JS/CSS bundles, images) — content-addressed so they
+  // can be cached for a very long time.
+  app.use(express.static(dist, {
+    setHeaders(res, filePath) {
+      if (/\.[0-9a-f]{8,}\.(js|css|woff2?|png|svg|ico|webp)$/i.test(filePath)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else if (filePath.endsWith("index.html")) {
+        // index.html: revalidate when online, serve stale when offline.
+        // stale-if-error lets the WebView fall back to the cached copy
+        // when the server is unreachable (no-network / server stopped).
+        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate, stale-while-revalidate=86400, stale-if-error=604800");
+      }
+    },
+  }));
+
   app.get("*", (_req, res) => {
+    res.setHeader("Cache-Control", "public, max-age=0, must-revalidate, stale-while-revalidate=86400, stale-if-error=604800");
     res.sendFile(path.join(dist, "index.html"));
   });
 }
