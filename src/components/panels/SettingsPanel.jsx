@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { t, getLanguageOverride, setLanguageOverride, SUPPORTED_LANGUAGES } from "../../i18n";
+import { t, getLanguageOverride, setLanguageOverride, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS } from "../../i18n";
 import { api } from "../../utils/api.js";
 import { localizeServerError } from "../../utils/serverErrors.js";
 import UserAvatar from "../common/UserAvatar.jsx";
@@ -273,9 +273,11 @@ export default function SettingsPanel({
             </button>
 
             {/* Language picker — "" means automatic (follow browser/OS).
-                Persists to the server via PATCH /user/profile and reloads
-                so the module-level i18n dictionary picks up the change. */}
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 px-3">
+                Uses a native <select> so it scales to any number of
+                languages without UI changes. Persists to the server via
+                PATCH /user/profile and reloads so the module-level i18n
+                dictionary picks up the change. */}
+            <div className="mt-3 flex items-center justify-between gap-3 px-3">
               <div className="flex items-center gap-3 min-w-0">
                 <RowIcon icon={TI.World} />
                 <div className="min-w-0">
@@ -283,25 +285,18 @@ export default function SettingsPanel({
                   <div className="text-sm text-gray-500">{t("languageDesc")}</div>
                 </div>
               </div>
-              <div className="flex-shrink-0 inline-flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 self-end sm:self-auto">
-                {[
-                  { value: "", label: t("languageAuto") },
-                  { value: "fr", label: t("languageFr") },
-                  { value: "en", label: t("languageEn") },
-                ].map((opt) => (
-                  <button
-                    key={opt.value || "auto"}
-                    className={`px-3 py-1.5 text-sm font-semibold transition-all duration-200 ${
-                      languageChoice === opt.value
-                        ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
-                        : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-                    }`}
-                    onClick={() => handleLanguageChange(opt.value)}
-                  >
-                    {opt.label}
-                  </button>
+              <select
+                value={languageChoice}
+                onChange={(e) => handleLanguageChange(e.target.value)}
+                className="shrink-0 self-center px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">{t("languageAuto")}</option>
+                {SUPPORTED_LANGUAGES.map((code) => (
+                  <option key={code} value={code}>
+                    {LANGUAGE_NATIVE_LABELS[code] || code}
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
 
             {/* Passkeys / WebAuthn — register, rename, delete, and (for

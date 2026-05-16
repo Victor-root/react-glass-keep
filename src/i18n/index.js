@@ -2,6 +2,14 @@ import { en } from "./locales/en";
 import { fr } from "./locales/fr";
 
 export const SUPPORTED_LANGUAGES = ["fr", "en"];
+
+// Native names for each supported language — always displayed in their
+// own script regardless of the active UI locale. Add an entry here when
+// adding a new language.
+export const LANGUAGE_NATIVE_LABELS = {
+  fr: "Français",
+  en: "English",
+};
 const LANG_STORAGE_KEY = "gk:lang";
 
 // Auto-detect language from the user's prioritized list.

@@ -239,13 +239,17 @@ ollama pull qwen3:4b-instruct-2507-q4_K_M
 
 ## 🌍 Adding a new language
 
-1. Copy `src/i18n/locales/en.js` to a new file, for example `it.js`
-2. Translate the values
-3. Import the locale in `src/i18n/index.js`
-4. Adjust detection logic if needed
-5. Rebuild the app
+1. Copy `src/i18n/locales/en.js` to a new file, e.g. `src/i18n/locales/it.js`, and translate all values
+2. In `src/i18n/index.js`:
+   - import the new locale: `import { it } from "./locales/it";`
+   - add the language code to `SUPPORTED_LANGUAGES`: `export const SUPPORTED_LANGUAGES = ["fr", "en", "it"];`
+   - add the native display name to `LANGUAGE_NATIVE_LABELS`: `it: "Italiano"`
+   - extend the dict selector: `const dict = locale === "fr" ? fr : locale === "it" ? it : en;`
+3. In `server/index.js`, add the new code to the validation allowlist in `PATCH /api/user/profile` (the line that checks `lang !== "fr" && lang !== "en"`)
+4. Rebuild the app: `npm run build`
 
-Missing keys will automatically fall back to English.
+The language selector in the settings panel will automatically show the new option.
+Missing keys fall back to English automatically.
 
 ---
 
