@@ -8,11 +8,10 @@
 
 import { api, getAuth, API_BASE } from "./utils/api.js";
 import { contentToPlain } from "./utils/richText.js";
-import { t } from "./i18n";
+import { t, locale } from "./i18n";
 
 function detectLang() {
-  const lang = (navigator.language || "en").toLowerCase();
-  return lang.startsWith("fr") ? "fr" : "en";
+  return locale;
 }
 
 /**

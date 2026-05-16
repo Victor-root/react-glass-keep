@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { t } from "../../i18n";
+import React, { useState, useRef } from "react";
+import { t, getLanguageOverride, setLanguageOverride, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS } from "../../i18n";
 import { api } from "../../utils/api.js";
 import { localizeServerError } from "../../utils/serverErrors.js";
 import UserAvatar from "../common/UserAvatar.jsx";
+import Popover from "../common/Popover.jsx";
 import { SunIcon, MoonIcon, FloatingCardsIcon, SettingsIcon, CloseIcon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { fileToCompressedDataURL } from "../../utils/helpers.js";
@@ -66,6 +67,10 @@ export default function SettingsPanel({
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [overridePositions, setOverridePositions] = useState(true);
   const [profileShowOnLogin, setProfileShowOnLogin] = useState(true);
+  // "" represents "Automatic" (no override → follow browser/OS).
+  const [languageChoice, setLanguageChoice] = useState(() => getLanguageOverride() || "");
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const languageBtnRef = useRef(null);
   // typographyModalOpen / setTypographyModalOpen come from App.jsx props
   // (see destructure above) — lifted to plug into the centralised
   // overlay back-button stack.
@@ -75,10 +80,33 @@ export default function SettingsPanel({
   React.useEffect(() => {
     if (open && token) {
       api("/user/profile", { token }).then((data) => {
-        if (data) setProfileShowOnLogin(data.show_on_login !== false);
+        if (!data) return;
+        setProfileShowOnLogin(data.show_on_login !== false);
+        // Server is the source of truth for language too; reflect it in
+        // the picker so the segmented control matches the saved choice.
+        setLanguageChoice(SUPPORTED_LANGUAGES.includes(data.language) ? data.language : "");
       }).catch(() => {});
     }
   }, [open, token]);
+
+  const handleLanguageChange = async (next) => {
+    const previous = languageChoice;
+    if (next === previous) return;
+    setLanguageChoice(next);
+    try {
+      await api("/user/profile", {
+        method: "PATCH",
+        body: { language: next || null },
+        token,
+      });
+      setLanguageOverride(next || null);
+      // Strings are bound at module load — reload so the new dict is used.
+      window.location.reload();
+    } catch (err) {
+      setLanguageChoice(previous);
+      showToast?.(localizeServerError(err.message, "languageSaveFailed"), "error");
+    }
+  };
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -246,6 +274,80 @@ export default function SettingsPanel({
                 <div className="text-sm text-gray-500">{t("changePasswordDesc")}</div>
               </div>
             </button>
+
+            {/* Language picker — "" means automatic (follow browser/OS).
+                Custom dropdown (Popover) so the surface matches the rest
+                of the panel theming. Scales to any number of languages.
+                Persists to the server via PATCH /user/profile and reloads
+                so the module-level i18n dictionary picks up the change. */}
+            <div className="mt-3 flex items-center justify-between gap-3 px-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <RowIcon icon={TI.World} />
+                <div className="min-w-0">
+                  <div className="font-medium">{t("languageLabel")}</div>
+                  <div className="text-sm text-gray-500">{t("languageDesc")}</div>
+                </div>
+              </div>
+              <button
+                ref={languageBtnRef}
+                type="button"
+                onClick={() => setLanguageMenuOpen((v) => !v)}
+                className="shrink-0 inline-flex items-center justify-between gap-2 min-w-[9rem] px-3 py-1.5 text-sm rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none"
+                aria-haspopup="listbox"
+                aria-expanded={languageMenuOpen}
+                data-tooltip={languageChoice ? undefined : t("languageAutoTooltip")}
+              >
+                <span>
+                  {languageChoice
+                    ? LANGUAGE_NATIVE_LABELS[languageChoice] || languageChoice
+                    : t("languageAuto")}
+                </span>
+                <TI.ChevronDown
+                  className={`tabler-icon w-4 h-4 transition-transform ${languageMenuOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              <Popover
+                anchorRef={languageBtnRef}
+                open={languageMenuOpen}
+                onClose={() => setLanguageMenuOpen(false)}
+                offset={6}
+              >
+                <ul
+                  className="min-w-[10rem] rounded-xl border border-[var(--border-light)] bg-white dark:bg-[#222222] text-gray-800 dark:text-gray-100 shadow-xl py-1.5 overflow-hidden"
+                  role="listbox"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {[
+                    { value: "", label: t("languageAuto") },
+                    ...SUPPORTED_LANGUAGES.map((code) => ({
+                      value: code,
+                      label: LANGUAGE_NATIVE_LABELS[code] || code,
+                    })),
+                  ].map((opt) => {
+                    const selected = languageChoice === opt.value;
+                    return (
+                      <li key={opt.value || "auto"} role="option" aria-selected={selected}>
+                        <button
+                          type="button"
+                          className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
+                            selected
+                              ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                              : "hover:bg-black/5 dark:hover:bg-white/10"
+                          }`}
+                          onClick={() => {
+                            setLanguageMenuOpen(false);
+                            handleLanguageChange(opt.value);
+                          }}
+                        >
+                          <span>{opt.label}</span>
+                          {selected && <TI.Check className="tabler-icon w-4 h-4 shrink-0" />}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Popover>
+            </div>
 
             {/* Passkeys / WebAuthn — register, rename, delete, and (for
                 admins on a PRF-capable, unlocked instance) promote a

@@ -56,9 +56,10 @@ export default function NotesHeader({
   const desktopOnlyBlock = isLandscapeMobile ? "hidden" : "hidden sm:block";
   const desktopOnlyInline = isLandscapeMobile ? "hidden" : "hidden sm:inline-block";
   const desktopOnlyInlineText = isLandscapeMobile ? "hidden" : "hidden sm:inline";
+  const showOfflineBadge = !isOnline || syncStatus?.syncState === "offline" || syncStatus?.serverReachable === false;
   return (
       <header
-        className={`p-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6 relative${!isOnline && windowWidth < 640 ? " pb-7" : ""}`}
+        className={`p-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6 relative${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
         style={{
           top: "env(safe-area-inset-top)",
           transform: !headerVisible && (windowWidth < 700 || isLandscapeMobile) ? "translateY(-100%)" : "translateY(0)",
@@ -94,7 +95,7 @@ export default function NotesHeader({
               <span className="shrink-0 w-3 h-3 [&>svg]:w-3 [&>svg]:h-3"><SectionIcon /></span>
               <span className="truncate">{sectionLabel}</span>
             </span>
-            {!isOnline && (
+            {showOfflineBadge && (
               <span className="absolute -bottom-5 left-0 text-[11px] leading-none px-2 py-0.5 rounded-full bg-orange-600/10 text-orange-700 dark:text-orange-300 border border-orange-600/20 font-medium whitespace-nowrap">{t("offline")}</span>
             )}
           </div>
@@ -110,7 +111,7 @@ export default function NotesHeader({
           </span>
 
           {/* Offline indicator - desktop only (mobile is inside stacked block above) */}
-          {!isOnline && (
+          {showOfflineBadge && (
             <span className={`${desktopOnlyInlineText} ml-2 text-xs px-2 py-0.5 rounded-full bg-orange-600/10 text-orange-700 dark:text-orange-300 border border-orange-600/20`}>{t("offline")}</span>
           )}
         </div>

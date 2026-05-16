@@ -87,7 +87,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
           !!data.enabled && data.adminAiEnabled !== false,
         );
       } catch (err) {
-        if (!cancelled) {
+        if (!cancelled && !err?.isNetworkError) {
           showToastRef.current?.(
             localizeServerError(err?.message, "genericError"),
             "error",
@@ -208,9 +208,17 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
           : t("aiTestOk"),
       });
     } catch (err) {
+      const raw = String(err?.message || "");
+      const localized = localizeServerError(raw, "aiTestFailed");
+      // Test button is for diagnostics — keep the raw provider/reason
+      // tail that localizeServerError strips, so the user can act on it.
+      const detail =
+        raw.match(/^AI provider error:\s*(.+)$/)?.[1] ||
+        raw.match(/^Failed to reach AI provider\s*\((.+)\)\.?$/)?.[1] ||
+        null;
       setTestResult({
         ok: false,
-        message: localizeServerError(err?.message, "aiTestFailed"),
+        message: detail && !localized.includes(detail) ? `${localized} — ${detail}` : localized,
       });
     } finally {
       setTesting(false);

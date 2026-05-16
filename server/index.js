@@ -3,6 +3,7 @@
 
 const path = require("path");
 const fs = require("fs");
+const { restartSelf, shutdownSelf } = require("./services/updateOrchestrator");
 const express = require("express");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
@@ -221,6 +222,11 @@ CREATE INDEX IF NOT EXISTS idx_logos_user ON logos(user_id);
       }
       if (!names.has("must_change_password")) {
         db.exec(`ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0`);
+      }
+      if (!names.has("language")) {
+        // NULL = automatic (detect from browser). Otherwise an explicit
+        // tag like "fr" or "en". Stored as TEXT to remain forward-compatible.
+        db.exec(`ALTER TABLE users ADD COLUMN language TEXT`);
       }
     });
     tx();
@@ -1117,7 +1123,7 @@ app.post("/api/login", (req, res) => {
   const token = signToken(user);
   const response = {
     token,
-    user: { id: user.id, name: user.name, email: user.email, is_admin: !!user.is_admin, avatar_url: user.avatar_url || null },
+    user: { id: user.id, name: user.name, email: user.email, is_admin: !!user.is_admin, avatar_url: user.avatar_url || null, language: user.language || null },
   };
   if (user.must_change_password) response.must_change_password = true;
   res.json(response);
@@ -1161,7 +1167,7 @@ app.post("/api/login/secret", (req, res) => {
       const token = signToken(u);
       const response = {
         token,
-        user: { id: u.id, name: u.name, email: u.email, is_admin: !!u.is_admin, avatar_url: fullUser?.avatar_url || null },
+        user: { id: u.id, name: u.name, email: u.email, is_admin: !!u.is_admin, avatar_url: fullUser?.avatar_url || null, language: fullUser?.language || null },
       };
       if (fullUser?.must_change_password) response.must_change_password = true;
       return res.json(response);
@@ -1219,17 +1225,47 @@ app.get("/api/user/profile", auth, (req, res) => {
     is_admin: !!user.is_admin,
     avatar_url: user.avatar_url || null,
     show_on_login: user.show_on_login !== 0,
+    language: user.language || null,
   });
 });
 
-// Update show_on_login preference (authenticated)
+// Update profile preferences (authenticated). Currently accepts
+// show_on_login and language; both are optional so the client can patch
+// one at a time.
 app.patch("/api/user/profile", auth, (req, res) => {
-  const { show_on_login } = req.body || {};
-  if (typeof show_on_login !== "boolean") {
-    return res.status(400).json({ error: "show_on_login must be a boolean." });
+  const body = req.body || {};
+  const updates = [];
+  const params = [];
+
+  if (Object.prototype.hasOwnProperty.call(body, "show_on_login")) {
+    if (typeof body.show_on_login !== "boolean") {
+      return res.status(400).json({ error: "show_on_login must be a boolean." });
+    }
+    updates.push("show_on_login = ?");
+    params.push(body.show_on_login ? 1 : 0);
   }
-  db.prepare("UPDATE users SET show_on_login = ? WHERE id = ?").run(show_on_login ? 1 : 0, req.user.id);
-  res.json({ ok: true, show_on_login });
+
+  if (Object.prototype.hasOwnProperty.call(body, "language")) {
+    const lang = body.language;
+    if (lang !== null && lang !== "" && lang !== "fr" && lang !== "en") {
+      return res.status(400).json({ error: "language must be null, \"fr\" or \"en\"." });
+    }
+    updates.push("language = ?");
+    params.push(lang ? lang : null);
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ error: "No supported field provided." });
+  }
+  params.push(req.user.id);
+  db.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`).run(...params);
+
+  const user = getUserById.get(req.user.id);
+  res.json({
+    ok: true,
+    show_on_login: user.show_on_login !== 0,
+    language: user.language || null,
+  });
 });
 
 // ---------- Change Password (authenticated, any user) ----------
@@ -2654,18 +2690,63 @@ app.patch("/api/admin/users/:id", auth, adminOnly, (req, res) => {
 });
 
 
+// Restart the running GlassKeep instance.
+// - Native (systemd): `systemctl restart glass-keep`
+// - Docker: POST /containers/<self>/restart on the mounted socket
+// Responds immediately so the client receives the 200 before the process dies.
+app.post("/api/admin/restart", auth, adminOnly, (_req, res) => {
+  res.json({ ok: true });
+  setTimeout(() => {
+    restartSelf().catch((err) => console.error("restartSelf failed:", err?.message || err));
+  }, 300);
+});
+
+// Shutdown the running GlassKeep instance.
+// - Native (systemd): `systemctl stop glass-keep`
+// - Docker: POST /containers/<self>/stop on the mounted socket. The
+//   restart policy (`unless-stopped` in the documented compose) honours
+//   the manual stop, so the container stays down.
+// Responds immediately so the client receives the 200 before the process dies.
+app.post("/api/admin/shutdown", auth, adminOnly, (_req, res) => {
+  res.json({ ok: true });
+  setTimeout(() => {
+    shutdownSelf().catch((err) => console.error("shutdownSelf failed:", err?.message || err));
+  }, 300);
+});
+
 // ---------- AI Assistant (OpenAI-compatible provider) ----------
 // All AI endpoints (admin settings + user chat) live in server/ai/.
 attachAiRoutes(app, { db, auth, adminOnly });
 
 // ---------- Health ----------
-app.get("/api/health", (_req, res) => res.json({ ok: true, service: "glasskeep", env: NODE_ENV }));
+app.get("/api/health", (_req, res) => res.json({
+  ok: true,
+  service: "glasskeep",
+  env: NODE_ENV,
+  startedAt: Math.round(Date.now() - process.uptime() * 1000),
+}));
 
 // ---------- Static (production) ----------
 if (NODE_ENV === "production") {
   const dist = path.join(__dirname, "..", "dist");
-  app.use(express.static(dist));
+
+  // Hashed assets (JS/CSS bundles, images) — content-addressed so they
+  // can be cached for a very long time.
+  app.use(express.static(dist, {
+    setHeaders(res, filePath) {
+      if (/\.[0-9a-f]{8,}\.(js|css|woff2?|png|svg|ico|webp)$/i.test(filePath)) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      } else if (filePath.endsWith("index.html")) {
+        // index.html: revalidate when online, serve stale when offline.
+        // stale-if-error lets the WebView fall back to the cached copy
+        // when the server is unreachable (no-network / server stopped).
+        res.setHeader("Cache-Control", "public, max-age=0, must-revalidate, stale-while-revalidate=86400, stale-if-error=604800");
+      }
+    },
+  }));
+
   app.get("*", (_req, res) => {
+    res.setHeader("Cache-Control", "public, max-age=0, must-revalidate, stale-while-revalidate=86400, stale-if-error=604800");
     res.sendFile(path.join(dist, "index.html"));
   });
 }

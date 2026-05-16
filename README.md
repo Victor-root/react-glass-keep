@@ -131,7 +131,7 @@ Current APK version: `1.2.0`
 
 ## 🖥 Installation
 
-### Recommended native installation (Debian / Ubuntu / Proxmox LXC)
+### 🐧 Recommended native installation (Debian / Ubuntu / Proxmox LXC)
 
 Run as **root** on a clean Debian-based system:
 
@@ -157,9 +157,35 @@ The script is designed to make installation as simple as possible:
 
 ### 🐳 Docker installation
 
-Docker is also available, especially for NAS and similar environments.
+Docker is also available, especially for NAS and similar environments. The same `docker-compose.yml` works whether you deploy from a terminal or from a graphical interface — pick the one that matches your setup.
 
-#### Install
+#### 📋 The compose file
+
+```yaml
+services:
+  glasskeep:
+    image: ghcr.io/victor-root/glasskeep-enhanced:latest
+    container_name: glasskeep
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMIN_EMAIL: "your-admin-username"
+      ADMIN_PASSWORD: "choose-a-strong-password"
+    volumes:
+      - ./data:/data
+      # Lets the admin panel update the container in one click.
+      - /var/run/docker.sock:/var/run/docker.sock
+```
+
+Once the container is up, open `http://<your-host>:8080` and sign in with the admin username and password you chose.
+
+#### 🚀 Deploy
+
+<details>
+<summary><b>🖥️ Command line (Linux / macOS / WSL)</b></summary>
+  
+Edit the `ADMIN_EMAIL` and `ADMIN_PASSWORD` values below, then paste the whole block into your terminal — it creates the folder, writes the compose file and starts the container in one go.
 
 ```bash
 mkdir -p ~/glasskeep && cd ~/glasskeep && cat > docker-compose.yml <<'EOF'
@@ -180,16 +206,83 @@ services:
 EOF
 docker compose up -d
 ```
+> 🐳 **Don't have Docker yet?**
+> - **Linux** — one-liner that works on Debian / Ubuntu / Fedora / Arch / …:
+>   ```bash
+>   curl -fsSL https://get.docker.com | sudo sh
+>   ```
+> - **macOS / Windows** — install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and make sure it's running before continuing.
 
-Then:
-1. open `http://<your-host>:8080`
-2. sign in with the admin username and password you chose
+</details>
 
-#### Update
+<details>
+<summary><b>🐙 Portainer</b></summary>
 
-The easiest way is to open the admin panel and click **"Update now"** —
-the new image is pulled and the container is replaced automatically,
-your data is preserved.
+1. Open Portainer → select your environment → **Stacks** → **Add stack**
+2. Give it a name (e.g. `glasskeep`)
+3. Choose **Web editor** and paste the compose file above
+4. Edit the `ADMIN_EMAIL` / `ADMIN_PASSWORD` values
+5. Click **Deploy the stack**
+
+The container appears in the **Containers** tab once it's pulled and started.
+
+</details>
+
+<details>
+<summary><b>📦 Synology (Container Manager / DSM 7.2+)</b></summary>
+
+1. Open **Container Manager** → **Project** → **Create**
+2. Set **Project name** to `glasskeep` and **Path** to a folder of your choice (e.g. `/docker/glasskeep`)
+3. **Source** → **Create docker-compose.yml** and paste the compose file above
+4. Edit the `ADMIN_EMAIL` / `ADMIN_PASSWORD` values
+5. Click **Next** → **Done**
+
+The Docker socket volume works out of the box on DSM, so the in-app "Update now" button will work without extra setup.
+
+</details>
+
+<details>
+<summary><b>🟧 Unraid</b></summary>
+
+The simplest route is the **Compose Manager** plugin (Community Apps):
+
+1. Install **Compose Manager** from Community Apps if you don't have it
+2. Go to the **Docker** tab → **Add New Stack** → name it `glasskeep`
+3. Click the gear → **Edit Stack** → **Compose** and paste the compose file above
+4. Adjust the `ADMIN_*` values, click **Save**
+5. Click **Compose Up**
+
+You can also use the native **Add Container** form, but the compose route preserves the Docker-socket mount for one-click updates.
+
+</details>
+
+<details>
+<summary><b>🏠 CasaOS</b></summary>
+
+1. Click the **➕** icon on the dashboard → **Install a customized app** → **Import**
+2. Paste the compose file above
+3. Edit the `ADMIN_EMAIL` / `ADMIN_PASSWORD` values
+4. Click **Install**
+
+The app shows up on the dashboard with a launcher tile pointing to port 8080.
+
+</details>
+
+<details>
+<summary><b>🛟 TrueNAS SCALE</b></summary>
+
+TrueNAS SCALE doesn't ship a generic compose UI, so the simplest route is the built-in shell:
+
+1. Open **System Settings** → **Shell**
+2. Create a folder for the stack: `mkdir -p /mnt/<your-pool>/glasskeep && cd $_`
+3. Paste the compose file above into `docker-compose.yml`
+4. Run `docker compose up -d`
+
+</details>
+
+#### 🔄 Update
+
+The easiest way is to open the admin panel and click **"Update now"** — the new image is pulled and the container is replaced automatically. Your data is preserved.
 
 If you prefer the command line:
 
@@ -197,20 +290,11 @@ If you prefer the command line:
 cd ~/glasskeep && docker compose pull && docker compose up -d
 ```
 
-Your data stays preserved in the `./data` directory.
-
-##### Upgrading an existing Docker install to enable one-click updates
-
-If your `docker-compose.yml` was generated before this feature shipped,
-add this single line under the `volumes:` block (right under
-`- ./data:/data`), then run `docker compose up -d` once:
-
-```yaml
-      - /var/run/docker.sock:/var/run/docker.sock
-```
-
-After that, the "Update now" button in the admin panel takes care of all
-future upgrades — you will never have to touch this file again.
+> 💡 **Existing install without one-click updates?** You have two options:
+> - **Patch the existing compose** — add `- /var/run/docker.sock:/var/run/docker.sock` under the `volumes:` block of your current `docker-compose.yml`, then re-deploy the stack once.
+> - **Redeploy from the current example** — replace your `docker-compose.yml` with the one at the top of this section (keep your `ADMIN_*` values and your `./data` volume), then re-deploy. The current example already ships the right configuration, so you'll never have to touch the file again.
+>
+> Either way, the in-app **Update now** button takes over from there.
 
 ---
 
@@ -239,13 +323,17 @@ ollama pull qwen3:4b-instruct-2507-q4_K_M
 
 ## 🌍 Adding a new language
 
-1. Copy `src/i18n/locales/en.js` to a new file, for example `it.js`
-2. Translate the values
-3. Import the locale in `src/i18n/index.js`
-4. Adjust detection logic if needed
-5. Rebuild the app
+1. Copy `src/i18n/locales/en.js` to a new file, e.g. `src/i18n/locales/it.js`, and translate all values
+2. In `src/i18n/index.js`:
+   - import the new locale: `import { it } from "./locales/it";`
+   - add the language code to `SUPPORTED_LANGUAGES`: `export const SUPPORTED_LANGUAGES = ["fr", "en", "it"];`
+   - add the native display name to `LANGUAGE_NATIVE_LABELS`: `it: "Italiano"`
+   - extend the dict selector: `const dict = locale === "fr" ? fr : locale === "it" ? it : en;`
+3. In `server/index.js`, add the new code to the validation allowlist in `PATCH /api/user/profile` (the line that checks `lang !== "fr" && lang !== "en"`)
+4. Rebuild the app: `npm run build`
 
-Missing keys will automatically fall back to English.
+The language selector in the settings panel will automatically show the new option.
+Missing keys fall back to English automatically.
 
 ---
 

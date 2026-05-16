@@ -13,6 +13,26 @@ function joinUrl(baseUrl, suffix) {
   return `${trimmed}${tail}`;
 }
 
+// Human-readable hints for HTTP status codes commonly returned by
+// OpenAI-compatible providers when they send no error body.
+const PROVIDER_HTTP_HINTS = {
+  400: "requête invalide (paramètres incorrects ou modèle non reconnu)",
+  401: "clé API invalide ou manquante",
+  403: "accès refusé (quota épuisé ou compte suspendu)",
+  404: "endpoint ou modèle introuvable — vérifiez l'URL de base et le nom du modèle",
+  405: "méthode non autorisée — vérifiez l'URL de base (endpoint /chat/completions)",
+  413: "requête trop volumineuse",
+  422: "entité non traitable (body malformé)",
+  429: "limite de débit atteinte — réessayez plus tard",
+  500: "erreur interne du fournisseur",
+  502: "fournisseur temporairement indisponible",
+  503: "service du fournisseur indisponible",
+};
+
+function describeProviderStatus(status) {
+  return PROVIDER_HTTP_HINTS[status] ? `HTTP ${status} — ${PROVIDER_HTTP_HINTS[status]}` : `HTTP ${status}`;
+}
+
 // Strip an OpenAI-style API key from a string before logging it. The
 // substring keeps just enough to disambiguate but not enough to reuse.
 function redactApiKey(value) {
@@ -96,7 +116,7 @@ async function chatCompletion(cfg, { messages, temperature, maxTokens, signal } 
   if (!res.ok) {
     const providerMessage =
       (payload && (payload.error?.message || payload.message)) ||
-      `HTTP ${res.status}`;
+      describeProviderStatus(res.status);
     throw new AIProviderError(`AI provider error: ${providerMessage}`, {
       status: 502,
       providerStatus: res.status,
@@ -166,7 +186,7 @@ async function* chatCompletionStream(
     try { payload = await res.json(); } catch {}
     const providerMessage =
       (payload && (payload.error?.message || payload.message)) ||
-      `HTTP ${res.status}`;
+      describeProviderStatus(res.status);
     dbg(`fetch !ok: ${providerMessage}`);
     throw new AIProviderError(`AI provider error: ${providerMessage}`, {
       status: 502,
