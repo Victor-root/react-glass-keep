@@ -185,6 +185,13 @@ Once the container is up, open `http://<your-host>:8080` and sign in with the ad
 <details>
 <summary><b>🖥️ Command line (Linux / macOS / WSL)</b></summary>
 
+> 🐳 **Don't have Docker yet?**
+> - **Linux** — one-liner that works on Debian / Ubuntu / Fedora / Arch / …:
+>   ```bash
+>   curl -fsSL https://get.docker.com | sudo sh
+>   ```
+> - **macOS / Windows** — install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and make sure it's running before continuing.
+
 Edit the `ADMIN_EMAIL` and `ADMIN_PASSWORD` values below, then paste the whole block into your terminal — it creates the folder, writes the compose file and starts the container in one go.
 
 ```bash
