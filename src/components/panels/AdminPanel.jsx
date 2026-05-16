@@ -138,6 +138,8 @@ export default function AdminPanel({
   });
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
+  const [restartPhase, setRestartPhase] = useState(null); // null | "waiting" | "countdown"
+  const [restartCountdown, setRestartCountdown] = useState(5);
 
   const handleRestart = () => {
     showGenericConfirm({
@@ -147,8 +149,8 @@ export default function AdminPanel({
       danger: true,
       onConfirm: async () => {
         setIsRestarting(true);
+        setRestartPhase("waiting");
         try {
-          // Snapshot current server start time so we can detect the new instance.
           const healthBefore = await fetch("/api/health").then((r) => r.json()).catch(() => null);
           const startedAtBefore = healthBefore?.startedAt ?? Date.now();
 
@@ -160,23 +162,34 @@ export default function AdminPanel({
             const data = await res.json().catch(() => ({}));
             showToast(data.error || t("error"), "error");
             setIsRestarting(false);
+            setRestartPhase(null);
             return;
           }
-
-          showToast(t("restartServerSuccess"), "info");
 
           // Poll /api/health until startedAt is newer → confirmed new instance.
           const deadline = Date.now() + 60_000;
           const poll = async () => {
             if (Date.now() > deadline) {
               setIsRestarting(false);
+              setRestartPhase(null);
               showToast(t("restartServerTimeout"), "error");
               return;
             }
             try {
               const h = await fetch("/api/health").then((r) => r.json());
               if (h?.startedAt && h.startedAt > startedAtBefore) {
-                window.location.reload();
+                setIsRestarting(false);
+                setRestartPhase("countdown");
+                setRestartCountdown(5);
+                let n = 5;
+                const tick = setInterval(() => {
+                  n -= 1;
+                  setRestartCountdown(n);
+                  if (n <= 0) {
+                    clearInterval(tick);
+                    window.location.reload();
+                  }
+                }, 1000);
                 return;
               }
             } catch {
@@ -188,6 +201,7 @@ export default function AdminPanel({
         } catch {
           showToast(t("error"), "error");
           setIsRestarting(false);
+          setRestartPhase(null);
         }
       },
     });
@@ -707,6 +721,36 @@ export default function AdminPanel({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {restartPhase && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="glass-card rounded-xl shadow-2xl w-[90%] max-w-sm p-6 relative text-center"
+            style={{ backgroundColor: dark ? "rgba(40,40,40,0.97)" : "rgba(255,255,255,0.97)" }}
+          >
+            {restartPhase === "waiting" ? (
+              <>
+                <div className="flex justify-center mb-4">
+                  <TI.Refresh className="tabler-icon w-10 h-10 text-indigo-500 animate-spin" />
+                </div>
+                <h3 className="text-lg font-semibold mb-1">{t("restartServerTitle")}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t("restartServerWaiting")}</p>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-center mb-4">
+                  <TI.Check className="tabler-icon w-10 h-10 text-emerald-500" />
+                </div>
+                <h3 className="text-lg font-semibold mb-1">{t("restartServerDone")}</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {t("restartServerReloadIn").replace("{n}", restartCountdown)}
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}
