@@ -366,6 +366,19 @@ class WebViewActivity : AppCompatActivity() {
                         // press shouldn't reload the whole web layer.
                         swipeRefresh.isEnabled = false
                     }
+                    // Plant the system dark-mode flag BEFORE React mounts.
+                    // Without this, the page initialised dark from
+                    // matchMedia("(prefers-color-scheme: dark)") — which
+                    // returns `false` in Android WebView unless dark mode
+                    // is explicitly propagated to the renderer. Result: a
+                    // pull-to-refresh would always boot the app in light
+                    // mode even with the system in dark, because by the
+                    // time onPageFinished's window.__setDarkMode(true) ran,
+                    // React had already painted the light theme.
+                    val isDarkBoot = isDarkMode()
+                    view.evaluateJavascript(
+                        "window.__isAndroidDarkMode=$isDarkBoot;", null
+                    )
                     // Install the passkey polyfill before any page script
                     // runs. The polyfill is idempotent — re-injecting it
                     // on SPA navigations is harmless.

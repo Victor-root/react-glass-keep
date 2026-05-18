@@ -44,11 +44,19 @@ export default function QrLoginButton({ onLoggedIn, dark }) {
         {open ? t("qrLoginHide") : t("qrLoginCta")}
       </button>
       {open && (
-        <QrLoginPanel
-          dark={dark}
-          onLoggedIn={handleLoggedIn}
-          onCancel={() => setOpen(false)}
-        />
+        // On wide screens (lg+ ≈ 1024 px) the panel floats on the
+        // right of the viewport via `fixed`, vertically centred, so
+        // the auth card stays where it was and the user doesn't have
+        // to scroll on a laptop with limited vertical room. Below lg
+        // the panel falls back to normal flow under the button —
+        // phones don't have horizontal room for a side panel anyway.
+        <div className="mt-3 lg:mt-0 lg:fixed lg:right-4 lg:top-1/2 lg:-translate-y-1/2 lg:w-72 lg:z-50">
+          <QrLoginPanel
+            dark={dark}
+            onLoggedIn={handleLoggedIn}
+            onCancel={() => setOpen(false)}
+          />
+        </div>
       )}
     </div>
   );

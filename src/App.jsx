@@ -1257,7 +1257,19 @@ export default function App() {
 
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
     const manualPref = sessionStorage.getItem("glass-keep-dark-mode-manual");
-    const savedDark = manualPref !== null ? manualPref === "true" : (mq?.matches ?? false);
+    // Android WebView returns `false` for matchMedia("(prefers-color-
+    // scheme: dark)") unless dark mode is explicitly propagated to the
+    // renderer, so the native shell plants `window.__isAndroidDarkMode`
+    // (boolean) in onPageStarted before React mounts. That flag wins
+    // over matchMedia when it's defined; in regular browsers / PWAs
+    // it stays undefined and matchMedia keeps its usual role.
+    const androidDark =
+      typeof window.__isAndroidDarkMode === "boolean"
+        ? window.__isAndroidDarkMode
+        : null;
+    const savedDark = manualPref !== null
+      ? manualPref === "true"
+      : (androidDark != null ? androidDark : (mq?.matches ?? false));
     setDark(savedDark);
     document.documentElement.classList.toggle("dark", savedDark);
     setThemeColor(savedDark ? "#1a1a1a" : "#f0e8ff");
