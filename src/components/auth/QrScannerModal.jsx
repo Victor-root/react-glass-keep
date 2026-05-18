@@ -21,6 +21,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import QrScanner from "qr-scanner";
 import { t } from "../../i18n";
+import TI from "../../icons/editor/index.jsx";
 import {
   parseLinkUrl,
   getDeviceLinkInfo,
@@ -216,7 +217,10 @@ export default function QrScannerModal({ open, onClose, token, showToast }) {
         {/* Camera surface — kept mounted across phases so toggling
             back from confirm → scanning doesn't have to re-acquire
             the stream. Hidden via CSS once we've moved past
-            scanning rather than via conditional mount. */}
+            scanning rather than via conditional mount.
+            The video stays opacity-0 until the stream is actually
+            attached; otherwise the WebView's chrome paints its
+            generic "no source" play-button glyph through our card. */}
         <div
           className="relative w-full aspect-square rounded-xl overflow-hidden bg-black"
           style={{
@@ -230,11 +234,16 @@ export default function QrScannerModal({ open, onClose, token, showToast }) {
             ref={videoRef}
             playsInline
             muted
-            className="w-full h-full object-cover"
+            disablePictureInPicture
+            controls={false}
+            className={`w-full h-full object-cover transition-opacity duration-200 ${
+              phase === PHASES.scanning ? "opacity-100" : "opacity-0"
+            }`}
           />
           {phase === PHASES.loading && (
-            <div className="absolute inset-0 flex items-center justify-center text-white">
-              <Spinner />
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/80 gap-3">
+              <TI.Camera className="tabler-icon w-12 h-12" />
+              <Spinner small />
             </div>
           )}
         </div>

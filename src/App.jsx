@@ -62,6 +62,7 @@ import AdminView from "./components/notes/AdminView.jsx";
 import NotesUI from "./components/notes/NotesUI.jsx";
 import GenericConfirmDialog from "./components/common/GenericConfirmDialog.jsx";
 import ToastContainer from "./components/common/ToastContainer.jsx";
+import QrScannerModal from "./components/auth/QrScannerModal.jsx";
 import FloatingCardsBackground from "./components/common/FloatingCardsBackground.jsx";
 import NoteModal from "./components/modal/NoteModal.jsx";
 import SecondaryNoteInstance from "./components/modal/SecondaryNoteInstance.jsx";
@@ -323,6 +324,25 @@ export default function App() {
   // Generic confirmation dialog
   const [genericConfirmOpen, setGenericConfirmOpen] = useState(false);
   const [genericConfirmConfig, setGenericConfirmConfig] = useState({});
+
+  // Cross-device QR sign-in: the in-app camera + approve flow. Opened
+  // from two places (Settings row + optional header quick-access
+  // button) so the modal is hoisted to App and the callback is
+  // threaded down. The "show header button" preference is just a
+  // boolean localStorage flag; we mirror it into React state so
+  // toggling the switch in Settings flips the header without a reload.
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const openQrScanner = useCallback(() => setQrScannerOpen(true), []);
+  const closeQrScanner = useCallback(() => setQrScannerOpen(false), []);
+  const [qrQuickEnabled, setQrQuickEnabledState] = useState(() => {
+    try { return localStorage.getItem("glass-keep-qr-quick") === "1"; }
+    catch { return false; }
+  });
+  const setQrQuickEnabled = useCallback((next) => {
+    setQrQuickEnabledState(!!next);
+    try { localStorage.setItem("glass-keep-qr-quick", next ? "1" : "0"); }
+    catch { /* private mode etc. — non-fatal, preference simply won't persist */ }
+  }, []);
 
   // Toast notification system
   const [toasts, setToasts] = useState([]);
@@ -5584,6 +5604,9 @@ export default function App() {
           setAuth({ ...getAuth(), user: { ...getAuth()?.user, ...updates } });
         }}
         onChangePassword={() => setChangePasswordOpen(true)}
+        openQrScanner={openQrScanner}
+        qrQuickEnabled={qrQuickEnabled}
+        setQrQuickEnabled={setQrQuickEnabled}
       />
 
       {/* Admin Panel */}
@@ -5761,6 +5784,9 @@ export default function App() {
         hasUpdate={!!updateInfo?.updateAvailable && !!currentUser?.is_admin}
         // Settings panel
         openSettingsPanel={openSettingsPanel}
+        // QR sign-in quick-access button (header, left of the kebab)
+        qrQuickEnabled={qrQuickEnabled}
+        onOpenQrScanner={openQrScanner}
         // header auto-hide (mobile)
         windowWidth={windowWidth}
         isLandscapeMobile={isLandscapeMobile}
@@ -5836,6 +5862,17 @@ export default function App() {
       />
 
       <ChangelogModal />
+
+      {/* Cross-device QR sign-in: the camera + Approve / Reject card
+          lives at App level so both the SettingsPanel row and the
+          optional header quick-access button can pop it without
+          duplicating the modal in two subtrees. */}
+      <QrScannerModal
+        open={qrScannerOpen}
+        onClose={closeQrScanner}
+        token={token}
+        showToast={showToast}
+      />
 
       <ToastContainer toasts={toasts} />
 

@@ -735,6 +735,8 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   qrLoginRegenerate: "Générer un nouveau QR",
   qrSignInRowTitle: "Connecter un autre appareil",
   qrSignInRowSubtitle: "Scanner un QR code affiché sur un autre PC pour l'authentifier.",
+  qrSignInQuickToggleTitle: "Bouton d'accès rapide dans l'en-tête",
+  qrSignInQuickToggleSubtitle: "Affiche une icône QR à gauche du menu pour ouvrir le scanner en un tap.",
   qrScanTitle: "Scanner un QR code",
   qrScanExplain: "Visez le QR code affiché sur l'écran de connexion de l'autre appareil.",
   qrScanConfirmExplain: "Vérifiez que c'est bien votre appareil avant d'approuver la connexion.",

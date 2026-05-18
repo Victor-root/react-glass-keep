@@ -49,6 +49,8 @@ export default function NotesHeader({
   activeTagFilter,
   isLandscapeMobile,
   multiMode,
+  qrQuickEnabled = false,
+  onOpenQrScanner,
 }) {
   // In landscape mobile, force mobile layout regardless of sm: breakpoint
   const mobileOnly = isLandscapeMobile ? "" : "sm:hidden";
@@ -71,7 +73,11 @@ export default function NotesHeader({
           transition: "transform 0.3s ease",
         }}
       >
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Tighter gap on mobile when the QR quick-access button is
+            pinned in the header — without this the badge / app name
+            risks wrapping or overflowing on narrow phones because the
+            right-side icon cluster grew by one extra button. */}
+        <div className={`flex items-center ${qrQuickEnabled ? "gap-1.5 sm:gap-3" : "gap-3"} shrink-0`}>
           {/* Hamburger - show when sidebar is not permanently visible */}
           {!sidebarPermanent && (
             <button
@@ -356,6 +362,17 @@ export default function NotesHeader({
           {/* Mobile: sync icon + 3-dot menu */}
           <div className={`${mobileOnly} flex items-center gap-1`}>
             <SyncStatusIcon dark={dark} syncStatus={syncStatus} onSyncNow={handleSyncNow} syncDropdownOpen={syncDropdownOpen} setSyncDropdownOpen={setSyncDropdownOpen} instanceLocked={instanceLocked} />
+            {qrQuickEnabled && (
+              <button
+                type="button"
+                onClick={() => onOpenQrScanner?.()}
+                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 text-gray-700 dark:text-gray-200"
+                data-tooltip={t("qrSignInRowTitle")}
+                aria-label={t("qrSignInRowTitle")}
+              >
+                <TI.Qrcode className="tabler-icon w-5 h-5" />
+              </button>
+            )}
             <button
               ref={headerBtnRef}
               onClick={() => setHeaderMenuOpen((v) => !v)}
@@ -364,7 +381,14 @@ export default function NotesHeader({
               aria-haspopup="menu"
               aria-expanded={headerMenuOpen}
             >
-              <Kebab />
+              {/* When the menu is open we hide the kebab dots so the
+                  dropdown can paint on top of them — keeps the click
+                  target where it is (the same button still toggles
+                  the menu closed) but removes the visual stutter of
+                  the dots peeking behind the dropdown corner. */}
+              <span style={{ visibility: headerMenuOpen ? "hidden" : "visible" }}>
+                <Kebab />
+              </span>
               {hasUpdate && currentUser?.is_admin && (
                 <span aria-hidden="true" className="absolute top-1 right-1 flex items-center justify-center">
                   <span className="absolute inline-flex w-2.5 h-2.5 rounded-full bg-emerald-400 opacity-75 animate-ping" />
@@ -379,9 +403,17 @@ export default function NotesHeader({
                   className="fixed inset-0 z-[1099]"
                   onClick={() => setHeaderMenuOpen(false)}
                 />
+                {/* The dropdown's top is anchored to the kebab button
+                    itself on mobile (top-0) so it paints OVER the 3
+                    dots — combined with the visibility:hidden on the
+                    Kebab glyph above, the menu visually replaces the
+                    button. On wider viewports we keep the legacy
+                    "hangs below the button" placement. Width / height
+                    likewise stretch on mobile (≈ 75 % × 50 % of the
+                    viewport) and stay compact on desktop. */}
                 <div
                   ref={headerMenuRef}
-                  className={`absolute top-12 right-0 min-w-[220px] z-[1100] border border-[var(--border-light)] rounded-lg shadow-lg overflow-hidden ${dark ? "text-gray-100" : "bg-white text-gray-800"}`}
+                  className={`absolute top-0 sm:top-12 right-0 w-[75vw] max-w-[360px] sm:w-auto sm:min-w-[220px] sm:max-w-[280px] max-h-[50vh] sm:max-h-[80vh] overflow-y-auto z-[1100] border border-[var(--border-light)] rounded-lg shadow-lg ${dark ? "text-gray-100" : "bg-white text-gray-800"}`}
                   style={{ backgroundColor: dark ? "#222222" : undefined }}
                   onClick={(e) => e.stopPropagation()}
                 >

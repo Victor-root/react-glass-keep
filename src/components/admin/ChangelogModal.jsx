@@ -324,7 +324,11 @@ export default function ChangelogModal() {
 
     return (
         <div
-            className="fixed inset-0 z-[9997] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            // Mobile: edge-to-edge backdrop with no padding so the
+            // modal card stretches to the full viewport. Desktop: keep
+            // the classic dimmed-backdrop look with a 1 rem gutter
+            // around the centered card.
+            className="fixed inset-0 z-[9997] flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
             role="dialog"
             aria-modal="true"
             aria-labelledby="changelog-modal-title"
@@ -390,9 +394,25 @@ export default function ChangelogModal() {
                     opacity: 0.85;
                 }
                 .gk-changelog strong { font-weight: 600; }
+                /* Avoid horizontal scrollbars on narrow phones — long
+                   code spans / URLs / tokens used to push the viewport
+                   wider than its container and create a horizontal
+                   scrollbar inside the modal. Wrap-anywhere keeps the
+                   prose body contained; <pre> blocks keep their own
+                   x-scroll because wrapping arbitrary code would harm
+                   readability. */
+                .gk-changelog,
+                .gk-changelog p,
+                .gk-changelog li,
+                .gk-changelog code { overflow-wrap: anywhere; word-break: break-word; }
+                .gk-changelog pre { white-space: pre-wrap; word-break: break-word; }
             `}</style>
             <div
-                className="w-full max-w-2xl h-[85vh] rounded-2xl border border-[var(--border-light)] bg-white dark:bg-[var(--bg-elevated,#1a1a1f)] shadow-2xl flex flex-col overflow-hidden"
+                // On mobile we go full-screen (the X in the top-right
+                // is the close affordance). The 85vh + rounded-2xl
+                // look only kicks in from sm: upwards where there's
+                // viewport to spare around the card.
+                className="w-full h-full sm:h-[85vh] max-w-none sm:max-w-2xl rounded-none sm:rounded-2xl border-0 sm:border border-[var(--border-light)] bg-white dark:bg-[var(--bg-elevated,#1a1a1f)] shadow-2xl flex flex-col overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-[var(--border-light)] bg-white/60 dark:bg-white/5">
@@ -476,7 +496,7 @@ export default function ChangelogModal() {
                     )}
                 </div>
                 <div
-                    className="gk-changelog flex-1 min-h-0 overflow-y-auto px-6 py-5 text-sm text-gray-800 dark:text-gray-100"
+                    className="gk-changelog flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 py-5 text-sm text-gray-800 dark:text-gray-100"
                     dangerouslySetInnerHTML={{ __html: displayHtml }}
                     onClick={(e) => {
                         // Markdown anchors are sanitised into real <a>

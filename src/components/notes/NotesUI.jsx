@@ -133,6 +133,9 @@ function NotesUI({
   hasUpdate = false,
   // Settings panel
   openSettingsPanel,
+  // QR sign-in quick-access button in the header
+  qrQuickEnabled = false,
+  onOpenQrScanner,
   // AI props
   aiAssistantEnabled,
   aiResponse,
@@ -259,6 +262,8 @@ function NotesUI({
         onStartMulti={onStartMulti}
         openSettingsPanel={openSettingsPanel}
         openAdminPanel={openAdminPanel}
+        qrQuickEnabled={qrQuickEnabled}
+        onOpenQrScanner={onOpenQrScanner}
         hasUpdate={hasUpdate}
         currentUser={currentUser}
         signOut={signOut}
