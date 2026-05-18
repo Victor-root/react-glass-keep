@@ -1,7 +1,26 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// Pull release-keystore credentials from android/keystore.properties.
+// File is gitignored — it lives on the maintainer's machine and on no
+// CI box that the maintainer didn't set up themselves. When it's
+// missing (fresh clone, F-Droid build server, fork without a keystore)
+// we silently fall back to Android Studio's auto-debug keystore so the
+// project still builds. See keystore.properties.example for the format.
+val keystorePropsFile = rootProject.file("keystore.properties")
+val keystoreProps =
+    Properties().apply {
+        if (keystorePropsFile.exists()) {
+            keystorePropsFile.inputStream().use { load(it) }
+        }
+    }
+val hasReleaseSigning =
+    keystoreProps.getProperty("storeFile")?.isNotBlank() == true &&
+        rootProject.file(keystoreProps.getProperty("storeFile")).exists()
 
 android {
     namespace = "com.glasskeep.app"
@@ -11,11 +30,37 @@ android {
         applicationId = "com.glasskeep.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.2.0"
+        versionCode = 6
+        versionName = "1.3.0"
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
+        debug {
+            // Sign debug builds with the release key when available — this
+            // is what makes the green Run triangle in Android Studio
+            // install a passkey-capable APK without going through the
+            // "Generate Signed Bundle / APK" wizard. The fingerprint
+            // matches /.well-known/assetlinks.json, so Credential Manager
+            // accepts the WebView's WebAuthn calls.
+            //
+            // When keystore.properties is missing, Gradle falls back to
+            // its auto-generated debug key — useful for forks who haven't
+            // set up signing yet, but passkeys won't work in that build.
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -23,6 +68,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 
@@ -54,4 +102,19 @@ dependencies {
     implementation("androidx.webkit:webkit:1.9.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+
+    // Custom Tabs: opens external URLs as an overlay on top of the
+    // app (Chrome / Brave / Firefox custom-tab UI) instead of cold-
+    // launching the full browser app. The user stays in our task
+    // stack — back returns to the WebView — and the page renders in
+    // their default browser's engine + session cookies.
+    implementation("androidx.browser:browser:1.8.0")
+
+    // Credential Manager: Android's unified API for passkeys, passwords
+    // and federated sign-in. Bridges the WebView's WebAuthn calls into
+    // the OS-level passkey UI (Google Password Manager / 1Password /
+    // Bitwarden / etc.) so passkeys work inside the app instead of
+    // forcing users back to a browser.
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
 }

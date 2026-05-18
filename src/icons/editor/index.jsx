@@ -70,6 +70,10 @@ import brainSvg            from "./tabler/brain.svg?raw";
 import deviceMobileRotSvg  from "./tabler/device-mobile-rotated.svg?raw";
 import eraserSvg           from "./tabler/eraser.svg?raw";
 import deviceFloppySvg     from "./tabler/device-floppy.svg?raw";
+import cameraSvg           from "./tabler/camera.svg?raw";
+import qrcodeSvg           from "./tabler/qrcode.svg?raw";
+import arrowBadgeRightSvg  from "./tabler/arrow-badge-right.svg?raw";
+import arrowBadgeDownSvg   from "./tabler/arrow-badge-down.svg?raw";
 import filter2QuestionSvg  from "./tabler/filter-2-question.svg?raw";
 import inputSparkSvg       from "./tabler/input-spark.svg?raw";
 import messageSearchSvg    from "./tabler/message-search.svg?raw";
@@ -192,6 +196,10 @@ export const TI = {
   DeviceMobileRotated:  (p) => <TablerIcon svg={deviceMobileRotSvg} {...p} />,
   Eraser:               (p) => <TablerIcon svg={eraserSvg} {...p} />,
   DeviceFloppy:         (p) => <TablerIcon svg={deviceFloppySvg} {...p} />,
+  Camera:               (p) => <TablerIcon svg={cameraSvg} {...p} />,
+  Qrcode:               (p) => <TablerIcon svg={qrcodeSvg} {...p} />,
+  ArrowBadgeRight:      (p) => <TablerIcon svg={arrowBadgeRightSvg} {...p} />,
+  ArrowBadgeDown:       (p) => <TablerIcon svg={arrowBadgeDownSvg} {...p} />,
   Filter2Question:      (p) => <TablerIcon svg={filter2QuestionSvg} {...p} />,
   InputSpark:           (p) => <TablerIcon svg={inputSparkSvg} {...p} />,
   MessageSearch:        (p) => <TablerIcon svg={messageSearchSvg} {...p} />,

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Foreground layer for "Scan QRCODE". The QR pattern's raw paths
+    span 27..81 (54 units). Pixel's circular mask is more aggressive
+    than the safe zone documentation suggests, so we shrink down to
+    a 48×48 target box (x=30..78) — ≈44% of the canvas, with a 12dp
+    cushion inside the safe zone on every side. The other shortcuts
+    can stay at 60×60 because their icons are visually rounder; the
+    QR's three corner finder patterns sit right at its bounding-box
+    extremities and need the extra room.
+    scale = 48/54 ≈ 0.889  (8/9)
+    To send (27,27) → (30,30): translate = 30 - 27 × 0.889 = 6
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="6"
+        android:translateY="6"
+        android:scaleX="0.889"
+        android:scaleY="0.889">
+        <!-- Top-left finder pattern: outer 18, hole 12, dot 6 -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M27,27 h18 v18 h-18 z M30,30 h12 v12 h-12 z M33,33 h6 v6 h-6 z" />
+        <!-- Top-right finder pattern -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M63,27 h18 v18 h-18 z M66,30 h12 v12 h-12 z M69,33 h6 v6 h-6 z" />
+        <!-- Bottom-left finder pattern -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M27,63 h18 v18 h-18 z M30,66 h12 v12 h-12 z M33,69 h6 v6 h-6 z" />
+        <!-- Scattered data cells in the bottom-right quadrant -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M51,51 h6 v6 h-6 z M63,51 h6 v6 h-6 z M75,51 h6 v6 h-6 z M57,63 h6 v6 h-6 z M69,63 h6 v6 h-6 z M51,69 h6 v6 h-6 z M75,75 h6 v6 h-6 z M63,75 h6 v6 h-6 z" />
+    </group>
+</vector>

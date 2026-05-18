@@ -275,9 +275,20 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
             className="fixed inset-0 z-[1099] sm:hidden"
             onClick={() => setOpen(false)}
           />
+          {/* On mobile we used `absolute right-0` relative to the
+              wrapper around the sync icon — that's a ~40 px-wide
+              container, so the 280-340 px popover extended off the
+              left edge of the screen. Switch to fixed positioning
+              centered horizontally on the viewport. The host
+              <header> has a `transform: translateY(0)`, so `fixed`
+              is technically relative to the header rather than the
+              viewport, but the header itself occupies the top of
+              the viewport at full width, so the maths work out
+              the same. On desktop we keep the legacy "anchored to
+              the button" layout. */}
           <div
             ref={menuRef}
-            className={`absolute top-12 right-0 min-w-[280px] max-w-[340px] z-[1100] border rounded-lg shadow-lg overflow-hidden ${
+            className={`fixed top-14 left-1/2 -translate-x-1/2 sm:absolute sm:top-12 sm:left-auto sm:right-0 sm:translate-x-0 w-[calc(100vw-1rem)] max-w-[340px] sm:w-auto sm:min-w-[280px] z-[1100] border rounded-lg shadow-lg overflow-hidden ${
               dark
                 ? "bg-[#222] border-gray-700 text-gray-100"
                 : "bg-white border-gray-200 text-gray-800"

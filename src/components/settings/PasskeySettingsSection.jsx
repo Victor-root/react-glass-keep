@@ -15,6 +15,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { t } from "../../i18n";
 import {
   isWebAuthnSupported,
+  hasAndroidPasskeyBridge,
   listPasskeys,
   registerPasskey,
   renamePasskey,
@@ -43,6 +44,20 @@ export default function PasskeySettingsSection({
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);    // credentialId currently mutating (rename/delete/toggle)
   const [testingId, setTestingId] = useState(null); // credentialId currently being tested
+
+  // Styled prompt + confirm dialogs (replacing window.prompt / .confirm).
+  // Native browser dialogs render as the OS chrome inside the Android
+  // WebView — "La page indique :" with no theming — which both looks
+  // out of place and leaks the fact that the app is a webview. Local
+  // state-driven dialogs keep the UI consistent with the rest of the
+  // settings panel.
+  //
+  // Shape: null when closed, otherwise an options object whose `onSubmit`
+  // / `onConfirm` callback receives the user's input. Single-source-of-
+  // truth state — opening a new dialog while another is showing simply
+  // replaces it (we never need overlapping prompts on this screen).
+  const [textPrompt, setTextPrompt] = useState(null);
+  const [confirmPrompt, setConfirmPrompt] = useState(null);
 
   // Hold showToast in a ref so it doesn't appear in any callback's
   // dependency list. The parent App.jsx defines showToast as an inline
@@ -79,61 +94,84 @@ export default function PasskeySettingsSection({
     refresh();
   }, [refresh]);
 
-  const handleAdd = async () => {
-    setLoading(true);
-    try {
-      const label = window.prompt(t("passkeyNamePrompt"), "");
-      // Cancel button → bail; empty string still goes through (server
-      // strips and stores null).
-      if (label === null) return;
-      const r = await registerPasskey(token, label || null);
-      toast(t("passkeyAddedSuccess"), "success");
-      if (!r.prfSupported) {
-        // Tell the user explicitly so they don't expect the
-        // instance-unlock toggle to light up. Long-form notice → 10s
-        // so it can actually be read.
-        toast(t("passkeyNoPrfNotice"), "info", 10000);
-      }
-      await refresh();
-    } catch (e) {
-      const msg = (e && e.message) || "";
-      const cancelled = e?.name === "NotAllowedError" || /NotAllowedError|cancelled|aborted/i.test(msg);
-      if (!cancelled) {
-        toast(localizeServerError(msg, "passkeyAddFailed"), "error");
-      }
-    } finally {
-      setLoading(false);
-    }
+  const handleAdd = () => {
+    setTextPrompt({
+      title: t("passkeyAddCta"),
+      message: t("passkeyNamePrompt"),
+      placeholder: t("passkeyNamePlaceholder"),
+      defaultValue: "",
+      confirmText: t("passkeyAddCta"),
+      onSubmit: async (label) => {
+        setLoading(true);
+        try {
+          // Empty string still goes through (server strips and stores
+          // null). Trim the user's input to avoid surprise whitespace
+          // labels.
+          const cleaned = (label || "").trim();
+          const r = await registerPasskey(token, cleaned || null);
+          toast(t("passkeyAddedSuccess"), "success");
+          if (!r.prfSupported) {
+            // Tell the user explicitly so they don't expect the
+            // instance-unlock toggle to light up. Long-form notice → 10s
+            // so it can actually be read.
+            toast(t("passkeyNoPrfNotice"), "info", 10000);
+          }
+          await refresh();
+        } catch (e) {
+          const msg = (e && e.message) || "";
+          const cancelled = e?.name === "NotAllowedError" || /not[\s_-]*allowed|cancel|abort|interrupt|annul/i.test(msg);
+          if (!cancelled) {
+            toast(localizeServerError(msg, "passkeyAddFailed"), "error");
+          }
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
-  const handleRename = async (p) => {
-    const next = window.prompt(t("passkeyRenamePrompt"), p.name || "");
-    if (next === null) return;
-    const trimmed = (next || "").trim().slice(0, 64);
-    if (!trimmed) return;
-    setBusyId(p.credentialId);
-    try {
-      await renamePasskey(token, p.credentialId, trimmed);
-      await refresh();
-    } catch (e) {
-      toast(localizeServerError(e.message, "passkeyRenameFailed"), "error");
-    } finally {
-      setBusyId(null);
-    }
+  const handleRename = (p) => {
+    setTextPrompt({
+      title: t("rename"),
+      message: t("passkeyRenamePrompt"),
+      placeholder: t("passkeyNamePlaceholder"),
+      defaultValue: p.name || "",
+      confirmText: t("rename"),
+      onSubmit: async (next) => {
+        const trimmed = (next || "").trim().slice(0, 64);
+        if (!trimmed) return;
+        setBusyId(p.credentialId);
+        try {
+          await renamePasskey(token, p.credentialId, trimmed);
+          await refresh();
+        } catch (e) {
+          toast(localizeServerError(e.message, "passkeyRenameFailed"), "error");
+        } finally {
+          setBusyId(null);
+        }
+      },
+    });
   };
 
-  const handleDelete = async (p) => {
-    if (!window.confirm(t("passkeyDeleteConfirm"))) return;
-    setBusyId(p.credentialId);
-    try {
-      await deletePasskey(token, p.credentialId);
-      await refresh();
-      toast(t("passkeyDeleted"), "success");
-    } catch (e) {
-      toast(localizeServerError(e.message, "passkeyDeleteFailed"), "error");
-    } finally {
-      setBusyId(null);
-    }
+  const handleDelete = (p) => {
+    setConfirmPrompt({
+      title: t("passkeyDeleteTitle"),
+      message: t("passkeyDeleteConfirm"),
+      confirmText: t("delete"),
+      danger: true,
+      onConfirm: async () => {
+        setBusyId(p.credentialId);
+        try {
+          await deletePasskey(token, p.credentialId);
+          await refresh();
+          toast(t("passkeyDeleted"), "success");
+        } catch (e) {
+          toast(localizeServerError(e.message, "passkeyDeleteFailed"), "error");
+        } finally {
+          setBusyId(null);
+        }
+      },
+    });
   };
 
   const handleTest = async (p) => {
@@ -143,7 +181,7 @@ export default function PasskeySettingsSection({
       toast(t("passkeyTestOk"), "success");
     } catch (e) {
       const msg = (e && e.message) || "";
-      const cancelled = e?.name === "NotAllowedError" || /NotAllowedError|cancelled|aborted/i.test(msg);
+      const cancelled = e?.name === "NotAllowedError" || /not[\s_-]*allowed|cancel|abort|interrupt|annul/i.test(msg);
       if (!cancelled) {
         toast(localizeServerError(msg, "passkeyTestFailed"), "error");
       }
@@ -165,7 +203,7 @@ export default function PasskeySettingsSection({
       await refresh();
     } catch (e) {
       const msg = (e && e.message) || "";
-      const cancelled = e?.name === "NotAllowedError" || /NotAllowedError|cancelled|aborted/i.test(msg);
+      const cancelled = e?.name === "NotAllowedError" || /not[\s_-]*allowed|cancel|abort|interrupt|annul/i.test(msg);
       if (!cancelled) {
         toast(localizeServerError(msg, "passkeyToggleFailed"), "error");
       }
@@ -174,15 +212,23 @@ export default function PasskeySettingsSection({
     }
   };
 
-  if (isWebView) {
+  // Inside the Android app we route passkeys through Credential Manager
+  // via the WebAuthnBridge polyfill. Older APKs (≤ 1.2.0) ship without
+  // the bridge — surface a clear "update the app" notice instead of
+  // letting the user run a ceremony the WebView would silently fail.
+  if (isWebView && !hasAndroidPasskeyBridge()) {
     return (
       <div className="text-sm text-gray-500 dark:text-gray-400">
-        {t("passkeyWebViewUnavailable")}
+        {t("passkeyWebViewUpdateApp")}
       </div>
     );
   }
 
-  if (!window.isSecureContext) {
+  // Browsers (and the in-bridge WebView) still need a secure origin —
+  // Credential Manager itself enforces this server-side via the Digital
+  // Asset Links check, but a clearer message up front saves a confusing
+  // round trip through the OS picker.
+  if (!isWebView && !window.isSecureContext) {
     return (
       <div className="text-sm text-gray-500 dark:text-gray-400">
         {t("passkeyHttpsRequired")}
@@ -206,15 +252,23 @@ export default function PasskeySettingsSection({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug max-w-prose">
+      {/* Description + Add CTA — stacked rather than side-by-side. On
+          mobile the previous row layout (text on the left, button on
+          the right with shrink-0) squeezed the description into a
+          column maybe 18ch wide, which makes the section feel much
+          smaller than its neighbours. Stacking gives the description
+          the full container width and lets the button stretch across
+          the row on phones (clear tap target), while desktops keep an
+          inline-sized button. */}
+      <div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 leading-snug mb-3">
           {t("passkeySectionExplain")}
         </p>
         <button
           type="button"
           onClick={handleAdd}
           disabled={loading}
-          className="ml-3 shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 disabled:opacity-50 btn-gradient"
+          className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 disabled:opacity-50 btn-gradient"
         >
           {loading ? t("passkeyAddInProgress") : t("passkeyAddCta")}
         </button>
@@ -229,7 +283,10 @@ export default function PasskeySettingsSection({
           {list.map((p) => (
             <li
               key={p.credentialId}
-              className="rounded-lg border border-[var(--border-light)] p-3 flex flex-col gap-3"
+              // md:+ flips to a row so the action buttons fill the
+              // empty band on the right; mobile stays stacked because
+              // the action row otherwise wraps awkwardly.
+              className="rounded-lg border border-[var(--border-light)] p-3 flex flex-col gap-3 md:flex-row md:items-center md:gap-4"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -256,7 +313,7 @@ export default function PasskeySettingsSection({
                 )}
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap md:flex-nowrap md:shrink-0 md:justify-end">
                 {/* Instance-unlock toggle (admins, PRF-capable, unlocked vault) */}
                 {isAdmin && encryptionEnabled && p.prfSupported && (
                   <button
@@ -298,6 +355,15 @@ export default function PasskeySettingsSection({
           ))}
         </ul>
       )}
+
+      <PasskeyTextDialog
+        prompt={textPrompt}
+        onClose={() => setTextPrompt(null)}
+      />
+      <PasskeyConfirmDialog
+        prompt={confirmPrompt}
+        onClose={() => setConfirmPrompt(null)}
+      />
     </div>
   );
 }
@@ -312,5 +378,138 @@ function Badge({ color, children }) {
     <span className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${klass}`}>
       {children}
     </span>
+  );
+}
+
+// Styled in-app text prompt. Replaces `window.prompt(...)` for passkey
+// naming so the WebView doesn't render the bare "La page <url> indique:"
+// system dialog. Keeps focus on the input, submits on Enter, cancels on
+// Escape — matches the editor / settings dialogs people already know.
+function PasskeyTextDialog({ prompt, onClose }) {
+  const [value, setValue] = useState("");
+  const inputRef = useRef(null);
+
+  // Re-seed the field every time a fresh prompt opens. We keep the
+  // input controlled (rather than reading from a ref on submit) so the
+  // confirm button can be disabled while empty without a re-render
+  // dance.
+  useEffect(() => {
+    if (prompt) {
+      setValue(prompt.defaultValue || "");
+      // The focus has to happen *after* the input mounts. A microtask
+      // tick is enough — requestAnimationFrame would also work but
+      // delays focus by a paint cycle on slow devices.
+      queueMicrotask(() => {
+        const el = inputRef.current;
+        if (el) {
+          el.focus();
+          el.select();
+        }
+      });
+    }
+  }, [prompt]);
+
+  if (!prompt) return null;
+
+  const submit = () => {
+    onClose();
+    if (prompt.onSubmit) prompt.onSubmit(value);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        className="rounded-xl shadow-2xl w-[90%] max-w-sm p-6 relative bg-white dark:bg-[#282828] border border-[var(--border-light)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold mb-2">{prompt.title}</h3>
+        {prompt.message && (
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+            {prompt.message}
+          </p>
+        )}
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          maxLength={64}
+          placeholder={prompt.placeholder || ""}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); submit(); }
+            else if (e.key === "Escape") { e.preventDefault(); onClose(); }
+          }}
+          className="w-full px-3 py-2 rounded-lg border border-[var(--border-light)] bg-white dark:bg-[#1f1f1f] focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+        />
+        <div className="mt-5 flex justify-end gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 rounded-lg border border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10"
+            onClick={onClose}
+          >
+            {t("cancel")}
+          </button>
+          <button
+            type="button"
+            className="px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] btn-gradient bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none"
+            onClick={submit}
+          >
+            {prompt.confirmText || t("confirm")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Styled in-app confirmation dialog. Used for "delete this passkey?"
+// in place of `window.confirm()` — same reasons as PasskeyTextDialog:
+// the system dialog leaks the WebView URL and ignores the app theme.
+function PasskeyConfirmDialog({ prompt, onClose }) {
+  if (!prompt) return null;
+
+  const confirmClass = prompt.danger
+    ? "bg-red-600 text-white hover:bg-red-700 shadow-md shadow-red-300/40 dark:shadow-none"
+    : "bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        className="rounded-xl shadow-2xl w-[90%] max-w-sm p-6 relative bg-white dark:bg-[#282828] border border-[var(--border-light)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lg font-semibold mb-2">{prompt.title}</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-300">{prompt.message}</p>
+        <div className="mt-5 flex justify-end gap-3">
+          <button
+            type="button"
+            className="px-4 py-2 rounded-lg border border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10"
+            onClick={onClose}
+          >
+            {t("cancel")}
+          </button>
+          <button
+            type="button"
+            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] btn-gradient ${confirmClass}`}
+            onClick={() => {
+              onClose();
+              if (prompt.onConfirm) prompt.onConfirm();
+            }}
+          >
+            {prompt.confirmText || t("confirm")}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

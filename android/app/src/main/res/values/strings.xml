@@ -18,4 +18,14 @@
     <string name="download_started">Download started…</string>
     <string name="download_complete">Saved: %1$s</string>
     <string name="download_error">Download error</string>
+    <!-- App shortcut: long-press the launcher icon to open the QR
+         scanner straight away (sign in to a PC paired with this phone). -->
+    <string name="shortcut_qr_short">Scan QRCODE</string>
+    <string name="shortcut_qr_long">Scan QRCODE</string>
+    <string name="shortcut_new_text_short">Text note</string>
+    <string name="shortcut_new_text_long">New text note</string>
+    <string name="shortcut_new_checklist_short">Checklist</string>
+    <string name="shortcut_new_checklist_long">New checklist</string>
+    <string name="shortcut_new_audio_short">Audio note</string>
+    <string name="shortcut_new_audio_long">New audio note</string>
 </resources>

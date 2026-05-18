@@ -56,12 +56,13 @@ import AdminPanel from "./components/panels/AdminPanel.jsx";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
 import { useSelfUpdate } from "./hooks/useSelfUpdate.js";
 import SelfUpdateProgress from "./components/admin/SelfUpdateProgress.jsx";
-import ChangelogModal from "./components/admin/ChangelogModal.jsx";
+import ChangelogModal, { consumeChangelogShowFlag, onOpenChangelogRequest } from "./components/admin/ChangelogModal.jsx";
 import NoteCard from "./components/notes/NoteCard.jsx";
 import AdminView from "./components/notes/AdminView.jsx";
 import NotesUI from "./components/notes/NotesUI.jsx";
 import GenericConfirmDialog from "./components/common/GenericConfirmDialog.jsx";
 import ToastContainer from "./components/common/ToastContainer.jsx";
+import QrScannerModal from "./components/auth/QrScannerModal.jsx";
 import FloatingCardsBackground from "./components/common/FloatingCardsBackground.jsx";
 import NoteModal from "./components/modal/NoteModal.jsx";
 import SecondaryNoteInstance from "./components/modal/SecondaryNoteInstance.jsx";
@@ -323,6 +324,75 @@ export default function App() {
   // Generic confirmation dialog
   const [genericConfirmOpen, setGenericConfirmOpen] = useState(false);
   const [genericConfirmConfig, setGenericConfirmConfig] = useState({});
+
+  // Cross-device QR sign-in: the in-app camera + approve flow. Opened
+  // from two places (Settings row + optional header quick-access
+  // button) so the modal is hoisted to App and the callback is
+  // threaded down. The "show header button" preference is just a
+  // boolean localStorage flag; we mirror it into React state so
+  // toggling the switch in Settings flips the header without a reload.
+  const [qrScannerOpen, setQrScannerOpen] = useState(false);
+  const openQrScanner = useCallback(() => setQrScannerOpen(true), []);
+  const closeQrScanner = useCallback(() => setQrScannerOpen(false), []);
+
+  // App-shortcut entry point. The Android launcher's "Scan PC login"
+  // shortcut routes through MainActivity → WebViewActivity with
+  // ?qr=open in the URL. We consume the param (cleaning the URL so a
+  // refresh doesn't loop us back), and only actually pop the scanner
+  // when the user already has a session — otherwise the request would
+  // race with the auth bootstrap and the modal would mount on top of
+  // the login screen with no usable token. token from useState lives
+  // on this same first render, so this useEffect sees the hydrated
+  // value (no race condition with auth restore).
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("qr") !== "open") return;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("qr");
+        window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+      } catch { /* non-fatal */ }
+      if (token) setQrScannerOpen(true);
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ChangelogModal open state is lifted here (instead of inside the
+  // component) so it can be registered with the central Android
+  // back-button stack — overlayOpenCount + the popstate handler below.
+  // Without lifting, pressing back on Android while the changelog was
+  // open backgrounded the entire app.
+  const [changelogOpen, setChangelogOpen] = useState(false);
+  const closeChangelog = useCallback(() => setChangelogOpen(false), []);
+  useEffect(() => {
+    if (consumeChangelogShowFlag()) setChangelogOpen(true);
+  }, []);
+  useEffect(() => onOpenChangelogRequest(() => setChangelogOpen(true)), []);
+  const [qrQuickEnabled, setQrQuickEnabledState] = useState(() => {
+    try { return localStorage.getItem("glass-keep-qr-quick") === "1"; }
+    catch { return false; }
+  });
+  const setQrQuickEnabled = useCallback((next) => {
+    const v = !!next;
+    setQrQuickEnabledState(v);
+    try { localStorage.setItem("glass-keep-qr-quick", v ? "1" : "0"); }
+    catch { /* private mode etc. — non-fatal, preference simply won't persist */ }
+    // Cross-device sync: persist the choice to /api/user/settings so
+    // the preference follows the user across browsers. token is read
+    // from the current auth; missing token (e.g. pre-login flash)
+    // just falls back to localStorage only.
+    try {
+      const tk = getAuth()?.token;
+      if (tk) {
+        api("/user/settings", {
+          method: "PATCH",
+          token: tk,
+          body: { qrQuickEnabled: v },
+        }).catch(() => { /* offline / 401 — local copy still wins */ });
+      }
+    } catch { /* api helper missing or auth helper threw — non-fatal */ }
+  }, []);
 
   // Toast notification system
   const [toasts, setToasts] = useState([]);
@@ -627,6 +697,10 @@ export default function App() {
           setTypographyPresets(normalized);
           try { localStorage.setItem(TYPOGRAPHY_STORAGE_KEY, JSON.stringify(normalized)); } catch (e) {}
         }
+        if (typeof settings?.qrQuickEnabled === "boolean") {
+          setQrQuickEnabledState(settings.qrQuickEnabled);
+          try { localStorage.setItem("glass-keep-qr-quick", settings.qrQuickEnabled ? "1" : "0"); } catch (e) {}
+        }
       } catch (e) {
         // Network error — default to true
         setAlwaysShowSidebarOnWide((prev) => prev === null ? true : prev);
@@ -747,7 +821,7 @@ export default function App() {
   // Edge-to-edge landscape: save + dynamically toggle body padding-left
   useEffect(() => {
     try { localStorage.setItem("edgeToEdgeLandscape", String(edgeToEdgeLandscape)); } catch (e) {}
-    document.body.style.paddingLeft = edgeToEdgeLandscape ? "" : "env(safe-area-inset-left)";
+    document.body.style.paddingLeft = edgeToEdgeLandscape ? "" : "var(--safe-left)";
     if (!sidebarSettingsLoadedRef.current) return;
     if (token) {
       api("/user/settings", {
@@ -1218,7 +1292,19 @@ export default function App() {
 
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
     const manualPref = sessionStorage.getItem("glass-keep-dark-mode-manual");
-    const savedDark = manualPref !== null ? manualPref === "true" : (mq?.matches ?? false);
+    // Android WebView returns `false` for matchMedia("(prefers-color-
+    // scheme: dark)") unless dark mode is explicitly propagated to the
+    // renderer, so the native shell plants `window.__isAndroidDarkMode`
+    // (boolean) in onPageStarted before React mounts. That flag wins
+    // over matchMedia when it's defined; in regular browsers / PWAs
+    // it stays undefined and matchMedia keeps its usual role.
+    const androidDark =
+      typeof window.__isAndroidDarkMode === "boolean"
+        ? window.__isAndroidDarkMode
+        : null;
+    const savedDark = manualPref !== null
+      ? manualPref === "true"
+      : (androidDark != null ? androidDark : (mq?.matches ?? false));
     setDark(savedDark);
     document.documentElement.classList.toggle("dark", savedDark);
     setThemeColor(savedDark ? "#1a1a1a" : "#f0e8ff");
@@ -3373,6 +3459,7 @@ export default function App() {
     modalKebabOpen, modalTagFocused, syncDropdownOpen, mobileSearchOpen,
     showColorPop, showComposerFmt, headerMenuOpen, multiMode,
     typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
+    noteAiOpen, changelogOpen,
   ].filter(Boolean).length;
   const prevOverlayCountRef = useRef(0);
 
@@ -3411,6 +3498,7 @@ export default function App() {
       popInProgressRef.current = true;
       // Close topmost overlay (highest z-index first)
       if (imgViewOpen) { setImgViewOpen(false); return; }
+      if (changelogOpen) { setChangelogOpen(false); return; }
       if (confirmDeleteOpen) { setConfirmDeleteOpen(false); return; }
       if (genericConfirmOpen) { setGenericConfirmOpen(false); return; }
       if (collaborationModalOpen) { setCollaborationModalOpen(false); return; }
@@ -3419,6 +3507,10 @@ export default function App() {
       if (modalMenuOpen) { setModalMenuOpen(false); return; }
       if (modalKebabOpen) { setModalKebabOpen(false); return; }
       if (modalTagFocused) { setModalTagFocused(false); return; }
+      // noteAiOpen lives INSIDE the NoteModal (open), so we close the
+      // AI panel before the note itself — otherwise back inside the
+      // AI panel would dismiss the entire note in one go.
+      if (noteAiOpen) { setNoteAiOpen(false); return; }
       if (open) { closeModalRef.current?.(); return; }
       if (fabOpen) { setFabOpen(false); return; }
       if (syncDropdownOpen) { setSyncDropdownOpen(false); return; }
@@ -3437,7 +3529,8 @@ export default function App() {
   }, [imgViewOpen, confirmDeleteOpen, genericConfirmOpen, collaborationModalOpen,
       showModalColorPop, showModalFmt, modalMenuOpen, modalKebabOpen, modalTagFocused,
       syncDropdownOpen, mobileSearchOpen, showColorPop, showComposerFmt,
-      headerMenuOpen, multiMode, typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen]);
+      headerMenuOpen, multiMode, typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
+      noteAiOpen, changelogOpen]);
 
   const addImagesToState = async (fileList, setter) => {
     const files = Array.from(fileList || []);
@@ -3603,6 +3696,34 @@ export default function App() {
     idbPutNote, invalidateNotesCache, sortNotesByRecency,
     getInitialTags: getInitialTagsForNewNote,
   });
+
+  // Android launcher shortcut entry: /?new=<type> comes from
+  // MainActivity (long-press → "Note texte" / "Liste" / "Dessin" /
+  // "Note audio"). Consume the param exactly once, clean it from the
+  // URL so a refresh doesn't loop the action, and dispatch to the
+  // matching handleDirect* helper — but only when the user already
+  // has a session, otherwise the modal would mount on top of the
+  // login screen with no way to save.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const newType = params.get("new");
+      if (!newType) return;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("new");
+        window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+      } catch { /* non-fatal */ }
+      if (!token) return;
+      const handlers = {
+        text: handleDirectText,
+        checklist: handleDirectChecklist,
+        audio: handleDirectAudio,
+      };
+      handlers[newType]?.();
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openModal = (id) => {
     const n = notes.find((x) => String(x.id) === String(id));
@@ -5584,6 +5705,9 @@ export default function App() {
           setAuth({ ...getAuth(), user: { ...getAuth()?.user, ...updates } });
         }}
         onChangePassword={() => setChangePasswordOpen(true)}
+        openQrScanner={openQrScanner}
+        qrQuickEnabled={qrQuickEnabled}
+        setQrQuickEnabled={setQrQuickEnabled}
       />
 
       {/* Admin Panel */}
@@ -5761,6 +5885,9 @@ export default function App() {
         hasUpdate={!!updateInfo?.updateAvailable && !!currentUser?.is_admin}
         // Settings panel
         openSettingsPanel={openSettingsPanel}
+        // QR sign-in quick-access button (header, left of the kebab)
+        qrQuickEnabled={qrQuickEnabled}
+        onOpenQrScanner={openQrScanner}
         // header auto-hide (mobile)
         windowWidth={windowWidth}
         isLandscapeMobile={isLandscapeMobile}
@@ -5835,7 +5962,18 @@ export default function App() {
         showGenericConfirm={showGenericConfirm}
       />
 
-      <ChangelogModal />
+      <ChangelogModal open={changelogOpen} onClose={closeChangelog} />
+
+      {/* Cross-device QR sign-in: the camera + Approve / Reject card
+          lives at App level so both the SettingsPanel row and the
+          optional header quick-access button can pop it without
+          duplicating the modal in two subtrees. */}
+      <QrScannerModal
+        open={qrScannerOpen}
+        onClose={closeQrScanner}
+        token={token}
+        showToast={showToast}
+      />
 
       <ToastContainer toasts={toasts} />
 

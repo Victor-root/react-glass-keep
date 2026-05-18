@@ -49,7 +49,82 @@ export default function NotesHeader({
   activeTagFilter,
   isLandscapeMobile,
   multiMode,
+  qrQuickEnabled = false,
+  onOpenQrScanner,
 }) {
+  // The kebab dropdown can't rely on the typical "fixed inset-0
+  // backdrop captures the click" pattern: the host <header> has a
+  // permanent `transform: translateY(0)` for its slide-in animation,
+  // which turns the header into the containing block for any
+  // descendant `position: fixed`. A backdrop-fixed-inset-0 would
+  // therefore be clipped to the header's bounding rect, leaving the
+  // notes grid underneath fully clickable. So we listen at the
+  // document level in capture phase instead.
+  //
+  // The tricky bit: a single tap fires `pointerdown` → `pointerup` →
+  // `click` as a sequence. If we close the menu on `pointerdown` and
+  // then drop our listeners (via useEffect cleanup), the subsequent
+  // `click` fires with NO listener attached and the underlying note
+  // card opens. To avoid that race we:
+  //   1. Keep a PERMANENT click-capture listener that just consumes
+  //      any click marked by the ref flag below. It's attached on
+  //      mount and never torn down, so it's always there when the
+  //      click arrives — even after the menu has been state-closed.
+  //   2. On `pointerdown` while the menu is open, flip the flag,
+  //      stopPropagation + preventDefault, then close the menu.
+  //   3. The permanent click listener catches the click, swallows
+  //      it (stopPropagation + preventDefault), and clears the flag.
+  //
+  // A 500 ms safety timer clears the flag too — covers the rare case
+  // where pointerdown fires but the browser never produces a click
+  // (long-press, drag-cancel, etc.) so the flag doesn't leak into
+  // the next legitimate click.
+  const swallowNextClickRef = React.useRef(false);
+  const swallowClearTimerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const onClick = (e) => {
+      if (!swallowNextClickRef.current) return;
+      swallowNextClickRef.current = false;
+      if (swallowClearTimerRef.current) {
+        clearTimeout(swallowClearTimerRef.current);
+        swallowClearTimerRef.current = null;
+      }
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      if (swallowClearTimerRef.current) {
+        clearTimeout(swallowClearTimerRef.current);
+        swallowClearTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (!headerMenuOpen) return undefined;
+    const onPointerDown = (e) => {
+      const target = e.target;
+      if (headerMenuRef?.current?.contains(target)) return;
+      if (headerBtnRef?.current?.contains(target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      swallowNextClickRef.current = true;
+      if (swallowClearTimerRef.current) {
+        clearTimeout(swallowClearTimerRef.current);
+      }
+      swallowClearTimerRef.current = setTimeout(() => {
+        swallowNextClickRef.current = false;
+        swallowClearTimerRef.current = null;
+      }, 500);
+      setHeaderMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [headerMenuOpen, setHeaderMenuOpen, headerMenuRef, headerBtnRef]);
+
   // In landscape mobile, force mobile layout regardless of sm: breakpoint
   const mobileOnly = isLandscapeMobile ? "" : "sm:hidden";
   const desktopOnly = isLandscapeMobile ? "hidden" : "hidden sm:flex";
@@ -59,14 +134,23 @@ export default function NotesHeader({
   const showOfflineBadge = !isOnline || syncStatus?.syncState === "offline" || syncStatus?.serverReachable === false;
   return (
       <header
-        className={`p-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6 relative${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
+        className={`px-2.5 py-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
         style={{
-          top: "env(safe-area-inset-top)",
+          // Keep the sticky header tight against the status bar.
+          // `--safe-top` falls back to the standard env() value in any
+          // non-WebView context, but inside the Android app it picks up
+          // the Activity-injected inset (works around an Android 15
+          // WebView bug where env() returns 0 even in edge-to-edge).
+          top: "var(--safe-top)",
           transform: !headerVisible && (windowWidth < 700 || isLandscapeMobile) ? "translateY(-100%)" : "translateY(0)",
           transition: "transform 0.3s ease",
         }}
       >
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Tighter gap on mobile when the QR quick-access button is
+            pinned in the header — without this the badge / app name
+            risks wrapping or overflowing on narrow phones because the
+            right-side icon cluster grew by one extra button. */}
+        <div className={`flex items-center ${qrQuickEnabled ? "gap-1.5 sm:gap-3" : "gap-3"} shrink-0`}>
           {/* Hamburger - show when sidebar is not permanently visible */}
           {!sidebarPermanent && (
             <button
@@ -351,6 +435,44 @@ export default function NotesHeader({
           {/* Mobile: sync icon + 3-dot menu */}
           <div className={`${mobileOnly} flex items-center gap-1`}>
             <SyncStatusIcon dark={dark} syncStatus={syncStatus} onSyncNow={handleSyncNow} syncDropdownOpen={syncDropdownOpen} setSyncDropdownOpen={setSyncDropdownOpen} instanceLocked={instanceLocked} />
+            {qrQuickEnabled && (
+              <button
+                type="button"
+                onClick={() => onOpenQrScanner?.()}
+                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 text-gray-700 dark:text-gray-200"
+                data-tooltip={t("qrSignInRowTitle")}
+                aria-label={t("qrSignInRowTitle")}
+              >
+                {/* Direct inline SVG (rather than <TI.Qrcode/>) so the
+                    icon's baseline matches the sibling Kebab / Search /
+                    SyncStatus glyphs — TI.* renders inside a <span
+                    display:inline-flex> whose vertical-align defaults
+                    differ slightly and shift the icon a couple pixels
+                    upward in this row. */}
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="4" width="6" height="6" rx="1" />
+                  <rect x="4" y="14" width="6" height="6" rx="1" />
+                  <rect x="14" y="4" width="6" height="6" rx="1" />
+                  <path d="M14 14h3" />
+                  <path d="M14 14v3" />
+                  <path d="M17 17h3v3" />
+                  <path d="M20 14v.01" />
+                  <path d="M14 20h.01" />
+                  <path d="M17 20h.01" />
+                  <path d="M20 17h.01" />
+                  <path d="M20 20h.01" />
+                </svg>
+              </button>
+            )}
             <button
               ref={headerBtnRef}
               onClick={() => setHeaderMenuOpen((v) => !v)}
@@ -359,7 +481,14 @@ export default function NotesHeader({
               aria-haspopup="menu"
               aria-expanded={headerMenuOpen}
             >
-              <Kebab />
+              {/* When the menu is open we hide the kebab dots so the
+                  dropdown can paint on top of them — keeps the click
+                  target where it is (the same button still toggles
+                  the menu closed) but removes the visual stutter of
+                  the dots peeking behind the dropdown corner. */}
+              <span style={{ visibility: headerMenuOpen ? "hidden" : "visible" }}>
+                <Kebab />
+              </span>
               {hasUpdate && currentUser?.is_admin && (
                 <span aria-hidden="true" className="absolute top-1 right-1 flex items-center justify-center">
                   <span className="absolute inline-flex w-2.5 h-2.5 rounded-full bg-emerald-400 opacity-75 animate-ping" />
@@ -370,18 +499,24 @@ export default function NotesHeader({
 
             {headerMenuOpen && (
               <>
-                <div
-                  className="fixed inset-0 z-[1099]"
-                  onClick={() => setHeaderMenuOpen(false)}
-                />
+                {/* The dropdown's top is anchored to the kebab button
+                    itself on mobile (top-0) so it paints OVER the 3
+                    dots — combined with the visibility:hidden on the
+                    Kebab glyph above, the menu visually replaces the
+                    button. On wider viewports we keep the legacy
+                    "hangs below the button" placement.
+                    Width hugs the WIDEST single-line item (every row
+                    has whitespace-nowrap below) — never narrower than
+                    220px on desktop for visual rhythm, never wider
+                    than ~95vw so it can't overflow on tiny phones. */}
                 <div
                   ref={headerMenuRef}
-                  className={`absolute top-12 right-0 min-w-[220px] z-[1100] border border-[var(--border-light)] rounded-lg shadow-lg overflow-hidden ${dark ? "text-gray-100" : "bg-white text-gray-800"}`}
+                  className={`absolute top-0 sm:top-12 right-0 w-max max-w-[95vw] sm:min-w-[220px] sm:max-w-[360px] max-h-[50vh] sm:max-h-[80vh] overflow-y-auto z-[1100] border border-[var(--border-light)] rounded-lg shadow-lg ${dark ? "text-gray-100" : "bg-white text-gray-800"}`}
                   style={{ backgroundColor: dark ? "#222222" : undefined }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
-                    className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       openSettingsPanel?.();
@@ -389,7 +524,7 @@ export default function NotesHeader({
                   >
                     <span className={dark ? "text-gray-400" : "text-gray-500"}><SettingsIcon /></span>{t("settings")}</button>
                   <button
-                    className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       onToggleViewMode?.();
@@ -399,7 +534,7 @@ export default function NotesHeader({
                     {listView ? t("gridView") : t("listView")}
                   </button>
                   <button
-                    className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       toggleDark?.();
@@ -409,7 +544,7 @@ export default function NotesHeader({
                     {dark ? t("lightMode") : t("darkMode")}
                   </button>
                   <button
-                    className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       onStartMulti?.();
@@ -418,7 +553,7 @@ export default function NotesHeader({
                     <span className={dark ? "text-violet-400" : "text-violet-600"}><CheckSquareIcon /></span>{t("multiSelect")}</button>
                   {currentUser?.is_admin && (
                     <button
-                      className={`flex items-start gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                      className={`flex items-start gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                       onClick={() => {
                         setHeaderMenuOpen(false);
                         openAdminPanel?.();
@@ -461,7 +596,7 @@ export default function NotesHeader({
                     </button>
                   )}
                   <button
-                    className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "text-red-400 hover:bg-white/10" : "text-red-600 hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "text-red-400 hover:bg-white/10" : "text-red-600 hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       signOut?.();

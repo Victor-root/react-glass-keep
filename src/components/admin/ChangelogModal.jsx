@@ -60,6 +60,23 @@ export function openChangelog() {
     }
 }
 
+// Read-and-clear the "show after update" flag. Called by App.jsx on
+// mount so the modal's open state can be lifted out of this file
+// (required for the Android back-button stack to know about it).
+export function consumeChangelogShowFlag() {
+    const flag = readShowFlag();
+    if (flag) clearShowFlag();
+    return flag;
+}
+
+// Subscribe to OPEN_EVENT requests. Returns an unsubscribe fn so
+// useEffect's cleanup can detach the listener.
+export function onOpenChangelogRequest(cb) {
+    const handler = () => { try { cb(); } catch { /* ignore */ } };
+    window.addEventListener(OPEN_EVENT, handler);
+    return () => window.removeEventListener(OPEN_EVENT, handler);
+}
+
 function compileMarkdown(md) {
     try {
         const html = marked.parse(String(md || ""), {
@@ -78,6 +95,42 @@ function compileMarkdown(md) {
 // user clicks "Translate with AI".
 const compiledChangelog = compileMarkdown(changelogRaw);
 
+// Where relative changelog links (e.g. `./PASSKEYS.md`) live online.
+// The changelog is markdown checked into the repo, so any in-repo
+// reference makes sense once resolved against the GitHub view URL.
+const REPO_BLOB_BASE =
+    "https://github.com/Victor-root/glasskeep-enhanced/blob/main/";
+
+function resolveChangelogHref(href) {
+    if (!href) return null;
+    // Already absolute (http(s):, mailto:, tel:, etc.) — pass through.
+    if (/^[a-z][a-z0-9+.-]*:/i.test(href)) return href;
+    // Strip a leading `./` so URL doesn't fold it into the basename, then
+    // build against the GitHub blob root. Anchors and query strings are
+    // preserved because URL handles them natively.
+    try {
+        return new URL(href.replace(/^\.\//, ""), REPO_BLOB_BASE).toString();
+    } catch {
+        return null;
+    }
+}
+
+function openExternalUrl(url) {
+    if (!url) return;
+    // The native Android shell exposes a bridge that hands the URL to
+    // the system browser. Using window.open here would silently fail
+    // (the WebView has multi-window support disabled), so the bridge
+    // path is preferred whenever it's available.
+    try {
+        if (window.AndroidTheme && typeof window.AndroidTheme.openExternalUrl === "function") {
+            window.AndroidTheme.openExternalUrl(url);
+            return;
+        }
+    } catch { /* ignore — fall through to window.open */ }
+    try { window.open(url, "_blank", "noopener,noreferrer"); }
+    catch { /* nothing else we can do */ }
+}
+
 // True when the requesting user has a usable AI config (either the
 // shared "server" provider opted-in by the admin, or their own custom
 // endpoint). The "Translate with AI" button stays visible but disabled
@@ -94,8 +147,12 @@ async function fetchAiAvailable(token) {
     }
 }
 
-export default function ChangelogModal() {
-    const [open, setOpen] = useState(false);
+// Controlled component: `open` / `onClose` are owned by App.jsx so the
+// modal can be registered with the central Android-back-button stack
+// (overlayOpenCount + popstate handler). The localStorage "show after
+// update" flag and the OPEN_EVENT custom-event listener have been
+// hoisted to App.jsx alongside.
+export default function ChangelogModal({ open, onClose }) {
     const [aiAvailable, setAiAvailable] = useState(false);
     const [translating, setTranslating] = useState(false);
     const [translatedRaw, setTranslatedRaw] = useState(null);
@@ -105,13 +162,6 @@ export default function ChangelogModal() {
     // closing the modal mid-stream tears the upstream request down
     // (no more tokens wasted after the admin walks away).
     const translateAbortRef = useRef(null);
-
-    useEffect(() => {
-        if (readShowFlag()) {
-            clearShowFlag();
-            setOpen(true);
-        }
-    }, []);
 
     // Pull the AI availability flag once the modal opens so the
     // translate button starts in the right enabled / disabled state.
@@ -250,16 +300,6 @@ export default function ChangelogModal() {
         }
     };
 
-    // On-demand opener: any module can dispatch the OPEN_EVENT to
-    // pop the modal (currently the "View changelog" link in the
-    // admin panel). Kept as a custom event so we don't have to lift
-    // open-state up into App.jsx for one button.
-    useEffect(() => {
-        const handler = () => setOpen(true);
-        window.addEventListener(OPEN_EVENT, handler);
-        return () => window.removeEventListener(OPEN_EVENT, handler);
-    }, []);
-
     // Lock body scroll while the changelog is open so the underlying
     // admin panel can't drift behind a fullscreen modal on mobile.
     useEffect(() => {
@@ -288,11 +328,15 @@ export default function ChangelogModal() {
 
     return (
         <div
-            className="fixed inset-0 z-[9997] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            // Mobile: edge-to-edge backdrop with no padding so the
+            // modal card stretches to the full viewport. Desktop: keep
+            // the classic dimmed-backdrop look with a 1 rem gutter
+            // around the centered card.
+            className="fixed inset-0 z-[9997] flex items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4"
             role="dialog"
             aria-modal="true"
             aria-labelledby="changelog-modal-title"
-            onClick={() => setOpen(false)}
+            onClick={() => onClose?.()}
         >
             {/* Scoped typography for the rendered markdown so the modal
                 does not have to depend on a global prose stylesheet. */}
@@ -354,12 +398,36 @@ export default function ChangelogModal() {
                     opacity: 0.85;
                 }
                 .gk-changelog strong { font-weight: 600; }
+                /* Avoid horizontal scrollbars on narrow phones — long
+                   code spans / URLs / tokens used to push the viewport
+                   wider than its container and create a horizontal
+                   scrollbar inside the modal. Wrap-anywhere keeps the
+                   prose body contained; <pre> blocks keep their own
+                   x-scroll because wrapping arbitrary code would harm
+                   readability. */
+                .gk-changelog,
+                .gk-changelog p,
+                .gk-changelog li,
+                .gk-changelog code { overflow-wrap: anywhere; word-break: break-word; }
+                .gk-changelog pre { white-space: pre-wrap; word-break: break-word; }
             `}</style>
             <div
-                className="w-full max-w-2xl h-[85vh] rounded-2xl border border-[var(--border-light)] bg-white dark:bg-[var(--bg-elevated,#1a1a1f)] shadow-2xl flex flex-col overflow-hidden"
+                // On mobile we go full-screen (the X in the top-right
+                // is the close affordance). The 85vh + rounded-2xl
+                // look only kicks in from sm: upwards where there's
+                // viewport to spare around the card.
+                className="w-full h-full sm:h-[85vh] max-w-none sm:max-w-2xl rounded-none sm:rounded-2xl border-0 sm:border border-[var(--border-light)] bg-white dark:bg-[var(--bg-elevated,#1a1a1f)] shadow-2xl flex flex-col overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-[var(--border-light)] bg-white/60 dark:bg-white/5">
+                <div
+                    // Mobile fullscreen layout sits edge-to-edge so the
+                    // Android status bar overlaps the header — push the
+                    // header's content below the safe-area inset. On
+                    // desktop, --safe-top is 0 so the resolved padding
+                    // matches the original py-3 exactly.
+                    className="flex items-center justify-between gap-3 px-5 py-3 border-b border-[var(--border-light)] bg-white/60 dark:bg-white/5"
+                    style={{ paddingTop: "calc(var(--safe-top) + 0.75rem)" }}
+                >
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                         <span className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-300">
                             <TI.Sparkles className="tabler-icon w-5 h-5" />
@@ -383,7 +451,7 @@ export default function ChangelogModal() {
                     )}
                     <button
                         type="button"
-                        onClick={() => setOpen(false)}
+                        onClick={() => onClose?.()}
                         aria-label={t("changelogModalClose")}
                         className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-500 hover:text-gray-800 hover:bg-black/5 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-white/10"
                     >
@@ -440,8 +508,25 @@ export default function ChangelogModal() {
                     )}
                 </div>
                 <div
-                    className="gk-changelog flex-1 min-h-0 overflow-y-auto px-6 py-5 text-sm text-gray-800 dark:text-gray-100"
+                    className="gk-changelog flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-6 py-5 text-sm text-gray-800 dark:text-gray-100"
                     dangerouslySetInnerHTML={{ __html: displayHtml }}
+                    onClick={(e) => {
+                        // Markdown anchors are sanitised into real <a>
+                        // tags by DOMPurify, but their default action
+                        // navigates the WebView/SPA and the catch-all
+                        // server route returns index.html — so a click
+                        // on ./PASSKEYS.md sends the user back home.
+                        // Intercept here, resolve relative paths against
+                        // the GitHub blob root, and hand the URL to the
+                        // system browser (native bridge in the APK,
+                        // window.open in a regular browser).
+                        const a = e.target.closest && e.target.closest("a");
+                        if (!a) return;
+                        const href = a.getAttribute("href");
+                        if (!href || href.startsWith("#")) return;
+                        e.preventDefault();
+                        openExternalUrl(resolveChangelogHref(href));
+                    }}
                 />
             </div>
         </div>

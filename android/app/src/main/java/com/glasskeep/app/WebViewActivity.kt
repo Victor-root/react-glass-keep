@@ -37,6 +37,7 @@ class WebViewActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var swipeRefresh: androidx.swiperefreshlayout.widget.SwipeRefreshLayout
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
+    private lateinit var webAuthnBridge: WebAuthnBridge
 
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -130,6 +131,18 @@ class WebViewActivity : AppCompatActivity() {
         @JavascriptInterface
         fun isAndroidTV(): Boolean = isTelevision()
 
+        /** Open a URL in the device's external browser. Used by docs /
+         *  changelog links so the user isn't navigated AWAY from the
+         *  app inside the WebView (which would unmount the modal they
+         *  were reading). `window.open(url, "_blank")` doesn't pop a
+         *  new tab here because setSupportMultipleWindows(false), so
+         *  the JS layer calls this bridge method instead. */
+        @JavascriptInterface
+        fun openExternalUrl(url: String?) {
+            if (url.isNullOrBlank()) return
+            runOnUiThread { openUrlExternally(Uri.parse(url)) }
+        }
+
         @JavascriptInterface
         fun saveBlobFile(base64Data: String, filename: String, mimeType: String) {
             try {
@@ -164,6 +177,37 @@ class WebViewActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    // Latest system-bar / display-cutout insets in CSS pixels (dp). Captured by the
+    // OnApplyWindowInsetsListener on the WebView and replayed via `injectSafeAreaInsets`
+    // on every page load, so the React app has correct values BEFORE the first paint.
+    //
+    // We do this because the Android 15 WebView on stock Pixel images returns 0 for
+    // env(safe-area-inset-bottom) (the FAB ended up half-hidden behind the gesture/
+    // 3-button bar). The Activity already knows the real insets — we just hand them
+    // to the page as CSS custom properties so styles can read `var(--safe-bottom)`
+    // with `env(safe-area-inset-bottom)` as the fallback for non-WebView contexts.
+    private var safeAreaTopDp = 0.0
+    private var safeAreaBottomDp = 0.0
+    private var safeAreaLeftDp = 0.0
+    private var safeAreaRightDp = 0.0
+
+    private fun injectSafeAreaInsets() {
+        // Skip injection if the WebView hasn't loaded any page yet — evaluating JS
+        // before there's a document just queues a useless call.
+        if (!this::webView.isInitialized) return
+        val js = """
+            (function(){
+              var s = document.documentElement && document.documentElement.style;
+              if (!s) return;
+              s.setProperty('--android-inset-top',    '${safeAreaTopDp}px');
+              s.setProperty('--android-inset-bottom', '${safeAreaBottomDp}px');
+              s.setProperty('--android-inset-left',   '${safeAreaLeftDp}px');
+              s.setProperty('--android-inset-right',  '${safeAreaRightDp}px');
+            })();
+        """.trimIndent()
+        webView.evaluateJavascript(js, null)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -217,8 +261,51 @@ class WebViewActivity : AppCompatActivity() {
             })
         } catch (_: Exception) { }
 
+        webAuthnBridge = WebAuthnBridge(this) { webView }
+
+        // System-bar / display-cutout insets, in CSS pixels, exposed to the
+        // WebView as `--android-inset-*` custom properties. The Android 15
+        // WebView on stock Pixel images returns 0 for env(safe-area-inset-*)
+        // even though the device IS edge-to-edge — the FAB ends up under the
+        // navigation bar and the header floats below the status bar. Sourcing
+        // the value from the Activity's WindowInsetsCompat avoids that bug
+        // entirely, and the CSS keeps env() as a fallback for any non-WebView
+        // context (PWA in a browser, desktop, etc.).
+        //
+        // Returning `insets` unchanged keeps the existing SwipeRefreshLayout
+        // listener (registered above) working — insets only get consumed when
+        // a listener returns CONSUMED, and we explicitly want them to keep
+        // propagating to the WebView so other apps inside the layout still
+        // see them.
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(webView) { _, insets ->
+            // We use ONLY the systemBars insets (status bar + nav bar +
+            // caption bar) — NOT the union with displayCutout. Devices
+            // with a centre-top punch-hole (Pixel 8 and friends) report a
+            // cutout.top a few dp larger than the visible status bar
+            // because the cutout's bounding box extends slightly below the
+            // bar to leave room for the camera optics. Including it pushes
+            // the header 1-5 px below the actual status bar bottom edge,
+            // leaving a thin gap where the page background shows through.
+            // The WebView's own env() computation goes through systemBars
+            // for the same reason — we just want to match it pixel-for-
+            // pixel when we override the value.
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            val density = resources.displayMetrics.density
+            safeAreaTopDp    = bars.top    / density.toDouble()
+            safeAreaBottomDp = bars.bottom / density.toDouble()
+            safeAreaLeftDp   = bars.left   / density.toDouble()
+            safeAreaRightDp  = bars.right  / density.toDouble()
+            injectSafeAreaInsets()
+            insets
+        }
+
         webView.apply {
             addJavascriptInterface(ThemeBridge(), "AndroidTheme")
+            // Exposes window.AndroidPasskey to the WebView. The polyfill
+            // injected on every page load (see onPageStarted below) wraps
+            // it into the Promise-friendly window.GlassKeepAndroidPasskey
+            // that passkeyClient.js looks for.
+            addJavascriptInterface(webAuthnBridge, WebAuthnBridge.JS_INTERFACE_NAME)
 
             settings.apply {
                 javaScriptEnabled = true
@@ -249,7 +336,12 @@ class WebViewActivity : AppCompatActivity() {
                     return if (requestUrl.startsWith(url)) {
                         false
                     } else {
-                        startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                        // Link out of the app's own domain (a note's external
+                        // link, a redirect to GitHub, etc.). Hand it to a
+                        // Custom Tab so the user stays in our task stack —
+                        // hitting back returns to the WebView instead of
+                        // dumping them into a separate browser app.
+                        openUrlExternally(request.url)
                         true
                     }
                 }
@@ -274,6 +366,30 @@ class WebViewActivity : AppCompatActivity() {
                         // press shouldn't reload the whole web layer.
                         swipeRefresh.isEnabled = false
                     }
+                    // Plant the system dark-mode flag BEFORE React mounts.
+                    // Without this, the page initialised dark from
+                    // matchMedia("(prefers-color-scheme: dark)") — which
+                    // returns `false` in Android WebView unless dark mode
+                    // is explicitly propagated to the renderer. Result: a
+                    // pull-to-refresh would always boot the app in light
+                    // mode even with the system in dark, because by the
+                    // time onPageFinished's window.__setDarkMode(true) ran,
+                    // React had already painted the light theme.
+                    val isDarkBoot = isDarkMode()
+                    view.evaluateJavascript(
+                        "window.__isAndroidDarkMode=$isDarkBoot;", null
+                    )
+                    // Install the passkey polyfill before any page script
+                    // runs. The polyfill is idempotent — re-injecting it
+                    // on SPA navigations is harmless.
+                    view.evaluateJavascript(WebAuthnBridge.POLYFILL_JS, null)
+                    // Replay the cached system-bar insets so the React app
+                    // has the correct --android-inset-* values BEFORE the
+                    // first paint. We can't rely on the WindowInsets
+                    // listener firing at the right moment relative to
+                    // navigation — the page might mount on top of stale
+                    // (or zero) values otherwise.
+                    injectSafeAreaInsets()
                 }
 
                 override fun onPageFinished(view: WebView, pageUrl: String?) {
@@ -440,6 +556,32 @@ class WebViewActivity : AppCompatActivity() {
         webView.evaluateJavascript(
             "if(window.__setDarkMode)window.__setDarkMode($isDark)", null
         )
+    }
+
+    /** Open `uri` via the user's default browser using Android Custom
+     *  Tabs — Chrome / Brave / Firefox / etc. render the page as an
+     *  overlay on top of our task instead of a cold cross-app jump.
+     *  Falls back to a plain ACTION_VIEW intent if no installed browser
+     *  exposes a CustomTabsService (rare on modern devices), and to a
+     *  short toast as a last resort so the tap is still acknowledged. */
+    private fun openUrlExternally(uri: Uri) {
+        try {
+            val tab = androidx.browser.customtabs.CustomTabsIntent.Builder()
+                .setShowTitle(true)
+                .build()
+            tab.launchUrl(this, uri)
+            return
+        } catch (_: Exception) {
+            // Fall through to the legacy ACTION_VIEW path.
+        }
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (_: Exception) {
+            Toast.makeText(this, uri.toString(), Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun applySystemBarColor(hexColor: String) {

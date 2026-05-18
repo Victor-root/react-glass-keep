@@ -197,6 +197,18 @@ CREATE TABLE IF NOT EXISTS logos (
   FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_logos_user ON logos(user_id);
+
+-- App-wide admin settings (allow_new_accounts, login_slogan, etc.).
+-- Singleton row by design: CHECK (id = 1) ensures we never accidentally
+-- end up with multiple rows competing for "the truth". Without this
+-- table the settings only lived in process memory and reset to
+-- env-var defaults on every server restart, silently wiping any
+-- value the admin had configured through the panel.
+CREATE TABLE IF NOT EXISTS app_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  allow_new_accounts INTEGER NOT NULL DEFAULT 0,
+  login_slogan TEXT NOT NULL DEFAULT ''
+);
 `);
 
 // Tiny migrations (safe to run repeatedly)
@@ -303,6 +315,8 @@ const { attachUnlockRoutes } = require("./routes/unlockRoutes");
 const { attachPasskeyRoutes } = require("./routes/passkeyRoutes");
 const { attachUpdateRoutes } = require("./routes/updateRoutes");
 const { attachSelfUpdateRoutes } = require("./routes/selfUpdateRoutes");
+const { attachAssetLinksRoutes } = require("./routes/assetLinksRoutes");
+const { attachDeviceLinkRoutes } = require("./routes/deviceLinkRoutes");
 const { requireUnlocked } = require("./routes/lockMiddleware");
 
 instanceVault.ensureSchema(db);
@@ -1015,6 +1029,17 @@ attachPasskeyRoutes(app, { db, auth, adminOnly, signToken, getUserById, log: con
 attachUpdateRoutes(app, { auth, adminOnly, log: console });
 attachSelfUpdateRoutes(app, { auth, adminOnly, log: console });
 
+// Digital Asset Links — must answer at /.well-known/assetlinks.json
+// before the production catch-all sends every unknown path to
+// index.html. Stays public (no auth, no lock gate) because Android's
+// verifier hits the URL unauthenticated and from outside any session.
+attachAssetLinksRoutes(app, { log: console });
+
+// Cross-device QR-code sign-in (the foreign PC shows a QR, the
+// phone scans + approves, the PC trades the token for a JWT on its
+// next poll). Schema is created lazily inside the route module.
+attachDeviceLinkRoutes(app, { db, auth, signToken, getUserById, log: console });
+
 const LOCK_ALLOW_PATHS = [
   /^\/api\/instance(\/|$)/,
   /^\/api\/passkeys\/login(\/|$)/,
@@ -1121,11 +1146,14 @@ app.post("/api/login", (req, res) => {
     return res.status(401).json({ error: "Incorrect password." });
   }
   const token = signToken(user);
+  // Always include must_change_password as a boolean for parity with
+  // the passkey + QR sign-in responses. Field-presence parity matters
+  // because the client stores the response straight into auth state.
   const response = {
     token,
     user: { id: user.id, name: user.name, email: user.email, is_admin: !!user.is_admin, avatar_url: user.avatar_url || null, language: user.language || null },
+    must_change_password: !!user.must_change_password,
   };
-  if (user.must_change_password) response.must_change_password = true;
   res.json(response);
 });
 
@@ -1168,8 +1196,8 @@ app.post("/api/login/secret", (req, res) => {
       const response = {
         token,
         user: { id: u.id, name: u.name, email: u.email, is_admin: !!u.is_admin, avatar_url: fullUser?.avatar_url || null, language: fullUser?.language || null },
+        must_change_password: !!fullUser?.must_change_password,
       };
-      if (fullUser?.must_change_password) response.must_change_password = true;
       return res.json(response);
     }
   }
@@ -1288,13 +1316,17 @@ app.post("/api/user/change-password", auth, (req, res) => {
   const hash = bcrypt.hashSync(new_password, 10);
   db.prepare("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?").run(hash, user.id);
 
-  // Return a fresh token so the session stays valid
+  // Return a fresh token + full user object. The client REPLACES its
+  // entire user state with whatever this returns (not a merge), so
+  // omitting language would wipe the user's language preference from
+  // session state on every password change.
   const updatedUser = getUserById.get(user.id);
   const token = signToken(updatedUser);
   res.json({
     ok: true,
     token,
-    user: { id: updatedUser.id, name: updatedUser.name, email: updatedUser.email, is_admin: !!updatedUser.is_admin, avatar_url: updatedUser.avatar_url || null },
+    user: { id: updatedUser.id, name: updatedUser.name, email: updatedUser.email, is_admin: !!updatedUser.is_admin, avatar_url: updatedUser.avatar_url || null, language: updatedUser.language || null },
+    must_change_password: !!updatedUser.must_change_password,
   });
 });
 
@@ -2417,11 +2449,34 @@ app.delete("/api/logos/:id", auth, (req, res) => {
 // ---------- Admin ----------
 // adminOnly() lives near auth() (above) so unlock-routes can use it too.
 
-// Admin settings storage (in-memory for now, could be moved to DB)
-let adminSettings = {
-  allowNewAccounts: process.env.ALLOW_REGISTRATION === "true" || false,
-  loginSlogan: "",
-};
+// Admin settings — persisted in the `app_settings` singleton row. Kept
+// mirrored in this in-memory object so the hot read paths (login slogan
+// on every login page hit, allowNewAccounts on every signup attempt)
+// don't hit SQLite repeatedly. The mirror is updated on every PATCH so
+// it stays in sync.
+const getAppSettingsRow = db.prepare(`SELECT allow_new_accounts, login_slogan FROM app_settings WHERE id = 1`);
+const upsertAppSettings = db.prepare(
+  `INSERT INTO app_settings (id, allow_new_accounts, login_slogan) VALUES (1, ?, ?)
+   ON CONFLICT(id) DO UPDATE SET allow_new_accounts=excluded.allow_new_accounts, login_slogan=excluded.login_slogan`,
+);
+
+let adminSettings = (function loadAdminSettings() {
+  const row = getAppSettingsRow.get();
+  if (row) {
+    return {
+      allowNewAccounts: !!row.allow_new_accounts,
+      loginSlogan: row.login_slogan || "",
+    };
+  }
+  // Fresh install — seed the row from the env var default so subsequent
+  // boots read the same value the admin sees in the panel.
+  const seed = {
+    allowNewAccounts: process.env.ALLOW_REGISTRATION === "true",
+    loginSlogan: "",
+  };
+  upsertAppSettings.run(seed.allowNewAccounts ? 1 : 0, seed.loginSlogan);
+  return seed;
+})();
 
 // Get admin settings
 app.get("/api/admin/settings", auth, adminOnly, (_req, res) => {
@@ -2439,6 +2494,7 @@ app.patch("/api/admin/settings", auth, adminOnly, (req, res) => {
     adminSettings.loginSlogan = loginSlogan.slice(0, 200);
   }
 
+  upsertAppSettings.run(adminSettings.allowNewAccounts ? 1 : 0, adminSettings.loginSlogan);
   res.json(adminSettings);
 });
 

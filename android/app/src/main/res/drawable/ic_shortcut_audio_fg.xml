@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Foreground layer for "new audio note". See ic_shortcut_text_fg
+     for the safe-zone rationale (60×60, scale 2.5, translate 24). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="24"
+        android:translateY="24"
+        android:scaleX="2.5"
+        android:scaleY="2.5">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M12,14a3,3 0 0 0 3,-3V5a3,3 0 1 0 -6,0v6a3,3 0 0 0 3,3zm5,-3a5,5 0 0 1 -10,0H5a7,7 0 0 0 6,6.92V21h2v-3.08A7,7 0 0 0 19,11h-2z" />
+    </group>
+</vector>
