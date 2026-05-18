@@ -759,7 +759,6 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   qrScanRetry: "Close",
   qrScanInfoFailed: "Could not fetch the other device's details.",
   qrScanApproveFailed: "Approval failed. The QR may have expired.",
-  qrScanZoom: "Camera zoom",
 
   encryptionSectionTitle: "At-rest encryption (server-side)",
   encryptionSectionDescription: "Encrypts the contents of every note in the database. Whenever the GlassKeep service restarts (update, server reboot, etc.), an administrator has to unlock the instance with the passphrase or recovery key. Once the instance is unlocked, regular users sign in as usual.",
