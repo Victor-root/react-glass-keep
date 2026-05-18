@@ -17,4 +17,6 @@
     <string name="download_started">Téléchargement lancé…</string>
     <string name="download_complete">Enregistré : %1$s</string>
     <string name="download_error">Erreur de téléchargement</string>
+    <string name="shortcut_qr_short">Scanner QR PC</string>
+    <string name="shortcut_qr_long">Se connecter à un PC via QR</string>
 </resources>

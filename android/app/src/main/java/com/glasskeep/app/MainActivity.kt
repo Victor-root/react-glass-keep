@@ -26,7 +26,19 @@ class MainActivity : ComponentActivity() {
         // If URL already configured, go straight to WebView
         val savedUrl = prefs.getString("server_url", null)
         if (savedUrl != null) {
-            launchWebView(savedUrl)
+            // App-shortcut entry point: long-press launcher → "Scan PC
+            // login" sends ACTION_SHORTCUT_QR_SCAN. Append a one-shot
+            // ?qr=open marker the SPA picks up at boot to pop the QR
+            // scanner modal straight away (only if the user already
+            // has a valid session — otherwise the marker is consumed
+            // silently). Strips itself from the URL bar so a refresh
+            // doesn't reopen the modal indefinitely.
+            val urlToLoad = if (intent?.action == ACTION_SHORTCUT_QR_SCAN) {
+                appendQueryParam(savedUrl, "qr", "open")
+            } else {
+                savedUrl
+            }
+            launchWebView(urlToLoad)
             return
         }
 
@@ -67,5 +79,20 @@ class MainActivity : ComponentActivity() {
         intent.putExtra("url", url)
         startActivity(intent)
         finish()
+    }
+
+    // Tack a query parameter onto a URL without dragging in a full URI
+    // parser. Handles both "no existing query" and "already has ?foo"
+    // cases. Values are URL-encoded so a future caller can pass
+    // anything safely.
+    private fun appendQueryParam(url: String, key: String, value: String): String {
+        val sep = if (url.contains("?")) "&" else "?"
+        val encodedKey = java.net.URLEncoder.encode(key, "UTF-8")
+        val encodedValue = java.net.URLEncoder.encode(value, "UTF-8")
+        return "$url$sep$encodedKey=$encodedValue"
+    }
+
+    companion object {
+        private const val ACTION_SHORTCUT_QR_SCAN = "com.glasskeep.app.SHORTCUT_QR_SCAN"
     }
 }

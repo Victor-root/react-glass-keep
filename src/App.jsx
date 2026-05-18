@@ -335,6 +335,29 @@ export default function App() {
   const openQrScanner = useCallback(() => setQrScannerOpen(true), []);
   const closeQrScanner = useCallback(() => setQrScannerOpen(false), []);
 
+  // App-shortcut entry point. The Android launcher's "Scan PC login"
+  // shortcut routes through MainActivity → WebViewActivity with
+  // ?qr=open in the URL. We consume the param (cleaning the URL so a
+  // refresh doesn't loop us back), and only actually pop the scanner
+  // when the user already has a session — otherwise the request would
+  // race with the auth bootstrap and the modal would mount on top of
+  // the login screen with no usable token. token from useState lives
+  // on this same first render, so this useEffect sees the hydrated
+  // value (no race condition with auth restore).
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("qr") !== "open") return;
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("qr");
+        window.history.replaceState(null, "", url.pathname + url.search + url.hash);
+      } catch { /* non-fatal */ }
+      if (token) setQrScannerOpen(true);
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ChangelogModal open state is lifted here (instead of inside the
   // component) so it can be registered with the central Android
   // back-button stack — overlayOpenCount + the popstate handler below.

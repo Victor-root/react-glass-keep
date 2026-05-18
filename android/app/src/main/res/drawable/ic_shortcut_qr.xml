@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    App-shortcut icon. Launchers compose this in their own pill /
+    circle container, so we paint a solid violet background (matches
+    the brand gradient's mid-tone) with a stylised QR pattern on top:
+    three finder squares (top-left, top-right, bottom-left) plus
+    scattered "data" cells in the bottom-right quadrant.
+
+    The finder squares use evenOdd fill so the middle ring is
+    transparent — same visual structure as a real QR finder.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background -->
+    <path
+        android:fillColor="#6366F1"
+        android:pathData="M0,0 h108 v108 h-108 z" />
+    <!-- Top-left finder pattern: outer 18, hole 12, dot 6 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M27,27 h18 v18 h-18 z M30,30 h12 v12 h-12 z M33,33 h6 v6 h-6 z" />
+    <!-- Top-right finder pattern -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M63,27 h18 v18 h-18 z M66,30 h12 v12 h-12 z M69,33 h6 v6 h-6 z" />
+    <!-- Bottom-left finder pattern -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M27,63 h18 v18 h-18 z M30,66 h12 v12 h-12 z M33,69 h6 v6 h-6 z" />
+    <!-- Scattered data cells in the bottom-right quadrant -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M51,51 h6 v6 h-6 z M63,51 h6 v6 h-6 z M75,51 h6 v6 h-6 z M57,63 h6 v6 h-6 z M69,63 h6 v6 h-6 z M51,69 h6 v6 h-6 z M75,75 h6 v6 h-6 z M63,75 h6 v6 h-6 z" />
+</vector>

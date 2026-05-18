@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Static app shortcut: long-press the launcher icon to see "Scan PC
+    login" / "Scanner QR PC", which jumps straight to the QR scanner
+    modal. Hard-coded into the manifest (vs registered at runtime via
+    ShortcutManager) so it works even before the user has opened the
+    app for the first time.
+
+    The intent action is consumed by MainActivity (see MainActivity.kt
+    onCreate). It appends ?qr=open to the configured server URL before
+    handing it to WebViewActivity; the SPA reads the param at boot and
+    sets qrScannerOpen=true, but only if the user has a valid session.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="qr_pc_login"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_qr"
+        android:shortcutShortLabel="@string/shortcut_qr_short"
+        android:shortcutLongLabel="@string/shortcut_qr_long">
+        <intent
+            android:action="com.glasskeep.app.SHORTCUT_QR_SCAN"
+            android:targetPackage="com.glasskeep.app"
+            android:targetClass="com.glasskeep.app.MainActivity" />
+    </shortcut>
+</shortcuts>
