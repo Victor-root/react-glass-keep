@@ -370,7 +370,34 @@ export default function NotesHeader({
                 data-tooltip={t("qrSignInRowTitle")}
                 aria-label={t("qrSignInRowTitle")}
               >
-                <TI.Qrcode className="tabler-icon w-5 h-5" />
+                {/* Direct inline SVG (rather than <TI.Qrcode/>) so the
+                    icon's baseline matches the sibling Kebab / Search /
+                    SyncStatus glyphs — TI.* renders inside a <span
+                    display:inline-flex> whose vertical-align defaults
+                    differ slightly and shift the icon a couple pixels
+                    upward in this row. */}
+                <svg
+                  className="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="4" y="4" width="6" height="6" rx="1" />
+                  <rect x="4" y="14" width="6" height="6" rx="1" />
+                  <rect x="14" y="4" width="6" height="6" rx="1" />
+                  <path d="M14 14h3" />
+                  <path d="M14 14v3" />
+                  <path d="M17 17h3v3" />
+                  <path d="M20 14v.01" />
+                  <path d="M14 20h.01" />
+                  <path d="M17 20h.01" />
+                  <path d="M20 17h.01" />
+                  <path d="M20 20h.01" />
+                </svg>
               </button>
             )}
             <button
@@ -418,7 +445,7 @@ export default function NotesHeader({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
-                    className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       openSettingsPanel?.();
@@ -426,7 +453,7 @@ export default function NotesHeader({
                   >
                     <span className={dark ? "text-gray-400" : "text-gray-500"}><SettingsIcon /></span>{t("settings")}</button>
                   <button
-                    className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       onToggleViewMode?.();
@@ -436,7 +463,7 @@ export default function NotesHeader({
                     {listView ? t("gridView") : t("listView")}
                   </button>
                   <button
-                    className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       toggleDark?.();
@@ -446,7 +473,7 @@ export default function NotesHeader({
                     {dark ? t("lightMode") : t("darkMode")}
                   </button>
                   <button
-                    className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       onStartMulti?.();
@@ -498,7 +525,7 @@ export default function NotesHeader({
                     </button>
                   )}
                   <button
-                    className={`flex items-center gap-2 w-full text-left px-3 py-2 text-sm ${dark ? "text-red-400 hover:bg-white/10" : "text-red-600 hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "text-red-400 hover:bg-white/10" : "text-red-600 hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       signOut?.();

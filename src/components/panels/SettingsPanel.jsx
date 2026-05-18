@@ -355,43 +355,61 @@ export default function SettingsPanel({
               </Popover>
             </div>
 
-            {/* Cross-device QR sign-in. Phone-side entry point — the
-                user opens the camera, scans the QR shown on another
-                machine's login screen, and approves the resulting
-                confirmation. The PC side lives on the login screen
-                (QrLoginButton). Sits ABOVE the passkeys section so a
-                user looking for a quick foreign-PC sign-in doesn't
-                scroll past it first; the modal owner is App.jsx. */}
-            <button
-              type="button"
-              onClick={() => openQrScanner?.()}
-              className={`mt-5 w-full flex items-center gap-3 text-left px-3 py-3 border border-[var(--border-light)] rounded-lg ${dark ? "hover:bg-white/10" : "hover:bg-gray-50"} transition-colors`}
-            >
-              <RowIcon icon={TI.Qrcode} />
-              <div className="min-w-0">
-                <div className="font-medium">{t("qrSignInRowTitle")}</div>
-                <div className="text-sm text-gray-500">{t("qrSignInRowSubtitle")}</div>
-              </div>
-            </button>
+            {/* Cross-device QR sign-in. The whole section sits in a
+                single bordered card: the top row stays clickable to
+                open the scanner (the primary action), and the inline
+                segmented control underneath toggles the optional
+                quick-access button in the notes header. Same shape
+                as the "checklist position" row further down — the
+                user is already familiar with this pattern. */}
+            <div className="mt-5 border border-[var(--border-light)] rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => openQrScanner?.()}
+                className={`w-full flex items-center gap-3 text-left px-3 py-3 ${dark ? "hover:bg-white/10" : "hover:bg-gray-50"} transition-colors`}
+              >
+                <RowIcon icon={TI.Qrcode} />
+                <div className="min-w-0">
+                  <div className="font-medium">{t("qrSignInRowTitle")}</div>
+                  <div className="text-sm text-gray-500">{t("qrSignInRowSubtitle")}</div>
+                </div>
+              </button>
 
-            {/* Toggle: pin a QR icon in the notes header, left of the
-                kebab menu, for one-tap access without going through
-                Settings. Off by default — header real estate is
-                tight on mobile and most users won't sign in to a
-                foreign PC every day. */}
-            <label
-              className={`mt-3 w-full flex items-center gap-3 text-left px-3 py-3 border border-[var(--border-light)] rounded-lg cursor-pointer ${dark ? "hover:bg-white/10" : "hover:bg-gray-50"} transition-colors`}
-            >
-              <RowIcon icon={TI.LayoutSidebar} />
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">{t("qrSignInQuickToggleTitle")}</div>
-                <div className="text-sm text-gray-500">{t("qrSignInQuickToggleSubtitle")}</div>
+              {/* Header-visibility toggle as a segmented control,
+                  styled like checklistInsertPosition below. Lives
+                  inside the same card so the user reads it as "an
+                  extra option for THIS feature" rather than a
+                  separate setting. */}
+              <div className="border-t border-[var(--border-light)] flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 px-3 py-2.5">
+                <div className="text-sm text-gray-500 min-w-0">
+                  {t("qrSignInQuickToggleLabel")}
+                </div>
+                <div className="flex-shrink-0 inline-flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setQrQuickEnabled?.(true)}
+                    className={`px-3 py-1.5 text-sm font-semibold transition-all duration-200 ${
+                      qrQuickEnabled
+                        ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
+                        : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {t("qrSignInQuickShow")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQrQuickEnabled?.(false)}
+                    className={`px-3 py-1.5 text-sm font-semibold transition-all duration-200 ${
+                      !qrQuickEnabled
+                        ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
+                        : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    }`}
+                  >
+                    {t("qrSignInQuickHide")}
+                  </button>
+                </div>
               </div>
-              <Switch
-                checked={!!qrQuickEnabled}
-                onChange={(v) => setQrQuickEnabled?.(v)}
-              />
-            </label>
+            </div>
 
             {/* Passkeys / WebAuthn — register, rename, delete, and (for
                 admins on a PRF-capable, unlocked instance) promote a
@@ -834,30 +852,5 @@ export default function SettingsPanel({
         dark={dark}
       />
     </>
-  );
-}
-
-// Small gradient toggle used in the "Sign in another device" section.
-// Matches the app's indigo→violet brand colours; no external lib.
-function Switch({ checked, onChange, ariaLabel }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={!!checked}
-      aria-label={ariaLabel}
-      onClick={() => onChange?.(!checked)}
-      className={`relative inline-flex shrink-0 items-center h-6 w-11 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
-        checked
-          ? "bg-gradient-to-r from-indigo-500 to-violet-600"
-          : "bg-gray-300 dark:bg-gray-600"
-      }`}
-    >
-      <span
-        className={`inline-block w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 ${
-          checked ? "translate-x-6" : "translate-x-1"
-        }`}
-      />
-    </button>
   );
 }
