@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Foreground layer for "Scan QRCODE". The QR pattern's raw paths
-    span 27..81 (54 units) in their own coordinate space; scaling by
-    72/54 = 1.333× and re-centring places the whole thing inside the
-    108×108 safe zone (18..90).
-    scaleX = scaleY = 1.333
-    To send (27,27) → (18,18): translate = 18 - 27 × 1.333 = -18
+    span 27..81 (54 units). Scaling by 60/54 ≈ 1.111× and recentring
+    fits the whole thing into a 60×60 box (x=24..84) — the inner
+    safe zone with a cushion that prevents the launcher's circular
+    mask from clipping the corner finder patterns (a flush 72×72
+    fit was visibly cropping them on both Pixel and Oppo).
+    scaleX = scaleY = 1.111
+    To send (27,27) → (24,24): translate = 24 - 27 × 1.111 = -6
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -13,10 +15,10 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <group
-        android:translateX="-18"
-        android:translateY="-18"
-        android:scaleX="1.333"
-        android:scaleY="1.333">
+        android:translateX="-6"
+        android:translateY="-6"
+        android:scaleX="1.111"
+        android:scaleY="1.111">
         <!-- Top-left finder pattern: outer 18, hole 12, dot 6 -->
         <path
             android:fillColor="#FFFFFF"
