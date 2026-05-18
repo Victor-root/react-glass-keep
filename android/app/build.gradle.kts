@@ -103,6 +103,13 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
+    // Custom Tabs: opens external URLs as an overlay on top of the
+    // app (Chrome / Brave / Firefox custom-tab UI) instead of cold-
+    // launching the full browser app. The user stays in our task
+    // stack — back returns to the WebView — and the page renders in
+    // their default browser's engine + session cookies.
+    implementation("androidx.browser:browser:1.8.0")
+
     // Credential Manager: Android's unified API for passkeys, passwords
     // and federated sign-in. Bridges the WebView's WebAuthn calls into
     // the OS-level passkey UI (Google Password Manager / 1Password /

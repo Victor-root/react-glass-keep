@@ -140,22 +140,7 @@ class WebViewActivity : AppCompatActivity() {
         @JavascriptInterface
         fun openExternalUrl(url: String?) {
             if (url.isNullOrBlank()) return
-            runOnUiThread {
-                try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    startActivity(intent)
-                } catch (_: Exception) {
-                    // No browser available, or the URL was malformed —
-                    // fall back to a discreet toast so the user knows
-                    // their tap was acknowledged.
-                    Toast.makeText(
-                        this@WebViewActivity,
-                        url,
-                        Toast.LENGTH_SHORT,
-                    ).show()
-                }
-            }
+            runOnUiThread { openUrlExternally(Uri.parse(url)) }
         }
 
         @JavascriptInterface
@@ -351,7 +336,12 @@ class WebViewActivity : AppCompatActivity() {
                     return if (requestUrl.startsWith(url)) {
                         false
                     } else {
-                        startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                        // Link out of the app's own domain (a note's external
+                        // link, a redirect to GitHub, etc.). Hand it to a
+                        // Custom Tab so the user stays in our task stack —
+                        // hitting back returns to the WebView instead of
+                        // dumping them into a separate browser app.
+                        openUrlExternally(request.url)
                         true
                     }
                 }
@@ -553,6 +543,32 @@ class WebViewActivity : AppCompatActivity() {
         webView.evaluateJavascript(
             "if(window.__setDarkMode)window.__setDarkMode($isDark)", null
         )
+    }
+
+    /** Open `uri` via the user's default browser using Android Custom
+     *  Tabs — Chrome / Brave / Firefox / etc. render the page as an
+     *  overlay on top of our task instead of a cold cross-app jump.
+     *  Falls back to a plain ACTION_VIEW intent if no installed browser
+     *  exposes a CustomTabsService (rare on modern devices), and to a
+     *  short toast as a last resort so the tap is still acknowledged. */
+    private fun openUrlExternally(uri: Uri) {
+        try {
+            val tab = androidx.browser.customtabs.CustomTabsIntent.Builder()
+                .setShowTitle(true)
+                .build()
+            tab.launchUrl(this, uri)
+            return
+        } catch (_: Exception) {
+            // Fall through to the legacy ACTION_VIEW path.
+        }
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (_: Exception) {
+            Toast.makeText(this, uri.toString(), Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun applySystemBarColor(hexColor: String) {
