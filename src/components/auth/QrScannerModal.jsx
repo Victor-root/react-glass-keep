@@ -215,15 +215,18 @@ export default function QrScannerModal({ open, onClose, token, showToast }) {
 
         {/* Camera surface — kept mounted across phases so toggling
             back from confirm → scanning doesn't have to re-acquire
-            the stream. Hidden via CSS once we've moved past
-            scanning rather than via conditional mount.
-            We use `visibility: hidden` while loading so the WebView
-            never paints the <video>'s default no-source play-button
-            poster — opacity-0 alone left it visible for one frame
-            on slow devices, producing a brief flash through our
-            placeholder. visibility:hidden keeps layout (qr-scanner
-            still needs a real video element behind the scenes) but
-            blocks all paint. */}
+            the stream.
+            ⚠ We must NOT touch the <video>'s visibility / opacity /
+            display while qr-scanner is running: the library reads
+            the computed style and, if it sees the video hidden,
+            overrides it with `position: fixed; left:0; top:0;
+            width:1px; height:1px; opacity:0;` (Safari workaround,
+            see the "QrScanner has overwritten the video hiding
+            style" console log). Once that override is applied the
+            camera feed never paints again. So the video stays
+            visually untouched and we cover it with an opaque
+            overlay during the loading phase — same visual result,
+            no stylistic battle with the scanner. */}
         <div
           className="relative w-full aspect-square rounded-xl overflow-hidden bg-black"
           style={{
@@ -240,31 +243,23 @@ export default function QrScannerModal({ open, onClose, token, showToast }) {
             disablePictureInPicture
             controls={false}
             className="w-full h-full object-cover"
-            style={{
-              visibility: phase === PHASES.scanning ? "visible" : "hidden",
-            }}
           />
           {phase === PHASES.loading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-white/80 gap-4">
-              <span
-                className="inline-flex items-center justify-center"
-                style={{ width: "96px", height: "96px" }}
+            <div className="absolute inset-0 bg-black flex flex-col items-center justify-center text-white/80 gap-4">
+              <svg
+                viewBox="0 0 24 24"
+                width="96"
+                height="96"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  width="96"
-                  height="96"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" />
-                  <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
-                </svg>
-              </span>
+                <path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" />
+                <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+              </svg>
               <Spinner small />
             </div>
           )}

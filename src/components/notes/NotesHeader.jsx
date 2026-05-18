@@ -59,20 +59,40 @@ export default function NotesHeader({
   // descendant `position: fixed`. A backdrop-fixed-inset-0 would
   // therefore be clipped to the header's bounding rect, leaving the
   // notes grid underneath fully clickable. So we listen at the
-  // document level in capture phase instead — clicks outside the
-  // menu and outside the toggling button get swallowed (no
-  // unintended note-open) and the menu is closed.
+  // document level in capture phase instead.
+  //
+  // We hook `pointerdown` (not `click`) because the Android WebView
+  // can fire pointer/touch events whose default action — opening the
+  // note card — happens BEFORE the synthetic click bubbles back up to
+  // our level. Catching the pointerdown lets us preventDefault to
+  // suppress the subsequent click entirely, so the note never opens
+  // when the user only meant to dismiss the menu.
   React.useEffect(() => {
     if (!headerMenuOpen) return undefined;
-    const onClick = (e) => {
+    const onPointerDown = (e) => {
+      const target = e.target;
+      if (headerMenuRef?.current?.contains(target)) return;
+      if (headerBtnRef?.current?.contains(target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setHeaderMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    // Belt-and-braces: also block the synthetic click in case the
+    // browser produces one despite our pointerdown preventDefault
+    // (rare, but Chromium has had bugs around this on Android).
+    const onClickAway = (e) => {
       const target = e.target;
       if (headerMenuRef?.current?.contains(target)) return;
       if (headerBtnRef?.current?.contains(target)) return;
       e.stopPropagation();
-      setHeaderMenuOpen(false);
+      e.preventDefault();
     };
-    document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
+    document.addEventListener("click", onClickAway, true);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("click", onClickAway, true);
+    };
   }, [headerMenuOpen, setHeaderMenuOpen, headerMenuRef, headerBtnRef]);
 
   // In landscape mobile, force mobile layout regardless of sm: breakpoint
@@ -84,7 +104,7 @@ export default function NotesHeader({
   const showOfflineBadge = !isOnline || syncStatus?.syncState === "offline" || syncStatus?.serverReachable === false;
   return (
       <header
-        className={`p-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
+        className={`px-2.5 py-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
         style={{
           // Keep the sticky header tight against the status bar.
           // `--safe-top` falls back to the standard env() value in any
@@ -455,17 +475,18 @@ export default function NotesHeader({
                     Kebab glyph above, the menu visually replaces the
                     button. On wider viewports we keep the legacy
                     "hangs below the button" placement.
-                    Width is content-driven (w-auto) so the menu hugs
-                    its widest item instead of stretching across the
-                    viewport with a sea of empty space on the left. */}
+                    Width hugs the WIDEST single-line item (every row
+                    has whitespace-nowrap below) — never narrower than
+                    220px on desktop for visual rhythm, never wider
+                    than ~95vw so it can't overflow on tiny phones. */}
                 <div
                   ref={headerMenuRef}
-                  className={`absolute top-0 sm:top-12 right-0 w-auto max-w-[90vw] sm:min-w-[220px] sm:max-w-[280px] max-h-[50vh] sm:max-h-[80vh] overflow-y-auto z-[1100] border border-[var(--border-light)] rounded-lg shadow-lg ${dark ? "text-gray-100" : "bg-white text-gray-800"}`}
+                  className={`absolute top-0 sm:top-12 right-0 w-max max-w-[95vw] sm:min-w-[220px] sm:max-w-[360px] max-h-[50vh] sm:max-h-[80vh] overflow-y-auto z-[1100] border border-[var(--border-light)] rounded-lg shadow-lg ${dark ? "text-gray-100" : "bg-white text-gray-800"}`}
                   style={{ backgroundColor: dark ? "#222222" : undefined }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
-                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       openSettingsPanel?.();
@@ -473,7 +494,7 @@ export default function NotesHeader({
                   >
                     <span className={dark ? "text-gray-400" : "text-gray-500"}><SettingsIcon /></span>{t("settings")}</button>
                   <button
-                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       onToggleViewMode?.();
@@ -483,7 +504,7 @@ export default function NotesHeader({
                     {listView ? t("gridView") : t("listView")}
                   </button>
                   <button
-                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       toggleDark?.();
@@ -493,7 +514,7 @@ export default function NotesHeader({
                     {dark ? t("lightMode") : t("darkMode")}
                   </button>
                   <button
-                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       onStartMulti?.();
@@ -502,7 +523,7 @@ export default function NotesHeader({
                     <span className={dark ? "text-violet-400" : "text-violet-600"}><CheckSquareIcon /></span>{t("multiSelect")}</button>
                   {currentUser?.is_admin && (
                     <button
-                      className={`flex items-start gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                      className={`flex items-start gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
                       onClick={() => {
                         setHeaderMenuOpen(false);
                         openAdminPanel?.();
@@ -545,7 +566,7 @@ export default function NotesHeader({
                     </button>
                   )}
                   <button
-                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm ${dark ? "text-red-400 hover:bg-white/10" : "text-red-600 hover:bg-gray-100"}`}
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "text-red-400 hover:bg-white/10" : "text-red-600 hover:bg-gray-100"}`}
                     onClick={() => {
                       setHeaderMenuOpen(false);
                       signOut?.();
