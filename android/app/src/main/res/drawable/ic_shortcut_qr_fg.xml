@@ -1,42 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Foreground layer for "Scan QRCODE". The QR pattern's raw paths
-    span 27..81 (54 units). Scaling by 60/54 ≈ 1.111× and recentring
-    fits the whole thing into a 60×60 box (x=24..84) — the inner
-    safe zone with a cushion that prevents the launcher's circular
-    mask from clipping the corner finder patterns (a flush 72×72
-    fit was visibly cropping them on both Pixel and Oppo).
-    scaleX = scaleY = 1.111
-    To send (27,27) → (24,24): translate = 24 - 27 × 1.111 = -6
+    span 27..81 (54 units) — exactly the box we want to display at,
+    so the group becomes identity. The other shortcuts use 60×60 but
+    the QR needs a bit more breathing room because its finder
+    patterns sit right at the corners of its bounding box; with the
+    same 60×60 sizing they brushed up against the mask edge on both
+    Pixel and Oppo. 54×54 ≈ 50% of the canvas, with ~7dp of cushion
+    inside the documented safe zone.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group
-        android:translateX="-6"
-        android:translateY="-6"
-        android:scaleX="1.111"
-        android:scaleY="1.111">
-        <!-- Top-left finder pattern: outer 18, hole 12, dot 6 -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:fillType="evenOdd"
-            android:pathData="M27,27 h18 v18 h-18 z M30,30 h12 v12 h-12 z M33,33 h6 v6 h-6 z" />
-        <!-- Top-right finder pattern -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:fillType="evenOdd"
-            android:pathData="M63,27 h18 v18 h-18 z M66,30 h12 v12 h-12 z M69,33 h6 v6 h-6 z" />
-        <!-- Bottom-left finder pattern -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:fillType="evenOdd"
-            android:pathData="M27,63 h18 v18 h-18 z M30,66 h12 v12 h-12 z M33,69 h6 v6 h-6 z" />
-        <!-- Scattered data cells in the bottom-right quadrant -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M51,51 h6 v6 h-6 z M63,51 h6 v6 h-6 z M75,51 h6 v6 h-6 z M57,63 h6 v6 h-6 z M69,63 h6 v6 h-6 z M51,69 h6 v6 h-6 z M75,75 h6 v6 h-6 z M63,75 h6 v6 h-6 z" />
-    </group>
+    <!-- Top-left finder pattern: outer 18, hole 12, dot 6 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M27,27 h18 v18 h-18 z M30,30 h12 v12 h-12 z M33,33 h6 v6 h-6 z" />
+    <!-- Top-right finder pattern -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M63,27 h18 v18 h-18 z M66,30 h12 v12 h-12 z M69,33 h6 v6 h-6 z" />
+    <!-- Bottom-left finder pattern -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M27,63 h18 v18 h-18 z M30,66 h12 v12 h-12 z M33,69 h6 v6 h-6 z" />
+    <!-- Scattered data cells in the bottom-right quadrant -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M51,51 h6 v6 h-6 z M63,51 h6 v6 h-6 z M75,51 h6 v6 h-6 z M57,63 h6 v6 h-6 z M69,63 h6 v6 h-6 z M51,69 h6 v6 h-6 z M75,75 h6 v6 h-6 z M63,75 h6 v6 h-6 z" />
 </vector>
