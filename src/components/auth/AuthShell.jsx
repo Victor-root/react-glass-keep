@@ -75,12 +75,16 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
           still see it without horizontal scroll. */}
       <div className="flex-1 w-full flex items-center justify-center py-8">
         <div
-          className={`relative z-10 w-full flex flex-col items-center gap-6 ${
-            sidePanel ? "lg:max-w-4xl lg:flex-row lg:items-start lg:gap-4" : "max-w-md"
+          className={`relative z-10 w-full mx-auto ${
+            sidePanel ? "lg:max-w-4xl" : "max-w-md"
           }`}
         >
-          <div className="w-full max-w-md lg:shrink-0">
-          <div className="text-center mb-6">
+          {/* Logo + title — sits above the form card. Centred in its
+              max-w-md box on every viewport; on lg+ the box is
+              left-aligned within the wider wrapper (lg:mx-0) so the
+              logo lines up over the form card rather than drifting
+              into the gap between the two cards. */}
+          <div className="text-center mb-6 w-full max-w-md mx-auto lg:mx-0">
             <img
               src="/pwa-192.png"
               alt="Glass Keep"
@@ -90,74 +94,72 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
             <h1 className="text-3xl font-bold">Glass Keep</h1>
             <p className="text-gray-500 dark:text-gray-400">{title}</p>
           </div>
-          <div className="glass-card rounded-xl p-6 shadow-lg">{children}</div>
-          <div className="mt-6 text-center">
-            <button
-              onClick={onToggleDark}
-              className={`inline-flex items-center gap-2 text-sm ${dark ? "text-gray-300" : "text-gray-700"} hover:underline`}
-              data-tooltip={t("toggleDarkMode")}
-            >
-              {dark ? <Moon /> : <Sun />} {t("toggleTheme")}
-            </button>
-          </div>
-          {(loginSlogan || t("loginSlogan")) && (
-            <div className="mt-4 text-center">
-              <span className="glass-card inline-block rounded-full px-4 py-1.5 text-sm text-gray-600 dark:text-gray-300 shadow-sm">
-                {loginSlogan || t("loginSlogan")}
-              </span>
+
+          {/* Cards row — contains ONLY the cards (and the decorative
+              arrow on lg+). The earlier layout grouped the form card
+              with the dark-mode toggle / slogan / "change server"
+              link inside a single flex column, which meant
+              `items-center` aligned the COLUMN centres, not the
+              actual card centres — the form column was a good 60 px
+              taller than the QR column thanks to those trailing
+              rows, and the QR card came out visibly off. Pulling
+              the trailing rows out of the flex row lets
+              `items-center` do the right thing: form-card centre =
+              QR-card centre. */}
+          <div
+            className={`flex flex-col items-center gap-6 ${
+              sidePanel ? "lg:flex-row lg:items-center lg:gap-4" : ""
+            }`}
+          >
+            <div className="glass-card rounded-xl p-6 shadow-lg w-full max-w-md lg:shrink-0">
+              {children}
             </div>
-          )}
-          {window.AndroidTheme && (
-            <div className="mt-4 text-center">
-              <button
-                className="text-xs text-indigo-600 hover:underline"
-                onClick={() => window.AndroidTheme.changeServer()}
-              >{t("changeServer")}</button>
-            </div>
-          )}
-          </div>
-          {sidePanel && (
-            <>
-              {/* Decorative arrow pointing from the auth form to the
-                  QR card on wide screens. Hidden on phones / narrow
-                  windows where the cards stack vertically — an arrow
-                  between two stacked boxes doesn't carry the same
-                  meaning. */}
-              <div
-                className="hidden lg:flex lg:shrink-0 lg:items-center lg:self-stretch text-indigo-500 dark:text-indigo-400"
-                aria-hidden="true"
-              >
-                <TI.ArrowBadgeRight className="tabler-icon w-12 h-12" />
-              </div>
-              {/* Second card column. Below lg it falls under the
-                  form column in normal flow (max-w-md to match the
-                  form card width); on lg+ it sits to the right as a
-                  fixed-width card. The placeholder at the top
-                  MIRRORS the form column's logo + title block exactly
-                  (same markup, wrapped in `invisible`) so the QR
-                  card aligns pixel-for-pixel with the glass-card on
-                  lg+ regardless of font / locale / whether `title`
-                  is set on this AuthShell instance. */}
-              <div className="w-full max-w-md lg:w-72 lg:max-w-none lg:shrink-0">
+            {sidePanel && (
+              <>
                 <div
-                  className="hidden lg:block invisible"
+                  className="hidden lg:flex lg:items-center lg:shrink-0 text-indigo-500 dark:text-indigo-400"
                   aria-hidden="true"
                 >
-                  <div className="text-center mb-6">
-                    <img
-                      src="/pwa-192.png"
-                      alt=""
-                      className="h-16 w-16 rounded-2xl shadow-lg mx-auto mb-4"
-                      draggable="false"
-                    />
-                    <h1 className="text-3xl font-bold">Glass Keep</h1>
-                    <p className="text-gray-500 dark:text-gray-400">{title}</p>
-                  </div>
+                  <TI.ArrowBadgeRight className="tabler-icon w-12 h-12" />
                 </div>
-                {sidePanel}
+                <div className="w-full max-w-md lg:w-72 lg:max-w-none lg:shrink-0">
+                  {sidePanel}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Trailing rows — below the cards, aligned with the form
+              card on lg+. mobile keeps the centred layout via
+              mx-auto; on lg+ the rows snap to the left of the
+              wider wrapper (lg:mx-0) so they sit directly under the
+              form card instead of between the two cards. */}
+          <div className="w-full max-w-md mx-auto lg:mx-0">
+            <div className="mt-6 text-center">
+              <button
+                onClick={onToggleDark}
+                className={`inline-flex items-center gap-2 text-sm ${dark ? "text-gray-300" : "text-gray-700"} hover:underline`}
+                data-tooltip={t("toggleDarkMode")}
+              >
+                {dark ? <Moon /> : <Sun />} {t("toggleTheme")}
+              </button>
+            </div>
+            {(loginSlogan || t("loginSlogan")) && (
+              <div className="mt-4 text-center">
+                <span className="glass-card inline-block rounded-full px-4 py-1.5 text-sm text-gray-600 dark:text-gray-300 shadow-sm">
+                  {loginSlogan || t("loginSlogan")}
+                </span>
               </div>
-            </>
-          )}
+            )}
+            {window.AndroidTheme && (
+              <div className="mt-4 text-center">
+                <button
+                  className="text-xs text-indigo-600 hover:underline"
+                  onClick={() => window.AndroidTheme.changeServer()}
+                >{t("changeServer")}</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <p className="text-center text-xs text-gray-400 dark:text-gray-600 z-10 select-none pb-4 pt-2 relative">
