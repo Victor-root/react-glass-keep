@@ -458,22 +458,19 @@ export default function TvNotesViewer({
 
   // Hamburger / MENU-key toggle updates BOTH the current state and
   // the stored preference (so the next launch lands on the user's
-  // last explicit choice), and re-parks the focus on the side the
-  // user is now on: opening the rail focuses its first item, closing
-  // it drops focus on the first card.
+  // last explicit choice). We deliberately do NOT move focus when the
+  // hamburger triggers the toggle — the user just pressed the button
+  // and expects to stay on it, both when opening (so they can decide
+  // whether to dive into the rail or keep browsing) and when closing
+  // (re-pressing the same button shouldn't teleport their cursor
+  // elsewhere). The directional reveal path (`revealSidebarFromEdge`,
+  // below) still focuses the rail's first item because the user is
+  // actively navigating *into* it.
   const toggleSidebar = useCallback(() => {
     setSidebarVisible((v) => {
       const next = !v;
       savePref(STORAGE_SIDEBAR, next ? "open" : "closed");
       sidebarPrefHiddenRef.current = !next;
-      requestAnimationFrame(() => {
-        const target = next
-          ? document.querySelector(".tv-sidebar .tv-focusable")
-          : document.querySelector("[data-note-id]");
-        if (target instanceof HTMLElement) {
-          window.dispatchEvent(new CustomEvent("tv-focus", { detail: { target } }));
-        }
-      });
       return next;
     });
   }, []);
