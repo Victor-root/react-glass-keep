@@ -61,12 +61,48 @@ export default function NotesHeader({
   // notes grid underneath fully clickable. So we listen at the
   // document level in capture phase instead.
   //
-  // We hook `pointerdown` (not `click`) because the Android WebView
-  // can fire pointer/touch events whose default action — opening the
-  // note card — happens BEFORE the synthetic click bubbles back up to
-  // our level. Catching the pointerdown lets us preventDefault to
-  // suppress the subsequent click entirely, so the note never opens
-  // when the user only meant to dismiss the menu.
+  // The tricky bit: a single tap fires `pointerdown` → `pointerup` →
+  // `click` as a sequence. If we close the menu on `pointerdown` and
+  // then drop our listeners (via useEffect cleanup), the subsequent
+  // `click` fires with NO listener attached and the underlying note
+  // card opens. To avoid that race we:
+  //   1. Keep a PERMANENT click-capture listener that just consumes
+  //      any click marked by the ref flag below. It's attached on
+  //      mount and never torn down, so it's always there when the
+  //      click arrives — even after the menu has been state-closed.
+  //   2. On `pointerdown` while the menu is open, flip the flag,
+  //      stopPropagation + preventDefault, then close the menu.
+  //   3. The permanent click listener catches the click, swallows
+  //      it (stopPropagation + preventDefault), and clears the flag.
+  //
+  // A 500 ms safety timer clears the flag too — covers the rare case
+  // where pointerdown fires but the browser never produces a click
+  // (long-press, drag-cancel, etc.) so the flag doesn't leak into
+  // the next legitimate click.
+  const swallowNextClickRef = React.useRef(false);
+  const swallowClearTimerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const onClick = (e) => {
+      if (!swallowNextClickRef.current) return;
+      swallowNextClickRef.current = false;
+      if (swallowClearTimerRef.current) {
+        clearTimeout(swallowClearTimerRef.current);
+        swallowClearTimerRef.current = null;
+      }
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      if (swallowClearTimerRef.current) {
+        clearTimeout(swallowClearTimerRef.current);
+        swallowClearTimerRef.current = null;
+      }
+    };
+  }, []);
+
   React.useEffect(() => {
     if (!headerMenuOpen) return undefined;
     const onPointerDown = (e) => {
@@ -75,24 +111,18 @@ export default function NotesHeader({
       if (headerBtnRef?.current?.contains(target)) return;
       e.preventDefault();
       e.stopPropagation();
+      swallowNextClickRef.current = true;
+      if (swallowClearTimerRef.current) {
+        clearTimeout(swallowClearTimerRef.current);
+      }
+      swallowClearTimerRef.current = setTimeout(() => {
+        swallowNextClickRef.current = false;
+        swallowClearTimerRef.current = null;
+      }, 500);
       setHeaderMenuOpen(false);
     };
     document.addEventListener("pointerdown", onPointerDown, true);
-    // Belt-and-braces: also block the synthetic click in case the
-    // browser produces one despite our pointerdown preventDefault
-    // (rare, but Chromium has had bugs around this on Android).
-    const onClickAway = (e) => {
-      const target = e.target;
-      if (headerMenuRef?.current?.contains(target)) return;
-      if (headerBtnRef?.current?.contains(target)) return;
-      e.stopPropagation();
-      e.preventDefault();
-    };
-    document.addEventListener("click", onClickAway, true);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown, true);
-      document.removeEventListener("click", onClickAway, true);
-    };
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [headerMenuOpen, setHeaderMenuOpen, headerMenuRef, headerBtnRef]);
 
   // In landscape mobile, force mobile layout regardless of sm: breakpoint
