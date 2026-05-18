@@ -111,7 +111,14 @@ export default function LoginView({
             </button>
           ))}
         </div>
-        <div className="text-center">
+        {/* Passkey + QR shortcuts visible from the profile picker too —
+            both flows are profile-agnostic (the passkey ceremony lets
+            the OS pick which credential to use; the QR flow just opens
+            a side panel) so hiding them behind "Manual login" was an
+            unnecessary extra click. */}
+        <PasskeyLoginButton onLoggedIn={onPasskeyLogin} dark={dark} />
+        <QrLoginButton open={qrOpen} onToggle={setQrOpen} />
+        <div className="mt-4 text-center">
           <button
             className="text-sm text-indigo-600 hover:underline"
             onClick={() => { setMode("manual"); setErr(""); setPw(""); setEmail(""); }}
