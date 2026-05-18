@@ -413,7 +413,7 @@ function PasskeyTextDialog({ prompt, onClose }) {
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
-        className="glass-card rounded-xl shadow-2xl w-[90%] max-w-sm p-6 relative bg-white/95 dark:bg-[rgba(40,40,40,0.95)]"
+        className="rounded-xl shadow-2xl w-[90%] max-w-sm p-6 relative bg-white dark:bg-[#282828] border border-[var(--border-light)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold mb-2">{prompt.title}</h3>
@@ -433,7 +433,7 @@ function PasskeyTextDialog({ prompt, onClose }) {
             if (e.key === "Enter") { e.preventDefault(); submit(); }
             else if (e.key === "Escape") { e.preventDefault(); onClose(); }
           }}
-          className="w-full px-3 py-2 rounded-lg border border-[var(--border-light)] bg-white/70 dark:bg-black/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+          className="w-full px-3 py-2 rounded-lg border border-[var(--border-light)] bg-white dark:bg-[#1f1f1f] focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
         />
         <div className="mt-5 flex justify-end gap-3">
           <button
@@ -474,7 +474,7 @@ function PasskeyConfirmDialog({ prompt, onClose }) {
     >
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
-        className="glass-card rounded-xl shadow-2xl w-[90%] max-w-sm p-6 relative bg-white/95 dark:bg-[rgba(40,40,40,0.95)]"
+        className="rounded-xl shadow-2xl w-[90%] max-w-sm p-6 relative bg-white dark:bg-[#282828] border border-[var(--border-light)]"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold mb-2">{prompt.title}</h3>

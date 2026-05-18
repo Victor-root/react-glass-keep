@@ -437,11 +437,11 @@ rebuilt APK from a previous experiment.
 - On the login screen: same root cause; the button only renders when
   WebAuthn or the Android bridge is detected.
 
-### Passkeys work in Brave but not in the app
+### Passkeys work in a browser but not in the app
 
 This is a clear signature that the bridge / asset-links layer is the
-problem (Brave doesn't use either — it has its own end-to-end
-WebAuthn stack). Follow the asset-links checks above.
+problem — browsers don't use either, they ship their own end-to-end
+WebAuthn stack. Follow the asset-links checks above.
 
 ---
 

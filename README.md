@@ -129,7 +129,7 @@ Current APK version: `1.3.0`
 
 ### 🔑 Passkeys in the Android app
 
-From APK `1.3.0` onward, the Android app supports passkeys natively (fingerprint, face unlock, hardware security keys, password managers — the same authenticators you'd use from Chrome). It works out-of-the-box with the official APK on a regular HTTPS install.
+From APK `1.3.0` onward, the Android app supports passkeys natively (fingerprint, face unlock, hardware security keys, password managers — the same authenticators you'd use from your browser). It works out-of-the-box with the official APK on a regular HTTPS install.
 
 > 📖 **Full setup guide, prerequisites, custom-build instructions and troubleshooting:** see **[`PASSKEYS.md`](./PASSKEYS.md)**. Worth a read even for the smooth path — the non-standard-port and reverse-proxy edge cases trip a lot of self-hosted setups.
 

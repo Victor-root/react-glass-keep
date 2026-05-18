@@ -1,5 +1,32 @@
 # 📋 Changelog
 
+## 🚀 v2.3.7 — 2026-05-17
+
+This release brings **passkey support to the native Android app** — fingerprint, face unlock, hardware security keys and password managers (Google Password Manager, 1Password, Bitwarden…) now work from inside the APK the same way they do in a browser. Full setup guide and the reverse-proxy edge cases live in [`PASSKEYS.md`](./PASSKEYS.md).
+
+### ➕ Added
+- 🔑 **Native Android passkey support** — `androidx.credentials` bridge wired into the WebView so `navigator.credentials.create / get` routes through Android's Credential Manager instead of the (gimped) in-WebView WebAuthn stack
+- 📄 **Dynamic Digital Asset Links** — server publishes `/.well-known/assetlinks.json` on the fly, pre-authorising the official APK + F-Droid fingerprints; no static file to maintain per install
+- 🛠️ **`ANDROID_EXTRA_FINGERPRINTS` env var** — single declaration that unlocks both the OS-level asset-links handshake AND the server-side `expectedOrigin` check for custom-built APKs
+- 📖 **[`PASSKEYS.md`](./PASSKEYS.md) guide** — full walkthrough covering Madame-Michu setup, the non-standard-port reverse-proxy trap (with apache/nginx/caddy snippets), custom-build path, and an error-to-cause troubleshooting matrix
+- 🧪 **Local-debug release signing** — `android/keystore.properties` (gitignored) lets the green ▶ button in Android Studio produce passkey-capable APKs without the "Generate Signed APK" wizard each time
+- 💬 **Themed in-app dialogs** — passkey naming / confirmation now uses the app's own modal styling instead of the WebView's "La page indique :" system prompt
+
+### 🔄 Changed
+- 📱 **Mobile toasts now span the viewport** — long messages no longer crammed into a 384px column with empty gutters on each side; desktop layout untouched
+- 📦 **APK bumped to `1.3.0`** — minimum required to use passkeys in the app (asset-links validation needs the new signing pipeline + bridge)
+- 📚 **README passkey section trimmed** — one-line summary + link to the dedicated guide
+
+### 🐛 Fixed
+- 🔐 **Passkey verification accepts native-app origins** — `expectedOrigin` now allows the `android:apk-key-hash:<URL-safe base64(SHA-256(cert))>` form Credential Manager produces, in addition to the regular HTTPS origin (browser ceremonies)
+
+### 🛠️ Upgrade
+
+**Native install:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/Victor-root/glasskeep-enhanced/main/install.sh | sudo bash
+```
+
 ## 🚀 v2.3.6 — 2026-05-16
 
 ### ➕ Added
