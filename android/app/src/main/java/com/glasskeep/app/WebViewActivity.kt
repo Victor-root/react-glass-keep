@@ -266,13 +266,23 @@ class WebViewActivity : AppCompatActivity() {
         // propagating to the WebView so other apps inside the layout still
         // see them.
         androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(webView) { _, insets ->
+            // We use ONLY the systemBars insets (status bar + nav bar +
+            // caption bar) — NOT the union with displayCutout. Devices
+            // with a centre-top punch-hole (Pixel 8 and friends) report a
+            // cutout.top a few dp larger than the visible status bar
+            // because the cutout's bounding box extends slightly below the
+            // bar to leave room for the camera optics. Including it pushes
+            // the header 1-5 px below the actual status bar bottom edge,
+            // leaving a thin gap where the page background shows through.
+            // The WebView's own env() computation goes through systemBars
+            // for the same reason — we just want to match it pixel-for-
+            // pixel when we override the value.
             val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            val cutout = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.displayCutout())
             val density = resources.displayMetrics.density
-            safeAreaTopDp    = maxOf(bars.top,    cutout.top)    / density.toDouble()
-            safeAreaBottomDp = maxOf(bars.bottom, cutout.bottom) / density.toDouble()
-            safeAreaLeftDp   = maxOf(bars.left,   cutout.left)   / density.toDouble()
-            safeAreaRightDp  = maxOf(bars.right,  cutout.right)  / density.toDouble()
+            safeAreaTopDp    = bars.top    / density.toDouble()
+            safeAreaBottomDp = bars.bottom / density.toDouble()
+            safeAreaLeftDp   = bars.left   / density.toDouble()
+            safeAreaRightDp  = bars.right  / density.toDouble()
             injectSafeAreaInsets()
             insets
         }
