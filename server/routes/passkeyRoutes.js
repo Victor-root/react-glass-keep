@@ -83,8 +83,55 @@ function rpId(req) {
 }
 
 function expectedOrigin(req) {
-  if (process.env.WEBAUTHN_ORIGIN) return process.env.WEBAUTHN_ORIGIN;
-  return `${resolveProto(req)}://${resolveHost(req)}`;
+  const webOrigin = process.env.WEBAUTHN_ORIGIN
+    || `${resolveProto(req)}://${resolveHost(req)}`;
+  // Passkeys created via the Android Credential Manager (i.e. from
+  // inside the native app) carry an origin of the form
+  // `android:apk-key-hash:<URL-safe-base64(SHA-256(signing cert))>`
+  // rather than the web URL — even when the WebView itself was loaded
+  // from https://<domain>. @simplewebauthn/server accepts an array of
+  // acceptable origins, so we hand it both the regular web origin AND
+  // every Android origin derived from the same fingerprint list the
+  // /.well-known/assetlinks.json route already publishes (official
+  // APK + F-Droid + ANDROID_EXTRA_FINGERPRINTS).
+  //
+  // The fingerprint list is intentionally cached per request rather
+  // than at module load: env vars can be changed (and the process
+  // reloaded by systemd) between cold-starts, and we want the next
+  // request to pick the new value up without an extra restart.
+  return [webOrigin, ...androidApkOrigins()];
+}
+
+const assetLinks = require("./assetLinksRoutes")._internals;
+
+/** Build all currently-authorised "android:apk-key-hash:..." origins
+ *  from the fingerprints listed in /.well-known/assetlinks.json. The
+ *  hash is exactly the SHA-256 of the DER-encoded signing certificate,
+ *  re-encoded as URL-safe base64 without padding — the same Android
+ *  uses when filling in clientDataJSON.origin from a native app. */
+function androidApkOrigins() {
+  const fingerprints = [
+    ...assetLinks.DEFAULT_FINGERPRINTS,
+    ...assetLinks.parseExtraFingerprints(process.env.ANDROID_EXTRA_FINGERPRINTS),
+  ];
+  const origins = [];
+  const seen = new Set();
+  for (const fp of fingerprints) {
+    const normalised = assetLinks.normaliseFingerprint(fp);
+    if (!normalised) continue;
+    const hex = normalised.replace(/:/g, "");
+    let b64;
+    try {
+      b64 = Buffer.from(hex, "hex").toString("base64url");
+    } catch (_) {
+      continue;
+    }
+    const origin = `android:apk-key-hash:${b64}`;
+    if (seen.has(origin)) continue;
+    seen.add(origin);
+    origins.push(origin);
+  }
+  return origins;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
