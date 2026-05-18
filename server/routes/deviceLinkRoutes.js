@@ -212,6 +212,10 @@ function attachDeviceLinkRoutes(
         return res.status(410).json({ status: "consumed" });
       }
       const jwt = signToken(user);
+      // Keep parity with /api/login's response shape — the client
+      // stores this user object straight into auth state, so missing
+      // avatar_url/language reads as "the QR sign-in cleared my
+      // profile photo".
       return res.json({
         status: "approved",
         token: jwt,
@@ -220,6 +224,8 @@ function attachDeviceLinkRoutes(
           email: user.email,
           name: user.name,
           is_admin: !!user.is_admin,
+          avatar_url: user.avatar_url || null,
+          language: user.language || null,
         },
       });
     }
