@@ -1247,13 +1247,41 @@ app.post("/api/register", (req, res) => {
   const hash = bcrypt.hashSync(password, 10);
   const info = insertPendingUser.run(name?.trim() || "User", email.trim(), hash, nowISO());
 
-  // Notify all connected admins in real-time
-  broadcastToAdmins({
-    type: "pending_user_registered",
-    pendingId: info.lastInsertRowid,
-    name: name?.trim() || "User",
-    email: email.trim(),
-  });
+  // Persist a notification row per admin AND deliver the live SSE event
+  // each with its own row id, so the recipient's client can ack /
+  // remove the right row when the admin acts. Stored values:
+  //   - note_id    = pending_users.id (target of approve/reject)
+  //   - note_title = registrant email (rendered in the message)
+  //   - sender_name = registrant name (rendered in the message)
+  try {
+    const admins = db.prepare("SELECT id FROM users WHERE is_admin = 1").all();
+    const createdAt = nowISO();
+    for (const a of admins) {
+      const row = insertNotification.run(
+        a.id,
+        null,
+        "pending_user_registered",
+        info.lastInsertRowid,
+        email.trim(),
+        name?.trim() || "User",
+        "info",
+        null,
+        0,
+        "user-clock",
+        createdAt,
+      );
+      sendEventToUser(a.id, {
+        type: "pending_user_registered",
+        pendingId: info.lastInsertRowid,
+        name: name?.trim() || "User",
+        email: email.trim(),
+        notificationId: row.lastInsertRowid,
+        createdAt,
+      });
+    }
+  } catch (e) {
+    console.warn("[notifications] pending_user_registered persist failed:", e?.message);
+  }
 
   res.status(202).json({ pending: true });
 });
@@ -3025,6 +3053,35 @@ app.get("/api/admin/pending-users", auth, adminOnly, (_req, res) => {
   res.json(listPendingUsers.all());
 });
 
+// Wipe the pending_user_registered notification rows attached to this
+// pending id and tell every recipient admin (live SSE) so their
+// history panel drops the entry. Run on both approve AND reject so
+// whichever admin acts first clears the action surfaces everywhere.
+function cleanupPendingUserNotifications(pendingId) {
+  try {
+    const rows = db.prepare(`
+      SELECT id, recipient_user_id FROM notifications
+      WHERE type = 'pending_user_registered' AND note_id = ?
+    `).all(pendingId);
+    if (rows.length === 0) return;
+    db.prepare(`
+      DELETE FROM notifications
+      WHERE type = 'pending_user_registered' AND note_id = ?
+    `).run(pendingId);
+    const byRecipient = new Map();
+    for (const r of rows) {
+      if (!byRecipient.has(r.recipient_user_id))
+        byRecipient.set(r.recipient_user_id, []);
+      byRecipient.get(r.recipient_user_id).push(r.id);
+    }
+    for (const [uid, ids] of byRecipient) {
+      sendEventToUser(uid, { type: "notification_removed", ids });
+    }
+  } catch (e) {
+    console.warn("[notifications] pending_user cleanup failed:", e?.message);
+  }
+}
+
 app.post("/api/admin/pending-users/:id/approve", auth, adminOnly, (req, res) => {
   const id = Number(req.params.id);
   const pending = getPendingById.get(id);
@@ -3033,12 +3090,14 @@ app.post("/api/admin/pending-users/:id/approve", auth, adminOnly, (req, res) => 
   // Guard against collision with a concurrently-created user
   if (getUserByEmail.get(pending.email)) {
     deletePendingById.run(id);
+    cleanupPendingUserNotifications(id);
     return res.status(409).json({ error: "A user with this email already exists." });
   }
 
   // Move to users table, preserving the user-chosen password_hash (no forced change)
   const info = insertUser.run(pending.name, pending.email, pending.password_hash, nowISO());
   deletePendingById.run(id);
+  cleanupPendingUserNotifications(id);
 
   // Check if this user should be auto-promoted to admin via env var
   try { promoteToAdminIfNeeded(pending.email); } catch {}
@@ -3058,6 +3117,7 @@ app.post("/api/admin/pending-users/:id/reject", auth, adminOnly, (req, res) => {
   const pending = getPendingById.get(id);
   if (!pending) return res.status(404).json({ error: "Pending registration not found." });
   deletePendingById.run(id);
+  cleanupPendingUserNotifications(id);
   res.json({ ok: true });
 });
 

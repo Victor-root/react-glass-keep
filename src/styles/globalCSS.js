@@ -4032,6 +4032,38 @@ html.dark .gk-notif-card__action-btn:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Multi-action row — used when a notification carries an actions
+   array instead of the single action field. Right-aligned to match
+   the single-action layout, with a small gap so the buttons read as a
+   pair (e.g. Accepter / Refuser on the admin pending-user toast). */
+.gk-notif-card__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+/* Secondary action — outline-styled so the reject / cancel half of a
+   pair never reads as the primary CTA. */
+.gk-notif-card__action-btn--secondary {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  color: #1d1d1f;
+}
+.gk-notif-card__action-btn--secondary:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.28);
+}
+html.dark .gk-notif-card__action-btn--secondary {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f5f5f7;
+}
+html.dark .gk-notif-card__action-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
 /* Close button: corner circular pill (macOS style). The side switches
    based on the parent viewport's anchor edge — see the
    .gk-notif-card--close-right modifier — so for a right-anchored

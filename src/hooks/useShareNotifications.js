@@ -49,6 +49,7 @@ function buildHistoryEntry(n) {
   let message = "";
   let variant = n.variant || "info";
   let action = null;
+  let pendingActions = null;
   let icon = n.icon || null;
 
   if (type === "note_shared") {
@@ -85,6 +86,24 @@ function buildHistoryEntry(n) {
     if (type === "note_access_revoked_with_copy" && noteId) {
       action = { label: t("noteSharedAction"), noteId: String(noteId) };
     }
+  } else if (type === "pending_user_registered") {
+    // Admin alert. note_id holds pending_users.id; note_title holds
+    // the registrant's email; sender_name holds the registrant's
+    // display name. Build a multi-action notification so the admin
+    // can approve / reject straight from the panel.
+    const pendingId = n.note_id;
+    const userName = n.sender_name || "";
+    const userEmail = n.note_title || "";
+    title = t("pendingUserNotifTitle");
+    message = t("pendingUserNotifMessage", { name: userName, email: userEmail });
+    variant = "info";
+    icon = icon || "user-clock";
+    if (pendingId != null) {
+      pendingActions = [
+        { label: t("approve"), kind: "approve_pending_user", pendingUserId: pendingId },
+        { label: t("reject"), kind: "reject_pending_user", pendingUserId: pendingId },
+      ];
+    }
   } else if (n.message) {
     // Generic / test notification — use stored fields directly.
     title = n.note_title || null;
@@ -103,6 +122,7 @@ function buildHistoryEntry(n) {
     duration: null,
     dismissible: true,
     action,
+    actions: pendingActions,
     metadata: { serverNotificationId: sid, noteId },
     dismissed: true,
     dismissedAt,
@@ -187,6 +207,40 @@ export function useShareNotifications({ token, userId }) {
         ? { label: t("noteSharedAction"), noteId: String(noteId) }
         : null,
       metadata: { serverNotificationId: id, noteId },
+    });
+  }, []);
+
+  // Pending-user registration alert for admins. Carries the
+  // pending_user_id so the approve / reject actions know which row to
+  // act on; the same id matches what the server stores in note_id,
+  // so the live toast and the history entry are interchangeable
+  // surfaces for the same row.
+  const showPendingUserToast = useCallback((n) => {
+    if (!n) return;
+    const id = n.notificationId ?? n.id;
+    if (id != null) {
+      if (shownIdsRef.current.has(id)) return;
+      shownIdsRef.current.add(id);
+    }
+    const userName = String(n.name ?? n.sender_name ?? "").trim();
+    const userEmail = String(n.email ?? n.note_title ?? "").trim();
+    const pendingId = n.pendingId ?? n.note_id ?? null;
+    const fn = notifyRef.current;
+    if (typeof fn !== "function") return;
+    fn({
+      type: "pending_user_registered",
+      variant: "info",
+      title: t("pendingUserNotifTitle"),
+      message: t("pendingUserNotifMessage", { name: userName, email: userEmail }),
+      icon: "user-clock",
+      dismissible: true,
+      actions: pendingId != null
+        ? [
+            { label: t("approve"), kind: "approve_pending_user", pendingUserId: pendingId },
+            { label: t("reject"), kind: "reject_pending_user", pendingUserId: pendingId },
+          ]
+        : null,
+      metadata: { serverNotificationId: id, pendingUserId: pendingId },
     });
   }, []);
 
@@ -293,6 +347,13 @@ export function useShareNotifications({ token, userId }) {
             n.type === "collaborator_left"
           ) {
             showRevokeToast(payload);
+          } else if (n.type === "pending_user_registered") {
+            showPendingUserToast({
+              notificationId: n.id,
+              pendingId: n.note_id,
+              name: n.sender_name,
+              email: n.note_title,
+            });
           } else if (n.variant || n.message) {
             // Generic persisted notification (test-CLI, future events).
             const fn = notifyRef.current;
@@ -335,9 +396,9 @@ export function useShareNotifications({ token, userId }) {
     return () => {
       cancelled = true;
     };
-  }, [token, userId, showShareToast, showRevokeToast, markDelivered]);
+  }, [token, userId, showShareToast, showRevokeToast, showPendingUserToast, markDelivered]);
 
-  return { showShareToast, showRevokeToast, markDelivered, markRemoved };
+  return { showShareToast, showRevokeToast, showPendingUserToast, markDelivered, markRemoved };
 }
 
 export default useShareNotifications;

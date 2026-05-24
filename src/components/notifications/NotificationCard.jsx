@@ -282,8 +282,15 @@ export default function NotificationCard({
   }, [swipeable]);
 
   if (!notification) return null;
-  const { id, title, message, variant, dismissible, action, createdAt, duration, icon: iconKey } =
+  const { id, title, message, variant, dismissible, action, actions: rawActions, createdAt, duration, icon: iconKey } =
     notification;
+  // Unified action list: prefer the multi-action `actions` field when
+  // present, fall back to the single legacy `action` field. Down the
+  // line each button calls onAction(notification, chosenAction) so the
+  // App-level dispatcher can branch on `chosenAction.kind`.
+  const actionList = Array.isArray(rawActions) && rawActions.length > 0
+    ? rawActions
+    : (action ? [action] : []);
   const klass = VARIANT_CLASS[variant] || VARIANT_CLASS.info;
   const closeKlass =
     closeSide === "right" ? " gk-notif-card--close-right" : "";
@@ -332,14 +339,35 @@ export default function NotificationCard({
             // the flex row when no message is set.
             <div className="gk-notif-card__message" aria-hidden="true" />
           )}
-          {action ? (
+          {actionList.length === 1 ? (
             <button
               type="button"
               className="gk-notif-card__action-btn"
-              onClick={() => onAction && onAction(notification)}
+              onClick={() => onAction && onAction(notification, actionList[0])}
             >
-              {action.label}
+              {actionList[0].label}
             </button>
+          ) : actionList.length > 1 ? (
+            <div className="gk-notif-card__actions">
+              {actionList.map((a, i) => {
+                // The "reject" half of an approve/reject pair (or any
+                // explicit secondary action) renders as a neutral
+                // outline button so the primary CTA reads as default.
+                const secondary =
+                  a.kind === "reject_pending_user" ||
+                  a.variant === "secondary";
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    className={`gk-notif-card__action-btn${secondary ? " gk-notif-card__action-btn--secondary" : ""}`}
+                    onClick={() => onAction && onAction(notification, a)}
+                  >
+                    {a.label}
+                  </button>
+                );
+              })}
+            </div>
           ) : null}
         </div>
       </div>

@@ -555,6 +555,7 @@ export default function App() {
   const {
     notify,
     dismiss: dismissNotification,
+    remove: removeNotification,
     dismissByServerIds: dismissByServerIdsNotif,
     removeByServerIds: removeByServerIdsNotif,
     clear: clearNotifications,
@@ -665,6 +666,7 @@ export default function App() {
   const {
     showShareToast: showShareNotificationToast,
     showRevokeToast: showRevokeNotificationToast,
+    showPendingUserToast,
     markDelivered: markShareNotificationsDelivered,
     markRemoved: markShareNotificationsRemoved,
   } = useShareNotifications({ token, userId: currentUser?.id });
@@ -3233,13 +3235,16 @@ export default function App() {
               removeByServerIdsNotif(msg.ids);
             } else if (msg && msg.type === "pending_user_registered") {
               // Admin notification: a new user is awaiting approval.
+              // Routes through showPendingUserToast so the live toast
+              // carries the same Accepter / Refuser actions as its
+              // history twin (built from the persisted DB row).
               if (currentUserRef.current?.is_admin) {
-                showToast(
-                  t("pendingUserToast", { name: msg.name || msg.email || "" }),
-                  "info",
-                  undefined,
-                  "user-clock",
-                );
+                showPendingUserToast({
+                  notificationId: msg.notificationId,
+                  pendingId: msg.pendingId,
+                  name: msg.name,
+                  email: msg.email,
+                });
                 loadPendingUsers?.();
               }
             } else if (msg && msg.type === "note_access_revoked" && msg.noteId) {
@@ -4421,11 +4426,44 @@ export default function App() {
   // the linked note opens in the modal and the notification is
   // dismissed. Defined as a plain function rather than useCallback so
   // it always closes over the freshest openModal / notes references.
-  const handleNotificationAction = (notif) => {
+  const handleNotificationAction = (notif, chosenAction) => {
     if (!notif) return;
-    const noteId = notif.action?.noteId;
-    if (noteId) {
-      try { openModal(String(noteId)); } catch (_e) {}
+    // Single-action notifications pass `notif.action`; multi-action
+    // ones pass the chosen action explicitly so this dispatcher knows
+    // which button was clicked.
+    const a = chosenAction || notif.action;
+    if (!a) return;
+    if (a.kind === "approve_pending_user" && a.pendingUserId != null) {
+      if (typeof approvePendingUser !== "function") return;
+      approvePendingUser(a.pendingUserId)
+        .then(() => {
+          // Server already broadcasts notification_removed to every
+          // admin so the history entries vanish; explicit remove here
+          // covers the local toast in the same session.
+          removeNotification(notif.id);
+        })
+        .catch((e) => {
+          if (e && /404/.test(String(e.message))) {
+            showToast(t("pendingUserAlreadyHandled"), "warning");
+            removeNotification(notif.id);
+          }
+        });
+      return;
+    }
+    if (a.kind === "reject_pending_user" && a.pendingUserId != null) {
+      if (typeof rejectPendingUser !== "function") return;
+      rejectPendingUser(a.pendingUserId)
+        .then(() => { removeNotification(notif.id); })
+        .catch((e) => {
+          if (e && /404/.test(String(e.message))) {
+            showToast(t("pendingUserAlreadyHandled"), "warning");
+            removeNotification(notif.id);
+          }
+        });
+      return;
+    }
+    if (a.noteId) {
+      try { openModal(String(a.noteId)); } catch (_e) {}
       dismissNotification(notif.id);
     }
   };
