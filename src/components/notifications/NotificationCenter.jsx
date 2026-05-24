@@ -27,7 +27,7 @@ export default function NotificationCenter({
   // standalone use of the component in tests / future panes).
   onClearAll,
 }) {
-  const { notifications, remove, dismissAll, clear } = useNotifications();
+  const { notifications, remove, clear } = useNotifications();
   const handleClearAll = onClearAll || clear;
   const panelRef = useRef(null);
   // Used by the pointerdown handler below — same pattern as NotesHeader's
@@ -92,10 +92,43 @@ export default function NotificationCenter({
     };
   }, [open, onClose, anchor]);
 
-  if (!open || typeof document === "undefined") return null;
-
+  // Compute isMobile up here so the body-scroll-lock effect below can
+  // depend on it. Same value used to pick the sheet layout further down.
   const isMobile =
-    typeof window !== "undefined" && window.innerWidth < SHEET_BREAKPOINT_PX;
+    open &&
+    typeof window !== "undefined" &&
+    window.innerWidth < SHEET_BREAKPOINT_PX;
+
+  // Mobile body-scroll lock — the panel covers the screen, but without
+  // an explicit lock on body the underlying notes view can still
+  // intercept horizontal swipes started on empty panel area (the
+  // touch-action of body cascades into the touch resolution). Setting
+  // touchAction:pan-y allows vertical scrolling inside the list (the
+  // list keeps its own overflow-y:auto) while blocking everything else
+  // — page swipes, native drag-and-drop, pull-to-refresh.
+  useEffect(() => {
+    if (!isMobile) return undefined;
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      bodyTouchAction: body.style.touchAction,
+      bodyOverscroll: body.style.overscrollBehavior,
+    };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.touchAction = "pan-y";
+    body.style.overscrollBehavior = "contain";
+    return () => {
+      html.style.overflow = prev.htmlOverflow;
+      body.style.overflow = prev.bodyOverflow;
+      body.style.touchAction = prev.bodyTouchAction;
+      body.style.overscrollBehavior = prev.bodyOverscroll;
+    };
+  }, [isMobile]);
+
+  if (!open || typeof document === "undefined") return null;
 
   // Desktop: anchor under the bell button. Mobile: full-screen sheet
   // — covers the entire viewport (minus safe-area insets) so the panel
@@ -114,6 +147,11 @@ export default function NotificationCenter({
       // floating card.
       borderRadius: 0,
       border: "none",
+      // Vertical scroll inside the list is fine; everything else — page
+      // swipes, native drag, horizontal pull — must not bleed through to
+      // the notes view when the panel is empty.
+      touchAction: "pan-y",
+      overscrollBehavior: "contain",
     };
   } else if (anchor && typeof anchor.getBoundingClientRect === "function") {
     const r = anchor.getBoundingClientRect();
@@ -145,7 +183,6 @@ export default function NotificationCenter({
   }
 
   const hasAny = notifications.length > 0;
-  const hasActive = notifications.some((n) => !n.dismissed);
 
   const node = (
     <div ref={panelRef} className="gk-notif-center" style={style} role="dialog" aria-label={t("notificationCenterTitle")}>
@@ -154,15 +191,6 @@ export default function NotificationCenter({
           {t("notificationCenterTitle")}
         </h2>
         <div className="gk-notif-center__header-actions">
-          {hasActive ? (
-            <button
-              type="button"
-              className="gk-notif-center__header-btn"
-              onClick={() => dismissAll()}
-            >
-              {t("notificationsMarkAllRead")}
-            </button>
-          ) : null}
           {hasAny ? (
             <button
               type="button"

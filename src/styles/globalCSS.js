@@ -3899,6 +3899,40 @@ html.dark .gk-notif-card--error {
   --gk-notif-glow-bleed: rgba(239, 68, 68, 0.60);
 }
 
+/* Auto-dismiss countdown bar — only rendered on floating toasts that
+   have a finite duration. The fill's animation-duration is set inline
+   from the notification's actual duration so it always finishes at
+   the exact moment the provider's timer fires. */
+.gk-notif-card__countdown {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 1;
+}
+.gk-notif-card__countdown-fill {
+  position: absolute;
+  inset: 0;
+  background: var(--gk-notif-accent, #6366f1);
+  opacity: 0.7;
+  transform-origin: left center;
+  animation-name: gkNotifCountdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes gkNotifCountdown {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+html.dark .gk-notif-card__countdown {
+  background: rgba(255, 255, 255, 0.10);
+}
+
 /* All variants render a filled Tabler glyph in the accent colour,
    with no coloured chip background — the icon itself carries the
    variant identity. The icon slot stays at 30×30 so the body lines

@@ -282,7 +282,7 @@ export default function NotificationCard({
   }, [swipeable]);
 
   if (!notification) return null;
-  const { id, title, message, variant, dismissible, action, createdAt, icon: iconKey } =
+  const { id, title, message, variant, dismissible, action, createdAt, duration, icon: iconKey } =
     notification;
   const klass = VARIANT_CLASS[variant] || VARIANT_CLASS.info;
   const closeKlass =
@@ -291,6 +291,12 @@ export default function NotificationCard({
   const swipeKlass = swipeable ? " gk-notif-card--swipeable" : "";
   const time = formatRelativeTime(createdAt);
   const headline = title || fallbackTitle(variant);
+  // Countdown bar — only on floating toasts (not in the history panel,
+  // which uses `compact`) with a finite auto-dismiss duration. Drawn
+  // imperatively by a CSS animation whose duration matches the
+  // provider's auto-dismiss timer so they finish together.
+  const showCountdown =
+    !compact && typeof duration === "number" && duration > 0;
 
   const card = (
     <div
@@ -337,6 +343,14 @@ export default function NotificationCard({
           ) : null}
         </div>
       </div>
+      {showCountdown ? (
+        <div className="gk-notif-card__countdown" aria-hidden="true">
+          <div
+            className="gk-notif-card__countdown-fill"
+            style={{ animationDuration: `${duration}ms` }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 

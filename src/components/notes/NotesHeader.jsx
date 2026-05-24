@@ -191,11 +191,15 @@ export default function NotesHeader({
             )}
           </div>
 
-          {/* Desktop: inline name + separator + badge */}
-          <h1 className={`${desktopOnlyBlock} text-2xl sm:text-3xl font-bold`}>
+          {/* Desktop: inline name + separator + badge. The "Glass Keep"
+              wordmark is gated at xl: so on 1024-px-wide tablet viewports
+              the title + section badge combo doesn't squeeze the search
+              input down to a few characters ("Reche..."). The section
+              badge is the more informative anchor of the two and stays. */}
+          <h1 className={`hidden xl:block text-2xl sm:text-3xl font-bold ${isLandscapeMobile ? "!hidden" : ""}`}>
             Glass Keep
           </h1>
-          <span className={`${desktopOnlyInline} h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1`} />
+          <span className={`hidden xl:inline-block h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1 ${isLandscapeMobile ? "!hidden" : ""}`} />
           <span className={`${desktopOnly} text-base font-medium px-3 py-1 rounded-lg bg-indigo-600/10 text-indigo-700 dark:text-indigo-300 border border-indigo-600/20 items-center gap-1.5 max-w-[200px]`}>
             <span className="shrink-0 w-4 h-4 [&>svg]:w-4 [&>svg]:h-4"><SectionIcon /></span>
             <span className="truncate">{sectionLabel}</span>
@@ -207,8 +211,11 @@ export default function NotesHeader({
           )}
         </div>
 
-        {/* Desktop: full search bar */}
-        <div className={`${desktopOnly} flex-grow min-w-0 justify-center px-2 sm:px-8`}>
+        {/* Desktop: full search bar. Padding ladder: tight on tablet
+            widths (sm/lg) so the input has room for the full
+            "Rechercher ou demander à l'IA" placeholder, generous at xl+
+            where the layout has space again. */}
+        <div className={`${desktopOnly} flex-grow min-w-0 justify-center px-2 xl:px-8`}>
           <div className="relative w-full max-w-lg">
             <input
               type="text"
