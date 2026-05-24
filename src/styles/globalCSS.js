@@ -4382,6 +4382,13 @@ html.dark .gk-notif-center__close:hover { background: rgba(255,255,255,0.08); }
 .gk-notif-center__item--swipeable {
   animation: gkNotifIn 220ms cubic-bezier(.22,.61,.36,1) both;
 }
+/* In swipe mode the "dismissed = faded" indicator is meaningless:
+   opening the bell auto-dismisses every notification, so without this
+   rule the entire panel would render at 55 % opacity on first open.
+   Per-item removal happens via swipe in this mode anyway. */
+.gk-notif-center__item--swipeable.is-dismissed .gk-notif-card {
+  opacity: 1;
+}
 
 /* ───────── Swipe-to-dismiss wrapper ─────────
    Visible only on mobile inside the NotificationCenter. The wrapper
