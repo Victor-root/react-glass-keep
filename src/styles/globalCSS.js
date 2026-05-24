@@ -4555,7 +4555,7 @@ html.dark .gk-notif-bell-dot {
   z-index: 75;
   color: #1d1d1f;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.94);
+  background: #f9f6ff;
   border: 1px solid rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
