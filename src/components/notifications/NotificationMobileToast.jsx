@@ -255,6 +255,19 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
   // notifications array but the burst snapshot keeps cycling. If we
   // killed the burst on "no active notif", a stray provider timer or
   // a desktop session's SSE broadcast would close the pill mid-cycle.
+
+  // End the burst when the user opens the notification centre. The
+  // bell handler also dismissAll()-s, so the queue is already
+  // visually moved to the panel — keeping the snapshot cycling in
+  // the background would have it pop back as a pill the moment the
+  // user closes the panel. setBurst(null) drops the snapshot so
+  // closing the panel reveals nothing (until a fresh notif arrives).
+  useEffect(() => {
+    if (suppressed && burst != null) {
+      dlog("burst-end (panel opened)", `was slice=${burst.slice}`);
+      setBurst(null);
+    }
+  }, [suppressed, burst]);
   // Start burst (with settling) when one isn't running and there's
   // an eligible notif on screen. The settling timer restarts every
   // time the effect re-runs (new arrival), so its callback fires
