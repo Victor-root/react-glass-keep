@@ -183,6 +183,7 @@ export default function NotificationMobileToast({ onAction }) {
   if (!current || !visible) return null;
 
   const { Comp, filled } = pickGlyph(current);
+  const stacked = current.actionLayout === "below" && !!current.action;
   const handleTap = () => {
     setVisible(false);
     remove(current.id);
@@ -196,7 +197,7 @@ export default function NotificationMobileToast({ onAction }) {
 
   const node = (
     <div
-      className={`gk-mobile-toast gk-mobile-toast--${current.variant || "info"}`}
+      className={`gk-mobile-toast gk-mobile-toast--${current.variant || "info"}${stacked ? " gk-mobile-toast--stacked" : ""}`}
       role="status"
       onClick={handleTap}
     >

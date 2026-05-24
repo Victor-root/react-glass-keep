@@ -4419,6 +4419,45 @@ html.dark .gk-mobile-toast__action:active { background: rgba(255, 255, 255, 0.14
   to   { opacity: 1; transform: translate(-50%, 0);    }
 }
 
+/* Stacked layout — opt-in via actionLayout:"below" on the notification.
+   The default single-row pill crushes a long title + a wide CTA into
+   ellipsis territory; this variant gives the message full width and
+   pushes the action button onto its own row underneath. Also widens
+   the pill (capped at the safe-zone width) so the message wraps over
+   fewer lines. */
+.gk-mobile-toast--stacked {
+  width: min(420px, calc(100vw - 24px));
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "icon body"
+    ".    action";
+  align-items: start;
+  row-gap: 8px;
+  column-gap: 11px;
+  padding: 12px 14px;
+}
+.gk-mobile-toast--stacked .gk-mobile-toast__icon  { grid-area: icon; margin-top: 1px; }
+.gk-mobile-toast--stacked .gk-mobile-toast__body  { grid-area: body; }
+.gk-mobile-toast--stacked .gk-mobile-toast__action {
+  grid-area: action;
+  justify-self: end;
+  padding: 6px 12px;
+  margin-right: -4px;
+  font-size: 13px;
+}
+/* Title can wrap (no ellipsis truncation) and message gets full lines. */
+.gk-mobile-toast--stacked .gk-mobile-toast__title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.gk-mobile-toast--stacked .gk-mobile-toast__message {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+}
+
 /* Bell + badge */
 .gk-notif-bell-badge {
   position: absolute;
