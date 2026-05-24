@@ -273,6 +273,12 @@ const RichTextEditor = forwardRef(function RichTextEditor(
     }
     editor.commands.setContent(incomingDoc, { emitUpdate: false });
     lastAppliedRef.current = value;
+    // Track what the editor now holds so the fast-path "parent echoed our
+    // doc back" check on the next value change reflects reality. Without
+    // this, after an external setContent (undo/redo, server patch) the ref
+    // still pointed at the user's last typed doc, and re-applying that same
+    // doc through redo was treated as an echo and silently skipped.
+    lastEmittedRef.current = incomingDoc;
   }, [editor, value]);
 
   useEffect(() => {
