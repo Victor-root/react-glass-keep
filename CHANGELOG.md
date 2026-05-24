@@ -39,6 +39,10 @@ Headline change: a **completely rewritten in-app notification system**. Every to
 
 ### 🛠️ Upgrade
 
+> **Si vous êtes sur v2.3.5 ou supérieur**, la mise à jour se fait directement depuis l'application (Paramètres → Application → Vérifier les mises à jour).
+
+> **Si vous êtes en dessous de v2.3.5**, utilisez la commande ci-dessous :
+
 **Native install:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Victor-root/glasskeep-enhanced/main/install.sh | sudo bash
