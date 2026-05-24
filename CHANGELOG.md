@@ -24,11 +24,6 @@ Headline change: a **completely rewritten in-app notification system**. Every to
 - 📲 **Mobile single-tap arms code-block / inline-code copy** — touch devices used to need a long-press or two taps; one tap now arms the copy button, which auto-hides after 5 s if not used
 
 ### 🐛 Fixed
-- 🔁 **Double notification when removing a collaborator** — the action fired a local "Removed successfully" toast *and* the SSE-driven revoke toast simultaneously. Local toast dropped — the SSE version is more detailed and handles both sides
-- ⏱ **Test notifications no longer disappear immediately on arrival** — the SSE handler used to mark the row delivered as soon as it arrived, which prompted the server to broadcast a cross-device dismiss that erased the card within ~10 ms on localhost. Delivery ack is now deferred to the natural resolution moment (X click, auto-dismiss expiry, or bell open)
-- ⌛ **Share / revoke notifications respect the user's duration preference** — these were hardcoded `persistent: true` and ignored the 10 s default. Now they follow the global pref like every other notification
-- ✅ **X click and auto-dismiss now ack the server** — closing a card via X (or letting it auto-dismiss) used to leave the row marked "pending" forever, so the same notification replayed on every reload until the user opened the bell. Every "user resolved this" path now acks the server with a deduped POST
-- 🪟 **Cross-device "Clear all" preserves local toasts** — the `notifications_cleared` SSE used to wipe the entire local notification array on every device, including in-app UI toasts that never hit the database. The handler now only drops server-backed rows
 - 🤫 **No more autofocus on existing untitled notes** — opening a note titled "(no title)" used to drop the cursor into the body editor as if it were a new note. Cursor placement now matches saved notes regardless of title
 - 🔗 **Tapping a link in a note no longer pops the mobile keyboard** — iOS / Android Chrome were focusing the underlying ProseMirror surface on the same touch event that fired the link. Capture-phase guards now block the focus while letting the link navigate through
 - 🧩 **Inline-code copy button styled and positioned correctly** — light-mode text colour aligned with the block variant, code spans no longer flagged for spellcheck on mobile
