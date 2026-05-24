@@ -165,15 +165,42 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
   // in the past for notifs that sat queued behind earlier ones).
   const displayStartRef = useRef(0);
 
+  // ── Burst snapshot ────────────────────────────────────────────────
+  // burst is the FROZEN rotation for the current run. Captured at
+  // settle (= 100 ms after the last arrival of the burst) and used
+  // as the single authority for which notif is on screen and when
+  // to advance. The cycler increments burst.cursor, not the provider
+  // state — so external dismissals from a desktop session's SSE
+  // broadcast (notification_delivered for a notif desktop's bar just
+  // finished on) can no longer cut a mobile notif short mid-slice.
+  //
+  //   { ids: string[], cursor: number, slice: number }
+  //
+  // null between bursts.
+  const [burst, setBurst] = useState(null);
+
+  // Pick current. Inside a burst, the cursor points at the id we
+  // display, EVEN IF it's been marked dismissed externally — the
+  // cycler is the only thing allowed to advance the cursor. Outside
+  // a burst we fall back to sticky displayedIdRef + first active
+  // (handles persistent notifs and the brief settling window before
+  // the first burst snapshot is taken).
   let current = null;
   let pickReason = "none";
-  if (displayedIdRef.current != null) {
-    const sticky = notifications.find(
-      (n) => n.id === displayedIdRef.current && !n.dismissed,
-    );
-    if (sticky) {
-      current = sticky;
-      pickReason = "sticky";
+  if (burst && burst.ids[burst.cursor]) {
+    const id = burst.ids[burst.cursor];
+    current = notifications.find((n) => n.id === id) || null;
+    if (current) pickReason = "burst-cursor";
+  }
+  if (!current) {
+    if (displayedIdRef.current != null) {
+      const sticky = notifications.find(
+        (n) => n.id === displayedIdRef.current && !n.dismissed,
+      );
+      if (sticky) {
+        current = sticky;
+        pickReason = "sticky";
+      }
     }
   }
   if (!current) {
@@ -196,32 +223,45 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
       displayedIdRef.current = null;
       displayStartRef.current = 0;
     }
+  } else if (
+    burst &&
+    current &&
+    current.id !== displayedIdRef.current
+  ) {
+    // Burst cursor moved to a new id (cycler advanced). Update the
+    // sticky tracker and stamp display start so the bar's
+    // animation-delay anchor is fresh for this slot.
+    const prev = displayedIdRef.current;
+    displayedIdRef.current = current.id;
+    displayStartRef.current = Date.now();
+    dlog(
+      "display-start",
+      `id=…${current.id.slice(-4)}`,
+      `prev=${prev ? "…" + prev.slice(-4) : "null"}`,
+      `t=${displayStartRef.current - __gkn_t0}ms`,
+    );
   }
 
-  // ── Burst-slice snapshot ───────────────────────────────────────────
-  // burstSlice is the FROZEN per-notif display duration for the
-  // current burst. Captured at burst start (= when active count
-  // transitions 0 → ≥1) after a short 100 ms settling window so
-  // SSE arrivals that fire in separate task ticks group into the
-  // same snapshot. Stays the same for every notif in the burst —
-  // no live `remaining / queueCount` recalc. Reset to null when
-  // the burst exhausts (no more active notifs).
-  const [burstSlice, setBurstSlice] = useState(null);
+  // burstSlice derived from burst object — keeps the rest of the
+  // component (bar duration, cycler, layout effect) reading from
+  // a single field.
+  const burstSlice = burst ? burst.slice : null;
+
   // End burst when nothing's active anymore.
   useEffect(() => {
     const anyActive = notifications.some((n) => !n.dismissed);
-    if (!anyActive && burstSlice != null) {
-      dlog("burst-end (no active notif), was slice=", burstSlice);
-      setBurstSlice(null);
+    if (!anyActive && burst != null) {
+      dlog("burst-end (no active notif), was slice=", burst.slice);
+      setBurst(null);
     }
-  }, [notifications, burstSlice]);
+  }, [notifications, burst]);
   // Start burst (with settling) when one isn't running and there's
   // an eligible notif on screen. The settling timer restarts every
   // time the effect re-runs (new arrival), so its callback fires
   // 100 ms after the LAST arrival — that's when we snapshot the
   // queue size.
   useEffect(() => {
-    if (burstSlice != null) return undefined;
+    if (burst != null) return undefined;
     if (hasAndroidBridge()) return undefined;
     if (!current) return undefined;
     const dur = current.duration;
@@ -232,40 +272,44 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
     dlog("burst-settle scheduled (100ms)", `seed=…${current.id.slice(-4)}`, `dur=${dur}`);
     const h = setTimeout(() => {
       const fresh = notificationsRef.current;
-      const queueSize = fresh.reduce(
-        (acc, n) => (n.dismissed ? acc : acc + 1),
-        0,
-      );
-      if (queueSize <= 0) {
-        dlog("burst-settle fired but queueSize=0, abort");
+      // Snapshot ids in chronological order (notifications is
+      // newest-first, reverse for FIFO display).
+      const eligibleIds = [];
+      for (let i = fresh.length - 1; i >= 0; i--) {
+        const n = fresh[i];
+        if (n.dismissed) continue;
+        if (n.persistent || typeof n.duration !== "number" || n.duration <= 0) continue;
+        eligibleIds.push(n.id);
+      }
+      if (eligibleIds.length === 0) {
+        dlog("burst-settle fired but eligible=0, abort");
         return;
       }
       const slice =
-        queueSize > 1
-          ? Math.max(800, Math.floor(dur / queueSize))
+        eligibleIds.length > 1
+          ? Math.max(800, Math.floor(dur / eligibleIds.length))
           : dur;
       dlog(
         "burst-settle fired",
-        `queueSize=${queueSize}`,
+        `queueSize=${eligibleIds.length}`,
         `dur=${dur}`,
         `slice=${slice}ms`,
       );
       // Take ownership of every notif we're about to rotate
       // through: cancel each one's provider auto-dismiss timer so
-      // it can't fire mid-burst and kill a notif before the cycler
-      // reaches it. Only affects THIS session — desktop / other
-      // tabs of the same user have their own provider and timers.
+      // it can't fire mid-burst. Combined with the snapshot below
+      // ignoring the dismissed flag, this insulates the mobile
+      // cycle from external dismissals (provider timer OR SSE
+      // notification_delivered from a desktop session's bar end).
       if (cancelAutoDismiss) {
         let cancelled = 0;
-        for (const n of fresh) {
-          if (n.dismissed) continue;
-          if (n.persistent || typeof n.duration !== "number" || n.duration <= 0) continue;
-          cancelAutoDismiss(n.id);
+        for (const id of eligibleIds) {
+          cancelAutoDismiss(id);
           cancelled++;
         }
         dlog("burst-take-ownership", `cancelled=${cancelled} provider timer(s)`);
       }
-      setBurstSlice(slice);
+      setBurst({ ids: eligibleIds, cursor: 0, slice });
     }, 100);
     return () => {
       clearTimeout(h);
@@ -273,10 +317,10 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
     // notifications is in the dep array on purpose: the settle
     // timer must restart on every new arrival so it fires 100ms
     // after the LAST arrival of the burst, not 100ms after the
-    // first. Once burstSlice is set, the early return at the top
-    // makes subsequent re-runs cheap no-ops.
+    // first. Once burst is set, the early return at the top makes
+    // subsequent re-runs cheap no-ops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [burstSlice, current?.id, notifications]);
+  }, [burst, current?.id, notifications]);
 
   useEffect(() => {
     if (current && current.id !== lastIdRef.current) {
@@ -298,31 +342,51 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
-  // Cycler — dismisses the displayed notification after burstSlice ms.
-  // Anchored on displayStartRef so remaining time is measured from the
-  // moment the notif became visible, not from when the effect runs
-  // (which can be a frame or two later because of React batching).
+  // Cycler — advances the burst cursor after burstSlice ms. Anchored
+  // on displayStartRef so remaining time is measured from the moment
+  // the notif became visible. On fire we:
+  //   1. dismissLocal the leaving notif (idempotent if already
+  //      dismissed externally — provider's dispatch DISMISS no-ops on
+  //      already-dismissed rows).
+  //   2. advance burst.cursor; setBurst(null) when the snapshot is
+  //      exhausted.
+  // Provider state changes on the displayed id (e.g. SSE-driven
+  // DISMISS_BY_SERVER_IDS from a desktop session's bar end) do NOT
+  // affect the cycler because current is picked from burst.ids[cursor]
+  // unconditionally.
   useEffect(() => {
     if (!current || hasAndroidBridge()) return undefined;
-    if (!burstSlice || burstSlice <= 0) return undefined;
+    if (!burst) return undefined;
+    if (!burst.slice || burst.slice <= 0) return undefined;
     const elapsed = Date.now() - displayStartRef.current;
-    const remaining = Math.max(0, burstSlice - elapsed);
+    const remaining = Math.max(0, burst.slice - elapsed);
+    const id = current.id;
     dlog(
       "cycler-set",
-      `id=…${current.id.slice(-4)}`,
-      `burstSlice=${burstSlice}`,
+      `id=…${id.slice(-4)}`,
+      `cursor=${burst.cursor}/${burst.ids.length - 1}`,
+      `burstSlice=${burst.slice}`,
       `elapsedSinceDisplay=${elapsed}`,
       `remaining=${remaining}`,
     );
     const h = setTimeout(() => {
-      dlog("cycler-fire → dismissLocal", `id=…${current.id.slice(-4)}`);
-      dismissLocal(current.id);
+      dlog("cycler-fire → advance", `id=…${id.slice(-4)}`);
+      dismissLocal(id);
+      setBurst((b) => {
+        if (!b) return null;
+        const next = b.cursor + 1;
+        if (next >= b.ids.length) {
+          dlog("burst exhausted at cursor", b.cursor);
+          return null;
+        }
+        return { ...b, cursor: next };
+      });
     }, remaining);
     return () => {
-      dlog("cycler-cleanup", `id=…${current.id.slice(-4)}`);
+      dlog("cycler-cleanup", `id=…${id.slice(-4)}`);
       clearTimeout(h);
     };
-  }, [current?.id, burstSlice, dismissLocal]);
+  }, [current?.id, burst, dismissLocal]);
 
   const showCountdown = !!(burstSlice && burstSlice > 0 && current);
   const countdownFillRef = useRef(null);
