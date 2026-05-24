@@ -193,7 +193,7 @@ export default function QrScannerModal({ open, onClose, token, showToast }) {
     try {
       await approveDeviceLink(linkToken, token);
       setPhase(PHASES.done);
-      if (showToast) showToast(t("qrScanApproved"), "success");
+      if (showToast) showToast(t("qrScanApproved"), "success", undefined, "qr");
       // Hand the user a brief confirmation animation, then close.
       setTimeout(() => { onClose?.(); }, 900);
     } catch (e) {

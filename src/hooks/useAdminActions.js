@@ -78,10 +78,17 @@ export default function useAdminActions(token, { onSettingsUpdated } = {}) {
 
   const deleteUser = async (userId) => {
     try {
-      await api(`/admin/users/${userId}`, { method: "DELETE", token });
+      // The server returns `{ ok, deletedUser: { id, name, email } }`
+      // so the caller can confirm the deletion to the user (success
+      // toast) with the exact name/email the server saw. UI state is
+      // only mutated AFTER the server confirms — no optimistic
+      // removal, no faux success.
+      const resp = await api(`/admin/users/${userId}`, { method: "DELETE", token });
       setAllUsers((prev) => prev.filter((u) => u.id !== userId));
+      return resp?.deletedUser || null;
     } catch (e) {
       alert(localizeServerError(e.message, "failedDeleteUser"));
+      throw e;
     }
   };
 

@@ -30,8 +30,8 @@ android {
         applicationId = "com.glasskeep.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.3.0"
+        versionCode = 7
+        versionName = "1.4.0"
     }
 
     signingConfigs {
@@ -85,10 +85,29 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig is opt-in on AGP 8+. The self-update flow reads
+        // BuildConfig.VERSION_NAME to compare against the latest APK
+        // asset on GitHub Releases.
+        buildConfig = true
     }
 
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.8"
+    }
+
+    // Rename the output APK so Android Studio's Build → Build Bundle(s) /
+    // APK(s) → Build APK(s) drops a "GlassKeep-v<versionName>.apk" file
+    // (debug builds get a "-debug" suffix) instead of the default
+    // "app-release.apk" / "app-debug.apk". Matches the asset naming
+    // convention the in-app self-updater scans for on GitHub Releases,
+    // so the APK uploaded to a release is already named correctly.
+    applicationVariants.all {
+        val variant = this
+        outputs.forEach { output ->
+            val suffix = if (variant.buildType.name == "debug") "-debug" else ""
+            (output as com.android.build.gradle.internal.api.BaseVariantOutputImpl)
+                .outputFileName = "GlassKeep-v${variant.versionName}${suffix}.apk"
+        }
     }
 }
 

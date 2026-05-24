@@ -1,8 +1,68 @@
 # 📋 Changelog
 
+## 🚀 v2.4.0 — 2026-05-24
+
+Headline change: a **completely rewritten in-app notification system**. Every toast, error, share alert and admin event now flows through a single provider, renders as a premium LED-neon card in the floating viewport, and shows up in a new **Notification Center** panel (bell icon in the header) with full cross-device history sync over SSE. The release also lands actionable admin notifications (approve / refuse pending registrations, deletion confirmations), live cross-session sync of user settings, a mobile Notification Center with swipe-to-dismiss, a collaboration-notification pass (owners get told when collaborators walk away), an editor paste/copy polish pass, a **"Read mode for notes"** opt-out, and a major Android app maturity pass (in-app APK self-updater, first-launch welcome screen, F-Droid-aware build).
+
+### ➕ Added
+- 🔔 **Centralised notification system** — a new context provider replaces the legacy toast layer. One `notify({ variant, title, message, icon, action, persistent })` call surfaces a floating card with a 2.5 px LED-style border in the variant colour (info=blue / success=green / warning=amber / error=red), a tinted background, the right Tabler icon, and an optional inline action button
+- 🪟 **Notification Center panel** — bell icon in the header shows an unread badge and opens a neutral glass panel listing the full history with per-row actions, per-row delete, and a single **"Clear all"** button. Closing the bell hides the floating stack so the panel becomes the single source of truth
+- ⏳ **Countdown bar on temporary notifications** — auto-dismissing cards now show a full-width bottom-edge progress bar in the notification's variant colour, synced with the remaining display time
+- 📱 **Mobile Notification Center with swipe-to-dismiss** — the panel goes full-screen on mobile, the device back button closes it, and individual cards can be swiped away
+- 📡 **Cross-device history sync over SSE** — the notification history is stored server-side and replayed on every device. Opening the bell, deleting a row or clicking "Clear all" syncs across all open sessions; history also survives sign-out / sign-in cycles without duplicating cards
+- ⚙️ **Notifications settings section** — dedicated panel for position (top-left / center / right + bottom variants), default duration (5 s / 10 s / 20 s / 30 s / persistent), master sound toggle and **per-category sound opt-outs** (share / access / success / warning / error / info) with a distinct icon per category
+- 🔁 **Live cross-session sync of user settings** — preferences changed in one tab or device propagate over SSE to every other open session in real time, no reload required
+- 🛂 **Approve / Refuse from admin pending-registration notifications** — when a new user signs up, admins get a notification with inline **Approve** and **Refuse** actions so the decision can be made without opening the admin panel
+- 🗑️ **Real confirmation when deleting a user (admin)** — admin user deletion now goes through a proper confirmation flow instead of a single click
+- 📣 **Admin notification when a user is deleted** — admins receive a notification whenever an account is removed, so the action is visible across the team
+- 🔓 **"Open" action on retained copies after access removal** — when a note owner revokes your access but lets you keep a personal copy, the notification now exposes a direct **Open** button to jump to that copy
+- 🤝 **Collaboration notifications** — the four-state revoke message (with / without copy, ex-collaborator side / owner side) plus a brand-new **"X left this note"** toast for the owner when a collaborator walks away (either by removing themselves in the collaboration modal or by deleting their copy from their own list)
+- 📋 **Paste-mode preference** — Settings toggle to make Ctrl+V always paste as plain text, with the Plain / Formatted choice stacked under the relevant description
+- 👁 **"Read mode for notes" toggle** — when off, text and drawing notes open directly in edit mode and the read/edit button is hidden from the modal footer; ideal for users who edit far more often than they re-read. Default stays on so existing users keep the read-by-default behaviour. Saved server-side, applied across all your devices
+- 🪟 **Collapsible categories** in the Settings and Admin panels — open/closed state per category persisted in `localStorage` and synced via `PATCH /user/settings`
+- 📐 **Configurable sidebar breakpoint** — the "Always show sidebar on wide screens" threshold is now a 5-preset dropdown (Tablet → Desktop, default 1280 px) instead of the hard-coded 700 px
+- 🔄 **In-app APK self-updater** (APK 1.4.0+) — background check against GitHub Releases on cold start, throttled to one network call every 12 h. When a newer APK is published a heads-up notification fires; tapping downloads the file silently into the app's cache and hands it to Android's native install dialog
+- ⚙️ **Manual "Check for updates" in Settings → Application** — bypasses the throttle, shows the installed APK version, and surfaces a themed in-app card with Download / Later actions when an update is detected
+- 👋 **First-launch welcome screen** — explains why the Android app asks for each OS permission (microphone, camera, notifications, install unknown apps) with a per-card Grant / Granted ✓ / Refused ✗ status. Sits in a 2-step swipeable pager next to the existing server-URL setup screen
+- 🌐 **F-Droid-aware single APK** — runtime detection disables the in-app updater on F-Droid installs and replaces the Settings Application section with a one-tap "Open F-Droid" shortcut that lands the user on the GlassKeep page. The welcome screen also hides the install-unknown-apps and notifications cards F-Droid users don't need
+- 📦 **APK filename auto-versioned** — Android Studio's Build → Build APK(s) now produces `GlassKeep-v<versionName>.apk` directly, matching the asset name the in-app updater scans for on GitHub Releases
+
+### 🔄 Changed
+- 📲 **Mobile single-tap arms code-block / inline-code copy** — touch devices used to need a long-press or two taps; one tap now arms the copy button, which auto-hides after 5 s if not used
+
+### 🐛 Fixed
+- 🔢 **Ordered-list counter resets correctly** — a numbered list that follows a real paragraph break restarts at 1 instead of continuing the previous list's numbering
+- ☑️ **Checklist placeholder no longer italic** — the empty-row placeholder in checklists renders in the regular note style instead of italics
+- 📝 **Cleaner rich-text → plain-text copy** — copying from the editor no longer injects large blank gaps in the plain-text output: HTML is stripped for code-block selections, bare `<li>` items are re-wrapped, and line breaks survive paste-back
+- 🧰 **Rich-text toolbar stays on one line for long notes** — the toolbar no longer wraps just because a long note adds a vertical scrollbar; its width is stabilised so layout doesn't shift between short and long notes
+- 🤫 **No more autofocus on existing untitled notes** — opening a saved note with no title used to drop the cursor into the body editor as if it were a new note. Cursor placement now matches saved notes regardless of title
+- 🔗 **Tapping a link in a note no longer pops the mobile keyboard** — iOS / Android Chrome were focusing the underlying ProseMirror surface on the same touch event that fired the link. Capture-phase guards now block the focus while letting the link navigate through
+- 🎨 **Empty drawing drafts and accidental taps ignored** — stray single taps on the drawing canvas no longer create empty drawing notes
+- 🧷 **Hidden accordion content marked `aria-hidden` + `inert`** so screen readers and Tab navigation skip it
+- ↩️ **Redo restores edits after autosave** — once a note had been autosaved (green check in the modal header), pressing Redo right after an Undo silently kept the undone content on screen. The rich-text editor's echo-prevention ref was left pointing at the user's last typed doc after an external `setContent`, so the redone value was treated as a self-echo and skipped. The ref now tracks what's actually installed in the editor, so redo applies the snapshot every time
+- 📱 **Mobile scroll FPS lift on the notes list** — dropped the per-card backdrop blur on touch devices, memoised the masonry card render, and added `loading="lazy"` to inline note images. The desktop glass aesthetic stays unchanged
+
+### 🛠️ Upgrade
+
+> **If you're on v2.3.5 or above**, the update can be triggered directly from the app (Settings → Application → Check for updates).
+
+> **If you're below v2.3.5**, use the command matching your install:
+
+**Native install:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/Victor-root/glasskeep-enhanced/main/install.sh | sudo bash
+```
+
+**Docker:**
+```bash
+docker compose pull && docker compose up -d
+```
+
 ## 🚀 v2.3.7 — 2026-05-18
 
 This release brings **passkey support to the native Android app** — fingerprint, face unlock, hardware security keys and password managers (Google Password Manager, 1Password, Bitwarden…) now work from inside the APK the same way they do in a browser. Full setup guide and the reverse-proxy edge cases live in [`PASSKEYS.md`](./PASSKEYS.md).
+
+> ⚠️ **Both sides must be on v2.3.7+** — the Android features in this release (passkeys + cross-device QR sign-in) rely on new server endpoints. Update the server **and** install APK `1.3.0+` on every device that should benefit from them. Running APK `1.3.0` against an older server (or the new server against an older APK) will silently fall back to password-only login.
 
 ### ➕ Added
 - 📱 **Cross-device QR sign-in** — log in on a borrowed PC without typing your password. The login screen now has a "Sign in with a QR code" button; the GlassKeep app on a phone you're already signed in on can scan it (Settings → "Sign in another device"), show a confirmation card with the PC's browser / IP, and approve. The PC's poll picks up a fresh JWT a couple of seconds later. Single-use 2-minute tokens, origin-bound (the phone refuses to approve QRs that point at a different GlassKeep instance), and approval requires the phone to be authenticated — a stolen QR alone gets you nothing

@@ -25,4 +25,29 @@
     <string name="shortcut_new_checklist_long">Nouvelle liste</string>
     <string name="shortcut_new_audio_short">Note audio</string>
     <string name="shortcut_new_audio_long">Nouvelle note audio</string>
+
+    <string name="update_notification_channel">Mises à jour</string>
+    <string name="update_notification_title">Mise à jour GlassKeep disponible</string>
+    <string name="update_notification_text">Version %1$s — toucher pour télécharger et installer</string>
+    <string name="update_notification_bigtext">La version %1$s est disponible. Touchez pour télécharger et installer. Pensez à mettre aussi votre serveur GlassKeep à jour, sinon certaines fonctionnalités ne marcheront pas.</string>
+    <string name="update_downloading">Téléchargement de la mise à jour…</string>
+    <string name="update_download_failed">Échec du téléchargement</string>
+    <string name="update_checking">Vérification des mises à jour…</string>
+    <string name="update_up_to_date">GlassKeep est à jour</string>
+
+    <string name="welcome_title">Bienvenue sur GlassKeep</string>
+    <string name="welcome_subtitle">Quelques autorisations rapides avant de commencer. Vous pouvez ignorer n\'importe laquelle. La fonctionnalité associée sera simplement désactivée tant que l\'autorisation n\'est pas accordée.</string>
+    <string name="welcome_continue">Suivant</string>
+    <string name="welcome_grant">Autoriser</string>
+    <string name="welcome_granted">Accordé ✓</string>
+    <string name="welcome_denied">Refusé ✗</string>
+    <string name="welcome_settings">Ouvrir les réglages</string>
+    <string name="welcome_mic_title">Micro</string>
+    <string name="welcome_mic_desc">Permet d\'enregistrer des notes audio directement depuis l\'application.</string>
+    <string name="welcome_camera_title">Caméra</string>
+    <string name="welcome_camera_desc">Sert à scanner le QR code qui vous connecte à GlassKeep sur un autre appareil (un PC, un ordinateur emprunté…).</string>
+    <string name="welcome_notif_title">Notifications</string>
+    <string name="welcome_notif_desc">Une notification système discrète quand une nouvelle version de l\'app est publiée, pour éviter d\'avoir à vérifier GitHub manuellement.</string>
+    <string name="welcome_install_title">Installer les mises à jour</string>
+    <string name="welcome_install_desc">GlassKeep n\'est pas sur le Play Store, Android a donc besoin de votre autorisation pour installer le nouvel APK que nous téléchargeons pour vous.</string>
 </resources>

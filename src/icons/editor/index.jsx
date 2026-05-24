@@ -94,6 +94,8 @@ import trashSvg           from "./tabler/trash.svg?raw";
 import checkSvg           from "./tabler/check.svg?raw";
 import xSvg               from "./tabler/x.svg?raw";
 import noteSvg            from "./tabler/note.svg?raw";
+import floatCenterSvg     from "./tabler/float-center.svg?raw";
+import clipboardSvg       from "./tabler/clipboard.svg?raw";
 import refreshSvg         from "./tabler/refresh.svg?raw";
 import brandGithubSvg     from "./tabler/brand-github.svg?raw";
 import brandDockerSvg     from "./tabler/brand-docker.svg?raw";
@@ -101,6 +103,26 @@ import cpuSvg             from "./tabler/cpu.svg?raw";
 import ramSvg             from "./tabler/ram.svg?raw";
 import arrowsDownUpSvg    from "./tabler/arrows-down-up.svg?raw";
 import powerSvg            from "./tabler/power.svg?raw";
+
+// Notifications
+import bellSvg             from "./tabler/bell.svg?raw";
+import bellFilledSvg       from "./tabler/bell-filled.svg?raw";
+import bellRingingFilledSvg from "./tabler/bell-ringing-filled.svg?raw";
+import infoCircleFilledSvg from "./tabler/info-circle-filled.svg?raw";
+import circleCheckFilledSvg from "./tabler/circle-check-filled.svg?raw";
+import alertTriangleFilledSvg from "./tabler/alert-triangle-filled.svg?raw";
+import alertCircleFilledSvg from "./tabler/alert-circle-filled.svg?raw";
+import appWindowSvg        from "./tabler/app-window.svg?raw";
+import volumeSvg           from "./tabler/volume.svg?raw";
+import clockSvg            from "./tabler/clock.svg?raw";
+import userShareSvg        from "./tabler/user-share.svg?raw";
+import userXSvg            from "./tabler/user-x.svg?raw";
+import archiveSvg          from "./tabler/archive.svg?raw";
+import archiveOffSvg       from "./tabler/archive-off.svg?raw";
+import copySvg             from "./tabler/copy.svg?raw";
+import arrowBackUpSvg      from "./tabler/arrow-back-up.svg?raw";
+import userCheckSvg        from "./tabler/user-check.svg?raw";
+import trashXSvg           from "./tabler/trash-x.svg?raw";
 
 // Cache of sanitised markup keyed by the raw SVG string. The transformation
 // only depends on the SVG source, so each icon is processed exactly once.
@@ -219,6 +241,8 @@ export const TI = {
   Check:                (p) => <TablerIcon svg={checkSvg} {...p} />,
   X:                    (p) => <TablerIcon svg={xSvg} {...p} />,
   Note:                 (p) => <TablerIcon svg={noteSvg} {...p} />,
+  FloatCenter:          (p) => <TablerIcon svg={floatCenterSvg} {...p} />,
+  Clipboard:            (p) => <TablerIcon svg={clipboardSvg} {...p} />,
   Refresh:              (p) => <TablerIcon svg={refreshSvg} {...p} />,
   BrandGithub:          (p) => <TablerIcon svg={brandGithubSvg} {...p} />,
   BrandDocker:          (p) => <TablerIcon svg={brandDockerSvg} {...p} />,
@@ -226,6 +250,24 @@ export const TI = {
   Ram:                  (p) => <TablerIcon svg={ramSvg} {...p} />,
   Swap:                 (p) => <TablerIcon svg={arrowsDownUpSvg} {...p} />,
   Power:                (p) => <TablerIcon svg={powerSvg} {...p} />,
+  Bell:                 (p) => <TablerIcon svg={bellSvg} {...p} />,
+  BellFilled:           (p) => <TablerIcon svg={bellFilledSvg} {...p} />,
+  BellRingingFilled:    (p) => <TablerIcon svg={bellRingingFilledSvg} {...p} />,
+  InfoCircleFilled:     (p) => <TablerIcon svg={infoCircleFilledSvg} {...p} />,
+  CircleCheckFilled:    (p) => <TablerIcon svg={circleCheckFilledSvg} {...p} />,
+  AlertTriangleFilled:  (p) => <TablerIcon svg={alertTriangleFilledSvg} {...p} />,
+  AlertCircleFilled:    (p) => <TablerIcon svg={alertCircleFilledSvg} {...p} />,
+  AppWindow:            (p) => <TablerIcon svg={appWindowSvg} {...p} />,
+  Volume:               (p) => <TablerIcon svg={volumeSvg} {...p} />,
+  Clock:                (p) => <TablerIcon svg={clockSvg} {...p} />,
+  UserShare:            (p) => <TablerIcon svg={userShareSvg} {...p} />,
+  UserX:                (p) => <TablerIcon svg={userXSvg} {...p} />,
+  Archive:              (p) => <TablerIcon svg={archiveSvg} {...p} />,
+  ArchiveOff:           (p) => <TablerIcon svg={archiveOffSvg} {...p} />,
+  Copy:                 (p) => <TablerIcon svg={copySvg} {...p} />,
+  ArrowBackUp:          (p) => <TablerIcon svg={arrowBackUpSvg} {...p} />,
+  UserCheck:            (p) => <TablerIcon svg={userCheckSvg} {...p} />,
+  TrashX:               (p) => <TablerIcon svg={trashXSvg} {...p} />,
 };
 
 export default TI;

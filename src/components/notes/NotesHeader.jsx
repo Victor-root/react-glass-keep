@@ -51,6 +51,13 @@ export default function NotesHeader({
   multiMode,
   qrQuickEnabled = false,
   onOpenQrScanner,
+  // Notification bell slots. Two separate instances are passed because
+  // the desktop and mobile icon clusters live in different containers,
+  // and a single instance shared via React props would render twice
+  // anyway. Each instance has its own popover state but they read the
+  // same NotificationProvider, so the badge count stays consistent.
+  notificationBellDesktop = null,
+  notificationBellMobile = null,
 }) {
   // The kebab dropdown can't rely on the typical "fixed inset-0
   // backdrop captures the click" pattern: the host <header> has a
@@ -134,7 +141,7 @@ export default function NotesHeader({
   const showOfflineBadge = !isOnline || syncStatus?.syncState === "offline" || syncStatus?.serverReachable === false;
   return (
       <header
-        className={`px-2.5 py-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
+        className={`${qrQuickEnabled ? "px-1.5" : "px-2.5"} py-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
         style={{
           // Keep the sticky header tight against the status bar.
           // `--safe-top` falls back to the standard env() value in any
@@ -184,11 +191,15 @@ export default function NotesHeader({
             )}
           </div>
 
-          {/* Desktop: inline name + separator + badge */}
-          <h1 className={`${desktopOnlyBlock} text-2xl sm:text-3xl font-bold`}>
+          {/* Desktop: inline name + separator + badge. The "Glass Keep"
+              wordmark is gated at xl: so on 1024-px-wide tablet viewports
+              the title + section badge combo doesn't squeeze the search
+              input down to a few characters ("Reche..."). The section
+              badge is the more informative anchor of the two and stays. */}
+          <h1 className={`hidden xl:block text-2xl sm:text-3xl font-bold ${isLandscapeMobile ? "!hidden" : ""}`}>
             Glass Keep
           </h1>
-          <span className={`${desktopOnlyInline} h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1`} />
+          <span className={`hidden xl:inline-block h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1 ${isLandscapeMobile ? "!hidden" : ""}`} />
           <span className={`${desktopOnly} text-base font-medium px-3 py-1 rounded-lg bg-indigo-600/10 text-indigo-700 dark:text-indigo-300 border border-indigo-600/20 items-center gap-1.5 max-w-[200px]`}>
             <span className="shrink-0 w-4 h-4 [&>svg]:w-4 [&>svg]:h-4"><SectionIcon /></span>
             <span className="truncate">{sectionLabel}</span>
@@ -200,8 +211,11 @@ export default function NotesHeader({
           )}
         </div>
 
-        {/* Desktop: full search bar */}
-        <div className={`${desktopOnly} flex-grow min-w-0 justify-center px-2 sm:px-8`}>
+        {/* Desktop: full search bar. Padding ladder: tight on tablet
+            widths (sm/lg) so the input has room for the full
+            "Rechercher ou demander à l'IA" placeholder, generous at xl+
+            where the layout has space again. */}
+        <div className={`${desktopOnly} flex-grow min-w-0 justify-center px-2 xl:px-8`}>
           <div className="relative w-full max-w-lg">
             <input
               type="text"
@@ -249,7 +263,7 @@ export default function NotesHeader({
           {!mobileSearchOpen && (
             <button
               type="button"
-              className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-600 dark:text-gray-300"
+              className={`${qrQuickEnabled ? "p-1.5" : "p-2"} rounded-full hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-600 dark:text-gray-300`}
               aria-label={t("search")}
               onClick={() => {
                 // iOS Safari only opens the soft keyboard when focus() is
@@ -329,6 +343,7 @@ export default function NotesHeader({
         <div className="relative flex items-center gap-3 shrink-0">
           {/* Desktop: icon buttons directly in header bar */}
           <div className={`${desktopOnly} items-center gap-1`}>
+            {notificationBellDesktop}
             <button
               onClick={() => onToggleViewMode?.()}
               className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-blue-400 hover:text-blue-300 hover:bg-blue-500/15 focus:ring-blue-500" : "text-blue-600 hover:text-blue-700 hover:bg-blue-100 focus:ring-blue-400"}`}
@@ -384,29 +399,6 @@ export default function NotesHeader({
                     </span>
                   )}
                 </button>
-                {hasUpdate && (
-                  <span
-                    className={`absolute top-[calc(100%-10px)] left-1/2 -translate-x-1/2 z-20 inline-flex flex-col items-center px-2 whitespace-nowrap pointer-events-none ${dark ? "text-emerald-400" : "text-emerald-600"}`}
-                  >
-                    <svg
-                      aria-hidden="true"
-                      className="h-3 w-16 opacity-80"
-                      viewBox="0 0 64 12"
-                    >
-                      <path
-                        d="M14 10 H28 C30 10 31 5 32 5 C33 5 34 10 36 10 H50"
-                        stroke="currentColor"
-                        fill="none"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <span className="text-[11px] font-semibold leading-none">
-                      {t("newVersionAvailable")} !
-                    </span>
-                  </span>
-                )}
               </div>
             )}
             <span className="flex items-center gap-2">
@@ -432,14 +424,19 @@ export default function NotesHeader({
             </button>
           </div>
 
-          {/* Mobile: sync icon + 3-dot menu */}
-          <div className={`${mobileOnly} flex items-center gap-1`}>
+          {/* Mobile: bell + sync + (optional QR) + 3-dot menu. When the
+              QR quick-action is pinned (qrQuickEnabled), five buttons
+              + the title overflow narrow phones, so we tighten the gap
+              and per-button padding ONLY in that case. Without the QR,
+              the row keeps the original looser spacing. */}
+          <div className={`${mobileOnly} flex items-center ${qrQuickEnabled ? "gap-0" : "gap-1"}`}>
+            {notificationBellMobile}
             <SyncStatusIcon dark={dark} syncStatus={syncStatus} onSyncNow={handleSyncNow} syncDropdownOpen={syncDropdownOpen} setSyncDropdownOpen={setSyncDropdownOpen} instanceLocked={instanceLocked} />
             {qrQuickEnabled && (
               <button
                 type="button"
                 onClick={() => onOpenQrScanner?.()}
-                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 text-gray-700 dark:text-gray-200"
+                className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800 text-gray-700 dark:text-gray-200"
                 data-tooltip={t("qrSignInRowTitle")}
                 aria-label={t("qrSignInRowTitle")}
               >
@@ -476,7 +473,7 @@ export default function NotesHeader({
             <button
               ref={headerBtnRef}
               onClick={() => setHeaderMenuOpen((v) => !v)}
-              className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+              className={`relative ${qrQuickEnabled ? "p-1.5" : "p-2"} rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800`}
               data-tooltip={t("menu")}
               aria-haspopup="menu"
               aria-expanded={headerMenuOpen}
@@ -568,31 +565,7 @@ export default function NotesHeader({
                           </span>
                         )}
                       </span>
-                      <span className="flex flex-col gap-0">
-                        <span>{t("adminPanel")}</span>
-                        {hasUpdate && (
-                          <span className={`-mt-1 flex flex-col items-center text-[11px] font-semibold leading-none ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
-                            <span aria-hidden="true" className="self-stretch flex items-end h-3 opacity-80">
-                              <span className="flex-1 h-[2px] bg-current mb-[1px]" />
-                              <svg
-                                className="h-3 w-2 shrink-0"
-                                viewBox="0 0 8 12"
-                              >
-                                <path
-                                  d="M0 10 C2 10 3 5 4 5 C5 5 6 10 8 10"
-                                  stroke="currentColor"
-                                  fill="none"
-                                  strokeWidth="2"
-                                  strokeLinecap="butt"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                              <span className="flex-1 h-[2px] bg-current mb-[1px]" />
-                            </span>
-                            <span>{t("newVersionAvailable")} !</span>
-                          </span>
-                        )}
-                      </span>
+                      <span>{t("adminPanel")}</span>
                     </button>
                   )}
                   <button

@@ -7,17 +7,7 @@ import EncryptionAdminSection from "../lock/EncryptionAdminSection.jsx";
 import AiAdminSection from "./AiAdminSection.jsx";
 import AdminUpdateSection from "../admin/AdminUpdateSection.jsx";
 import { localizeServerError } from "../../utils/serverErrors.js";
-
-// Same shared chip used in the Settings panel: a 36×36 indigo square
-// holding a Tabler icon. Putting it in front of every section header
-// AND every row keeps icons aligned in a single vertical column.
-function RowIcon({ icon: Icon }) {
-  return (
-    <span className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-300">
-      <Icon className="tabler-icon w-5 h-5" />
-    </span>
-  );
-}
+import { RowIcon, SettingsSection } from "../common/SettingsAccordion.jsx";
 const SectionHeaderIcon = RowIcon;
 
 // Inline editor for the public login slogan. Keeps a draft state local
@@ -127,7 +117,11 @@ export default function AdminPanel({
   updateInfo,
   selfUpdate,
   syncStatus,
+  openSections = {},
+  setOpenSections,
 }) {
+  const toggleSection = (key) =>
+    setOpenSections?.((prev) => ({ ...prev, [key]: !prev[key] }));
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [editUserModalOpen, setEditUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -288,7 +282,7 @@ export default function AdminPanel({
     setIsCreatingUser(true);
     try {
       await createUser(newUserForm);
-      showToast(t("userCreatedSuccessfullyBang"), "success");
+      showToast(t("userCreatedSuccessfullyBang"), "success", undefined, "user-plus");
     } catch {
       // useAdminActions already surfaces the error toast.
     } finally {
@@ -322,7 +316,7 @@ export default function AdminPanel({
       };
       if (editUserForm.password) updateData.password = editUserForm.password;
       await updateUser(editingUser.id, updateData);
-      showToast(t("userUpdatedSuccessfullyBang"), "success");
+      showToast(t("userUpdatedSuccessfullyBang"), "success", undefined, "user-check");
       setEditUserModalOpen(false);
       setEditingUser(null);
     } catch (err) {
@@ -359,7 +353,7 @@ export default function AdminPanel({
       <div
         className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[28rem] lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
         style={{
-          backgroundColor: dark ? "#222222" : "rgba(255,255,255,0.95)",
+          backgroundColor: dark ? "#222222" : "#f9f6ff",
           borderLeft: "1px solid var(--border-light)",
           paddingTop: "var(--safe-top)",
           paddingBottom: "var(--safe-bottom)",
@@ -414,15 +408,20 @@ export default function AdminPanel({
               actionable items without scrolling. Hidden when the
               queue is empty. */}
           {pendingUsers && pendingUsers.length > 0 && (
-            <>
-              <div className="mb-8">
-                <h4 className="text-md font-semibold mb-4 flex items-center gap-3 pl-3">
-                  <SectionHeaderIcon icon={TI.UserClock} />
-                  <span>{t("pendingRegistrations")}</span>
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 rounded-full">
-                    {pendingUsers.length}
+            <div className="mb-2">
+              <SettingsSection
+                icon={TI.UserClock}
+                title={
+                  <span className="flex items-center gap-2">
+                    <span>{t("pendingRegistrations")}</span>
+                    <span className="px-2 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 rounded-full">
+                      {pendingUsers.length}
+                    </span>
                   </span>
-                </h4>
+                }
+                open={openSections.pending}
+                onToggle={() => toggleSection("pending")}
+              >
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 pl-3">
                   {t("pendingRegistrationsDesc")}
                 </p>
@@ -451,7 +450,7 @@ export default function AdminPanel({
                               onConfirm: async () => {
                                 try {
                                   await rejectPendingUser(p.id);
-                                  showToast(t("registrationRejected"), "info");
+                                  showToast(t("registrationRejected"), "info", undefined, "user-x");
                                 } catch (err) {
                                   showToast(localizeServerError(err.message, "failedRejectUser"), "error");
                                 }
@@ -468,7 +467,7 @@ export default function AdminPanel({
                           onClick={async () => {
                             try {
                               await approvePendingUser(p.id);
-                              showToast(t("registrationApproved"), "success");
+                              showToast(t("registrationApproved"), "success", undefined, "user-check");
                             } catch (err) {
                               showToast(localizeServerError(err.message, "failedApproveUser"), "error");
                             }
@@ -483,17 +482,18 @@ export default function AdminPanel({
                     </div>
                   ))}
                 </div>
-              </div>
-              <hr className="border-0 h-0.5 my-7 bg-gradient-to-r from-transparent via-gray-400/60 dark:via-white/30 to-transparent" />
-            </>
+              </SettingsSection>
+            </div>
           )}
 
           {/* Site settings (login slogan, registration toggle) */}
-          <div className="mb-8">
-            <h4 className="text-md font-semibold mb-4 flex items-center gap-3 pl-3">
-              <SectionHeaderIcon icon={TI.World} />
-              {t("siteSettings")}
-            </h4>
+          <div className="mb-2">
+            <SettingsSection
+              icon={TI.World}
+              title={t("siteSettings")}
+              open={openSections.site}
+              onToggle={() => toggleSection("site")}
+            >
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3 px-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -529,46 +529,124 @@ export default function AdminPanel({
                 showToast={showToast}
               />
             </div>
+            </SettingsSection>
           </div>
 
-          <hr className="border-0 h-0.5 my-7 bg-gradient-to-r from-transparent via-gray-400/60 dark:via-white/30 to-transparent" />
-
-          {/* At-rest encryption — its own section component renders the
-              activate / unlock / rotate / regenerate / lock-now /
-              deactivate flows. */}
-          <div className="mb-8">
-            <h4 className="text-md font-semibold mb-4 flex items-center gap-3 pl-3">
-              <SectionHeaderIcon icon={TI.ShieldLock} />
-              {t("encryptionSectionTitle")}
-            </h4>
-            <div className="pl-3">
-              <EncryptionAdminSection token={authToken} showToast={showToast} />
+          {/* All users — same row pattern as Settings, with avatar in
+              the leading icon slot and edit/delete actions on the right. */}
+          <div className="mb-2">
+            <SettingsSection
+              icon={TI.Users}
+              title={
+                <span className="flex items-center gap-2">
+                  <span>{t("allUsers")}</span>
+                  <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 rounded-full">
+                    {allUsers.length}
+                  </span>
+                </span>
+              }
+              open={openSections.users}
+              onToggle={() => toggleSection("users")}
+            >
+            <div className="space-y-3">
+              {allUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex flex-col gap-2 px-3 py-3 border border-[var(--border-light)] rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <UserAvatar
+                      name={user.name}
+                      email={user.email}
+                      avatarUrl={user.avatar_url}
+                      size="w-9 h-9"
+                      textSize="text-sm"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium flex items-center gap-2">
+                        <span className="truncate">{user.name}</span>
+                        {user.is_admin && (
+                          <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-200 rounded uppercase tracking-wide">
+                            {t("admin")}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm text-gray-500 truncate">{user.email}</div>
+                    </div>
+                    <div className="flex flex-shrink-0 gap-2">
+                      <button
+                        onClick={() => openEditUserModal(user)}
+                        className="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
+                        data-tooltip={t("edit")}
+                        aria-label={t("edit")}
+                      >
+                        <TI.Pencil className="tabler-icon w-5 h-5" />
+                      </button>
+                      {user.id !== currentUser?.id && (
+                        <button
+                          onClick={() => {
+                            showGenericConfirm({
+                              title: t("deleteUser"),
+                              // Include the email in the danger message
+                              // so the admin can tell two same-named
+                              // accounts apart before confirming.
+                              message: t("deleteUserConfirm", {
+                                name: user.name,
+                                email: user.email,
+                              }),
+                              confirmText: t("delete"),
+                              danger: true,
+                              onConfirm: async () => {
+                                // Only show the success toast AFTER
+                                // the server confirms — useAdminActions
+                                // throws on error and the alert there
+                                // surfaces the failure.
+                                try {
+                                  const deleted = await deleteUser(user.id);
+                                  if (deleted) {
+                                    showToast?.(
+                                      t("userDeletedToast", {
+                                        name: deleted.name || deleted.email,
+                                      }),
+                                      "success",
+                                      undefined,
+                                      "user-x",
+                                    );
+                                  }
+                                } catch (_e) {
+                                  // Error already surfaced by deleteUser
+                                }
+                              },
+                            });
+                          }}
+                          className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
+                          data-tooltip={t("delete")}
+                          aria-label={t("delete")}
+                        >
+                          <TI.Trash className="tabler-icon w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 pl-12 text-xs text-gray-500 dark:text-gray-400">
+                    <span>{t("notes")}: {user.notes}</span>
+                    <span>{t("storage")}: {formatBytes(user.storage_bytes ?? 0)}</span>
+                    <span>{t("joinedPrefix")} {new Date(user.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
             </div>
+            </SettingsSection>
           </div>
-
-          <hr className="border-0 h-0.5 my-7 bg-gradient-to-r from-transparent via-gray-400/60 dark:via-white/30 to-transparent" />
-
-          {/* AI provider — OpenAI-compatible endpoint (Ollama, Open
-              WebUI, LiteLLM, OpenAI, …). Configuration is admin-only;
-              the API key never leaves the server in plain form. */}
-          <div className="mb-8">
-            <h4 className="text-md font-semibold mb-4 flex items-center gap-3 pl-3">
-              <SectionHeaderIcon icon={TI.Brain} />
-              {t("aiSectionTitle")}
-            </h4>
-            <div className="pl-3">
-              <AiAdminSection token={authToken} showToast={showToast} />
-            </div>
-          </div>
-
-          <hr className="border-0 h-0.5 my-7 bg-gradient-to-r from-transparent via-gray-400/60 dark:via-white/30 to-transparent" />
 
           {/* Create new user */}
-          <div className="mb-8">
-            <h4 className="text-md font-semibold mb-4 flex items-center gap-3 pl-3">
-              <SectionHeaderIcon icon={TI.UserPlus} />
-              {t("createNewUser")}
-            </h4>
+          <div className="mb-2">
+            <SettingsSection
+              icon={TI.UserPlus}
+              title={t("createNewUser")}
+              open={openSections.createUser}
+              onToggle={() => toggleSection("createUser")}
+            >
             <form onSubmit={handleCreateUser} className="space-y-3 pl-3">
               <input
                 type="text"
@@ -629,82 +707,39 @@ export default function AdminPanel({
                 {isCreatingUser ? t("creating") : t("createUser")}
               </button>
             </form>
+            </SettingsSection>
           </div>
 
-          <hr className="border-0 h-0.5 my-7 bg-gradient-to-r from-transparent via-gray-400/60 dark:via-white/30 to-transparent" />
-
-          {/* All users — same row pattern as Settings, with avatar in
-              the leading icon slot and edit/delete actions on the right. */}
-          <div className="mb-8">
-            <h4 className="text-md font-semibold mb-4 flex items-center gap-3 pl-3">
-              <SectionHeaderIcon icon={TI.Users} />
-              <span>{t("allUsers")}</span>
-              <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 rounded-full">
-                {allUsers.length}
-              </span>
-            </h4>
-            <div className="space-y-3">
-              {allUsers.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex flex-col gap-2 px-3 py-3 border border-[var(--border-light)] rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <UserAvatar
-                      name={user.name}
-                      email={user.email}
-                      avatarUrl={user.avatar_url}
-                      size="w-9 h-9"
-                      textSize="text-sm"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium flex items-center gap-2">
-                        <span className="truncate">{user.name}</span>
-                        {user.is_admin && (
-                          <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-200 rounded uppercase tracking-wide">
-                            {t("admin")}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-500 truncate">{user.email}</div>
-                    </div>
-                    <div className="flex flex-shrink-0 gap-2">
-                      <button
-                        onClick={() => openEditUserModal(user)}
-                        className="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
-                        data-tooltip={t("edit")}
-                        aria-label={t("edit")}
-                      >
-                        <TI.Pencil className="tabler-icon w-5 h-5" />
-                      </button>
-                      {user.id !== currentUser?.id && (
-                        <button
-                          onClick={() => {
-                            showGenericConfirm({
-                              title: t("deleteUser"),
-                              message: t("deleteUserConfirm").replace("{name}", user.name),
-                              confirmText: t("delete"),
-                              danger: true,
-                              onConfirm: () => deleteUser(user.id),
-                            });
-                          }}
-                          className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"
-                          data-tooltip={t("delete")}
-                          aria-label={t("delete")}
-                        >
-                          <TI.Trash className="tabler-icon w-5 h-5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 pl-12 text-xs text-gray-500 dark:text-gray-400">
-                    <span>{t("notes")}: {user.notes}</span>
-                    <span>{t("storage")}: {formatBytes(user.storage_bytes ?? 0)}</span>
-                    <span>{t("joinedPrefix")} {new Date(user.created_at).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              ))}
+          {/* AI provider — OpenAI-compatible endpoint (Ollama, Open
+              WebUI, LiteLLM, OpenAI, …). Configuration is admin-only;
+              the API key never leaves the server in plain form. */}
+          <div className="mb-2">
+            <SettingsSection
+              icon={TI.Brain}
+              title={t("aiSectionTitle")}
+              open={openSections.ai}
+              onToggle={() => toggleSection("ai")}
+            >
+            <div className="pl-3">
+              <AiAdminSection token={authToken} showToast={showToast} />
             </div>
+            </SettingsSection>
+          </div>
+
+          {/* At-rest encryption — its own section component renders the
+              activate / unlock / rotate / regenerate / lock-now /
+              deactivate flows. */}
+          <div className="mb-2">
+            <SettingsSection
+              icon={TI.ShieldLock}
+              title={t("encryptionSectionTitle")}
+              open={openSections.encryption}
+              onToggle={() => toggleSection("encryption")}
+            >
+            <div className="pl-3">
+              <EncryptionAdminSection token={authToken} showToast={showToast} />
+            </div>
+            </SettingsSection>
           </div>
 
         </div>

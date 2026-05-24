@@ -8,6 +8,10 @@ import {
   emptyRichDoc,
   parseRichDoc,
 } from "../../utils/richText.js";
+import {
+  sliceToCleanPlainText,
+  plainTextToPasteSlice,
+} from "../../utils/richTextClipboard.js";
 import RichTextToolbar from "./RichTextToolbar.jsx";
 
 /**
@@ -60,9 +64,37 @@ const RichTextEditor = forwardRef(function RichTextEditor(
     // "simple" shows only essential formatting tools on one row.
     // "advanced" shows the full multi-row toolbar (default behaviour).
     toolbarMode = "simple",
+    // Default behaviour of Ctrl+V:
+    //   "rich"  — keep formatting when the clipboard contains HTML
+    //             (Word, web pages, mail). Plain-text-only sources
+    //             still get the line-preserving parser below.
+    //   "plain" — strip all formatting on every Ctrl+V. The matching
+    //             `handlePaste` below intercepts the paste event,
+    //             reads `text/plain` directly, and ignores any HTML
+    //             payload the source may also have provided.
+    // Ctrl+Shift+V is always plain-text in either mode (PM handles
+    // that flag itself by skipping `text/html`).
+    pasteMode = "rich",
+    // Mirrors the user's "Mode lecture pour les notes" preference.
+    // When the user has read-mode OFF (default), they never see the
+    // read-only view-mode renderer that injects copy buttons + handles
+    // link clicks. We compensate by enabling the same affordances
+    // inside the editor: copy buttons on code blocks / inline code,
+    // link tooltip + Ctrl/middle-click / mobile-tap popover. Users
+    // with read-mode ON keep their previous edit-mode behaviour so
+    // toggling a note to edit doesn't suddenly behave differently.
+    readModeEnabled = false,
   },
   ref,
 ) {
+  // `useEditor`'s editorProps closures capture variables at editor
+  // creation time, so we route `pasteMode` through a ref to avoid
+  // rebuilding the editor (and losing the caret) every time the user
+  // flips the setting.
+  const pasteModeRef = useRef(pasteMode);
+  useEffect(() => {
+    pasteModeRef.current = pasteMode;
+  }, [pasteMode]);
   const extensions = useMemo(
     () => buildRichTextExtensions({ placeholder }),
     [placeholder],
@@ -98,6 +130,61 @@ const RichTextEditor = forwardRef(function RichTextEditor(
       attributes: {
         class: `rt-editor-content note-content note-content--dense focus:outline-none ${minHeightClass}`,
         spellcheck: "true",
+      },
+      // Outbound-only clipboard hook: when the user presses Ctrl+C in
+      // the editor, PM serialises the selection to `text/plain` via
+      // this function. Our walker emits one line per block + proper
+      // list-prefix indentation so a paste into Notepad / any
+      // unstructured target stops producing huge gaps between blocks.
+      // The HTML side of the clipboard is left to PM's default so a
+      // paste into another rich-text target still gets full fidelity.
+      clipboardTextSerializer: (slice) => sliceToCleanPlainText(slice),
+      // Inbound plain-text pastes: PM's default parser collapses
+      // sources whose only line separator is `\r\n` / `\n` (typical
+      // for Windows Notepad, terminal output, …) into a single
+      // paragraph with hard breaks the schema then drops. Build one
+      // paragraph per line ourselves so multi-line plain-text pastes
+      // keep the layout the user copied. Only fires when PM has no
+      // `text/html` to work with, so rich pastes (Word, web pages) are
+      // untouched.
+      clipboardTextParser: (text, _context, _plain, view) =>
+        plainTextToPasteSlice(text, view.state.schema),
+      // `pasteMode === "plain"` makes Ctrl+V behave like Ctrl+Shift+V:
+      // we read `text/plain` directly and drop any HTML payload the
+      // source may have included. Returning `false` in "rich" mode
+      // hands the event back to PM so the default rich-paste flow (and
+      // the `clipboardTextParser` fallback above) keeps working.
+      //
+      // We mirror PM's own `doPaste` carefully: run `transformPastedText`
+      // and `transformPasted`, then stamp the dispatched transaction
+      // with `paste: true` + `uiEvent: "paste"`. Tiptap's paste rules
+      // (notably Link's `linkOnPaste` URL auto-detection) gate on that
+      // `uiEvent` meta inside an `appendTransaction`, so without it
+      // pasted URLs would stay inert text until the user typed a
+      // trailing space and the autolink input rule kicked in.
+      handlePaste: (view, event) => {
+        if (pasteModeRef.current !== "plain") return false;
+        const cb = event.clipboardData;
+        if (!cb) return false;
+        let text = cb.getData("text/plain");
+        if (!text) return false;
+        view.someProp("transformPastedText", (f) => {
+          text = f(text, true, view);
+        });
+        let slice = plainTextToPasteSlice(text, view.state.schema);
+        if (!slice) return false;
+        view.someProp("transformPasted", (f) => {
+          slice = f(slice, view);
+        });
+        event.preventDefault();
+        view.dispatch(
+          view.state.tr
+            .replaceSelection(slice)
+            .scrollIntoView()
+            .setMeta("paste", true)
+            .setMeta("uiEvent", "paste"),
+        );
+        return true;
       },
       handleKeyDown: (_, event) => {
         // Shift+Tab → hand focus back to the parent (title input).
@@ -186,6 +273,12 @@ const RichTextEditor = forwardRef(function RichTextEditor(
     }
     editor.commands.setContent(incomingDoc, { emitUpdate: false });
     lastAppliedRef.current = value;
+    // Track what the editor now holds so the fast-path "parent echoed our
+    // doc back" check on the next value change reflects reality. Without
+    // this, after an external setContent (undo/redo, server patch) the ref
+    // still pointed at the user's last typed doc, and re-applying that same
+    // doc through redo was treated as an echo and silently skipped.
+    lastEmittedRef.current = incomingDoc;
   }, [editor, value]);
 
   useEffect(() => {
@@ -193,12 +286,32 @@ const RichTextEditor = forwardRef(function RichTextEditor(
     editor.setEditable(editable);
   }, [editor, editable]);
 
+  // Toggle the edit-mode extras (copy buttons on code blocks / inline
+  // code, link tooltip + Ctrl/middle-click / mobile-tap popover) by
+  // flagging the editor DOM. CSS gates the visible affordances (code
+  // copy button on hover) and the `EditExtras` plugin gates the event
+  // handlers. This way flipping the user preference takes effect
+  // immediately without rebuilding the editor / losing the caret.
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view?.dom;
+    if (!dom) return;
+    if (readModeEnabled) {
+      dom.removeAttribute("data-edit-extras");
+    } else {
+      dom.setAttribute("data-edit-extras", "on");
+    }
+  }, [editor, readModeEnabled]);
+
   const toolbar = editable && showToolbar && editor
     ? <RichTextToolbar editor={editor} mode={toolbarMode} />
     : null;
 
   return (
-    <div className={`rt-editor${dark ? " rt-editor--dark" : ""} ${className}`}>
+    <div
+      className={`rt-editor${dark ? " rt-editor--dark" : ""} ${className}`}
+      data-edit-extras={readModeEnabled ? undefined : "on"}
+    >
       {toolbar && (toolbarContainer
         ? createPortal(toolbar, toolbarContainer)
         : toolbar)}

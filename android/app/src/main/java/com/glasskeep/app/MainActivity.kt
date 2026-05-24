@@ -11,7 +11,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowInsetsControllerCompat
-import com.glasskeep.app.ui.SetupScreen
+import com.glasskeep.app.ui.OnboardingPager
 import com.glasskeep.app.ui.theme.GlassKeepTheme
 
 class MainActivity : ComponentActivity() {
@@ -23,9 +23,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // If URL already configured, go straight to WebView
         val savedUrl = prefs.getString("server_url", null)
-        if (savedUrl != null) {
+        // Treat already-configured installs as having completed the
+        // permissions onboarding — existing users updating from 1.2.x
+        // shouldn't suddenly see the welcome flow.
+        val welcomeDone = prefs.getBoolean(KEY_WELCOME_DONE, savedUrl != null)
+
+        // Fast path: onboarding done AND URL configured → straight to
+        // the WebView, same as the previous behaviour.
+        if (welcomeDone && savedUrl != null) {
             // App-shortcut entry point: long-press launcher → one of
             // five shortcuts ("Scan QR" / new text / checklist / draw
             // / audio). Each shortcut sends a distinct action; we map
@@ -65,10 +71,20 @@ class MainActivity : ComponentActivity() {
                 }
             }
             GlassKeepTheme {
-                SetupScreen(onConnect = { url ->
-                    prefs.edit().putString("server_url", url).apply()
-                    launchWebView(url)
-                })
+                // Both screens live inside one HorizontalPager so the
+                // transition between them is a smooth swipe instead
+                // of a hard cut. Users who already saw the welcome
+                // (existing 1.2.x installs) land on page 2 directly.
+                OnboardingPager(
+                    startAtSetup = welcomeDone,
+                    onWelcomeCompleted = {
+                        prefs.edit().putBoolean(KEY_WELCOME_DONE, true).apply()
+                    },
+                    onConnect = { url ->
+                        prefs.edit().putString("server_url", url).apply()
+                        launchWebView(url)
+                    },
+                )
             }
         }
     }
@@ -92,6 +108,10 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
+        // SharedPreferences key marking the one-time permissions
+        // onboarding as completed.
+        private const val KEY_WELCOME_DONE = "welcome_done"
+
         // Action strings must match res/xml/shortcuts.xml. Each maps
         // to the (queryParamKey, queryParamValue) pair MainActivity
         // appends to the configured server URL — keep this table in

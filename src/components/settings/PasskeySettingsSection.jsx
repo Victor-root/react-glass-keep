@@ -25,6 +25,7 @@ import {
   testPasskey,
 } from "../../auth/passkeyClient.js";
 import { localizeServerError } from "../../utils/serverErrors.js";
+import TI from "../../icons/editor/index.jsx";
 
 function formatDate(iso) {
   if (!iso) return null;
@@ -44,6 +45,11 @@ export default function PasskeySettingsSection({
   const [loading, setLoading] = useState(false);
   const [busyId, setBusyId] = useState(null);    // credentialId currently mutating (rename/delete/toggle)
   const [testingId, setTestingId] = useState(null); // credentialId currently being tested
+  // Saved-keys list collapses behind a chevron next to the "Add" button so
+  // the section stays compact when the user just wants to register a new
+  // credential. Auto-expands after a successful add so the new entry is
+  // visible without an extra click.
+  const [listOpen, setListOpen] = useState(false);
 
   // Styled prompt + confirm dialogs (replacing window.prompt / .confirm).
   // Native browser dialogs render as the OS chrome inside the Android
@@ -117,6 +123,7 @@ export default function PasskeySettingsSection({
             toast(t("passkeyNoPrfNotice"), "info", 10000);
           }
           await refresh();
+          setListOpen(true);
         } catch (e) {
           const msg = (e && e.message) || "";
           const cancelled = e?.name === "NotAllowedError" || /not[\s_-]*allowed|cancel|abort|interrupt|annul/i.test(msg);
@@ -264,14 +271,43 @@ export default function PasskeySettingsSection({
         <p className="text-sm text-gray-500 dark:text-gray-400 leading-snug mb-3">
           {t("passkeySectionExplain")}
         </p>
-        <button
-          type="button"
-          onClick={handleAdd}
-          disabled={loading}
-          className="w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 disabled:opacity-50 btn-gradient"
+        {/* Split-button: one visual surface, two independent click zones.
+            The wide left zone runs the WebAuthn registration flow; the
+            chevron zone on the right toggles the saved-keys list. A thin
+            translucent divider keeps the visual unity. */}
+        <div
+          className={`inline-flex w-full sm:w-auto rounded-lg overflow-hidden text-white bg-gradient-to-r from-indigo-500 to-violet-600 shadow-md shadow-indigo-300/40 dark:shadow-none btn-gradient ${loading ? "opacity-50" : ""}`}
         >
-          {loading ? t("passkeyAddInProgress") : t("passkeyAddCta")}
-        </button>
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={loading}
+            className="flex-1 sm:flex-none min-w-0 px-4 py-2 text-sm font-semibold text-center hover:bg-white/10 active:bg-white/20 focus:outline-none focus-visible:bg-white/15 disabled:cursor-not-allowed transition-colors"
+          >
+            <span className="truncate">
+              {loading ? t("passkeyAddInProgress") : t("passkeyAddCta")}
+              {list.length > 0 && !loading ? ` (${list.length})` : ""}
+            </span>
+          </button>
+          {list.length > 0 && (
+            <>
+              <div className="w-px bg-white/30 self-stretch" aria-hidden="true" />
+              <button
+                type="button"
+                onClick={() => setListOpen((v) => !v)}
+                aria-expanded={listOpen}
+                aria-label={listOpen ? t("close") : t("show")}
+                className="shrink-0 inline-flex items-center justify-center px-3 hover:bg-white/10 active:bg-white/20 focus:outline-none focus-visible:bg-white/15 transition-colors"
+              >
+                <TI.ChevronDown
+                  className={`tabler-icon w-4 h-4 transition-transform duration-200 ${
+                    listOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {list.length === 0 ? (
@@ -279,7 +315,15 @@ export default function PasskeySettingsSection({
           {t("passkeyNoneYet")}
         </p>
       ) : (
-        <ul className="space-y-2">
+        <div
+          className={`grid transition-[grid-template-rows] duration-300 ease-out ${
+            listOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          }`}
+          aria-hidden={!listOpen}
+          inert={!listOpen}
+        >
+        <div className="overflow-hidden">
+        <ul className="space-y-2 pt-1">
           {list.map((p) => (
             <li
               key={p.credentialId}
@@ -354,6 +398,8 @@ export default function PasskeySettingsSection({
             </li>
           ))}
         </ul>
+        </div>
+        </div>
       )}
 
       <PasskeyTextDialog

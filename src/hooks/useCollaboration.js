@@ -101,7 +101,9 @@ export default function useCollaboration(token, {
         token,
         body: mode ? { mode } : undefined,
       });
-      showToast(t("collaboratorRemovedSuccessfully"), "success");
+      // No local toast here — the server sends note_access_revoked_notification
+      // via SSE which already fires showRevokeNotificationToast for both parties.
+      // Firing a second toast from the API response would double the notification.
       if (collaborationDialogNoteId) {
         loadNoteCollaborators(collaborationDialogNoteId);
       }
@@ -177,7 +179,7 @@ export default function useCollaboration(token, {
         ),
       );
 
-      showToast(t("addedCollaboratorSuccessfully").replace("{username}", String(username)), "success");
+      showToast(t("addedCollaboratorSuccessfully").replace("{username}", String(username)), "success", undefined, "share");
       setCollaboratorUsername("");
       setShowUserDropdown(false);
       setFilteredUsers([]);

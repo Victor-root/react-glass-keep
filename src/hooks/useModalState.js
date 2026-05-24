@@ -1,6 +1,8 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { t } from "../i18n";
 import { formatEditedStamp, normalizeImageFilename, downloadDataUrl } from "../utils/helpers.js";
+import { attachPlainTextCodeCopy } from "../utils/plainTextCodeCopy.js";
+import { attachReadModeInlineCopy } from "../components/richtext/extensions/EditExtras.js";
 
 /**
  * useModalState — Pure UI state and effects for the note modal.
@@ -447,27 +449,11 @@ export default function useModalState({ notes, currentUser, closeModalRef, runFo
         }
       });
 
-      // Inline code
-      root.querySelectorAll("code").forEach((code) => {
-        if (code.closest("pre")) return; // skip fenced
-        if (
-          code.nextSibling &&
-          code.nextSibling.nodeType === 1 &&
-          code.nextSibling.classList?.contains("inline-code-copy-btn")
-        )
-          return;
-        const btn = document.createElement("button");
-        btn.className = "inline-code-copy-btn";
-        btn.textContent = t("copy");
-        btn.setAttribute("data-copy-btn", "1");
-        btn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          navigator.clipboard?.writeText(code.textContent || "");
-          btn.textContent = t("copied");
-          setTimeout(() => (btn.textContent = t("copy")), 1200);
-        });
-        code.insertAdjacentElement("afterend", btn);
-      });
+      // Inline code: handled by the shared floating overlay (see
+      // attachReadModeInlineCopy below). No per-element sibling button
+      // is inserted, so hover (desktop) / tap-to-arm (mobile) behavior
+      // matches edit-mode 1:1 — same singleton, same 2 s visibility
+      // timer, same theming.
     };
 
     attach();
@@ -482,10 +468,22 @@ export default function useModalState({ notes, currentUser, closeModalRef, runFo
       mo.observe(root, { childList: true, subtree: true });
     } catch (e) {}
 
+    // Force plain-text clipboard payload when the user selects inside
+    // a <pre>/<code>. The dedicated copy button already does the right
+    // thing — this catches manual Ctrl+C / OS long-press copy from a
+    // selection that the in-block button doesn't drive.
+    const detachCodeCopy = attachPlainTextCodeCopy(root);
+    // Wire the same inline-code hover / tap-to-arm overlay the editor
+    // uses, scoped to the rendered container. Behavior parity with
+    // edit-mode is automatic — both surfaces drive the same singleton.
+    const detachInlineCopy = attachReadModeInlineCopy(root);
+
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       mo.disconnect();
+      detachCodeCopy();
+      detachInlineCopy();
     };
   }, [open, viewMode, mType, mBody, activeId]);
 

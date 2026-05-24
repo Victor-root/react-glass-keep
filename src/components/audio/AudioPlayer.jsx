@@ -402,7 +402,7 @@ function ProgressTrack({ ratio, trackRef, onPointerDown, onPointerMove, onPointe
       ref={trackRef}
       role="slider"
       tabIndex={0}
-      aria-label="Audio progress"
+      aria-label={t("audioProgressLabel")}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(ratio * 100)}

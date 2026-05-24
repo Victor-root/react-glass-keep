@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { uid } from "../utils/helpers.js";
 import { serializeAudioContent } from "../utils/audioNote.js";
+import { contentToPlain } from "../utils/richText.js";
 
 /**
  * useDraftNote — Deferred creation lifecycle for blank notes opened via the
@@ -43,8 +44,6 @@ export default function useDraftNote(ctx) {
     // Only materialise when the open modal is actually this draft. Protects
     // against a stale ref matching state from a different note.
     if (String(ctx.activeId) !== String(draft.id)) return false;
-    // Clear the ref synchronously so concurrent effects don't re-enter.
-    pendingDraftRef.current = null;
 
     // Callers may pass the not-yet-committed state (e.g. syncChecklistItems is
     // invoked right after setMItems so mItems from closure is still stale).
@@ -55,8 +54,48 @@ export default function useDraftNote(ctx) {
     const body = typeof overrides.body === "string" ? overrides.body : (ctx.mBody || "");
 
     const { id, type } = draft;
-    const nowIso = new Date().toISOString();
     const isDraw = type === "draw";
+
+    // Bail out on a "fake" materialise for an entirely empty drawing draft.
+    // We've seen reports of an empty drawing card appearing in the list after
+    // the user opens the canvas, doesn't draw, and closes — implying some
+    // path is calling this with `{paths: []}` even though no real user
+    // action happened. Without this guard the draft becomes a real note
+    // and closeModal's auto-trash doesn't always catch it (the user has
+    // reported "single dash" cards that survive). Skipping the materialise
+    // here keeps the draft pending, so the closeModal pendingDraft branch
+    // discards it cleanly with the empty-note toast.
+    if (isDraw) {
+      const draftPaths = drawing?.paths || [];
+      const meaningfulPaths = draftPaths.filter(
+        (p) => Array.isArray(p?.points) && p.points.length >= 2,
+      );
+      const titleEmpty = !(ctx.mTitle || "").trim();
+      // Body is the Tiptap text-caption envelope for draw notes; an empty
+      // editor still serialises to a non-trivial JSON string, so collapse
+      // through contentToPlain before checking emptiness.
+      const bodyEmpty = !contentToPlain(body || "").trim();
+      const noImages =
+        !Array.isArray(ctx.mImages) || ctx.mImages.length === 0;
+      const noTags =
+        !Array.isArray(ctx.mTagList) || ctx.mTagList.length === 0;
+      const noColor = !ctx.mColor || ctx.mColor === "default";
+      if (
+        titleEmpty &&
+        bodyEmpty &&
+        noImages &&
+        noTags &&
+        noColor &&
+        meaningfulPaths.length === 0
+      ) {
+        return false;
+      }
+    }
+
+    // Clear the ref synchronously so concurrent effects don't re-enter.
+    pendingDraftRef.current = null;
+
+    const nowIso = new Date().toISOString();
     const newNote = {
       id,
       type,

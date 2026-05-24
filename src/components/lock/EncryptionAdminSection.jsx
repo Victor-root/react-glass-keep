@@ -186,7 +186,7 @@ function RotatePassphraseForm({ token, showToast }) {
       });
       setCurrent(""); setNext(""); setConfirm("");
       setDone(true);
-      showToast && showToast(t("saved"), "success");
+      showToast && showToast(t("saved"), "success", undefined, "save");
       setTimeout(() => setDone(false), 2500);
     } catch (e) {
       setErr(localizeServerError(e?.message, "unlockFailed"));
@@ -259,7 +259,7 @@ function DeactivationForm({ token, showToast, onDeactivated }) {
       });
       setPassphrase("");
       setAck(false);
-      showToast && showToast(t("encryptionDeactivateDone"), "success");
+      showToast && showToast(t("encryptionDeactivateDone"), "success", undefined, "shield");
       onDeactivated && onDeactivated();
     } catch (e) {
       setErr(localizeServerError(e?.message, "unlockFailed"));

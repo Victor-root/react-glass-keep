@@ -1,11 +1,40 @@
 import React, { memo } from "react";
 import { t } from "../../i18n";
+import { domSelectionToCleanPlainText } from "../../utils/richTextClipboard.js";
+
+// Outbound-only clipboard hook for the read-only viewer. Mirrors what
+// editorProps.clipboardTextSerializer does for the Tiptap editor:
+// override the text/plain payload with a clean line-per-block version,
+// keep the text/html payload faithful to the rendered DOM. No change
+// to what's actually rendered on screen.
+const handleNoteViewCopy = (event) => {
+  let cleanText;
+  try {
+    cleanText = domSelectionToCleanPlainText();
+  } catch (e) {
+    return;
+  }
+  if (cleanText == null) return;
+  try {
+    const selection = window.getSelection();
+    const range = selection?.getRangeAt(0);
+    const fragment = range?.cloneContents();
+    const container = document.createElement("div");
+    if (fragment) container.appendChild(fragment);
+    event.clipboardData.setData("text/plain", cleanText);
+    event.clipboardData.setData("text/html", container.innerHTML);
+    event.preventDefault();
+  } catch (e) {
+    // Any failure → leave the default browser copy behaviour alone.
+  }
+};
 
 const NoteViewContent = memo(function NoteViewContent({ html, noteViewRef }) {
   return (
     <div
       ref={noteViewRef}
       className="note-content note-content--dense"
+      onCopy={handleNoteViewCopy}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -74,6 +103,7 @@ export default function NoteModal({
   setMColor,
   viewMode,
   setViewMode,
+  readModeEnabled = true,
   mImages,
   setMImages,
   mItems,
@@ -185,6 +215,7 @@ export default function NoteModal({
   checklistInsertPosition,
   checklistRemoveSectionBehavior,
   editorToolbarMode,
+  pasteMode,
   // note type conversion (text <-> checklist)
   onConvertNoteType,
   onDuplicateNote,
@@ -706,10 +737,12 @@ export default function NoteModal({
                       onDocChange={handleRichDocChange}
                       placeholder={t("writeYourNoteEllipsis")}
                       dark={dark}
-                      autoFocus={!mTitle}
+                      autoFocus={!activeId && !mTitle}
                       minHeightClass="min-h-[160px]"
                       toolbarContainer={toolbarMount}
                       toolbarMode={editorToolbarMode}
+                      pasteMode={pasteMode}
+                      readModeEnabled={readModeEnabled}
                       onReady={(ed) => { richEditorRef.current = ed; }}
                       onShiftTabExit={focusModalTitle}
                     />
@@ -770,6 +803,8 @@ export default function NoteModal({
                     minHeightClass="min-h-[80px]"
                     toolbarContainer={toolbarMount}
                     toolbarMode={editorToolbarMode}
+                    pasteMode={pasteMode}
+                    readModeEnabled={readModeEnabled}
                     onReady={(ed) => { richEditorRef.current = ed; }}
                     onShiftTabExit={focusModalTitle}
                   />
@@ -919,6 +954,7 @@ export default function NoteModal({
             // view/edit toggle
             mType={mType}
             viewMode={viewMode}
+            readModeEnabled={readModeEnabled}
             onToggleViewMode={() => {
               setViewMode((v) => !v);
               setShowModalFmt(false);
@@ -926,7 +962,7 @@ export default function NoteModal({
             // drawing mode toggle
             drawMode={drawMode}
             onToggleDrawMode={() => setDrawMode((m) => m === "view" ? "draw" : "view")}
-            onExitDrawToView={() => { setDrawMode("view"); setViewMode(true); }}
+            onExitDrawToView={() => { setDrawMode("view"); setViewMode(readModeEnabled); }}
             modalScrollRef={modalScrollRef}
             savedModalScrollRatioRef={savedModalScrollRatioRef}
             // actions

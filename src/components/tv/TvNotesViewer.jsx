@@ -550,7 +550,7 @@ export default function TvNotesViewer({
           <HeaderClock />
         </div>
         {viewMode === "carousel" && pagerTotalPages > 1 && (
-          <div className="tv-header__pager-indicator" aria-label="Pager page">
+          <div className="tv-header__pager-indicator" aria-label={t("tvPagerIndicatorLabel")}>
             <span className="tv-header__count">
               {pagerPage + 1} / {pagerTotalPages}
             </span>

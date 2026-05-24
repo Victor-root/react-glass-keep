@@ -24,7 +24,7 @@ import {
   clearNotesForSession as idbClearNotesForSession,
   purgeQueueForNote as idbPurgeQueueForNote,
 } from "./sync/localDb.js";
-import { api, getAuth, setAuth, AUTH_KEY } from "./utils/api.js";
+import { api, getAuth, setAuth, AUTH_KEY, getClientId } from "./utils/api.js";
 import { localizeServerError } from "./utils/serverErrors.js";
 import { mdForDownload } from "./utils/markdown.jsx";
 import { uid, sanitizeFilename, downloadText, triggerBlobDownload, ensureJSZip, imageExtFromDataURL, fileToCompressedDataURL, setThemeColor } from "./utils/helpers.js";
@@ -61,7 +61,11 @@ import NoteCard from "./components/notes/NoteCard.jsx";
 import AdminView from "./components/notes/AdminView.jsx";
 import NotesUI from "./components/notes/NotesUI.jsx";
 import GenericConfirmDialog from "./components/common/GenericConfirmDialog.jsx";
-import ToastContainer from "./components/common/ToastContainer.jsx";
+import NotificationViewport from "./components/notifications/NotificationViewport.jsx";
+import NotificationMobileToast from "./components/notifications/NotificationMobileToast.jsx";
+import NotificationBell from "./components/notifications/NotificationBell.jsx";
+import { useNotifications } from "./components/notifications/NotificationProvider.jsx";
+import { playNotificationDing } from "./utils/notificationSound.js";
 import QrScannerModal from "./components/auth/QrScannerModal.jsx";
 import FloatingCardsBackground from "./components/common/FloatingCardsBackground.jsx";
 import NoteModal from "./components/modal/NoteModal.jsx";
@@ -71,6 +75,7 @@ import { dataUrlToBlob } from "./utils/audioConvert.js";
 import useModalState from "./hooks/useModalState.js";
 import useDraftNote from "./hooks/useDraftNote.js";
 import useAdminActions from "./hooks/useAdminActions.js";
+import { useShareNotifications } from "./hooks/useShareNotifications.js";
 import useImportExport from "./hooks/useImportExport.js";
 import useCollaboration from "./hooks/useCollaboration.js";
 import useFormatting from "./hooks/useFormatting.js";
@@ -145,6 +150,41 @@ export default function App() {
       return null;
     }
   });
+  const [sidebarBreakpoint, setSidebarBreakpointState] = useState(() => {
+    try {
+      const stored = localStorage.getItem("sidebarBreakpoint");
+      const n = stored !== null ? Number(stored) : NaN;
+      return Number.isFinite(n) && n >= 600 && n <= 3000 ? Math.round(n) : 1280;
+    } catch (e) {
+      return 1280;
+    }
+  });
+  const setSidebarBreakpoint = useCallback((value) => {
+    const n = Number(value);
+    setSidebarBreakpointState(
+      Number.isFinite(n) && n >= 600 && n <= 3000 ? Math.round(n) : 1280,
+    );
+  }, []);
+  const [readModeEnabled, setReadModeEnabled] = useState(() => {
+    try {
+      const stored = localStorage.getItem("readModeEnabled");
+      return stored !== null ? stored === "true" : true;
+    } catch (e) {
+      return true;
+    }
+  });
+  // Which Settings-panel categories are currently expanded. Defaults to
+  // an empty object = all collapsed; persisted in localStorage and synced
+  // to the user's server settings so the layout follows them across
+  // devices.
+  // Per-section expansion state for the Settings side sheet. NOT
+  // persisted — every time the user closes and reopens the panel,
+  // categories should be fully collapsed again. The reset happens
+  // in a small effect below that watches settingsPanelOpen flipping
+  // to false.
+  const [settingsOpenSections, setSettingsOpenSections] = useState({});
+  // Same for the Admin panel.
+  const [adminOpenSections, setAdminOpenSections] = useState({});
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     try {
       return parseInt(localStorage.getItem("sidebarWidth")) || 288;
@@ -225,6 +265,111 @@ export default function App() {
     } catch (e) {
       return "simple";
     }
+  });
+  // Default Ctrl+V behaviour inside the rich-text editor. "rich" keeps
+  // formatting when the clipboard provides HTML; "plain" strips it.
+  // Ctrl+Shift+V always pastes plain regardless of this setting.
+  const [pasteMode, setPasteMode] = useState(() => {
+    try {
+      const stored = localStorage.getItem("pasteMode");
+      return stored === "plain" ? "plain" : "rich";
+    } catch (e) {
+      return "rich";
+    }
+  });
+  // Notification viewport position. Persisted alongside the other UI
+  // prefs (localStorage + /api/user/settings) — see save effect below.
+  // Default is top-center for everyone: the centre anchor reads well
+  // on every form factor and stays out of the way of right-side UI
+  // elements (bell, action buttons).
+  const [notificationsPosition, setNotificationsPosition] = useState(() => {
+    const validPositions = [
+      "top-left",
+      "top-center",
+      "top-right",
+      "bottom-left",
+      "bottom-center",
+      "bottom-right",
+    ];
+    try {
+      const stored = localStorage.getItem("notificationsPosition");
+      if (validPositions.includes(stored)) return stored;
+    } catch (e) {}
+    return "top-center";
+  });
+  // Mobile-only position preference (top / bottom). Stored under a
+  // SEPARATE settings key so it syncs across mobile devices via the
+  // same /user/settings pipeline but never overwrites the desktop
+  // position — and vice versa. Default "bottom" preserves the
+  // existing mobile visual.
+  const [notificationsPositionMobile, setNotificationsPositionMobile] = useState(() => {
+    try {
+      const stored = localStorage.getItem("notificationsPositionMobile");
+      if (stored === "top" || stored === "bottom") return stored;
+    } catch (e) {}
+    return "bottom";
+  });
+  // Notification sound toggle. Defaults to off — sound is opt-in so
+  // a fresh install doesn't surprise the user with a ding on the
+  // first toast.
+  const [notificationsSound, setNotificationsSound] = useState(() => {
+    try {
+      const stored = localStorage.getItem("notificationsSound");
+      if (stored === "0" || stored === "false") return false;
+      if (stored === "1" || stored === "true") return true;
+    } catch (e) {}
+    return false;
+  });
+  // Per-category sound opt-out. Six buckets so the user can opt out
+  // by semantic group rather than just "everything else":
+  //   - share          → note_shared
+  //   - access         → note_access_revoked / collaborator_removed
+  //                      (both the with-copy and no-copy variants)
+  //   - success        → variant=success toasts (saved, archived,
+  //                      restored, moved to trash, permanently
+  //                      deleted, …) — everything the app reports as
+  //                      "your action worked"
+  //   - warning        → variant=warning (apart from revokes which
+  //                      route to `access` because of their explicit
+  //                      type)
+  //   - error          → variant=error (failures, network errors, …)
+  //   - info           → variant=info that isn't a share notification
+  // When the master `notificationsSound` toggle is off, none of these
+  // matter.
+  const [notificationsSoundTypes, setNotificationsSoundTypes] = useState(() => {
+    const DEF = {
+      share: true,
+      access: true,
+      success: true,
+      warning: true,
+      error: true,
+      info: true,
+    };
+    try {
+      const stored = localStorage.getItem("notificationsSoundTypes");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          return { ...DEF, ...parsed };
+        }
+      }
+    } catch (e) {}
+    return DEF;
+  });
+  // Default duration (ms) for auto-dismissing notifications, or null
+  // for "persistent" (stays until the user closes manually). The set
+  // of allowed values is locked down in the settings UI; anything
+  // unexpected falls back to 10 s. Per-call `duration` overrides on
+  // notify() are still respected.
+  const [notificationsDuration, setNotificationsDuration] = useState(() => {
+    const allowed = [5000, 10000, 20000, 30000];
+    try {
+      const stored = localStorage.getItem("notificationsDuration");
+      if (stored === "null" || stored === "persistent") return null;
+      const n = Number(stored);
+      if (allowed.includes(n)) return n;
+    } catch (e) {}
+    return 10000;
   });
   const [typographyPresets, setTypographyPresets] = useState(() => {
     try {
@@ -394,33 +539,143 @@ export default function App() {
     } catch { /* api helper missing or auth helper threw — non-fatal */ }
   }, []);
 
-  // Toast notification system
-  const [toasts, setToasts] = useState([]);
-  const toastIdRef = useRef(0);
+  // Notification system. `notify` is the modern API used directly by
+  // new code (share notifications, etc.). `showToast(message, type,
+  // duration)` is kept as a thin compatibility shim — the dozens of
+  // existing call sites in App.jsx, panels and hooks delegate to it,
+  // so we route their input through the same provider instead of
+  // touching them all.
+  const {
+    notify,
+    dismiss: dismissNotification,
+    remove: removeNotification,
+    dismissByServerIds: dismissByServerIdsNotif,
+    removeByServerIds: removeByServerIdsNotif,
+    clear: clearNotifications,
+    clearServerBacked: clearServerBackedNotifications,
+    notifications: allNotifications,
+    setDefaultDuration: setNotifDefaultDuration,
+    setOnMarkDelivered: setNotifOnMarkDelivered,
+    setOnMarkRemoved: setNotifOnMarkRemoved,
+  } = useNotifications();
 
-  const showToast = (message, type = "success", duration) => {
-    // Default durations: success/error 5s, info 10s
-    if (duration === undefined) {
-      duration = type === "info" ? 10000 : 5000;
+  // Cross-device-aware "Clear all" wrapper. The provider's bare
+  // clear() is local-only; this version also POSTs to the server so
+  // every other tab / device of the same user wipes its own history
+  // in real time (the server broadcasts `notifications_cleared` to
+  // every connected SSE client). Marks any still-undelivered server
+  // rows as delivered too so they don't reappear in /pending.
+  const clearAllNotificationsSynced = useCallback(() => {
+    clearNotifications();
+    const tk = token;
+    if (!tk) return;
+    api("/notifications/clear", { method: "POST", token: tk }).catch(() => {});
+  }, [clearNotifications, token]);
+  // Apply the user's preferred default duration to the provider —
+  // every subsequent `notify()` without an explicit duration uses it.
+  useEffect(() => {
+    setNotifDefaultDuration(notificationsDuration);
+  }, [notificationsDuration, setNotifDefaultDuration]);
+  const showToast = useCallback(
+    (message, type = "success", duration, icon) => {
+      // Pre-existing variants used by the codebase: "success" | "error"
+      // | "info". The provider accepts the same set under `variant`.
+      // When the caller didn't pass a duration we let the provider's
+      // 10-second default apply. The optional 4th argument is a
+      // semantic icon key ("trash", "archive", "save", …); callers
+      // that don't pass one fall back to the variant glyph.
+      const variant =
+        type === "success" || type === "error" || type === "info" || type === "warning"
+          ? type
+          : "info";
+      return notify({
+        type: "toast",
+        variant,
+        message,
+        duration: duration === undefined ? undefined : duration,
+        icon: icon || null,
+      });
+    },
+    [notify],
+  );
+
+  // Map a notification to one of the six sound categories the user
+  // can enable/disable independently. Explicit types (share / revoke)
+  // take precedence; everything else falls back to its `variant`,
+  // which is how the legacy showToast() shim categorises success /
+  // error / warning / info.
+  const soundCategoryFor = (n) => {
+    const typeKey = n?.type;
+    if (typeKey === "note_shared") return "share";
+    if (
+      typeKey === "note_access_revoked" ||
+      typeKey === "note_access_revoked_with_copy" ||
+      typeKey === "collaborator_removed" ||
+      typeKey === "collaborator_removed_with_copy" ||
+      typeKey === "collaborator_left"
+    ) {
+      return "access";
     }
-    const id = ++toastIdRef.current;
-    const toast = { id, message, type };
-    setToasts((prev) => [...prev, toast]);
-
-    if (duration > 0) {
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, duration);
-    }
-
-    return id;
+    const variant = n?.variant;
+    if (variant === "success") return "success";
+    if (variant === "warning") return "warning";
+    if (variant === "error") return "error";
+    return "info";
   };
+
+  // Discrete ding whenever a NEW notification appears. We compare
+  // `createdAt` rather than the array's first id, because closing
+  // the top card promotes whatever was below it to index 0 —
+  // tracking the id alone would mistake the promotion for a new
+  // arrival and re-ding every time the user dismissed a card. The
+  // creation timestamp only moves forward when notify() actually
+  // inserts a new entry, so the comparison stays correct across
+  // dismiss / remove / close-X.
+  const lastDingedAtRef = useRef(0);
+  useEffect(() => {
+    const newest = allNotifications[0];
+    if (!newest) return;
+    const t = newest.createdAt || 0;
+    if (t <= lastDingedAtRef.current) return;
+    lastDingedAtRef.current = t;
+    if (newest.dismissed) return;
+    if (!notificationsSound) return;
+    const category = soundCategoryFor(newest);
+    if (notificationsSoundTypes[category] === false) return;
+    playNotificationDing();
+  }, [allNotifications, notificationsSound, notificationsSoundTypes]);
 
   // Generic confirmation dialog helper
   const showGenericConfirm = (config) => {
     setGenericConfirmConfig(config);
     setGenericConfirmOpen(true);
   };
+
+  // Share-notification toasts. The hook fetches anything still pending
+  // on auth (covers the recipient-was-offline case) and exposes a
+  // showShareToast helper the SSE dispatcher below uses for live
+  // events. Internal dedup keeps the rare fetch↔SSE race from
+  // showing the same toast twice.
+  const {
+    showShareToast: showShareNotificationToast,
+    showRevokeToast: showRevokeNotificationToast,
+    showPendingUserToast,
+    showUserDeletedToast,
+    markDelivered: markShareNotificationsDelivered,
+    markRemoved: markShareNotificationsRemoved,
+  } = useShareNotifications({ token, userId: currentUser?.id });
+
+  // Wire the App-level POST helpers into the provider so every
+  // dismiss / remove / auto-dismiss path acks the server. Without
+  // these, closing a card with X (or letting it auto-dismiss) would
+  // leave the row in the DB and /notifications/pending or /history
+  // would replay it at the next reload.
+  useEffect(() => {
+    setNotifOnMarkDelivered(markShareNotificationsDelivered);
+  }, [setNotifOnMarkDelivered, markShareNotificationsDelivered]);
+  useEffect(() => {
+    setNotifOnMarkRemoved(markShareNotificationsRemoved);
+  }, [setNotifOnMarkRemoved, markShareNotificationsRemoved]);
 
   // GitHub release update notification (admin-only, fail-silent).
   const updateInfo = useUpdateCheck({
@@ -431,6 +686,68 @@ export default function App() {
     token,
     isAdmin: !!currentUser?.is_admin,
   });
+
+  // Surface "new version available" as a notification (admin-only).
+  // Replaces the old green "↘ Nouvelle version disponible" pointer
+  // next to the admin shield. The green status dot on the shield is
+  // kept; this card adds a one-click "Mettre à jour maintenant"
+  // action that hands off to selfUpdate.startUpdate. The duration is
+  // pinned to 30 s regardless of the user's notification-duration
+  // preference so the update CTA always gets a fair on-screen window.
+  //
+  // Capped at 3 displays per admin per latest-version. The counter
+  // lives server-side (table update_notification_views, keyed by
+  // user_id + version) so the cap holds across every device the
+  // admin signs in on, not just the current browser. The /update-check
+  // payload carries the current count; we read it here and skip the
+  // notify() call once it has reached 3. Each fired card POSTs
+  // /update-check/mark-shown to increment.
+  const updateNotifiedVersionRef = useRef(null);
+  useEffect(() => {
+    if (!currentUser?.is_admin) return;
+    if (!updateInfo?.updateAvailable || !updateInfo?.latestVersion) return;
+    if (updateNotifiedVersionRef.current === updateInfo.latestVersion) return;
+    if ((updateInfo.notificationShownCount || 0) >= 3) return;
+    updateNotifiedVersionRef.current = updateInfo.latestVersion;
+    const tk = token;
+    if (tk) {
+      api("/update-check/mark-shown", {
+        method: "POST",
+        body: { version: updateInfo.latestVersion },
+        token: tk,
+      }).catch(() => {
+        /* counter just won't tick this round; nothing else to do */
+      });
+    }
+    notify({
+      type: "update_available",
+      variant: "success",
+      icon: "refresh",
+      title: t("serverUpdateAvailable"),
+      message: t("serverUpdateAvailableDescription").replace(
+        "{version}",
+        updateInfo.latestVersion,
+      ),
+      duration: 30000,
+      action: {
+        kind: "start_self_update",
+        label: t("selfUpdateButton"),
+        latestVersion: updateInfo.latestVersion,
+      },
+      // Long message + a primary CTA — push the button onto its own
+      // row underneath so the description can wrap naturally at full
+      // card width instead of being squeezed beside the button.
+      actionLayout: "below",
+    });
+  }, [
+    currentUser?.is_admin,
+    currentUser?.id,
+    updateInfo?.updateAvailable,
+    updateInfo?.latestVersion,
+    updateInfo?.notificationShownCount,
+    notify,
+    token,
+  ]);
 
   // Sync-domain refs (owned by autosave, not by modal UI hook)
   const skipNextItemsAutosave = useRef(false);
@@ -653,6 +970,13 @@ export default function App() {
 
   // Load user settings from server on login
   const sidebarSettingsLoadedRef = useRef(false);
+  // Keys whose next state-change effect should NOT trigger a PATCH —
+  // populated by the SSE `user_settings_updated` handler before it
+  // calls the corresponding setters. Each PATCH effect consumes its
+  // own key from the Set; remaining (no-op) keys are wiped at the
+  // start of the next remote apply so they never leak into a future
+  // local change.
+  const remoteSyncedKeysRef = useRef(new Set());
   useEffect(() => {
     if (!token) return;
     sidebarSettingsLoadedRef.current = false;
@@ -672,6 +996,18 @@ export default function App() {
           // No server setting yet — default to true (new user)
           setAlwaysShowSidebarOnWide(true);
         }
+        if (settings && Number.isFinite(Number(settings.sidebarBreakpoint))) {
+          setSidebarBreakpoint(settings.sidebarBreakpoint);
+          localStorage.setItem("sidebarBreakpoint", String(Number(settings.sidebarBreakpoint)));
+        }
+        if (settings && typeof settings.readModeEnabled === "boolean") {
+          setReadModeEnabled(settings.readModeEnabled);
+          localStorage.setItem("readModeEnabled", String(settings.readModeEnabled));
+        }
+        // settingsOpenSections / adminOpenSections are intentionally
+        // NOT loaded from the server — the side panels reset to all-
+        // collapsed every time they open. See the reset effects near
+        // the settingsPanelOpen / adminPanelOpen state declarations.
         if (settings && typeof settings.floatingCardsEnabled === "boolean") {
           setFloatingCardsEnabled(settings.floatingCardsEnabled);
           localStorage.setItem("floatingCardsEnabled", String(settings.floatingCardsEnabled));
@@ -691,6 +1027,74 @@ export default function App() {
         if (settings?.editorToolbarMode === "simple" || settings?.editorToolbarMode === "advanced") {
           setEditorToolbarMode(settings.editorToolbarMode);
           localStorage.setItem("editorToolbarMode", settings.editorToolbarMode);
+        }
+        if (settings?.pasteMode === "rich" || settings?.pasteMode === "plain") {
+          setPasteMode(settings.pasteMode);
+          localStorage.setItem("pasteMode", settings.pasteMode);
+        }
+        if (
+          typeof settings?.notificationsPosition === "string" &&
+          [
+            "top-left",
+            "top-center",
+            "top-right",
+            "bottom-left",
+            "bottom-center",
+            "bottom-right",
+          ].includes(settings.notificationsPosition)
+        ) {
+          setNotificationsPosition(settings.notificationsPosition);
+          localStorage.setItem("notificationsPosition", settings.notificationsPosition);
+        }
+        if (
+          settings?.notificationsPositionMobile === "top" ||
+          settings?.notificationsPositionMobile === "bottom"
+        ) {
+          setNotificationsPositionMobile(settings.notificationsPositionMobile);
+          localStorage.setItem(
+            "notificationsPositionMobile",
+            settings.notificationsPositionMobile,
+          );
+        }
+        if (typeof settings?.notificationsSound === "boolean") {
+          setNotificationsSound(settings.notificationsSound);
+          localStorage.setItem(
+            "notificationsSound",
+            settings.notificationsSound ? "1" : "0",
+          );
+        }
+        if (
+          settings?.notificationsSoundTypes &&
+          typeof settings.notificationsSoundTypes === "object" &&
+          !Array.isArray(settings.notificationsSoundTypes)
+        ) {
+          const incoming = settings.notificationsSoundTypes;
+          const next = {
+            share: incoming.share !== false,
+            access: incoming.access !== false,
+            success: incoming.success !== false,
+            warning: incoming.warning !== false,
+            error: incoming.error !== false,
+            info: incoming.info !== false,
+          };
+          setNotificationsSoundTypes(next);
+          try {
+            localStorage.setItem(
+              "notificationsSoundTypes",
+              JSON.stringify(next),
+            );
+          } catch (e) {}
+        }
+        if ("notificationsDuration" in (settings || {})) {
+          const raw = settings.notificationsDuration;
+          const allowed = [5000, 10000, 20000, 30000];
+          if (raw === null) {
+            setNotificationsDuration(null);
+            localStorage.setItem("notificationsDuration", "null");
+          } else if (typeof raw === "number" && allowed.includes(raw)) {
+            setNotificationsDuration(raw);
+            localStorage.setItem("notificationsDuration", String(raw));
+          }
         }
         if (settings?.typographyPresets && typeof settings.typographyPresets === "object") {
           const normalized = normalizeTypographyPresets(settings.typographyPresets);
@@ -728,6 +1132,39 @@ export default function App() {
       }).catch(() => {});
     }
   }, [alwaysShowSidebarOnWide]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("sidebarBreakpoint", String(sidebarBreakpoint));
+    } catch (e) {}
+    if (!sidebarSettingsLoadedRef.current) return;
+    if (token) {
+      api("/user/settings", {
+        method: "PATCH",
+        token,
+        body: { sidebarBreakpoint },
+      }).catch(() => {});
+    }
+  }, [sidebarBreakpoint, token]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("readModeEnabled", String(readModeEnabled));
+    } catch (e) {}
+    if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("readModeEnabled")) {
+      remoteSyncedKeysRef.current.delete("readModeEnabled");
+      return;
+    }
+    if (token) {
+      api("/user/settings", {
+        method: "PATCH",
+        token,
+        body: { readModeEnabled },
+      }).catch(() => {});
+    }
+  }, [readModeEnabled, token]);
+
 
   // Save floating cards preference to localStorage and server
   useEffect(() => {
@@ -818,6 +1255,122 @@ export default function App() {
     }
   }, [editorToolbarMode]);
 
+  useEffect(() => {
+    try { localStorage.setItem("pasteMode", pasteMode); } catch (e) {}
+    if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("pasteMode")) {
+      remoteSyncedKeysRef.current.delete("pasteMode");
+      return;
+    }
+    if (token) {
+      api("/user/settings", {
+        method: "PATCH",
+        token,
+        body: { pasteMode },
+      }).catch(() => {});
+    }
+  }, [pasteMode]);
+
+  useEffect(() => {
+    try { localStorage.setItem("notificationsPosition", notificationsPosition); } catch (e) {}
+    if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("notificationsPosition")) {
+      remoteSyncedKeysRef.current.delete("notificationsPosition");
+      return;
+    }
+    if (token) {
+      api("/user/settings", {
+        method: "PATCH",
+        token,
+        body: { notificationsPosition },
+      }).catch(() => {});
+    }
+  }, [notificationsPosition]);
+
+  // Same outbound pattern as notificationsPosition but for the
+  // mobile-only top/bottom preference. Server stores under a
+  // separate key, so the value syncs across mobile devices via
+  // user_settings_updated SSE without ever touching the desktop
+  // notificationsPosition value.
+  useEffect(() => {
+    try { localStorage.setItem("notificationsPositionMobile", notificationsPositionMobile); } catch (e) {}
+    if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("notificationsPositionMobile")) {
+      remoteSyncedKeysRef.current.delete("notificationsPositionMobile");
+      return;
+    }
+    if (token) {
+      api("/user/settings", {
+        method: "PATCH",
+        token,
+        body: { notificationsPositionMobile },
+      }).catch(() => {});
+    }
+  }, [notificationsPositionMobile]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "notificationsSound",
+        notificationsSound ? "1" : "0",
+      );
+    } catch (e) {}
+    if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("notificationsSound")) {
+      remoteSyncedKeysRef.current.delete("notificationsSound");
+      return;
+    }
+    if (token) {
+      api("/user/settings", {
+        method: "PATCH",
+        token,
+        body: { notificationsSound },
+      }).catch(() => {});
+    }
+  }, [notificationsSound]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "notificationsSoundTypes",
+        JSON.stringify(notificationsSoundTypes),
+      );
+    } catch (e) {}
+    if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("notificationsSoundTypes")) {
+      remoteSyncedKeysRef.current.delete("notificationsSoundTypes");
+      return;
+    }
+    if (token) {
+      api("/user/settings", {
+        method: "PATCH",
+        token,
+        body: { notificationsSoundTypes },
+      }).catch(() => {});
+    }
+  }, [notificationsSoundTypes]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "notificationsDuration",
+        notificationsDuration == null ? "null" : String(notificationsDuration),
+      );
+    } catch (e) {}
+    if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("notificationsDuration")) {
+      remoteSyncedKeysRef.current.delete("notificationsDuration");
+      return;
+    }
+    if (token) {
+      api("/user/settings", {
+        method: "PATCH",
+        token,
+        body: { notificationsDuration },
+      }).catch(() => {});
+    }
+  }, [notificationsDuration]);
+
   // Edge-to-edge landscape: save + dynamically toggle body padding-left
   useEffect(() => {
     try { localStorage.setItem("edgeToEdgeLandscape", String(edgeToEdgeLandscape)); } catch (e) {}
@@ -888,7 +1441,7 @@ export default function App() {
           invalidateTrashedNotesCache();
           setNotes((prev) => prev.filter((n) => !selectedIds.includes(String(n.id))));
           onExitMulti();
-          showToast(t("bulkDeletedSuccess").replace("{count}", String(count)), "success");
+          showToast(t("bulkDeletedSuccess").replace("{count}", String(count)), "success", undefined, "trash-x");
         },
       });
     } else {
@@ -920,7 +1473,7 @@ export default function App() {
           invalidateTrashedNotesCache();
           setNotes((prev) => prev.filter((n) => !selectedIds.includes(String(n.id))));
           onExitMulti();
-          showToast(t("bulkTrashedSuccess").replace("{count}", String(count)), "success");
+          showToast(t("bulkTrashedSuccess").replace("{count}", String(count)), "success", undefined, "trash");
         },
       });
     }
@@ -1016,7 +1569,7 @@ export default function App() {
     invalidateTrashedNotesCache();
     setNotes((prev) => prev.filter((n) => !selectedIds.includes(String(n.id))));
     onExitMulti();
-    showToast(t("bulkRestoredSuccess").replace("{count}", String(count)), "success");
+    showToast(t("bulkRestoredSuccess").replace("{count}", String(count)), "success", undefined, "restore");
   };
 
   const onBulkArchive = async () => {
@@ -1051,7 +1604,12 @@ export default function App() {
     }
 
     onExitMulti();
-    showToast(t(isArchiving ? "bulkArchivedSuccess" : "bulkUnarchivedSuccess").replace("{count}", String(count)), "success");
+    showToast(
+      t(isArchiving ? "bulkArchivedSuccess" : "bulkUnarchivedSuccess").replace("{count}", String(count)),
+      "success",
+      undefined,
+      isArchiving ? "archive" : "archive-off",
+    );
   };
 
   const onUpdateChecklistItem = async (noteId, itemId, checked) => {
@@ -1192,6 +1750,7 @@ export default function App() {
     pendingUsers,
     newUserForm, setNewUserForm,
     updateAdminSettings, createUser, deleteUser, updateUser,
+    loadAdminSettings, loadAllUsers,
     loadPendingUsers, approvePendingUser, rejectPendingUser,
     openAdminPanel,
   } = useAdminActions(token, {
@@ -1234,10 +1793,29 @@ export default function App() {
 
   // Settings panel state
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+  // Reset Settings / Admin section accordions whenever the panel
+  // closes so the next open lands fully collapsed regardless of
+  // what the user had expanded last time. NOT persisted: the panels
+  // are deliberately ephemeral in their layout.
+  useEffect(() => {
+    if (!settingsPanelOpen) setSettingsOpenSections({});
+  }, [settingsPanelOpen]);
+  useEffect(() => {
+    if (!adminPanelOpen) setAdminOpenSections({});
+  }, [adminPanelOpen]);
   // Lifted from SettingsPanel so the centralised overlay back-button
   // stack (and the safe-area-aware scrim) can react to the typography
   // sub-modal opening / closing.
   const [typographyModalOpen, setTypographyModalOpen] = useState(false);
+
+  // Notification center open state. The actual open/closed state lives
+  // inside NotificationBell (local, to avoid the desktop+mobile bell
+  // duplicating the panel). The bell reports its state up via
+  // onOpenChange and exposes a close handle via closeNotifBellRef so
+  // App.jsx can include it in overlayOpenCount (PTR lock + Android
+  // back-button history machinery).
+  const [notifCenterOpen, setNotifCenterOpen] = useState(false);
+  const closeNotifBellRef = useRef(null);
 
   // Sync dropdown state (lifted for back button support)
   const [syncDropdownOpen, setSyncDropdownOpen] = useState(false);
@@ -2620,6 +3198,102 @@ export default function App() {
               syncEngineRef.current.notifyServerReachable();
             }
             const msg = JSON.parse(e.data || "{}");
+            // Apply a `user_settings_updated` payload (live cross-tab
+            // / cross-device sync). Validators mirror the initial-load
+            // path so the same set of acceptable values applies; each
+            // applied key is registered in remoteSyncedKeysRef so the
+            // matching PATCH-trigger useEffect knows to skip its
+            // outbound write (no echo back to the server).
+            const applyRemoteUserSettings = (settings) => {
+              if (!settings || typeof settings !== "object") return;
+              const keys = new Set(Object.keys(settings));
+              // Replace (not union) so previously-recorded keys that
+              // didn't actually change state can't leak into a future
+              // local change.
+              remoteSyncedKeysRef.current = new Set();
+              const mark = (k) => remoteSyncedKeysRef.current.add(k);
+
+              if (keys.has("notificationsPosition")) {
+                const v = settings.notificationsPosition;
+                if (
+                  typeof v === "string" &&
+                  [
+                    "top-left",
+                    "top-center",
+                    "top-right",
+                    "bottom-left",
+                    "bottom-center",
+                    "bottom-right",
+                  ].includes(v)
+                ) {
+                  mark("notificationsPosition");
+                  setNotificationsPosition(v);
+                  try { localStorage.setItem("notificationsPosition", v); } catch (_) {}
+                }
+              }
+              if (keys.has("notificationsPositionMobile")) {
+                const v = settings.notificationsPositionMobile;
+                if (v === "top" || v === "bottom") {
+                  mark("notificationsPositionMobile");
+                  setNotificationsPositionMobile(v);
+                  try { localStorage.setItem("notificationsPositionMobile", v); } catch (_) {}
+                }
+              }
+              if (keys.has("notificationsSound")) {
+                const v = settings.notificationsSound;
+                if (typeof v === "boolean") {
+                  mark("notificationsSound");
+                  setNotificationsSound(v);
+                  try { localStorage.setItem("notificationsSound", v ? "1" : "0"); } catch (_) {}
+                }
+              }
+              if (keys.has("notificationsSoundTypes")) {
+                const v = settings.notificationsSoundTypes;
+                if (v && typeof v === "object" && !Array.isArray(v)) {
+                  const next = {
+                    share: v.share !== false,
+                    access: v.access !== false,
+                    success: v.success !== false,
+                    warning: v.warning !== false,
+                    error: v.error !== false,
+                    info: v.info !== false,
+                  };
+                  mark("notificationsSoundTypes");
+                  setNotificationsSoundTypes(next);
+                  try { localStorage.setItem("notificationsSoundTypes", JSON.stringify(next)); } catch (_) {}
+                }
+              }
+              if (keys.has("notificationsDuration")) {
+                const raw = settings.notificationsDuration;
+                const allowed = [5000, 10000, 20000, 30000];
+                if (raw === null) {
+                  mark("notificationsDuration");
+                  setNotificationsDuration(null);
+                  try { localStorage.setItem("notificationsDuration", "null"); } catch (_) {}
+                } else if (typeof raw === "number" && allowed.includes(raw)) {
+                  mark("notificationsDuration");
+                  setNotificationsDuration(raw);
+                  try { localStorage.setItem("notificationsDuration", String(raw)); } catch (_) {}
+                }
+              }
+              if (keys.has("pasteMode")) {
+                const v = settings.pasteMode;
+                if (v === "rich" || v === "plain") {
+                  mark("pasteMode");
+                  setPasteMode(v);
+                  try { localStorage.setItem("pasteMode", v); } catch (_) {}
+                }
+              }
+              if (keys.has("readModeEnabled")) {
+                const v = settings.readModeEnabled;
+                if (typeof v === "boolean") {
+                  mark("readModeEnabled");
+                  setReadModeEnabled(v);
+                  try { localStorage.setItem("readModeEnabled", String(v)); } catch (_) {}
+                }
+              }
+            };
+
             if (msg && msg.type === "instance_locked") {
               // Another admin (or the CLI) locked the instance. Drop
               // the user straight onto the unlock screen instead of
@@ -2653,14 +3327,148 @@ export default function App() {
                   forceCloseModalForRemoteDelete(nid);
                 }
               }
+            } else if (msg && msg.type === "note_shared") {
+              // A live share notification. The bell calls markDelivered
+              // when the panel is opened — we don't ack here because the
+              // server's notification_delivered broadcast would race with
+              // the just-rendered card and clear it on the same tick.
+              showShareNotificationToast({
+                id: msg.notificationId,
+                senderName: msg.senderName,
+                noteTitle: msg.noteTitle,
+                noteId: msg.noteId,
+              });
+            } else if (msg && msg.type === "note_access_revoked_notification") {
+              // Live notification for either side of a revoke. The
+              // notificationType field on the payload picks the right
+              // title/message pair (ex-collaborator vs owner, with
+              // copy vs without). The accompanying `note_access_revoked`
+              // event still drives the local note removal on the
+              // ex-collaborator side. Delivery ack is deferred to the
+              // bell (same reason as note_shared above).
+              showRevokeNotificationToast({
+                id: msg.notificationId,
+                notificationType: msg.notificationType,
+                senderName: msg.senderName,
+                noteTitle: msg.noteTitle,
+                noteId: msg.noteId,
+              });
+            } else if (msg && msg.type === "test_notification") {
+              // Dev/test notification dispatched via the
+              // scripts/test-notification.cjs CLI. Routed through the
+              // generic notify() so it inherits the standard card UI,
+              // history entry and unread badge. metadata carries the
+              // server-side id so the cross-device dismiss broadcast
+              // (`notification_delivered`) can find this card in
+              // state — without it, dismissByServerIds would have
+              // nothing to match against.
+              notify({
+                type: "test",
+                variant: msg.variant || "info",
+                title: msg.title || null,
+                message: msg.message || "",
+                persistent: !!msg.persistent,
+                icon: msg.icon || null,
+                metadata: msg.notificationId
+                  ? { serverNotificationId: msg.notificationId }
+                  : null,
+              });
+              // Do NOT mark delivered here: that would trigger a
+              // `notification_delivered` SSE back from the server which
+              // immediately dismisses the card we just showed. The bell
+              // calls markDelivered when the panel is opened, which is
+              // the right moment to record "user has seen this".
+            } else if (msg && msg.type === "notifications_cleared") {
+              // Another device wiped the user's notification history.
+              // Only drop server-backed rows: local-only toasts (e.g.
+              // "Note moved to trash", in-app UI feedback) have no DB
+              // counterpart and a remote clear must not erase them
+              // from this device.
+              clearServerBackedNotifications();
+            } else if (msg && msg.type === "notification_delivered" && Array.isArray(msg.ids)) {
+              // Cross-device dismissal — another tab/device (or this
+              // one) just acknowledged these server notification ids.
+              // We route through the reducer dispatcher because
+              // notificationsRef hasn't necessarily caught up with a
+              // just-added card (React commits the mirror useEffect
+              // after the current microtask). The reducer sees the
+              // latest state for every row, including the one whose
+              // ADD action ran one microtask ago.
+              dismissByServerIdsNotif(msg.ids);
+            } else if (msg && msg.type === "notification_removed" && Array.isArray(msg.ids)) {
+              // Cross-device per-item removal — another tab/device
+              // permanently deleted these notifications. Drop matching
+              // rows from local state so the history panel stays
+              // identical everywhere.
+              removeByServerIdsNotif(msg.ids);
             } else if (msg && msg.type === "pending_user_registered") {
               // Admin notification: a new user is awaiting approval.
+              // Routes through showPendingUserToast so the live toast
+              // carries the same Accepter / Refuser actions as its
+              // history twin (built from the persisted DB row).
               if (currentUserRef.current?.is_admin) {
-                showToast(
-                  t("pendingUserToast", { name: msg.name || msg.email || "" }),
-                  "info",
-                );
+                showPendingUserToast({
+                  notificationId: msg.notificationId,
+                  pendingId: msg.pendingId,
+                  name: msg.name,
+                  email: msg.email,
+                });
                 loadPendingUsers?.();
+              }
+            } else if (msg && msg.type === "pending_user_resolved") {
+              // Another admin (or this one on a different tab) just
+              // approved / rejected a pending registration. Refresh
+              // the AdminPanel lists so the row disappears for every
+              // admin in real time. The bell-notification card is
+              // already cleared by the existing notification_removed
+              // SSE the server sends alongside (via
+              // cleanupPendingUserNotifications), so we only handle
+              // the panel state here.
+              if (currentUserRef.current?.is_admin) {
+                loadPendingUsers?.();
+                if (msg.action === "approved") loadAllUsers?.();
+              }
+            } else if (msg && msg.type === "user_list_changed") {
+              // Another admin created / updated a user. Reload the
+              // users list so every admin's AdminPanel reflects the
+              // change in real time. Deletion is handled separately
+              // by user_deleted_notification.
+              if (currentUserRef.current?.is_admin) {
+                loadAllUsers?.();
+              }
+            } else if (msg && msg.type === "admin_settings_updated") {
+              // Another admin flipped the "allow new accounts"
+              // toggle or changed the login slogan. Pull the fresh
+              // server-side admin settings so this admin's panel
+              // shows the new values immediately.
+              if (currentUserRef.current?.is_admin) {
+                loadAdminSettings?.();
+              }
+            } else if (msg && msg.type === "user_settings_updated" && msg.settings) {
+              // Live sync of user preferences from another session of
+              // the same user. Skip our own echo (originClientId
+              // matches this tab's getClientId()); otherwise mark the
+              // affected keys so each PATCH-trigger useEffect knows
+              // to skip its outbound write, then apply state updates
+              // through the same validators the initial load uses.
+              if (msg.originClientId && msg.originClientId === getClientId()) {
+                // Our own write — server confirmed it, nothing else to do.
+              } else {
+                applyRemoteUserSettings(msg.settings);
+              }
+            } else if (msg && msg.type === "user_deleted_notification") {
+              // Audit notification for OTHER admins: someone got
+              // deleted. The acting admin doesn't receive this — they
+              // saw the success toast in the panel.
+              if (currentUserRef.current?.is_admin) {
+                showUserDeletedToast({
+                  notificationId: msg.notificationId,
+                  deletedName: msg.deletedName,
+                  adminName: msg.adminName,
+                });
+                // Refresh the user list so the deleted row disappears
+                // from this admin's panel without a manual reload.
+                loadAllUsers?.();
               }
             } else if (msg && msg.type === "note_access_revoked" && msg.noteId) {
               // Collaboration access revoked — note owner removed us.
@@ -3037,6 +3845,18 @@ export default function App() {
     // against it. The create payload will carry the new drawing, and the
     // effect returns because baselines are realigned to the current state.
     if (materializeDraftIfNeeded({ drawing: mDrawingData })) return;
+    // If materialise was rejected because the draft is still empty (no
+    // strokes, no caption, no metadata), keep the draft pending and skip
+    // the autosave — there's nothing to patch, and acquiring a lease /
+    // scheduling a flush for a non-existent server row destabilises
+    // subsequent modal opens (the user reported a flaky "modal opens
+    // then closes immediately" after closing an empty drawing draft).
+    if (
+      pendingDraftRef.current &&
+      String(activeId) === String(pendingDraftRef.current.id)
+    ) {
+      return;
+    }
 
     const dirtyNoteId = String(activeId);
 
@@ -3142,6 +3962,15 @@ export default function App() {
     setSession(null);
     setNotes([]);
     setSyncStatus(SYNC_STATUS_RESET);
+    // NOTE: we intentionally do NOT call clearNotifications() here.
+    // The provider lives above App so its state survives logout.
+    // Dismissed entries (notification center history) must survive —
+    // those rows are already acked server-side so /notifications/pending
+    // will not replay them, meaning clearing them would permanently
+    // destroy the user's history. Active entries (dismissed:false) are
+    // deduplicated by the ADD reducer (which blocks a re-ADD when a
+    // non-dismissed entry with the same serverNotificationId already
+    // exists), so no duplicates stack up on reconnect either.
     // Clear session-scoped localStorage caches only (preserve UI prefs like dark mode)
     const uid = userId || "anonymous";
     const s = sid || "no-session";
@@ -3391,7 +4220,12 @@ export default function App() {
       closeModal();
     }
 
-    showToast(t(archived ? "noteArchived" : "noteUnarchived"), "success");
+    showToast(
+      t(archived ? "noteArchived" : "noteUnarchived"),
+      "success",
+      undefined,
+      archived ? "archive" : "archive-off",
+    );
 
     await enqueueWithLease(nid, { type: "archive", noteId: nid, payload: { archived: !!archived, client_updated_at: nowIso } }, leaseId);
   };
@@ -3456,7 +4290,7 @@ export default function App() {
   const overlayOpenCount = [
     imgViewOpen, confirmDeleteOpen, genericConfirmOpen,
     collaborationModalOpen, showModalColorPop, showModalFmt, modalMenuOpen,
-    modalKebabOpen, modalTagFocused, syncDropdownOpen, mobileSearchOpen,
+    modalKebabOpen, modalTagFocused, notifCenterOpen, syncDropdownOpen, mobileSearchOpen,
     showColorPop, showComposerFmt, headerMenuOpen, multiMode,
     typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
     noteAiOpen, changelogOpen,
@@ -3483,9 +4317,16 @@ export default function App() {
     }
   }, [overlayOpenCount]);
 
-  // Disable pull-to-refresh on Android when any overlay is open
+  // Disable pull-to-refresh when any overlay is open. Two delivery paths:
+  //   1. Native Android — the JS bridge disables the SwipeRefreshLayout.
+  //   2. Chrome PWA — html/body get overscroll-behavior:none via the
+  //      .gk-overlay-locked class (defined in globalCSS.js).
+  // notifCenterOpen is part of overlayOpenCount now that closeNotifBellRef
+  // gives App.jsx a way to close the panel from the popstate handler.
   useEffect(() => {
-    try { window.AndroidTheme?.setRefreshEnabled(overlayOpenCount === 0); } catch (_) {}
+    const locked = overlayOpenCount > 0;
+    document.documentElement.classList.toggle("gk-overlay-locked", locked);
+    try { window.AndroidTheme?.setRefreshEnabled(!locked); } catch (_) {}
   }, [overlayOpenCount]);
 
   useEffect(() => {
@@ -3513,6 +4354,7 @@ export default function App() {
       if (noteAiOpen) { setNoteAiOpen(false); return; }
       if (open) { closeModalRef.current?.(); return; }
       if (fabOpen) { setFabOpen(false); return; }
+      if (notifCenterOpen) { closeNotifBellRef.current?.(); return; }
       if (syncDropdownOpen) { setSyncDropdownOpen(false); return; }
       if (mobileSearchOpen) { setSearch(""); setMobileSearchOpen(false); return; }
       if (showColorPop) { setShowColorPop(false); return; }
@@ -3528,7 +4370,7 @@ export default function App() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [imgViewOpen, confirmDeleteOpen, genericConfirmOpen, collaborationModalOpen,
       showModalColorPop, showModalFmt, modalMenuOpen, modalKebabOpen, modalTagFocused,
-      syncDropdownOpen, mobileSearchOpen, showColorPop, showComposerFmt,
+      notifCenterOpen, syncDropdownOpen, mobileSearchOpen, showColorPop, showComposerFmt,
       headerMenuOpen, multiMode, typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
       noteAiOpen, changelogOpen]);
 
@@ -3785,7 +4627,8 @@ export default function App() {
     // Audio notes have no read/edit distinction — the AudioNoteEditor always
     // shows the player + recorder controls regardless of viewMode. Open in
     // edit mode so the experience is identical to creating a new audio note.
-    setViewMode(n.type !== "audio");
+    // Users who disabled the read-mode setting always open in edit mode.
+    setViewMode(n.type !== "audio" && readModeEnabled);
     setModalMenuOpen(false);
     setOpen(true);
 
@@ -3798,6 +4641,88 @@ export default function App() {
       setNoteAiMessages(savedMsgs);
       setNoteAiSaved(true);
       setNoteAiHasBeenOpened(true);
+    }
+  };
+
+  // Handler for notification action buttons (the "Ouvrir" affordance
+  // on a shared-note toast, etc.). For an action carrying a noteId
+  // the linked note opens in the modal and the notification is
+  // dismissed. Defined as a plain function rather than useCallback so
+  // it always closes over the freshest openModal / notes references.
+  const handleNotificationAction = (notif, chosenAction) => {
+    if (!notif) return;
+    // Single-action notifications pass `notif.action`; multi-action
+    // ones pass the chosen action explicitly so this dispatcher knows
+    // which button was clicked.
+    const a = chosenAction || notif.action;
+    if (!a) return;
+    if (a.kind === "approve_pending_user" && a.pendingUserId != null) {
+      if (typeof approvePendingUser !== "function") return;
+      approvePendingUser(a.pendingUserId)
+        .then(() => {
+          // Mirror AdminPanel's post-action confirmation so the two
+          // entry points (panel button + notification action) give
+          // the same feedback.
+          showToast(t("registrationApproved"), "success", undefined, "user-check");
+          // Server already broadcasts notification_removed to every
+          // admin so the history entries vanish; explicit remove here
+          // covers the local toast in the same session.
+          removeNotification(notif.id);
+        })
+        .catch((e) => {
+          if (e && /404/.test(String(e.message))) {
+            showToast(t("pendingUserAlreadyHandled"), "warning");
+            removeNotification(notif.id);
+          }
+        });
+      return;
+    }
+    if (a.kind === "reject_pending_user" && a.pendingUserId != null) {
+      if (typeof rejectPendingUser !== "function") return;
+      rejectPendingUser(a.pendingUserId)
+        .then(() => {
+          showToast(t("registrationRejected"), "info", undefined, "user-x");
+          removeNotification(notif.id);
+        })
+        .catch((e) => {
+          if (e && /404/.test(String(e.message))) {
+            showToast(t("pendingUserAlreadyHandled"), "warning");
+            removeNotification(notif.id);
+          }
+        });
+      return;
+    }
+    if (a.kind === "start_self_update" && a.latestVersion) {
+      // Same one-click path as the admin panel's "Mettre à jour
+      // maintenant" button: surface the generic confirm dialog, then
+      // hand off to selfUpdate.startUpdate which opens the existing
+      // update-progress modal. Dismiss the notification either way so
+      // the card doesn't linger behind the confirm.
+      const latestVersion = a.latestVersion;
+      const fire = () => {
+        try {
+          selfUpdate?.startUpdate({ latestVersion });
+        } catch (_e) {
+          /* startUpdate surfaces its own errors via the modal */
+        }
+      };
+      showGenericConfirm({
+        title: t("selfUpdateConfirmTitle").replace("{version}", latestVersion),
+        message: t("selfUpdateConfirmMessage").replace(
+          "{version}",
+          latestVersion,
+        ),
+        confirmText: t("selfUpdateConfirmButton"),
+        cancelText: t("cancel"),
+        variant: "success",
+        onConfirm: fire,
+      });
+      dismissNotification(notif.id);
+      return;
+    }
+    if (a.noteId) {
+      try { openModal(String(a.noteId)); } catch (_e) {}
+      dismissNotification(notif.id);
     }
   };
 
@@ -4160,6 +5085,13 @@ export default function App() {
     if (!titleChanged && !textChanged) return;
 
     if (materializeDraftIfNeeded()) return;
+    // Empty-draft rejection: keep pending, skip the patch enqueue.
+    if (
+      pendingDraftRef.current &&
+      String(activeId) === String(pendingDraftRef.current.id)
+    ) {
+      return;
+    }
 
     const nId = String(activeId);
     const leaseId = acquireLocalLease(nId);
@@ -4331,9 +5263,24 @@ export default function App() {
     // Unmaterialised draft: the user opened a blank note via the creation
     // buttons and never touched it, so nothing was ever persisted. Just run
     // the exit animation and drop the pending state — no IDB/queue work.
+    // Defensive: also remove the draft id from `notes` in case some path
+    // accidentally added it before closeModal fired (this should be a no-op
+    // in the normal flow, but it covers any reproducer where the user
+    // reports "empty note appeared in the list" without a materialise step
+    // they can identify). Drawing notes additionally fire the empty-note
+    // toast so the user gets feedback that the discard happened.
     if (pendingDraftRef.current && String(activeId) === String(pendingDraftRef.current.id)) {
+      const draftId = String(pendingDraftRef.current.id);
+      const draftType = pendingDraftRef.current.type;
       pendingDraftRef.current = null;
       freshlyCreatedNoteRef.current = null;
+      setNotes((prev) => {
+        const next = prev.filter((n) => String(n.id) !== draftId);
+        return next.length === prev.length ? prev : next;
+      });
+      if (draftType === "draw") {
+        showToast(t("emptyNoteDeleted"), "info", 3000, "trash");
+      }
       startModalExitAnimation();
       return;
     }
@@ -4352,16 +5299,34 @@ export default function App() {
       const drawPaths = mType === "draw"
         ? (mDrawingData?.paths || (Array.isArray(mDrawingData) ? mDrawingData : []))
         : [];
+      // A "real" stroke needs at least 2 points. A single tap on the
+      // canvas (no drag) still commits a one-point path which the user
+      // perceives as "I didn't draw anything" — without filtering, the
+      // auto-trash would skip the note because drawPaths.length is
+      // non-zero, and an empty card would stick around in the list.
+      // The combination titleEmpty + bodyEmpty + noImages is already
+      // conservative enough that a deliberate dot-only drawing with no
+      // title and no images is vanishingly rare; applying the filter
+      // here lets accidental taps on the canvas resolve to "empty"
+      // without keeping a junk card around.
+      const meaningfulPaths = drawPaths.filter(
+        (p) => Array.isArray(p?.points) && p.points.length >= 2,
+      );
       // For each note type, "body" means what the user actually authored —
       // the rich-text doc for text notes, the items list for checklists,
       // the drawing strokes (+ optional inline text) for draw notes.
+      // Draw notes' body is the Tiptap text caption envelope (an empty
+      // editor still serialises to {"v":1,"format":"tiptap","doc":{...}})
+      // so we must collapse it through contentToPlain before trimming —
+      // a raw `!mBody?.trim()` would always be false on an empty draw
+      // caption and would block the auto-trash entirely.
       const bodyEmpty = mType === "text"
         ? !contentToPlain(mBody).trim()
         : mType === "checklist"
           ? !Array.isArray(mItems) || mItems.length === 0
           : mType === "audio"
             ? isAudioContentEmpty(mBody)
-            : !mBody?.trim() && drawPaths.length === 0;
+            : !contentToPlain(mBody).trim() && meaningfulPaths.length === 0;
       const titleEmpty = !mTitle?.trim();
       const noImages = !Array.isArray(mImages) || mImages.length === 0;
       if (titleEmpty && bodyEmpty && noImages) {
@@ -4378,7 +5343,7 @@ export default function App() {
         setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
         invalidateNotesCache();
         invalidateTrashedNotesCache();
-        showToast(t("emptyNoteDeleted"), "info", 3000);
+        showToast(t("emptyNoteDeleted"), "info", 3000, "trash");
         freshlyCreatedNoteRef.current = null;
         (async () => {
           try {
@@ -4621,7 +5586,7 @@ export default function App() {
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("notePermanentlyDeleted"), "success");
+      showToast(t("notePermanentlyDeleted"), "success", undefined, "trash-x");
       await enqueueWithLease(nid, { type: "permanentDelete", noteId: nid, payload: { client_updated_at: new Date().toISOString() } }, leaseId);
     } else if (isOwner && isCollabNote && mode === "delete_for_all") {
       // Owner chose to delete the shared note for everyone.
@@ -4637,7 +5602,7 @@ export default function App() {
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteDeletedForAll"), "success");
+      showToast(t("noteDeletedForAll"), "success", undefined, "trash-x");
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: nowIso, mode: "delete_for_all" } }, leaseId);
     } else if (isOwner && isCollabNote) {
       // Owner chose "remove for me" on a shared note. Server transfers
@@ -4650,7 +5615,7 @@ export default function App() {
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteMovedToTrash"), "success");
+      showToast(t("noteMovedToTrash"), "success", undefined, "trash");
       const leaseId = acquireLocalLease(nid);
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: new Date().toISOString(), mode: "remove_self" } }, leaseId);
     } else if (!isOwner) {
@@ -4666,7 +5631,7 @@ export default function App() {
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteMovedToTrash"), "success");
+      showToast(t("noteMovedToTrash"), "success", undefined, "trash");
       const leaseId = acquireLocalLease(nid);
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: new Date().toISOString(), mode: "remove_self" } }, leaseId);
     } else {
@@ -4682,7 +5647,7 @@ export default function App() {
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteMovedToTrash"), "success");
+      showToast(t("noteMovedToTrash"), "success", undefined, "trash");
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: nowIso } }, leaseId);
     }
   };
@@ -4726,7 +5691,7 @@ export default function App() {
     invalidateTrashedNotesCache();
     setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
     closeModal();
-    showToast(t("noteRestoredFromTrash"), "success");
+    showToast(t("noteRestoredFromTrash"), "success", undefined, "restore");
     await enqueueWithLease(nid, { type: "restore", noteId: nid, payload: { client_updated_at: nowIso } }, leaseId);
   };
   const togglePin = async (id, toPinned) => {
@@ -5157,7 +6122,7 @@ export default function App() {
     );
     invalidateNotesCache();
     enqueueWithLease(newId, { type: "create", noteId: newId, payload: newNote }, leaseId);
-    showToast(t("noteDuplicated"), "success");
+    showToast(t("noteDuplicated"), "success", undefined, "copy");
     closeModal();
   };
 
@@ -5340,6 +6305,7 @@ export default function App() {
       setMColor={setMColor}
       viewMode={viewMode}
       setViewMode={setViewMode}
+      readModeEnabled={readModeEnabled}
       mImages={mImages}
       setMImages={setMImages}
       mItems={mItems}
@@ -5438,6 +6404,7 @@ export default function App() {
       checklistInsertPosition={checklistInsertPosition}
       checklistRemoveSectionBehavior={checklistRemoveSectionBehavior}
       editorToolbarMode={editorToolbarMode}
+      pasteMode={pasteMode}
       onConvertNoteType={convertNoteType}
       onDuplicateNote={duplicateActiveNote}
       initialDrawMode={initialDrawMode}
@@ -5616,7 +6583,7 @@ export default function App() {
           onUnlock={() => setLockOverlayOpen(true)}
           onDismiss={() => setLockBannerDismissed(true)}
           sidebarOffset={
-            alwaysShowSidebarOnWide && windowWidth >= 700 && !isMobileDevice && !desktopSidebarHidden
+            alwaysShowSidebarOnWide && windowWidth >= sidebarBreakpoint && !isMobileDevice && !desktopSidebarHidden
               ? sidebarWidth
               : 0
           }
@@ -5627,7 +6594,7 @@ export default function App() {
       <TagSidebar
         open={sidebarOpen}
         onClose={() => {
-          if (alwaysShowSidebarOnWide && windowWidth >= 700 && !isMobileDevice) {
+          if (alwaysShowSidebarOnWide && windowWidth >= sidebarBreakpoint && !isMobileDevice) {
             setDesktopSidebarHidden(true);
           } else {
             setSidebarOpen(false);
@@ -5659,7 +6626,7 @@ export default function App() {
           }
         }}
         dark={dark}
-        permanent={alwaysShowSidebarOnWide && windowWidth >= 700 && !isMobileDevice && !desktopSidebarHidden}
+        permanent={alwaysShowSidebarOnWide && windowWidth >= sidebarBreakpoint && !isMobileDevice && !desktopSidebarHidden}
         width={sidebarWidth}
         onResize={setSidebarWidth}
       />
@@ -5678,6 +6645,12 @@ export default function App() {
         onDownloadSecretKey={downloadSecretKey}
         alwaysShowSidebarOnWide={alwaysShowSidebarOnWide}
         setAlwaysShowSidebarOnWide={setAlwaysShowSidebarOnWide}
+        sidebarBreakpoint={sidebarBreakpoint}
+        setSidebarBreakpoint={setSidebarBreakpoint}
+        readModeEnabled={readModeEnabled}
+        setReadModeEnabled={setReadModeEnabled}
+        openSections={settingsOpenSections}
+        setOpenSections={setSettingsOpenSections}
         aiAssistantEnabled={aiAssistantEnabled}
         setAiAssistantEnabled={setAiAssistantEnabled}
         floatingCardsEnabled={floatingCardsEnabled}
@@ -5690,6 +6663,18 @@ export default function App() {
         setEdgeToEdgeLandscape={setEdgeToEdgeLandscape}
         editorToolbarMode={editorToolbarMode}
         setEditorToolbarMode={setEditorToolbarMode}
+        pasteMode={pasteMode}
+        setPasteMode={setPasteMode}
+        notificationsPosition={notificationsPosition}
+        setNotificationsPosition={setNotificationsPosition}
+        notificationsPositionMobile={notificationsPositionMobile}
+        setNotificationsPositionMobile={setNotificationsPositionMobile}
+        notificationsSound={notificationsSound}
+        setNotificationsSound={setNotificationsSound}
+        notificationsSoundTypes={notificationsSoundTypes}
+        setNotificationsSoundTypes={setNotificationsSoundTypes}
+        notificationsDuration={notificationsDuration}
+        setNotificationsDuration={setNotificationsDuration}
         typographyPresets={typographyPresets}
         setTypographyPresets={(next) => setTypographyPresets(normalizeTypographyPresets(next))}
         typographyModalOpen={typographyModalOpen}
@@ -5715,6 +6700,8 @@ export default function App() {
         open={adminPanelOpen}
         onClose={() => setAdminPanelOpen(false)}
         dark={dark}
+        openSections={adminOpenSections}
+        setOpenSections={setAdminOpenSections}
         adminSettings={adminSettings}
         setAdminSettings={setAdminSettings}
         allUsers={allUsers}
@@ -5803,7 +6790,7 @@ export default function App() {
         headerMenuRef={headerMenuRef}
         headerBtnRef={headerBtnRef}
         openSidebar={() => {
-          if (alwaysShowSidebarOnWide && windowWidth >= 700 && !isMobileDevice) {
+          if (alwaysShowSidebarOnWide && windowWidth >= sidebarBreakpoint && !isMobileDevice) {
             setDesktopSidebarHidden(h => !h);
           } else {
             setSidebarOpen(true);
@@ -5811,7 +6798,7 @@ export default function App() {
         }}
         activeTagFilter={tagFilter}
         activeTagFilters={activeTagFilters}
-        sidebarPermanent={alwaysShowSidebarOnWide && windowWidth >= 700 && !isMobileDevice && !desktopSidebarHidden}
+        sidebarPermanent={alwaysShowSidebarOnWide && windowWidth >= sidebarBreakpoint && !isMobileDevice && !desktopSidebarHidden}
         sidebarWidth={sidebarWidth}
         // AI props
         aiAssistantEnabled={aiAssistantEnabled}
@@ -5894,6 +6881,24 @@ export default function App() {
         // floating cards toggle
         floatingCardsEnabled={floatingCardsEnabled}
         onToggleFloatingCards={toggleFloatingCards}
+        notificationBellDesktop={
+          <NotificationBell
+            dark={dark}
+            onAction={handleNotificationAction}
+            onClearAll={clearAllNotificationsSynced}
+            onOpenChange={setNotifCenterOpen}
+            closeRef={closeNotifBellRef}
+          />
+        }
+        notificationBellMobile={
+          <NotificationBell
+            dark={dark}
+            onAction={handleNotificationAction}
+            onClearAll={clearAllNotificationsSynced}
+            onOpenChange={setNotifCenterOpen}
+            closeRef={closeNotifBellRef}
+          />
+        }
       />
       {modal}
 
@@ -5925,6 +6930,7 @@ export default function App() {
           addLogoToLibrary={addLogoToLibrary}
           deleteLogoFromLibrary={deleteLogoFromLibrary}
           editorToolbarMode={editorToolbarMode}
+          pasteMode={pasteMode}
           checklistInsertPosition={checklistInsertPosition}
           checklistRemoveSectionBehavior={checklistRemoveSectionBehavior}
           aiAssistantEnabled={aiAssistantEnabled}
@@ -5946,6 +6952,7 @@ export default function App() {
           showGenericConfirm={showGenericConfirm}
           runFormat={runFormat}
           isCollaborativeNote={isCollaborativeNote}
+          readModeEnabled={readModeEnabled}
         />
       )}
 
@@ -5975,7 +6982,35 @@ export default function App() {
         showToast={showToast}
       />
 
-      <ToastContainer toasts={toasts} />
+      {/* Mobile vs. desktop floating display. On coarse-pointer
+          devices we swap the glass-card stack for an Android-style
+          dark pill at the bottom of the screen — the platform's
+          native toast aesthetic feels less out of place on a phone
+          than a multi-card overlay would. Width gate is the same
+          640 px breakpoint the rest of the UI uses for "mobile",
+          and the coarse-pointer check filters out desktop browsers
+          with a touchscreen. The notification centre + bell stay
+          on every form factor. */}
+      {windowWidth < 640 ? (
+        <NotificationMobileToast
+          onAction={handleNotificationAction}
+          position={notificationsPositionMobile}
+          // Suppress the floating mobile pill while the notification
+          // centre sheet is on screen — every active toast is already
+          // visible inside the panel, so doubling it up just covers
+          // part of the list the user just opened.
+          suppressed={notifCenterOpen}
+        />
+      ) : (
+        <NotificationViewport
+          position={notificationsPosition}
+          onAction={handleNotificationAction}
+          // Same as the mobile pill: hide the floating stack while
+          // the centre panel is open so new arrivals don't double up
+          // on top of the panel that already shows them.
+          suppressed={notifCenterOpen}
+        />
+      )}
 
       {/* Forced password change (first login with temp password) */}
       {mustChangePassword && (
@@ -5989,7 +7024,7 @@ export default function App() {
               setSession((prev) => ({ ...prev, token: res.token, user: res.user }));
               setAuth({ ...getAuth(), token: res.token, user: res.user });
             }
-            showToast(t("passwordChangedSuccess"), "success");
+            showToast(t("passwordChangedSuccess"), "success", undefined, "key");
           }}
         />
       )}
@@ -6006,7 +7041,7 @@ export default function App() {
               setSession((prev) => ({ ...prev, token: res.token, user: res.user }));
               setAuth({ ...getAuth(), token: res.token, user: res.user });
             }
-            showToast(t("passwordChangedSuccess"), "success");
+            showToast(t("passwordChangedSuccess"), "success", undefined, "key");
           }}
         />
       )}

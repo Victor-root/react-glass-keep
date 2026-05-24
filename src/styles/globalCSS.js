@@ -53,14 +53,39 @@ html.dark body {
   background-image: none;
   background-attachment: fixed;
 }
+
+/* Disable browser pull-to-refresh while any overlay (notification
+   center, sync popover, modals, sidebar, …) is open. The class is
+   toggled by App.jsx from a single effect — every panel benefits
+   without each having to do its own DOM-level cleanup.
+   Only overscroll-behavior is set: no overflow:hidden, no positioning
+   changes, so the panel's own scrollable list and any underlying
+   layout keep working normally. */
+html.gk-overlay-locked,
+html.gk-overlay-locked body {
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
+}
 .glass-card {
   background-color: var(--card-bg-light);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-light);
   box-shadow: 0 4px 24px rgba(139, 92, 246, 0.07);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  /* box-shadow transition removed — the shadow value never changes on
+     hover so it's dead repaint cost on every frame of the scale anim. */
+  transition: transform 0.2s ease;
   break-inside: avoid;
+}
+/* Touch devices (phones, tablets) drop the backdrop blur entirely:
+   compositing blur(20px) on every visible note card costs ~5ms each
+   on a mid-range Snapdragon, which is the main reason the list scroll
+   feels soft. Desktop browsers keep the glass aesthetic. */
+@media (hover: none) and (pointer: coarse) {
+  .glass-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }
 /* Note cards: skip rendering when off-screen, isolate paint */
 .note-card {
@@ -393,6 +418,21 @@ html.dark .multi-select-dock__menu {
 .rt-editor-content li ol,
 .note-content--dense li ol,
 .note-content li ol {
+  counter-reset: gk-ol;
+}
+/* Restart the gk-ol counter when an ordered list directly follows a
+   "break" element — paragraph, heading, blockquote, bullet list,
+   horizontal rule. Matches the Word / Google Docs behaviour: leaving
+   a list and typing a new title before starting a fresh list resets
+   the numbering to 1. The code block (<pre>) is deliberately absent
+   from this list, which preserves the existing "ol then code block
+   then ol keeps counting" behaviour. Adjacent-sibling selector (the
+   plus combinator) keeps the reset local to the ordered list itself,
+   dodging the CSS counter scoping quirk where a counter-reset on a
+   block leaks into its following siblings. */
+.rt-editor-content :is(p, h1, h2, h3, h4, h5, h6, blockquote, ul, hr) + ol,
+.note-content--dense :is(p, h1, h2, h3, h4, h5, h6, blockquote, ul, hr) + ol,
+.note-content :is(p, h1, h2, h3, h4, h5, h6, blockquote, ul, hr) + ol {
   counter-reset: gk-ol;
 }
 .rt-editor-content ol > li,
@@ -1180,8 +1220,11 @@ html.dark .modal-footer-btn--pin-active:hover {
   }
 }
 
-.note-content pre .code-copy-btn,
-.code-block-wrapper .code-copy-btn {
+/* Shared theme for code-copy buttons. Applied to the in-editor /
+   view-mode code-block button AND to the portaled inline-code button
+   (.rt-inline-code-copy below), so both surfaces look identical
+   regardless of which DOM context they end up rendered in. */
+.code-copy-btn {
   font-size: .75rem;
   padding: .2rem .45rem;
   border-radius: .35rem;
@@ -1189,31 +1232,147 @@ html.dark .modal-footer-btn--pin-active:hover {
   color: #fff;
   border: none;
   box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-  opacity: 0;
-  transition: opacity 0.15s;
-  z-index: 2;
   cursor: pointer;
 }
-.code-block-wrapper:hover .code-copy-btn {
-  opacity: 1;
-}
-.code-block-wrapper .code-copy-btn:hover {
-  opacity: 1;
+.code-copy-btn:hover {
   background: var(--note-color-opaque, #111);
 }
-html:not(.dark) .code-block-wrapper .code-copy-btn {
+html:not(.dark) .code-copy-btn {
   color: rgba(0,0,0,0.75);
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
+/* Code-block button positioning + hover-show. Scoped to descendants
+   of the wrapper / pre so the rules don't catch the portaled inline
+   button, which has its own visibility mechanism. */
+.note-content pre .code-copy-btn,
+.code-block-wrapper .code-copy-btn {
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 2;
+}
+.code-block-wrapper:hover .code-copy-btn {
+  opacity: 1;
+}
+
+/* Legacy class kept for the rare case an inline copy button is still
+   inserted as a sibling. Read-mode now uses the same floating overlay
+   as edit-mode (.rt-inline-code-copy), so this rule only ensures any
+   stray sibling button still picks up the spacing tweak. */
 .inline-code-copy-btn {
   margin-left: 6px;
-  font-size: .7rem;
-  padding: .05rem .35rem;
-  border-radius: .35rem;
-  border: 1px solid var(--border-light);
-  background: rgba(0,0,0,0.06);
+  vertical-align: baseline;
 }
+
+/* ============================================================
+   Edit-mode link / code affordances (EditExtras + CodeBlockCopy)
+   ============================================================
+   Gated visually by data-edit-extras="on" on the editor wrapper
+   (RichTextEditor sets it based on the user's read-mode pref).
+   With the attribute absent, the editor stays exactly as it was
+   before so users who rely on the read-only view-mode keep their
+   previous edit-mode behaviour. */
+
+/* Code-block copy button inside the editor: hidden when extras off. */
+.rt-editor:not([data-edit-extras="on"]) .code-block-wrapper .code-copy-btn {
+  display: none;
+}
+/* Mobile arm: tapping a code block once on a coarse pointer adds
+   data-armed="true" so the copy button stays visible without the
+   editor stealing focus. CSS also shows it for hover on desktop via
+   the existing .code-block-wrapper:hover rule. Selector intentionally
+   doesn't require the .code-block-wrapper class — we also fall back
+   to arming a bare <pre> if for any reason the NodeView wrapper
+   isn't found at runtime, and we want the copy button (if present)
+   to still appear. */
+.rt-editor[data-edit-extras="on"] [data-armed="true"] .code-copy-btn {
+  opacity: 1;
+}
+
+/* "Copier" overlay anchored to inline code. Lives INSIDE the editor's
+   scroll container (e.g. .modal-scroll-themed) as a position:absolute
+   child, so it rides the scroll along with the underlying inline code
+   and is clipped naturally when the line leaves the viewport — no JS
+   scroll listener required. The visual theme (font, padding, colours,
+   shadow) is shared with the code-block button via .code-copy-btn. */
+.rt-inline-code-copy {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.rt-inline-code-copy--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Link hover tooltip. */
+.rt-link-tooltip {
+  position: fixed;
+  z-index: 10050;
+  font-size: .72rem;
+  font-weight: 500;
+  padding: .2rem .5rem;
+  border-radius: .35rem;
+  background: rgba(17, 17, 17, 0.92);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  white-space: nowrap;
+}
+.rt-link-tooltip--visible { opacity: 1; }
+
+/* Mobile tap-on-link popover with Open / Edit actions. */
+.rt-link-popover {
+  position: fixed;
+  z-index: 10060;
+  display: none;
+  flex-direction: row;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.12);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+.dark .rt-link-popover {
+  background: rgba(30, 30, 35, 0.98);
+  border-color: rgba(255,255,255,0.08);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+}
+.rt-link-popover--visible { display: inline-flex; }
+.rt-link-popover__btn {
+  font-size: .82rem;
+  font-weight: 600;
+  padding: .4rem .8rem;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #6366f1, #7c3aed);
+  color: #fff;
+}
+.rt-link-popover__btn--secondary {
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(0,0,0,0.12);
+}
+.dark .rt-link-popover__btn--secondary {
+  border-color: rgba(255,255,255,0.18);
+}
+.rt-link-popover__btn:active { transform: scale(0.97); }
+
+/* When extras are off (read-mode user toggled note to edit) the
+   editor must not show a link-affordance cursor, since we don't wire
+   any link interaction in that mode. */
+.rt-editor:not([data-edit-extras="on"]) .ProseMirror a { cursor: text; }
+/* In edit-extras mode, hovering a link in the editor should hint at
+   the new interaction without making it look like a plain web link. */
+.rt-editor[data-edit-extras="on"] .ProseMirror a { cursor: pointer; }
 
 .checklist-drag-clone {
   box-shadow: 0 8px 24px rgba(0,0,0,0.18);
@@ -1255,6 +1414,16 @@ html.dark::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #
 /* Fallback si CSS vars non résolues sur webkit (Safari) */
 html.dark .modal-scroll-themed::-webkit-scrollbar-track { background: var(--sb-track, #3b0764) !important; }
 html.dark .modal-scroll-themed::-webkit-scrollbar-thumb { background: var(--sb-thumb, #7c3aed) !important; border-radius: 10px; }
+/* Reserve the scrollbar gutter on desktop so the inner width stays
+   identical whether the note is short (no scrollbar) or long (scrollbar
+   visible). Without this, a long note shaves ~15 px off the toolbar's
+   usable width and the .rt-sg--style super-group wraps onto an extra
+   ribbon row. On mobile the scrollbar is already hidden via
+   .mobile-hide-scrollbar / scrollbar-width: none so the gutter is 0 px;
+   we still scope to the desktop breakpoint to be explicit. */
+@media (min-width: 641px) {
+  .modal-scroll-themed { scrollbar-gutter: stable; }
+}
 
 /* clamp for text preview */
 .line-clamp-6 {
@@ -2085,7 +2254,15 @@ html.dark .rt-editor-content a { color: #93c5fd; }
      vertical divider. When the viewport is too narrow for all
      super-groups on one ribbon row, a super-group wraps as a whole
      block — it never spills its own items across different rows of
-     the toolbar, matching the reference screenshot. */
+     the toolbar, matching the reference screenshot.
+
+     container-type lets the @container rules further down query the
+     toolbar's own inline-size so we can switch to a tighter layout
+     when the modal is at its max-w-4xl floor (~880 px usable). This
+     is independent of viewport width — the same toolbar can appear
+     in different container widths if the modal layout ever changes. */
+  container-type: inline-size;
+  container-name: rt-toolbar;
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
@@ -2276,6 +2453,15 @@ html.dark .rt-toolbar {
   stroke-linejoin: round;
   fill: none;
 }
+/* Filled Tabler glyphs (anything from the tabler-icons-filled set —
+   e.g. bell-ringing-filled, info-circle-filled). The default rule
+   above strokes everything and clears fill, which strips a filled
+   icon to outlines; this restores the intended look. */
+.tabler-icon--filled > svg {
+  fill: currentColor;
+  stroke: none;
+}
+.tabler-icon--filled > svg [fill="none"] { fill: none; }
 .tabler-icon--chevron,
 .tabler-icon--chevron > svg { width: 12px; height: 12px; stroke-width: 2; opacity: 0.75; }
 
@@ -3336,6 +3522,33 @@ html.dark .typo-modal-toggle {
 /* Mobile squeeze: the toolbar stays on one or two lines and each row uses
    the horizontal scroll container instead of wrapping aggressively on tiny
    screens. Groups stay grouped visually via the separators. */
+
+/* Desktop micro-compact: when the toolbar's own inline-size shrinks to
+   the ~880 px range (modal at max-w-4xl with the scrollbar gutter
+   reserved), trim a few pixels off each control so all four super-
+   groups still tuck onto two ribbon rows.
+
+   The :not() chain is load-bearing — without it the base .rt-btn
+   override would also raise the min-width of variants like
+   .rt-btn--chevron (20 px), .rt-btn--narrow (64 px), .rt-btn--link
+   (68 px) and grow them instead of shrinking the toolbar. Only plain
+   buttons and .rt-btn--swatch are reduced; the named variants keep
+   the widths they were designed with.
+
+   Guarded by min-width: 641 px so the mobile bottom-sheet (which uses
+   its own dedicated .mobile-fmt-sheet-content layout) is never touched. */
+@media (min-width: 641px) {
+  @container rt-toolbar (max-width: 880px) {
+    .rt-btn:not(.rt-btn--wide):not(.rt-btn--narrow):not(.rt-btn--chevron):not(.rt-btn--block):not(.rt-btn--link):not(.rt-btn--menu) {
+      min-width: 32px;
+      padding: 0 6px;
+    }
+    .rt-btn--wide { width: 122px; flex: 0 0 122px; }
+    .rt-style-btn { width: 78px; flex: 0 0 78px; }
+    .rt-sep { margin: 2px 4px; }
+  }
+}
+
 @media (max-width: 640px) {
   .rt-toolbar {
     flex-wrap: wrap;
@@ -3517,4 +3730,1215 @@ html.dark .typo-modal-toggle {
 .modal-scrim[data-ai-panel-side="left"] .note-ai-panel-wrapper.closing .note-ai-panel {
   animation: noteAiPanelOutRightToLeft 0.32s cubic-bezier(0.55, 0, 0.55, 0.6) both;
 }
+
+/* ============================================================
+   In-app notifications (provider + viewport + center + bell)
+   ============================================================
+   Six positional variants, glass card visual, badge on the bell.
+   Mobile (<640px) collapses the desktop column to full-width edge
+   margins so a long message wraps without overflowing the screen. */
+
+/* Floating viewport — six fixed-position variants */
+.gk-notif-viewport {
+  position: fixed;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none; /* cards opt back in individually */
+  max-width: calc(100vw - 16px);
+  width: 360px;
+}
+.gk-notif-viewport > * { pointer-events: auto; }
+/* Wide cards (callers that opted into actionLayout:"below" because
+   their message is long) bump the whole viewport to a roomier width
+   so the message wraps over fewer lines. Scoped via :has() so the
+   bump only applies while a wide card is actually visible; the
+   default 360px returns the moment it dismisses. Caps at the
+   viewport with a 16px safety margin so portrait phones never see
+   the card overflow horizontally. */
+.gk-notif-viewport:has(.gk-notif-card--wide) {
+  width: min(480px, calc(100vw - 16px));
+}
+.gk-notif-viewport--top-left {
+  top: calc(var(--safe-top, 0px) + 0.5rem);
+  left: 12px;
+  align-items: flex-start;
+}
+.gk-notif-viewport--top-center {
+  top: calc(var(--safe-top, 0px) + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  align-items: center;
+}
+.gk-notif-viewport--top-right {
+  top: calc(var(--safe-top, 0px) + 0.5rem);
+  right: 12px;
+  align-items: flex-end;
+}
+.gk-notif-viewport--bottom-left {
+  bottom: calc(var(--safe-bottom, 0px) + 1rem);
+  left: 12px;
+  align-items: flex-start;
+}
+.gk-notif-viewport--bottom-center {
+  bottom: calc(var(--safe-bottom, 0px) + 1rem);
+  left: 50%;
+  transform: translateX(-50%);
+  align-items: center;
+}
+.gk-notif-viewport--bottom-right {
+  bottom: calc(var(--safe-bottom, 0px) + 1rem);
+  right: 12px;
+  align-items: flex-end;
+}
+@media (max-width: 699px) {
+  .gk-notif-viewport--top-left,
+  .gk-notif-viewport--top-center,
+  .gk-notif-viewport--top-right {
+    top: calc(var(--safe-top, 0px) + 0.5rem);
+  }
+}
+@media (max-width: 639px) {
+  /* Mobile: viewport fills the horizontal space regardless of the
+     user's left/center/right preference so a long message has room
+     to wrap. Vertical anchor (top/bottom) is still respected. */
+  .gk-notif-viewport {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+    transform: none !important;
+    align-items: stretch !important;
+  }
+}
+
+/* Notification card — macOS Notification Centre styling with the
+   app's violet/blue/pink palette. The card has a tinted diagonal
+   gradient background over a heavy backdrop blur, plus a thin
+   matching gradient border drawn via the dual-background /
+   border-box-clip technique so the rounded corners stay clean
+   (border-image would have flattened them). The border is subtle
+   but visible enough to lift the card off whatever sits behind. */
+.gk-notif-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 16px;
+  /* Toast mode: clean LED-strip look. A 1.5 px solid border in the
+     variant colour does most of the work; a second crisp 1 px ring
+     immediately outside the border (via spread, 0 blur) doubles the
+     strip so it reads as a sharp lit edge rather than a stroke. A
+     tiny 4 px bleed adds just enough light to feel emissive without
+     becoming a diffuse halo, and the drop shadow stays neutral
+     (slate grey, not accent) so the card sits cleanly on its
+     surface. No pulse — the strip is static. */
+  --gk-notif-glow-ring:  rgba(99, 102, 241, 0.32);
+  --gk-notif-glow-bleed: rgba(99, 102, 241, 0.45);
+  --gk-notif-bg-tint:    rgba(99, 102, 241, 0.06);
+  background: linear-gradient(var(--gk-notif-bg-tint), var(--gk-notif-bg-tint)),
+              rgba(252, 252, 255, 0.97);
+  border: 2.5px solid var(--gk-notif-accent, #6366f1);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow:
+    0 0 0 1px   var(--gk-notif-glow-ring),
+    0 0 4px 0   var(--gk-notif-glow-bleed),
+    0 6px 14px -2px rgba(15, 23, 42, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
+  color: #1d1d1f;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  animation: gkNotifIn 280ms cubic-bezier(.22,.61,.36,1) both;
+}
+html.dark .gk-notif-card {
+  background: linear-gradient(var(--gk-notif-bg-tint), var(--gk-notif-bg-tint)),
+              rgba(18, 18, 28, 0.97);
+  color: #f0f0f5;
+  box-shadow:
+    0 0 0 1px   var(--gk-notif-glow-ring),
+    0 0 5px 0   var(--gk-notif-glow-bleed),
+    0 6px 14px -2px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Variant accent colour + per-variant LED palette. Two values only:
+   the crisp 1 px ring just outside the border, and the tight 4 px
+   bleed that gives the strip its "emissive" feel. Dark-mode rules
+   below bump both values up to keep the strip readable on a near-
+   black card. */
+.gk-notif-card--info {
+  --gk-notif-accent:     #3b82f6;
+  --gk-notif-bg-tint:    rgba(59, 130, 246, 0.06);
+  --gk-notif-glow-ring:  rgba(59, 130, 246, 0.32);
+  --gk-notif-glow-bleed: rgba(59, 130, 246, 0.45);
+}
+.gk-notif-card--success {
+  --gk-notif-accent:     #10b981;
+  --gk-notif-bg-tint:    rgba(16, 185, 129, 0.06);
+  --gk-notif-glow-ring:  rgba(16, 185, 129, 0.32);
+  --gk-notif-glow-bleed: rgba(16, 185, 129, 0.45);
+}
+.gk-notif-card--warning {
+  --gk-notif-accent:     #f59e0b;
+  --gk-notif-bg-tint:    rgba(245, 158, 11, 0.07);
+  --gk-notif-glow-ring:  rgba(245, 158, 11, 0.32);
+  --gk-notif-glow-bleed: rgba(245, 158, 11, 0.45);
+}
+.gk-notif-card--error {
+  --gk-notif-accent:     #ef4444;
+  --gk-notif-bg-tint:    rgba(239, 68, 68, 0.06);
+  --gk-notif-glow-ring:  rgba(239, 68, 68, 0.32);
+  --gk-notif-glow-bleed: rgba(239, 68, 68, 0.45);
+}
+html.dark .gk-notif-card--info {
+  --gk-notif-glow-ring:  rgba(59, 130, 246, 0.45);
+  --gk-notif-glow-bleed: rgba(59, 130, 246, 0.60);
+}
+html.dark .gk-notif-card--success {
+  --gk-notif-glow-ring:  rgba(16, 185, 129, 0.45);
+  --gk-notif-glow-bleed: rgba(16, 185, 129, 0.60);
+}
+html.dark .gk-notif-card--warning {
+  --gk-notif-glow-ring:  rgba(245, 158, 11, 0.45);
+  --gk-notif-glow-bleed: rgba(245, 158, 11, 0.60);
+}
+html.dark .gk-notif-card--error {
+  --gk-notif-glow-ring:  rgba(239, 68, 68, 0.45);
+  --gk-notif-glow-bleed: rgba(239, 68, 68, 0.60);
+}
+
+/* Auto-dismiss countdown bar — only rendered on floating toasts that
+   have a finite duration. The fill's animation-duration is set inline
+   from the notification's actual duration so it always finishes at
+   the exact moment the provider's timer fires.
+
+   Layered as a thin progress strip flush against the bottom of the
+   card. Two pieces:
+     - The "clip" wrapper anchors a 14-px-tall band at the inside
+       bottom edge of the card and applies overflow:hidden with a
+       border-radius that matches the card's INNER border curve
+       (16 px outer − 2.5 px border = 13.5 px). Children inside —
+       the track and the fill — are clipped to the same circular
+       silhouette as the card itself, so the corners curve cleanly
+       instead of leaving square pixels poking past the card edge.
+       Couldn't put overflow:hidden on the card directly because the
+       close-button pill overhangs the top-left at -6/-6.
+     - The track + fill themselves are a flat full-inside-width
+       3.6-px-tall strip (10 % thinner than the previous 4 px), with
+       the variant accent used at low opacity for the track and
+       full saturation for the fill so the bar reads as part of the
+       card's coloured identity. */
+.gk-notif-card__countdown-clip {
+  /* Inside the padding-box; bottom corners match the card's INNER
+     border curve (16 px outer − 2.5 px border = 13.5 px) so the
+     strip's silhouette follows the card's bottom curve. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 14px;
+  border-bottom-left-radius: 13.5px;
+  border-bottom-right-radius: 13.5px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.gk-notif-card__countdown {
+  /* No track surface — the previous design had a coloured track
+     (16 % accent on the body bg) that visibly stepped from the
+     body's own tint at the top of the strip, which the user read as
+     a "couture". Empty container, just contains the fill. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3.6px;
+}
+.gk-notif-card__countdown-fill {
+  /* Vertical gradient: transparent at the top so the strip fades
+     into the body bg (no top step / seam against the card body),
+     full accent at the bottom so it merges with the card's solid
+     bottom border (same colour on both sides → invisible boundary).
+     transform: scaleX animates left-to-right, so the depleted area
+     simply shows the body+border behind. */
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--gk-notif-accent, #6366f1)
+  );
+  transform-origin: left center;
+  animation-name: gkNotifCountdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes gkNotifCountdown {
+  from { transform: scaleX(1); }
+  to   { transform: scaleX(0); }
+}
+
+/* All variants render a filled Tabler glyph in the accent colour,
+   with no coloured chip background — the icon itself carries the
+   variant identity. The icon slot stays at 30×30 so the body lines
+   up consistently across notifications. */
+.gk-notif-card__icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--gk-notif-accent);
+}
+.gk-notif-card__icon-glyph { width: 30px; height: 30px; }
+
+.gk-notif-card__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+/* Bottom row of the body — message takes the available width and
+   the action button sits flush against the message on the right.
+   When the message wraps to multiple lines the button stays anchored
+   to the bottom edge thanks to align-items: flex-end, so the card
+   only grows as tall as the message needs and never gains an extra
+   row just for the action. */
+.gk-notif-card__body-end {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+.gk-notif-card__body-end .gk-notif-card__message {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gk-notif-card__body-end .gk-notif-card__action-btn {
+  flex: 0 0 auto;
+}
+
+/* Timestamp sits in the card's top-right corner regardless of whether
+   an action button is present, so the position stays consistent
+   between cards with and without actions. */
+.gk-notif-card__time {
+  position: absolute;
+  top: 11px;
+  right: 14px;
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.55;
+  pointer-events: none;
+}
+/* Title acts as the notification's headline (was "GlassKeep" in an
+   earlier iteration; the user moved the title here so each card
+   "presents" itself). Right-padded so a long title doesn't run
+   into the absolutely-positioned timestamp. */
+.gk-notif-card__title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 2px;
+  word-break: break-word;
+  padding-right: 56px;
+}
+.gk-notif-card__message {
+  font-size: 13px;
+  line-height: 1.35;
+  opacity: 0.88;
+  word-break: break-word;
+}
+
+.gk-notif-card__action-btn {
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.07);
+  color: #1d1d1f;
+  transition: background 0.15s, transform 0.1s;
+}
+.gk-notif-card__action-btn:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+.gk-notif-card__action-btn:active {
+  transform: scale(0.96);
+}
+html.dark .gk-notif-card__action-btn {
+  background: rgba(255, 255, 255, 0.13);
+  color: #f5f5f7;
+}
+html.dark .gk-notif-card__action-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Multi-action row — used when a notification carries an actions
+   array instead of the single action field. Rendered as a dedicated
+   row UNDER the body (not inline next to the message) so the two
+   buttons sit side-by-side at full width instead of stacking
+   vertically when the message takes a few lines. Right-aligned to
+   stay visually anchored to the card's action edge. */
+.gk-notif-card__actions {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+/* When a card carries the multi-action row, the body grows by a
+   third row (title + message + actions). Default align-items:center
+   on the card would then push the variant icon to the vertical
+   centre, far below the title and far above the action buttons —
+   the screenshot from the pending-user toast showed a noticeable
+   gap between "Nouvelle inscription" and the message line for
+   exactly this reason. Pulling the icon to the top of the card
+   re-anchors it next to the title, the way a single-row card
+   already does naturally because its body height matches the icon
+   height. */
+.gk-notif-card:has(.gk-notif-card__actions) {
+  align-items: flex-start;
+}
+.gk-notif-card:has(.gk-notif-card__actions) .gk-notif-card__icon {
+  margin-top: 1px;
+}
+/* Secondary action — outline-styled so the reject / cancel half of a
+   pair never reads as the primary CTA. Padding is shrunk by 1 px
+   each side so the 1-px border doesn't make this button taller /
+   wider than the primary one next to it (otherwise the pair looks
+   off-balance even with identical labels). */
+.gk-notif-card__action-btn--secondary {
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  color: #1d1d1f;
+  padding: 4px 13px;
+}
+.gk-notif-card__action-btn--secondary:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.28);
+}
+html.dark .gk-notif-card__action-btn--secondary {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f5f5f7;
+}
+html.dark .gk-notif-card__action-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+/* Close button: corner circular pill (macOS style). The side switches
+   based on the parent viewport's anchor edge — see the
+   .gk-notif-card--close-right modifier — so for a right-anchored
+   stack the X sits on the LEFT of the card (away from the screen
+   edge it would otherwise crowd) and vice versa. Hidden by default
+   on hover-capable devices and revealed on hover/focus; always
+   visible on coarse pointers where there's no hover. */
+.gk-notif-card__close {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(80, 80, 85, 0.92);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  /* Default cursor — explicit override so the global
+     'button { cursor: pointer }' rule near the top of this file
+     does not apply. The user wants this affordance subtle, not
+     advertised on hover. */
+  cursor: default;
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+.gk-notif-card--close-right .gk-notif-card__close {
+  left: auto;
+  right: -6px;
+}
+.gk-notif-card:hover .gk-notif-card__close,
+.gk-notif-card:focus-within .gk-notif-card__close {
+  opacity: 1;
+}
+.gk-notif-card__close:hover { background: rgba(60, 60, 65, 1); }
+.gk-notif-card__close:active { transform: scale(0.9); }
+@media (hover: none) {
+  .gk-notif-card__close { opacity: 1; }
+}
+html.dark .gk-notif-card__close {
+  background: rgba(160, 160, 170, 0.92);
+  color: #1d1d1f;
+}
+html.dark .gk-notif-card__close:hover { background: rgba(180, 180, 190, 1); }
+
+/* Compact variant — used by the history list in the center where
+   rows are denser. Close button keeps the floating-card behaviour:
+   hover-revealed and overhanging the corner so it reads as a
+   "remove" handle rather than an inline control. The list's
+   padding (8/10 px) absorbs the −6 px overhang without bumping into
+   the panel's overflow:hidden clip. */
+.gk-notif-card--compact {
+  padding: 9px 12px;
+  border-radius: 12px;
+  gap: 9px;
+}
+.gk-notif-card--compact .gk-notif-card__icon {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+.gk-notif-card--compact .gk-notif-card--info .gk-notif-card__icon,
+.gk-notif-card--compact.gk-notif-card--info .gk-notif-card__icon {
+  width: 26px;
+  height: 26px;
+}
+.gk-notif-card--compact .gk-notif-card--info .gk-notif-card__icon-glyph,
+.gk-notif-card--compact.gk-notif-card--info .gk-notif-card__icon-glyph {
+  width: 26px;
+  height: 26px;
+}
+.gk-notif-card--compact .gk-notif-card__title {
+  font-size: 12.5px;
+  padding-right: 48px;
+}
+.gk-notif-card--compact .gk-notif-card__message { font-size: 12px; }
+.gk-notif-card--compact .gk-notif-card__time { top: 9px; right: 14px; }
+
+/* Center mode — used inside the NotificationCenter panel. The panel
+   already provides the frosted glass surface, so the card itself
+   strips its gradient + LED halo and falls back to a near-transparent
+   wash. Variant identity is still readable: the icon stays in its
+   accent colour, and a 3 px left bar in the same accent gives the
+   card a quiet "category stripe" without re-introducing a gradient.
+   The wider left border is offset by trimming padding-left so the
+   icon column stays aligned with the header. */
+.gk-notif-card.gk-notif-card--center {
+  /* Inside the near-opaque panel the card needs no heavy blur of its
+     own — it just sits as a clean white tile. No backdrop-filter so
+     it can't pull colour from behind the panel. Variant identity
+     comes from the 3 px left accent bar + the icon only.
+     Animation is reset to entry-only: no glow pulse inside the panel. */
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-left: 3px solid var(--gk-notif-accent, rgba(0, 0, 0, 0.10));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  animation: gkNotifIn 280ms cubic-bezier(.22,.61,.36,1) both;
+}
+.gk-notif-card.gk-notif-card--center.gk-notif-card--compact {
+  padding-left: 10px;
+}
+html.dark .gk-notif-card.gk-notif-card--center {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 3px solid var(--gk-notif-accent, rgba(255, 255, 255, 0.20));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.30);
+}
+
+@keyframes gkNotifIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ───────── Mobile PWA toast ─────────
+   Full-width bottom-anchored card on PWA / browser sessions. Uses the
+   same LED-strip visual language as the desktop floating cards — 2.5 px
+   variant-coloured border + crisp 1 px outer ring + a soft 4 px bleed.
+   The Android wrapper short-circuits this entirely and routes through
+   the native Toast.makeText bridge instead. */
+.gk-mobile-toast {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Anchor the countdown bar absolutely against the pill. */
+  isolation: isolate;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  /* Default to bottom-anchored — the .gk-mobile-toast--anchor-top /
+     --anchor-bottom modifier classes (added at render time from the
+     user's mobile position preference) override just top/bottom. */
+  bottom: calc(var(--safe-bottom, 0px) + 24px);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 14px;
+  border-radius: 16px;
+  /* Same vars / palette as the desktop card. The fallback is indigo so
+     a notification fired with an unknown variant still gets a coloured
+     border instead of going transparent. */
+  --gk-notif-glow-ring:  rgba(99, 102, 241, 0.32);
+  --gk-notif-glow-bleed: rgba(99, 102, 241, 0.45);
+  --gk-notif-bg-tint:    rgba(99, 102, 241, 0.06);
+  background:
+    linear-gradient(var(--gk-notif-bg-tint), var(--gk-notif-bg-tint)),
+    rgba(252, 252, 255, 0.97);
+  border: 2.5px solid var(--gk-notif-accent, #6366f1);
+  box-shadow:
+    0 0 0 1px   var(--gk-notif-glow-ring),
+    0 0 4px 0   var(--gk-notif-glow-bleed),
+    0 6px 14px -2px rgba(15, 23, 42, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
+  color: #1d1d1f;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.3;
+  animation: gkMobileToastIn 220ms cubic-bezier(.22,.61,.36,1) both;
+  cursor: pointer;
+}
+/* Anchor variants — touch ONLY top/bottom. All visual styling stays
+   in the base .gk-mobile-toast rule above so both anchors get the
+   same background, border, animation, etc. */
+.gk-mobile-toast.gk-mobile-toast--anchor-top {
+  /* Sit BELOW the sticky app header (~72 px on mobile) rather than
+     stacking on top of it. Safe-top accounts for the system status
+     bar / notch above the header. */
+  top: calc(var(--safe-top, 0px) + 88px);
+  bottom: auto;
+}
+.gk-mobile-toast.gk-mobile-toast--anchor-bottom {
+  bottom: calc(var(--safe-bottom, 0px) + 24px);
+  top: auto;
+}
+html.dark .gk-mobile-toast {
+  background:
+    linear-gradient(var(--gk-notif-bg-tint), var(--gk-notif-bg-tint)),
+    rgba(18, 18, 28, 0.97);
+  color: #f0f0f5;
+  box-shadow:
+    0 0 0 1px   var(--gk-notif-glow-ring),
+    0 0 5px 0   var(--gk-notif-glow-bleed),
+    0 6px 14px -2px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Variant palette — mirrors .gk-notif-card--* so the mobile toast and
+   the desktop card stay visually synced when both appear in the same
+   user's history (centre panel). */
+.gk-mobile-toast--info {
+  --gk-notif-accent:     #3b82f6;
+  --gk-notif-bg-tint:    rgba(59, 130, 246, 0.06);
+  --gk-notif-glow-ring:  rgba(59, 130, 246, 0.32);
+  --gk-notif-glow-bleed: rgba(59, 130, 246, 0.45);
+}
+.gk-mobile-toast--success {
+  --gk-notif-accent:     #10b981;
+  --gk-notif-bg-tint:    rgba(16, 185, 129, 0.06);
+  --gk-notif-glow-ring:  rgba(16, 185, 129, 0.32);
+  --gk-notif-glow-bleed: rgba(16, 185, 129, 0.45);
+}
+.gk-mobile-toast--warning {
+  --gk-notif-accent:     #f59e0b;
+  --gk-notif-bg-tint:    rgba(245, 158, 11, 0.07);
+  --gk-notif-glow-ring:  rgba(245, 158, 11, 0.32);
+  --gk-notif-glow-bleed: rgba(245, 158, 11, 0.45);
+}
+.gk-mobile-toast--error {
+  --gk-notif-accent:     #ef4444;
+  --gk-notif-bg-tint:    rgba(239, 68, 68, 0.06);
+  --gk-notif-glow-ring:  rgba(239, 68, 68, 0.32);
+  --gk-notif-glow-bleed: rgba(239, 68, 68, 0.45);
+}
+html.dark .gk-mobile-toast--info {
+  --gk-notif-glow-ring:  rgba(59, 130, 246, 0.45);
+  --gk-notif-glow-bleed: rgba(59, 130, 246, 0.60);
+}
+html.dark .gk-mobile-toast--success {
+  --gk-notif-glow-ring:  rgba(16, 185, 129, 0.45);
+  --gk-notif-glow-bleed: rgba(16, 185, 129, 0.60);
+}
+html.dark .gk-mobile-toast--warning {
+  --gk-notif-glow-ring:  rgba(245, 158, 11, 0.45);
+  --gk-notif-glow-bleed: rgba(245, 158, 11, 0.60);
+}
+html.dark .gk-mobile-toast--error {
+  --gk-notif-glow-ring:  rgba(239, 68, 68, 0.45);
+  --gk-notif-glow-bleed: rgba(239, 68, 68, 0.60);
+}
+
+.gk-mobile-toast__icon {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gk-notif-accent, #6366f1);
+}
+.gk-mobile-toast__icon .tabler-icon {
+  width: 22px;
+  height: 22px;
+}
+.gk-mobile-toast__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.gk-mobile-toast__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gk-mobile-toast__message {
+  font-size: 12.5px;
+  color: inherit;
+  opacity: 0.85;
+  word-break: break-word;
+  /* No line clamp — the pill grows vertically to fit the full
+     message. Truncating was hiding important content (e.g. the
+     "but a copy was kept for you" tail on access-revoked toasts)
+     when the same notification displayed fine in the panel. */
+}
+/* Wrapper for one or more action buttons inside the pill. flex
+   container so multi-action cards (Accept / Reject on pending-user
+   notifs, etc.) lay out as a small inline button group. */
+.gk-mobile-toast__actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: -4px;
+}
+.gk-mobile-toast__action {
+  flex: 0 0 auto;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--gk-notif-accent, #6366f1);
+  background: transparent;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+/* Secondary action (the "Reject" half of an Accept/Reject pair)
+   reads as a neutral outline so the primary CTA stays the default. */
+.gk-mobile-toast__action--secondary {
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  color: inherit;
+  padding: 3px 9px;
+}
+html.dark .gk-mobile-toast__action--secondary {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+.gk-mobile-toast__action:hover { background: rgba(0, 0, 0, 0.05); }
+.gk-mobile-toast__action:active { background: rgba(0, 0, 0, 0.10); }
+html.dark .gk-mobile-toast__action:hover { background: rgba(255, 255, 255, 0.08); }
+html.dark .gk-mobile-toast__action:active { background: rgba(255, 255, 255, 0.14); }
+
+@keyframes gkMobileToastIn {
+  from { opacity: 0; transform: translate(-50%, 24px); }
+  to   { opacity: 1; transform: translate(-50%, 0);    }
+}
+/* Top-anchored: slide down from above instead of up from below. */
+.gk-mobile-toast--anchor-top {
+  animation-name: gkMobileToastInTop;
+}
+@keyframes gkMobileToastInTop {
+  from { opacity: 0; transform: translate(-50%, -24px); }
+  to   { opacity: 1; transform: translate(-50%, 0);     }
+}
+
+/* Auto-dismiss countdown bar — same anatomy as the desktop card so
+   the two surfaces feel like one design system. A clipped 14-px-tall
+   band hugs the pill's inner bottom curve (16 px outer − 2.5 px
+   border = 13.5 px), and a 3.6-px fill scaleX-animates from 1 → 0
+   in sync with the provider's dismiss timer (animation-duration set
+   inline from the notification's effective duration). */
+.gk-mobile-toast__countdown-clip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 14px;
+  border-bottom-left-radius: 13.5px;
+  border-bottom-right-radius: 13.5px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.gk-mobile-toast__countdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3.6px;
+}
+.gk-mobile-toast__countdown-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--gk-notif-accent, #6366f1)
+  );
+  transform-origin: left center;
+  animation-name: gkNotifCountdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+/* Stacked layout — opt-in via actionLayout:"below" on the notification.
+   The default single-row pill crushes a long title + a wide CTA into
+   ellipsis territory; this variant gives the message full width and
+   pushes the action button onto its own row underneath. Also widens
+   the pill (capped at the safe-zone width) so the message wraps over
+   fewer lines. */
+.gk-mobile-toast--stacked {
+  width: min(420px, calc(100vw - 24px));
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "icon body"
+    ".    action";
+  align-items: start;
+  row-gap: 8px;
+  column-gap: 11px;
+  padding: 12px 14px;
+}
+.gk-mobile-toast--stacked .gk-mobile-toast__icon  { grid-area: icon; margin-top: 1px; }
+.gk-mobile-toast--stacked .gk-mobile-toast__body  { grid-area: body; }
+.gk-mobile-toast--stacked .gk-mobile-toast__actions {
+  grid-area: action;
+  justify-self: end;
+  margin-right: -4px;
+}
+.gk-mobile-toast--stacked .gk-mobile-toast__action {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+/* Title can wrap (no ellipsis truncation) and message gets full lines. */
+.gk-mobile-toast--stacked .gk-mobile-toast__title {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+}
+.gk-mobile-toast--stacked .gk-mobile-toast__message {
+  -webkit-line-clamp: unset;
+  display: block;
+  overflow: visible;
+}
+
+/* Bell + badge */
+/* Bell indicator — a single coloured dot when at least one toast is
+   still floating in the viewport. We dropped the numeric badge along
+   with the read/unread split: every active notification is already
+   visible in the floating stack, so the count adds no information the
+   user can't see at a glance. The dot keeps the "something is happening"
+   affordance without claiming a number. Same red + white/dark ring as
+   the previous badge so the visual identity stays. */
+.gk-notif-bell-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.96);
+}
+html.dark .gk-notif-bell-dot {
+  box-shadow: 0 0 0 2px rgba(28, 28, 34, 0.98);
+}
+
+/* Notification center popover — near-opaque white surface so the
+   coloured app background does not tint the panel. A faint blur
+   (8 px only) adds just enough depth without pulling vivid colours
+   from behind the sheet. No saturate() to prevent the pink/lavender
+   bleed seen with higher values. */
+.gk-notif-center {
+  z-index: 75;
+  color: #1d1d1f;
+  border-radius: 14px;
+  background: #f9f6ff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow:
+    0 4px 6px -1px rgba(15, 23, 42, 0.07),
+    0 10px 28px -4px rgba(15, 23, 42, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.90) inset;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: gkNotifCenterIn 180ms ease-out both;
+}
+/* Mobile sheet variant — full-screen panel that slides DOWN from the
+   top when opened (transform animates from translateY(-100%) → 0) and
+   slides back UP when closed. Mirrors the editor's mobile-fmt-sheet
+   timing curve so the two surfaces feel like one design system. The
+   keyframe-based fade-in above is suppressed so it doesn't fight the
+   transform transition. */
+.gk-notif-center--mobile {
+  animation: none;
+  transform: translateY(-100%);
+  transition: transform 0.48s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+.gk-notif-center--mobile.is-open {
+  transform: translateY(0);
+}
+/* Allow the list to actually shrink below its content height when the
+   sheet hits max-height — without min-height:0 a flex child resists
+   shrinking past its intrinsic content size and the overflow-y:auto
+   scroll never kicks in. Only relevant in the natural-height mobile
+   sheet (desktop has its own max-height on the panel itself). */
+.gk-notif-center--mobile .gk-notif-center__list {
+  min-height: 0;
+}
+/* Grabber lives at the BOTTOM of the panel (the panel pushes from
+   the top, so the bottom is the dismissible edge — mirror of the
+   editor sheet, where the grabber sits at the top of a bottom-anchored
+   sheet). Same Android-style pill via ::after, same touch-target
+   height. Drag UP to close. */
+.gk-notif-center-grabber {
+  /* margin-top:auto pushes the grabber to the bottom edge of the
+     flex column regardless of how short the list is (empty state,
+     one notification, etc.) so the affordance always sits where the
+     user expects it on a full-screen sheet. flex-shrink:0 keeps it
+     from collapsing when the list grows tall enough to fill the
+     column on its own. */
+  margin-top: auto;
+  flex-shrink: 0;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+html.dark .gk-notif-center-grabber {
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+.gk-notif-center-grabber::after {
+  content: "";
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.gk-notif-center-grabber:active { cursor: grabbing; }
+.gk-notif-center-grabber:active::after {
+  background: rgba(0, 0, 0, 0.45);
+  transform: scaleX(1.15);
+}
+html.dark .gk-notif-center-grabber::after { background: rgba(255, 255, 255, 0.32); }
+html.dark .gk-notif-center-grabber:active::after { background: rgba(255, 255, 255, 0.5); }
+html.dark .gk-notif-center {
+  color: #f0f0f5;
+  background: rgba(28, 28, 38, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.30),
+    0 10px 28px -4px rgba(0, 0, 0, 0.50),
+    0 1px 0 rgba(255, 255, 255, 0.05) inset;
+}
+@keyframes gkNotifCenterIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+.gk-notif-center__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  gap: 6px;
+}
+html.dark .gk-notif-center__header {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+.gk-notif-center__title {
+  font-size: .95rem;
+  font-weight: 700;
+  margin: 0;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Whole title (brand wordmark + localised "Notifications") shares
+     the app's violet→indigo gradient so it reads as a single
+     decorated heading. Plus a hair-thin dark stroke around the
+     letters so the gradient pops on the pale panel background —
+     without it the indigo/violet pair washes into #f9f6ff. */
+  background: linear-gradient(90deg, #8b5cf6, #6366f1);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -0.01em;
+  -webkit-text-stroke: 0.4px rgba(15, 23, 42, 0.22);
+}
+html.dark .gk-notif-center__title {
+  /* On the dark panel the contrast already pops; just nudge the
+     stroke to a light tint so glyph edges stay crisp. */
+  -webkit-text-stroke: 0.4px rgba(255, 255, 255, 0.18);
+}
+/* Brand row inside the panel header — small rounded logo + the
+   gradient title. Sits inside the existing 10 px-padding header so
+   the panel's overall height is unchanged. */
+.gk-notif-center__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.gk-notif-center__logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+  user-select: none;
+  pointer-events: none;
+}
+.gk-notif-center__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.gk-notif-center__header-btn {
+  font-size: .72rem;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.gk-notif-center__header-btn:hover {
+  opacity: 1;
+  background: rgba(0,0,0,0.05);
+}
+html.dark .gk-notif-center__header-btn:hover { background: rgba(255,255,255,0.07); }
+.gk-notif-center__close {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+.gk-notif-center__close:hover { opacity: 1; background: rgba(0,0,0,0.06); }
+html.dark .gk-notif-center__close:hover { background: rgba(255,255,255,0.08); }
+
+/* ── Panel header treatment (desktop + mobile) ─────────────────────
+   Sober, app-native panel header. Same dimensions / padding /
+   layout / behaviour as the base rules above; this block tweaks
+   colours, softens the bottom separator, and turns the logo wrap
+   into a transparent passthrough. Same look on desktop and on the
+   mobile sheet. */
+
+/* Very faint lilac wash so the header reads as a GlassKeep surface
+   without being branded-loud. Hard 1 px bottom separator is dropped
+   in favour of a soft fade below. */
+.gk-notif-center__header {
+  position: relative;
+  background: linear-gradient(180deg, rgba(248, 246, 255, 0.96), rgba(249, 246, 255, 0.88));
+  border-bottom: none;
+}
+html.dark .gk-notif-center__header {
+  background: linear-gradient(180deg, rgba(32, 30, 42, 0.96), rgba(28, 28, 38, 0.90));
+}
+
+/* Soft 6 px bottom fade that bleeds into the list — no hard line. */
+.gk-notif-center__header::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.05), transparent);
+  pointer-events: none;
+}
+html.dark .gk-notif-center__header::after {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.20), transparent);
+}
+
+/* Title back to a neutral dark colour — no gradient, no stroke. The
+   GlassKeep identity sits in the small logo next to it, not in the
+   type. Overrides the earlier base rule via source order. */
+.gk-notif-center__title {
+  background: none;
+  -webkit-text-fill-color: initial;
+  color: #1d1d1f;
+  -webkit-text-stroke: 0;
+  letter-spacing: 0;
+}
+html.dark .gk-notif-center__title {
+  color: #f0f0f5;
+}
+
+/* Logo wrap is a transparent passthrough — 24 px footprint so the
+   header layout stays put, but no coloured background / ring. The
+   PWA icon itself fills the box. */
+.gk-notif-center__logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+}
+.gk-notif-center__logo {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+/* Close button stays simple and discreet — neutral hover, no brand
+   tint, default size unchanged. */
+.gk-notif-center__close {
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
+}
+.gk-notif-center__close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  opacity: 1;
+}
+html.dark .gk-notif-center__close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.gk-notif-center__list {
+  overflow-y: auto;
+  /* Prevent swipe-translated cards from creating a horizontal
+     scrollbar. overflow-x:hidden + overflow-y:auto is valid CSS —
+     the vertical axis stays scrollable while horizontal paint
+     overflow (card transforms) is clipped at the list boundary. */
+  overflow-x: hidden;
+  /* Trap scroll chaining and pull-to-refresh inside the panel — on
+     Android PWA / Chrome scrolling up from the top would otherwise
+     trigger the browser's reload gesture before the user could see
+     any earlier history entry. */
+  overscroll-behavior: contain;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gk-notif-center__empty {
+  text-align: center;
+  font-size: .85rem;
+  opacity: 0.7;
+  padding: 24px 12px;
+}
+.gk-notif-center__item {
+  position: relative;
+}
+.gk-notif-center__item.is-dismissed .gk-notif-card {
+  opacity: 0.55;
+}
+/* Entry animation: applied on the wrapper when the item is swipeable
+   so the card itself never has a competing CSS animation on transform
+   / opacity (the swipe handler writes those imperatively). */
+.gk-notif-center__item--swipeable {
+  animation: gkNotifIn 220ms cubic-bezier(.22,.61,.36,1) both;
+}
+/* In swipe mode the "dismissed = faded" indicator is meaningless:
+   opening the bell auto-dismisses every notification, so without this
+   rule the entire panel would render at 55 % opacity on first open.
+   Per-item removal happens via swipe in this mode anyway. */
+.gk-notif-center__item--swipeable.is-dismissed .gk-notif-card {
+  opacity: 1;
+}
+
+/* ───────── Swipe-to-dismiss wrapper ─────────
+   Visible only on mobile inside the NotificationCenter. The wrapper
+   stacks a red "delete" background underneath the card; as the card
+   is dragged horizontally, the background fades in proportionally and
+   the trash glyph reads as the affordance for the gesture. */
+.gk-notif-card-swipe-wrap {
+  position: relative;
+  border-radius: 16px;
+  isolation: isolate;
+}
+.gk-notif-card-swipe-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  border-radius: 16px;
+  background: linear-gradient(90deg,
+                              rgba(220, 38, 38, 0.92),
+                              rgba(220, 38, 38, 0.78) 50%,
+                              rgba(220, 38, 38, 0.92));
+  color: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+.gk-notif-card-swipe-bg__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.gk-notif-card-swipe-bg .tabler-icon {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  stroke-width: 2px;
+}
+html.dark .gk-notif-card-swipe-bg {
+  background: linear-gradient(90deg,
+                              rgba(185, 28, 28, 0.92),
+                              rgba(185, 28, 28, 0.78) 50%,
+                              rgba(185, 28, 28, 0.92));
+}
+
+/* Swipeable card: cancel the entry animation (it now lives on the
+   wrapper) and prime the layer for transform/opacity writes from the
+   pointer handler. touch-action: pan-y keeps vertical scroll working
+   on the panel list. */
+.gk-notif-card--swipeable {
+  position: relative;
+  z-index: 1;
+  animation: none !important;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform, opacity;
+}
+/* Dismissed-in-history rows keep their X — the user wants per-item
+   removal in the panel (it calls REMOVE, not DISMISS, so the row is
+   actually deleted). Only "Effacer" wipes the entire list. */
 `;

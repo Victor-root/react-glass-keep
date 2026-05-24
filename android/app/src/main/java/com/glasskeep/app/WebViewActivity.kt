@@ -39,6 +39,18 @@ class WebViewActivity : AppCompatActivity() {
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
     private lateinit var webAuthnBridge: WebAuthnBridge
 
+    // Held while we wait for the POST_NOTIFICATIONS runtime grant on
+    // Android 13+. Once the user replies, we re-attempt the notif post
+    // for this release (or drop it on the floor if denied).
+    private var pendingUpdateRelease: com.glasskeep.app.update.ReleaseInfo? = null
+    private val updateNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val release = pendingUpdateRelease ?: return@registerForActivityResult
+        pendingUpdateRelease = null
+        if (granted) com.glasskeep.app.update.UpdateNotifier.show(this, release)
+    }
+
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -108,6 +120,37 @@ class WebViewActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Native Android Toast bridge. The in-app notification system on
+     * mobile delegates to this so the small dark pill at the bottom
+     * is the real system widget (Toast.makeText) instead of a CSS
+     * imitation rendered by the WebView.
+     *
+     * `show(message, durationLong)` honours Android's two canonical
+     * lengths — SHORT (~2 s) or LONG (~3.5 s). The JS side picks
+     * LONG when the notification is persistent or carries a >3 s
+     * duration so a verbose share message stays on screen long
+     * enough to read.
+     *
+     * Toasts are passive by design (no actions, no close button),
+     * so any action button on the original notification stays
+     * accessible only through the in-app notification centre.
+     */
+    inner class ToastBridge {
+        @JavascriptInterface
+        fun show(message: String) {
+            show(message, false)
+        }
+
+        @JavascriptInterface
+        fun show(message: String, durationLong: Boolean) {
+            runOnUiThread {
+                val length = if (durationLong) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
+                Toast.makeText(this@WebViewActivity, message, length).show()
+            }
+        }
+    }
+
     /** Called from JavaScript for theme-color sync and server change */
     inner class ThemeBridge {
         @JavascriptInterface
@@ -123,6 +166,121 @@ class WebViewActivity : AppCompatActivity() {
         @JavascriptInterface
         fun changeServer() {
             runOnUiThread { showChangeServerDialog() }
+        }
+
+        /** Manual "check for updates" hook for the in-app Settings
+         *  panel. Bypasses the 12h throttle. Surfaces the outcome
+         *  through a Toast + the in-app card (via JS callback) — no
+         *  system notification, because the user is already looking
+         *  at the result in the panel; the heads-up banner would be
+         *  redundant clutter. The cold-start auto-check still posts
+         *  the notification since the user isn't necessarily in the
+         *  Settings panel then. */
+        @JavascriptInterface
+        fun checkForUpdate() {
+            runOnUiThread {
+                Toast.makeText(
+                    this@WebViewActivity,
+                    R.string.update_checking,
+                    Toast.LENGTH_SHORT,
+                ).show()
+                com.glasskeep.app.update.UpdateManager.forceCheck(this@WebViewActivity) { release ->
+                    if (release != null) {
+                        notifyJsUpdateAvailable(release)
+                    } else {
+                        Toast.makeText(
+                            this@WebViewActivity,
+                            R.string.update_up_to_date,
+                            Toast.LENGTH_LONG,
+                        ).show()
+                        notifyJsUpToDate()
+                    }
+                }
+            }
+        }
+
+        /** Returns the currently-installed APK version as a plain
+         *  string ("1.4.0"). Used by the Settings panel to surface
+         *  "you're on v…" next to the manual update-check trigger so
+         *  the user can confirm at a glance which build is running. */
+        @JavascriptInterface
+        fun getAppVersion(): String =
+            com.glasskeep.app.BuildConfig.VERSION_NAME
+
+        /** True when the running APK was installed by F-Droid (or one
+         *  of its variants). The Settings panel hides its update
+         *  controls in that case so we don't fight the F-Droid update
+         *  mechanism — same APK still works fine sideloaded or
+         *  installed from a GitHub Release. */
+        @JavascriptInterface
+        fun isFdroidInstall(): Boolean =
+            com.glasskeep.app.update.UpdateManager.isFdroidInstall(this@WebViewActivity)
+
+        /** Open F-Droid on this app's page. The HTTPS URL is claimed
+         *  by every F-Droid client variant (vanilla, Basic, Privileged
+         *  Extension), so we don't need to second-guess which variant
+         *  the user has — the system intent resolver picks it. Only
+         *  called from the Settings panel when isFdroidInstall() is
+         *  already true, so we're guaranteed at least one F-Droid
+         *  client is present. */
+        @JavascriptInterface
+        fun openFdroidPage() {
+            val url = "https://f-droid.org/packages/$packageName/"
+            runOnUiThread {
+                try {
+                    startActivity(
+                        Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse(url)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                    )
+                } catch (e: Exception) {}
+            }
+        }
+
+        /** Returns the latest detected release as JSON (or null if no
+         *  pending update). Called from the Settings panel on open so
+         *  the card survives an Activity recreation. The helper auto-
+         *  drops stale prefs when the stored release is no longer
+         *  strictly newer than the running APK. */
+        @JavascriptInterface
+        fun getAvailableUpdate(): String? {
+            val release = com.glasskeep.app.update.UpdateManager
+                .getStoredRelease(this@WebViewActivity) ?: return null
+            return jsonReleaseStr(release.versionName, release.assetName, release.downloadUrl)
+        }
+
+        /** Settings card's "Télécharger" action. Triggers the same
+         *  download + install pipeline as a notification tap. */
+        @JavascriptInterface
+        fun installAvailableUpdate() {
+            val release = com.glasskeep.app.update.UpdateManager
+                .getStoredRelease(this@WebViewActivity) ?: return
+            runOnUiThread {
+                Toast.makeText(
+                    this@WebViewActivity,
+                    R.string.update_downloading,
+                    Toast.LENGTH_SHORT,
+                ).show()
+                com.glasskeep.app.update.UpdateManager.downloadAndInstall(
+                    this@WebViewActivity,
+                    release,
+                ) { ok ->
+                    if (!ok) {
+                        Toast.makeText(
+                            this@WebViewActivity,
+                            R.string.update_download_failed,
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            }
+        }
+
+        /** Settings card's "Plus tard" action. */
+        @JavascriptInterface
+        fun dismissAvailableUpdate() {
+            com.glasskeep.app.update.UpdateManager.clearAvailableRelease(this@WebViewActivity)
         }
 
         /** Tell the webapp it's running inside the Android TV launcher.
@@ -213,6 +371,14 @@ class WebViewActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Self-update prompt. The background check just posts a system
+        // notification when a newer APK is published — non-intrusive
+        // and easy to dismiss. Tapping the notification triggers the
+        // silent download + system installer.
+        com.glasskeep.app.update.UpdateManager.checkInBackground(this) { release ->
+            postUpdateNotification(release)
+        }
+
         // Draw edge-to-edge: let the app handle system bar insets via CSS
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -301,6 +467,13 @@ class WebViewActivity : AppCompatActivity() {
 
         webView.apply {
             addJavascriptInterface(ThemeBridge(), "AndroidTheme")
+            // window.AndroidToast.show(message, durationLong) — the
+            // mobile notification toast uses this when running inside
+            // the Android wrapper so it renders the real native
+            // Toast.makeText widget instead of a CSS pill. Pure-PWA
+            // sessions don't see the bridge and fall back to the JS
+            // implementation in NotificationMobileToast.
+            addJavascriptInterface(ToastBridge(), "AndroidToast")
             // Exposes window.AndroidPasskey to the WebView. The polyfill
             // injected on every page load (see onPageStarted below) wraps
             // it into the Promise-friendly window.GlassKeepAndroidPasskey
@@ -806,5 +979,54 @@ class WebViewActivity : AppCompatActivity() {
             android.view.WindowManager.LayoutParams.WRAP_CONTENT
         )
         dialog.show()
+    }
+
+    /**
+     * Fired on the main thread when UpdateManager's background check
+     * confirms a newer APK is published. Posts the update-available
+     * notification, requesting the POST_NOTIFICATIONS runtime grant
+     * first on Android 13+ if needed. If the user denies, the update
+     * path stays dormant until they enable notifications themselves.
+     */
+    /** Push the latest detected release to the SPA so the Settings
+     *  panel can render its themed "Version X.Y.Z available" card.
+     *  Posted on the WebView's UI thread; harmless if the page hasn't
+     *  registered the callback (e.g. the user is still on the
+     *  pre-WebView setup flow) — evaluateJavascript no-ops in that
+     *  case. */
+    private fun notifyJsUpdateAvailable(release: com.glasskeep.app.update.ReleaseInfo) {
+        val payload = jsonReleaseStr(release.versionName, release.assetName, release.downloadUrl)
+        val js = "if (typeof window.__glasskeepUpdateAvailable === 'function') { try { window.__glasskeepUpdateAvailable($payload); } catch (e) {} }"
+        webView.post { webView.evaluateJavascript(js, null) }
+    }
+
+    private fun notifyJsUpToDate() {
+        val js = "if (typeof window.__glasskeepUpdateUpToDate === 'function') { try { window.__glasskeepUpdateUpToDate(); } catch (e) {} }"
+        webView.post { webView.evaluateJavascript(js, null) }
+    }
+
+    /** Tiny manual JSON serialiser — avoids dragging org.json in just
+     *  to package three strings, while still escaping the few chars
+     *  that would otherwise break out of the JSON literal. */
+    private fun jsonReleaseStr(version: String, asset: String, url: String): String {
+        fun esc(s: String): String = s
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+        return "{\"version\":\"${esc(version)}\",\"assetName\":\"${esc(asset)}\",\"downloadUrl\":\"${esc(url)}\"}"
+    }
+
+    private fun postUpdateNotification(release: com.glasskeep.app.update.ReleaseInfo) {
+        if (isFinishing || isDestroyed) return
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingUpdateRelease = release
+            updateNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        com.glasskeep.app.update.UpdateNotifier.show(this, release)
     }
 }

@@ -149,6 +149,33 @@ CREATE TABLE IF NOT EXISTS note_collaborators (
   UNIQUE(note_id, user_id)
 );
 
+-- Persisted notifications for the recipient. Survives the user being
+-- offline at the moment a notification is generated — the client
+-- fetches everything still undelivered on next login and marks them
+-- delivered after displaying the toast. note_title / sender_name are
+-- captured at create time so the row still renders correctly even if
+-- the source note is later deleted or the sender renames themselves.
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  recipient_user_id INTEGER NOT NULL,
+  sender_user_id INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  note_id TEXT,
+  note_title TEXT,
+  sender_name TEXT NOT NULL,
+  variant TEXT,
+  message TEXT,
+  persistent INTEGER NOT NULL DEFAULT 0,
+  icon TEXT,
+  created_at TEXT NOT NULL,
+  delivered_at TEXT,
+  FOREIGN KEY(recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(sender_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY(note_id) REFERENCES notes(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_recipient_pending
+  ON notifications(recipient_user_id, delivered_at);
+
 CREATE TABLE IF NOT EXISTS user_settings (
   user_id INTEGER PRIMARY KEY,
   settings_json TEXT NOT NULL DEFAULT '{}',
@@ -285,7 +312,39 @@ CREATE TABLE IF NOT EXISTS app_settings (
   }
 })();
 
-// Migrate existing note tags into per-user table (one-time)
+// Notifications-table migrations. The original schema only stored
+// the bare share / revoke fields (sender_name, note_title) because
+// the message text could be regenerated client-side from i18n. The
+// new `variant`, `message` and `persistent` columns let arbitrary
+// notification types (test-CLI dispatches, future generic events)
+// survive a logout — the pending-fetch path replays them on next
+// login with the original payload instead of dropping them.
+(function ensureNotificationColumns() {
+  try {
+    const cols = db.prepare(`PRAGMA table_info(notifications)`).all();
+    const names = new Set(cols.map((c) => c.name));
+    const tx = db.transaction(() => {
+      if (!names.has("variant")) {
+        db.exec(`ALTER TABLE notifications ADD COLUMN variant TEXT`);
+      }
+      if (!names.has("message")) {
+        db.exec(`ALTER TABLE notifications ADD COLUMN message TEXT`);
+      }
+      if (!names.has("persistent")) {
+        db.exec(
+          `ALTER TABLE notifications ADD COLUMN persistent INTEGER NOT NULL DEFAULT 0`,
+        );
+      }
+      if (!names.has("icon")) {
+        db.exec(`ALTER TABLE notifications ADD COLUMN icon TEXT`);
+      }
+    });
+    tx();
+  } catch {
+    // ignore if the table doesn't exist yet (first boot — CREATE
+    // TABLE above will produce the full schema) or ALTER unsupported.
+  }
+})();
 (function migrateTagsToPerUser() {
   try {
     const count = db.prepare("SELECT COUNT(*) as c FROM note_user_tags").get();
@@ -786,6 +845,34 @@ const updateNoteWithEditor = db.prepare(`
   WHERE id = ?
 `);
 
+// Notification statements
+const insertNotification = db.prepare(`
+  INSERT INTO notifications
+    (recipient_user_id, sender_user_id, type, note_id, note_title, sender_name,
+     variant, message, persistent, icon, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+const getPendingNotificationsForUser = db.prepare(`
+  SELECT id, sender_user_id, type, note_id, note_title, sender_name,
+         variant, message, persistent, icon, created_at
+  FROM notifications
+  WHERE recipient_user_id = ? AND delivered_at IS NULL
+  ORDER BY created_at ASC
+`);
+const getHistoryNotificationsForUser = db.prepare(`
+  SELECT id, sender_user_id, type, note_id, note_title, sender_name,
+         variant, message, persistent, icon, created_at, delivered_at
+  FROM notifications
+  WHERE recipient_user_id = ? AND delivered_at IS NOT NULL
+  ORDER BY delivered_at DESC
+  LIMIT 100
+`);
+const markNotificationDelivered = db.prepare(`
+  UPDATE notifications
+  SET delivered_at = ?
+  WHERE id = ? AND recipient_user_id = ? AND delivered_at IS NULL
+`);
+
 // Per-user tags
 // Schema also carries (is_encrypted, enc_payload) so the rows can be
 // stored encrypted at rest. The plaintext tags_json column is kept as
@@ -1011,6 +1098,45 @@ function broadcastNoteUpdated(noteId) {
   } catch { }
 }
 
+// Persist a "note_shared" notification and push it over SSE if the
+// recipient is currently connected. The frontend marks pending rows
+// delivered after showing the toast, so a row only fires once across
+// reloads even though it lives in the DB until then.
+function createShareNotification({ recipientId, senderId, senderName, noteId, noteTitle }) {
+  try {
+    const createdAt = nowISO();
+    // Share notifications regenerate their text client-side from
+    // sender_name + note_title via i18n, so variant/message stay
+    // null. is_persistent=0 because the client (showShareToast)
+    // defers duration to the user's notification-duration pref —
+    // storing 1 here would be misleading if a future replay path
+    // ever started honouring n.persistent for share/revoke rows.
+    const result = insertNotification.run(
+      recipientId,
+      senderId,
+      "note_shared",
+      noteId,
+      noteTitle || "",
+      senderName || "",
+      null,
+      null,
+      0,
+      null,
+      createdAt,
+    );
+    sendEventToUser(recipientId, {
+      type: "note_shared",
+      notificationId: result.lastInsertRowid,
+      senderName: senderName || "",
+      noteId,
+      noteTitle: noteTitle || "",
+      createdAt,
+    });
+  } catch (e) {
+    console.warn("[notifications] createShareNotification failed:", e?.message);
+  }
+}
+
 // ---------- At-rest encryption: unlock routes + lock gate ----------
 // These have to be registered BEFORE the bulk of the API so the lock
 // middleware can short-circuit everything else with HTTP 423 while
@@ -1026,7 +1152,7 @@ attachUnlockRoutes(app, { db, auth, adminOnly, log: console, broadcastToAll });
 const passkeyVaultModule = require("./encryption/passkeyVault");
 passkeyVaultModule.ensureSchema(db);
 attachPasskeyRoutes(app, { db, auth, adminOnly, signToken, getUserById, log: console });
-attachUpdateRoutes(app, { auth, adminOnly, log: console });
+attachUpdateRoutes(app, { db, auth, adminOnly, log: console });
 attachSelfUpdateRoutes(app, { auth, adminOnly, log: console });
 
 // Digital Asset Links — must answer at /.well-known/assetlinks.json
@@ -1121,13 +1247,49 @@ app.post("/api/register", (req, res) => {
   const hash = bcrypt.hashSync(password, 10);
   const info = insertPendingUser.run(name?.trim() || "User", email.trim(), hash, nowISO());
 
-  // Notify all connected admins in real-time
-  broadcastToAdmins({
-    type: "pending_user_registered",
-    pendingId: info.lastInsertRowid,
-    name: name?.trim() || "User",
-    email: email.trim(),
-  });
+  // Persist a notification row per admin AND deliver the live SSE event
+  // each with its own row id, so the recipient's client can ack /
+  // remove the right row when the admin acts. Stored values:
+  //   - sender_user_id = recipient's own id (the row has no human
+  //     sender — the schema requires sender_user_id NOT NULL so we
+  //     self-reference; the client reads sender_name, not the FK).
+  //   - note_id        = NULL (note_id has a FK to notes(id) so we
+  //     can't reuse it for a pending_users id; the pendingId lives
+  //     in `message` instead, which is free for this type since the
+  //     body is rendered client-side from sender_name + note_title).
+  //   - note_title     = registrant email (rendered in the message)
+  //   - sender_name    = registrant name (rendered in the message)
+  //   - message        = String(pending_users.id) — target of the
+  //                      approve / reject actions.
+  try {
+    const admins = db.prepare("SELECT id FROM users WHERE is_admin = 1").all();
+    const createdAt = nowISO();
+    for (const a of admins) {
+      const row = insertNotification.run(
+        a.id,
+        a.id,
+        "pending_user_registered",
+        null,
+        email.trim(),
+        name?.trim() || "User",
+        "info",
+        String(info.lastInsertRowid),
+        0,
+        "user-clock",
+        createdAt,
+      );
+      sendEventToUser(a.id, {
+        type: "pending_user_registered",
+        pendingId: info.lastInsertRowid,
+        name: name?.trim() || "User",
+        email: email.trim(),
+        notificationId: row.lastInsertRowid,
+        createdAt,
+      });
+    }
+  } catch (e) {
+    console.warn("[notifications] pending_user_registered persist failed:", e?.message);
+  }
 
   res.status(202).json({ pending: true });
 });
@@ -1723,6 +1885,18 @@ app.post("/api/notes/:id/collaborate", auth, (req, res) => {
     updateNoteWithEditor.run(nowISO(), req.user.name || req.user.email, nowISO(), noteId);
     broadcastNoteUpdated(noteId);
 
+    // Persist + push a "note_shared" notification for the new
+    // collaborator. Only runs on a fresh insert above — the 409
+    // duplicate path below skips it, so re-sharing an already-shared
+    // note never produces a duplicate toast.
+    createShareNotification({
+      recipientId: collaborator.id,
+      senderId: req.user.id,
+      senderName: req.user.name || req.user.email || "",
+      noteId,
+      noteTitle: note.title || "",
+    });
+
     res.json({
       ok: true,
       message: `Added ${collaborator.name} as collaborator`,
@@ -1861,11 +2035,303 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
   // was granted, the payload also carries its id so the client fetches it in.
   sendEventToUser(userIdToRemove, { type: "note_access_revoked", noteId, copyNoteId });
 
+  // Persist + push a notification on BOTH sides — the ex-collaborator
+  // gets a "your access was removed" toast, the owner gets a "you
+  // removed X" confirmation toast. Variant suffix tells the client
+  // whether a copy was kept so the i18n message picks the right
+  // phrasing. Skipped when the user removed themselves — they
+  // already know, and notifying the owner about their own action
+  // would be circular.
+  if (!isRemovingSelf) {
+    try {
+      const revokeCreatedAt = nowISO();
+      // -- Ex-collaborator notification --
+      // When a copy was granted, persist the COPY's id in note_id so
+      // the recipient's "Ouvrir" action targets the note they actually
+      // still have access to. Plain revoke (no copy) keeps the
+      // original id for historical context — the action falls back to
+      // null on the client side.
+      const recipientType = shouldGrantCopy
+        ? "note_access_revoked_with_copy"
+        : "note_access_revoked";
+      const recipientNoteId = shouldGrantCopy ? copyNoteId : noteId;
+      const revokeRow = insertNotification.run(
+        userIdToRemove,
+        req.user.id,
+        recipientType,
+        recipientNoteId,
+        note.title || "",
+        req.user.name || req.user.email || "",
+        null,
+        null,
+        0,
+        null,
+        revokeCreatedAt,
+      );
+      sendEventToUser(userIdToRemove, {
+        type: "note_access_revoked_notification",
+        notificationType: recipientType,
+        notificationId: revokeRow.lastInsertRowid,
+        senderName: req.user.name || req.user.email || "",
+        noteId: recipientNoteId,
+        noteTitle: note.title || "",
+        withCopy: shouldGrantCopy,
+        createdAt: revokeCreatedAt,
+      });
+
+      // -- Owner confirmation notification --
+      // The owner is the one driving the removal, so the sender of
+      // the row is the removed user (for the i18n {sender} slot to
+      // resolve to their name).
+      const removedUser = getUserById.get(userIdToRemove);
+      const removedName =
+        (removedUser && (removedUser.name || removedUser.email)) || "";
+      const ownerType = shouldGrantCopy
+        ? "collaborator_removed_with_copy"
+        : "collaborator_removed";
+      const ownerRow = insertNotification.run(
+        req.user.id,
+        userIdToRemove,
+        ownerType,
+        noteId,
+        note.title || "",
+        removedName,
+        null,
+        null,
+        0,
+        null,
+        revokeCreatedAt,
+      );
+      sendEventToUser(req.user.id, {
+        type: "note_access_revoked_notification",
+        notificationType: ownerType,
+        notificationId: ownerRow.lastInsertRowid,
+        senderName: removedName,
+        noteId,
+        noteTitle: note.title || "",
+        withCopy: shouldGrantCopy,
+        createdAt: revokeCreatedAt,
+      });
+    } catch (e) {
+      console.warn("[notifications] revoke notification failed:", e?.message);
+    }
+  } else if (!isOwner) {
+    // Collaborator left the note voluntarily — notify the owner so
+    // they know who walked away. Owner-self-removal is a no-op
+    // notification-wise (would be circular).
+    try {
+      const leftCreatedAt = nowISO();
+      const owner = getUserById.get(note.user_id);
+      if (owner) {
+        const leftRow = insertNotification.run(
+          owner.id,
+          req.user.id,
+          "collaborator_left",
+          noteId,
+          note.title || "",
+          req.user.name || req.user.email || "",
+          null,
+          null,
+          0,
+          null,
+          leftCreatedAt,
+        );
+        sendEventToUser(owner.id, {
+          type: "note_access_revoked_notification",
+          notificationType: "collaborator_left",
+          notificationId: leftRow.lastInsertRowid,
+          senderName: req.user.name || req.user.email || "",
+          noteId,
+          noteTitle: note.title || "",
+          createdAt: leftCreatedAt,
+        });
+      }
+    } catch (e) {
+      console.warn("[notifications] collaborator_left notification failed:", e?.message);
+    }
+  }
+
   // Update note with editor info and notify remaining participants
   updateNoteWithEditor.run(nowISO(), req.user.name || req.user.email, nowISO(), noteId);
   broadcastNoteUpdated(noteId);
 
   res.json({ ok: true, message: "Collaborator removed", copyNoteId });
+});
+
+// ---------- Notifications ----------
+// Pending = not yet shown to the user on any device. The client fetches
+// these right after auth and shows a toast for each, then marks them
+// delivered. Live notifications also flow over SSE; the client marks
+// those delivered immediately so a quick reload doesn't replay them.
+app.get("/api/notifications/pending", auth, (req, res) => {
+  const rows = getPendingNotificationsForUser.all(req.user.id) || [];
+  res.json({ notifications: rows });
+});
+
+// Delivered notifications — used to populate the history panel on any
+// device at login time so every session sees the same notification
+// history regardless of which device originally received each item.
+// Returns the 100 most-recently-delivered rows (newest-first).
+app.get("/api/notifications/history", auth, (req, res) => {
+  const rows = getHistoryNotificationsForUser.all(req.user.id) || [];
+  res.json({ notifications: rows });
+});
+
+app.post("/api/notifications/mark-delivered", auth, (req, res) => {
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "ids required" });
+  }
+  const now = nowISO();
+  const actuallyMarked = [];
+  const tx = db.transaction((rawIds) => {
+    for (const raw of rawIds) {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) continue;
+      const result = markNotificationDelivered.run(now, n, req.user.id);
+      // Only broadcast ids the UPDATE actually changed (the row was
+      // still pending). Re-acking an already-delivered row is a no-op
+      // and shouldn't pollute the SSE channel.
+      if (result.changes > 0) actuallyMarked.push(n);
+    }
+  });
+  tx(ids);
+  // Cross-device sync — tell every other tab / device this user
+  // has open that these rows are no longer pending, so any active
+  // card displaying them gets dismissed locally without waiting for
+  // a manual reload. The originating client also receives it but
+  // dismissing an already-dismissed notification is idempotent.
+  if (actuallyMarked.length > 0) {
+    sendEventToUser(req.user.id, {
+      type: "notification_delivered",
+      ids: actuallyMarked,
+    });
+  }
+  res.json({ ok: true });
+});
+
+// Cross-device "Clear all" — when the user wipes the notification
+// centre on one device, every other tab / device for the same user
+// should reflect that wipe without waiting for a refresh. We DELETE
+// the rows outright (both pending and already-delivered) so the
+// /history endpoint doesn't bring them back at the next reload.
+app.post("/api/notifications/clear", auth, (req, res) => {
+  try {
+    db.prepare(
+      "DELETE FROM notifications WHERE recipient_user_id = ?",
+    ).run(req.user.id);
+  } catch (e) {
+    console.warn("[notifications] clear DELETE failed:", e?.message);
+  }
+  sendEventToUser(req.user.id, { type: "notifications_cleared" });
+  res.json({ ok: true });
+});
+
+// Per-item remove — DELETE one or more notifications from this user's
+// row in a single call. Broadcasts `notification_removed { ids }` so
+// every other connected tab / device drops the matching cards from
+// its in-memory state too. Used when the user clicks the X on a
+// single history entry in the notification centre panel.
+app.post("/api/notifications/remove", auth, (req, res) => {
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "ids required" });
+  }
+  const removed = [];
+  const stmt = db.prepare(
+    "DELETE FROM notifications WHERE id = ? AND recipient_user_id = ?",
+  );
+  const tx = db.transaction((rawIds) => {
+    for (const raw of rawIds) {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) continue;
+      const info = stmt.run(n, req.user.id);
+      if (info.changes > 0) removed.push(n);
+    }
+  });
+  try {
+    tx(ids);
+  } catch (e) {
+    console.warn("[notifications] remove failed:", e?.message);
+    return res.status(500).json({ error: "remove failed" });
+  }
+  if (removed.length > 0) {
+    sendEventToUser(req.user.id, {
+      type: "notification_removed",
+      ids: removed,
+    });
+  }
+  res.json({ ok: true, ids: removed });
+});
+
+// Dev/test endpoint: synthesise a notification and push it via SSE
+// the same way a real event would arrive. Admin-only because there's
+// no reason a regular user should be able to make arbitrary toasts
+// appear on their own session, and the script that drives this lives
+// outside the app (scripts/test-notification.cjs). Accepts an
+// optional `recipientEmail` so the admin can target other users.
+app.post("/api/notifications/test", auth, adminOnly, (req, res) => {
+  const {
+    variant = "info",
+    title = null,
+    message = "",
+    persistent = false,
+    icon = null,
+    recipientEmail = null,
+  } = req.body || {};
+
+  if (!message || typeof message !== "string") {
+    return res.status(400).json({ error: "message required" });
+  }
+  if (!["info", "success", "warning", "error"].includes(variant)) {
+    return res.status(400).json({ error: "invalid variant" });
+  }
+
+  let recipient = req.user;
+  if (recipientEmail && typeof recipientEmail === "string") {
+    const found = getUserByEmail.get(recipientEmail);
+    if (!found) return res.status(404).json({ error: "recipient not found" });
+    recipient = found;
+  }
+
+  const createdAt = nowISO();
+  // Test notifications fully serialise variant/message/persistent/icon
+  // so an offline recipient sees the exact same payload on next
+  // login that they would have seen live over SSE.
+  const result = insertNotification.run(
+    recipient.id,
+    req.user.id,
+    "test",
+    null,
+    title || "",
+    req.user.name || req.user.email || "test",
+    variant,
+    message,
+    persistent ? 1 : 0,
+    icon || null,
+    createdAt,
+  );
+
+  // Mirror the SSE shape the live `note_shared` path uses so the
+  // client renders this with the same code, with a distinct `type`
+  // so the App-level handler routes it through a generic toast
+  // instead of the share-specific deduper.
+  sendEventToUser(recipient.id, {
+    type: "test_notification",
+    notificationId: result.lastInsertRowid,
+    variant,
+    title: title || null,
+    message,
+    persistent: !!persistent,
+    icon: icon || null,
+    createdAt,
+  });
+
+  res.json({
+    ok: true,
+    notificationId: result.lastInsertRowid,
+    recipient: { id: recipient.id, email: recipient.email },
+  });
 });
 
 app.get("/api/notes/collaborated", auth, (req, res) => {
@@ -1982,6 +2448,40 @@ app.post("/api/notes/:id/trash", auth, (req, res) => {
     db.prepare("DELETE FROM note_user_tags WHERE note_id = ? AND user_id = ?").run(id, req.user.id);
     db.prepare("DELETE FROM note_user_positions WHERE note_id = ? AND user_id = ?").run(id, req.user.id);
     broadcastNoteUpdated(id);
+    // Notify the note owner that this collaborator walked away on
+    // their own. Symmetric with the owner-removes-collaborator path
+    // in DELETE /:id/collaborate/:userId — there the owner gets a
+    // "you removed X" toast; here the owner gets a "X left" toast.
+    try {
+      const leftCreatedAt = nowISO();
+      const ownerId = collabNote.user_id;
+      if (ownerId && ownerId !== req.user.id) {
+        const leftRow = insertNotification.run(
+          ownerId,
+          req.user.id,
+          "collaborator_left",
+          id,
+          collabNote.title || "",
+          req.user.name || req.user.email || "",
+          null,
+          null,
+          0,
+          null,
+          leftCreatedAt,
+        );
+        sendEventToUser(ownerId, {
+          type: "note_access_revoked_notification",
+          notificationType: "collaborator_left",
+          notificationId: leftRow.lastInsertRowid,
+          senderName: req.user.name || req.user.email || "",
+          noteId: id,
+          noteTitle: collabNote.title || "",
+          createdAt: leftCreatedAt,
+        });
+      }
+    } catch (e) {
+      console.warn("[notifications] collaborator_left notification failed:", e?.message);
+    }
     const trashedCopy = getNoteById.get(trashedCopyId);
     return res.json({
       ok: true,
@@ -2382,6 +2882,18 @@ app.patch("/api/user/settings", auth, (req, res) => {
   const current = row ? JSON.parse(row.settings_json) : {};
   const merged = { ...current, ...incoming };
   upsertUserSettings.run(req.user.id, JSON.stringify(merged));
+
+  // Live-sync the change to every connected session of this user.
+  // originClientId lets the originating tab/device ignore its own
+  // echo so the apply-on-receive doesn't trigger another PATCH back.
+  const originClientId =
+    req.headers["x-client-id"] || req.headers["X-Client-Id"] || null;
+  sendEventToUser(req.user.id, {
+    type: "user_settings_updated",
+    settings: incoming,
+    originClientId,
+  });
+
   res.json(merged);
 });
 
@@ -2495,6 +3007,12 @@ app.patch("/api/admin/settings", auth, adminOnly, (req, res) => {
   }
 
   upsertAppSettings.run(adminSettings.allowNewAccounts ? 1 : 0, adminSettings.loginSlogan);
+  // Live-sync to every other admin so their AdminPanel toggles /
+  // slogan reflect the change without a reload.
+  broadcastToAdmins({
+    type: "admin_settings_updated",
+    settings: { ...adminSettings },
+  });
   res.json(adminSettings);
 });
 
@@ -2561,6 +3079,39 @@ app.get("/api/admin/pending-users", auth, adminOnly, (_req, res) => {
   res.json(listPendingUsers.all());
 });
 
+// Wipe the pending_user_registered notification rows attached to this
+// pending id and tell every recipient admin (live SSE) so their
+// history panel drops the entry. Run on both approve AND reject so
+// whichever admin acts first clears the action surfaces everywhere.
+function cleanupPendingUserNotifications(pendingId) {
+  try {
+    // pendingId is stored in the `message` column (note_id is NULL
+    // because of the FK to notes); stringify so the BLOB-affinity
+    // match works the same way both at insert and at query.
+    const key = String(pendingId);
+    const rows = db.prepare(`
+      SELECT id, recipient_user_id FROM notifications
+      WHERE type = 'pending_user_registered' AND message = ?
+    `).all(key);
+    if (rows.length === 0) return;
+    db.prepare(`
+      DELETE FROM notifications
+      WHERE type = 'pending_user_registered' AND message = ?
+    `).run(key);
+    const byRecipient = new Map();
+    for (const r of rows) {
+      if (!byRecipient.has(r.recipient_user_id))
+        byRecipient.set(r.recipient_user_id, []);
+      byRecipient.get(r.recipient_user_id).push(r.id);
+    }
+    for (const [uid, ids] of byRecipient) {
+      sendEventToUser(uid, { type: "notification_removed", ids });
+    }
+  } catch (e) {
+    console.warn("[notifications] pending_user cleanup failed:", e?.message);
+  }
+}
+
 app.post("/api/admin/pending-users/:id/approve", auth, adminOnly, (req, res) => {
   const id = Number(req.params.id);
   const pending = getPendingById.get(id);
@@ -2569,17 +3120,30 @@ app.post("/api/admin/pending-users/:id/approve", auth, adminOnly, (req, res) => 
   // Guard against collision with a concurrently-created user
   if (getUserByEmail.get(pending.email)) {
     deletePendingById.run(id);
+    cleanupPendingUserNotifications(id);
     return res.status(409).json({ error: "A user with this email already exists." });
   }
 
   // Move to users table, preserving the user-chosen password_hash (no forced change)
   const info = insertUser.run(pending.name, pending.email, pending.password_hash, nowISO());
   deletePendingById.run(id);
+  cleanupPendingUserNotifications(id);
 
   // Check if this user should be auto-promoted to admin via env var
   try { promoteToAdminIfNeeded(pending.email); } catch {}
 
   const user = getUserById.get(info.lastInsertRowid);
+  // Live-sync to every other admin session so their AdminPanel
+  // pending / users lists refresh without waiting for a manual
+  // reload. The acting admin's tab gets it too — its useEffect
+  // dedup keeps it cheap, and there's no source-tab skip logic
+  // needed because reload is idempotent.
+  broadcastToAdmins({
+    type: "pending_user_resolved",
+    action: "approved",
+    pendingId: id,
+    newUserId: user.id,
+  });
   res.json({
     id: user.id,
     name: user.name,
@@ -2594,6 +3158,12 @@ app.post("/api/admin/pending-users/:id/reject", auth, adminOnly, (req, res) => {
   const pending = getPendingById.get(id);
   if (!pending) return res.status(404).json({ error: "Pending registration not found." });
   deletePendingById.run(id);
+  cleanupPendingUserNotifications(id);
+  broadcastToAdmins({
+    type: "pending_user_resolved",
+    action: "rejected",
+    pendingId: id,
+  });
   res.json({ ok: true });
 });
 
@@ -2634,7 +3204,51 @@ app.delete("/api/admin/users/:id", auth, adminOnly, (req, res) => {
   }
 
   deleteUserStmt.run(id);
-  res.json({ ok: true });
+
+  // Notify every OTHER admin. The acting admin already sees the
+  // operation succeed locally, so they get a plain success toast in
+  // the panel instead — sending them the row too would feel like
+  // self-reflection. Persisted + SSE'd so offline admins also see it
+  // when they next reconnect.
+  try {
+    const otherAdmins = db
+      .prepare("SELECT id FROM users WHERE is_admin = 1 AND id != ?")
+      .all(req.user.id);
+    if (otherAdmins.length > 0) {
+      const createdAt = nowISO();
+      const targetName = target.name || target.email || "";
+      const adminName = req.user.name || req.user.email || "";
+      for (const a of otherAdmins) {
+        const row = insertNotification.run(
+          a.id,
+          req.user.id,
+          "user_deleted",
+          null,
+          targetName,
+          adminName,
+          "warning",
+          null,
+          0,
+          "user-x",
+          createdAt,
+        );
+        sendEventToUser(a.id, {
+          type: "user_deleted_notification",
+          notificationId: row.lastInsertRowid,
+          deletedName: targetName,
+          adminName,
+          createdAt,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("[notifications] user_deleted notification failed:", e?.message);
+  }
+
+  res.json({
+    ok: true,
+    deletedUser: { id: target.id, name: target.name, email: target.email },
+  });
 });
 
 // Create user from admin panel
@@ -2658,6 +3272,13 @@ app.post("/api/admin/users", auth, adminOnly, (req, res) => {
   db.prepare(`UPDATE users SET ${updateParts.join(", ")} WHERE id = ?`).run(info.lastInsertRowid);
 
   const user = getUserById.get(info.lastInsertRowid);
+  // Live-sync to every other admin so their users list shows the
+  // new row without a manual reload.
+  broadcastToAdmins({
+    type: "user_list_changed",
+    reason: "created",
+    userId: user.id,
+  });
   res.status(201).json({
     id: user.id,
     name: user.name,
@@ -2736,6 +3357,13 @@ app.patch("/api/admin/users/:id", auth, adminOnly, (req, res) => {
 
   // Return updated user data
   const updatedUser = getUserById.get(id);
+  // Live-sync to every other admin so name / email / role / temp-
+  // password-flag changes show up without a manual reload.
+  broadcastToAdmins({
+    type: "user_list_changed",
+    reason: "updated",
+    userId: updatedUser.id,
+  });
   res.json({
     id: updatedUser.id,
     name: updatedUser.name,

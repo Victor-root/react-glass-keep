@@ -13,6 +13,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import UnderlineVariant from "./extensions/UnderlineVariant.js";
 import Indent from "./extensions/Indent.js";
 import SmartCodeBlock from "./extensions/SmartCodeBlock.js";
+import CodeBlockCopy from "./extensions/CodeBlockCopy.js";
+import EditExtras from "./extensions/EditExtras.js";
 
 // Factory so the editor instance and the (stateless) render helpers can share
 // the same configured extensions but the editor can still override
@@ -29,7 +31,16 @@ export function buildRichTextExtensions({ placeholder = "" } = {}) {
         HTMLAttributes: { rel: "noopener noreferrer nofollow", target: "_blank" },
       },
       heading: { levels: [1, 2, 3, 4, 5] },
+      // Inline `code` mark: switch off spellcheck on each rendered
+      // `<code>` so the OS / browser spellchecker stops underlining
+      // shell commands, identifiers, paths, etc. inside snippets.
+      code: { HTMLAttributes: { spellcheck: "false" } },
+      // Replace StarterKit's CodeBlock with our NodeView-extended
+      // version so edit-mode code blocks expose the same copy button
+      // the view-mode renderer already provides.
+      codeBlock: false,
     }),
+    CodeBlockCopy,
     UnderlineVariant,
     TextStyle,
     Color,
@@ -46,6 +57,10 @@ export function buildRichTextExtensions({ placeholder = "" } = {}) {
     }),
     Indent,
     SmartCodeBlock,
+    // Inline-code hover + link tooltip / ctrl-click / middle-click /
+    // mobile-tap-popover. Gated at runtime by the `data-edit-extras`
+    // attribute the editor host sets on its wrapper.
+    EditExtras,
     Placeholder.configure({ placeholder }),
   ];
 }
