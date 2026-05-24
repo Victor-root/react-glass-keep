@@ -208,12 +208,19 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
     };
   }, []);
 
-  // Disable browser pull-to-refresh while the dropdown is open.
+  // Disable browser pull-to-refresh while the dropdown is open. Set on
+  // <html> (Chrome PTR) and <body> (other browsers). The AndroidTheme
+  // path is covered by App.jsx's overlayOpenCount including syncDropdownOpen.
   useEffect(() => {
     if (!open) return undefined;
-    const prev = document.body.style.overscrollBehavior;
+    const prevHtml = document.documentElement.style.overscrollBehavior;
+    const prevBody = document.body.style.overscrollBehavior;
+    document.documentElement.style.overscrollBehavior = "none";
     document.body.style.overscrollBehavior = "none";
-    return () => { document.body.style.overscrollBehavior = prev; };
+    return () => {
+      document.documentElement.style.overscrollBehavior = prevHtml;
+      document.body.style.overscrollBehavior = prevBody;
+    };
   }, [open]);
 
   // Close on outside tap/click — pointerdown + flag prevents the follow-up

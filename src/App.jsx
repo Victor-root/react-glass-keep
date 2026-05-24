@@ -1734,6 +1734,10 @@ export default function App() {
   // sub-modal opening / closing.
   const [typographyModalOpen, setTypographyModalOpen] = useState(false);
 
+  // Notification center open state (lifted so overlayOpenCount includes it,
+  // which triggers AndroidTheme.setRefreshEnabled and back-button support).
+  const [notifCenterOpen, setNotifCenterOpen] = useState(false);
+
   // Sync dropdown state (lifted for back button support)
   const [syncDropdownOpen, setSyncDropdownOpen] = useState(false);
 
@@ -4053,7 +4057,7 @@ export default function App() {
   const overlayOpenCount = [
     imgViewOpen, confirmDeleteOpen, genericConfirmOpen,
     collaborationModalOpen, showModalColorPop, showModalFmt, modalMenuOpen,
-    modalKebabOpen, modalTagFocused, syncDropdownOpen, mobileSearchOpen,
+    modalKebabOpen, modalTagFocused, notifCenterOpen, syncDropdownOpen, mobileSearchOpen,
     showColorPop, showComposerFmt, headerMenuOpen, multiMode,
     typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
     noteAiOpen, changelogOpen,
@@ -4110,6 +4114,7 @@ export default function App() {
       if (noteAiOpen) { setNoteAiOpen(false); return; }
       if (open) { closeModalRef.current?.(); return; }
       if (fabOpen) { setFabOpen(false); return; }
+      if (notifCenterOpen) { setNotifCenterOpen(false); return; }
       if (syncDropdownOpen) { setSyncDropdownOpen(false); return; }
       if (mobileSearchOpen) { setSearch(""); setMobileSearchOpen(false); return; }
       if (showColorPop) { setShowColorPop(false); return; }
@@ -4125,7 +4130,7 @@ export default function App() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [imgViewOpen, confirmDeleteOpen, genericConfirmOpen, collaborationModalOpen,
       showModalColorPop, showModalFmt, modalMenuOpen, modalKebabOpen, modalTagFocused,
-      syncDropdownOpen, mobileSearchOpen, showColorPop, showComposerFmt,
+      notifCenterOpen, syncDropdownOpen, mobileSearchOpen, showColorPop, showComposerFmt,
       headerMenuOpen, multiMode, typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
       noteAiOpen, changelogOpen]);
 
@@ -6571,6 +6576,8 @@ export default function App() {
             dark={dark}
             onAction={handleNotificationAction}
             onClearAll={clearAllNotificationsSynced}
+            open={notifCenterOpen}
+            onSetOpen={setNotifCenterOpen}
           />
         }
         notificationBellMobile={
@@ -6578,6 +6585,8 @@ export default function App() {
             dark={dark}
             onAction={handleNotificationAction}
             onClearAll={clearAllNotificationsSynced}
+            open={notifCenterOpen}
+            onSetOpen={setNotifCenterOpen}
           />
         }
       />

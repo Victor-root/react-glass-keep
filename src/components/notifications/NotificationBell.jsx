@@ -13,7 +13,7 @@
 // count drops to zero so the bell sits flush in the header during
 // quiet periods.
 
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import { useNotifications } from "./NotificationProvider.jsx";
 import NotificationCenter from "./NotificationCenter.jsx";
 import TI from "../../icons/editor/index.jsx";
@@ -23,9 +23,13 @@ export default function NotificationBell({
   dark,
   onAction,
   onClearAll,
+  // Controlled state — callers lift open/setOpen so the notification
+  // center can be included in the app-level overlay count (back button,
+  // AndroidTheme.setRefreshEnabled, etc.).
+  open,
+  onSetOpen,
 }) {
   const { notifications, dismissAll, markDelivered } = useNotifications();
-  const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
 
   const unread = notifications.reduce(
@@ -45,27 +49,25 @@ export default function NotificationBell({
   const iconColor = dark ? "#9c9ddb" : "#6366f1";
 
   const handleToggle = () => {
-    setOpen((wasOpen) => {
-      // Opening = move everything currently floating into the panel,
-      // and acknowledge any still-pending server-side rows. Without
-      // the server ack, a second device reconnecting later would
-      // re-fetch the same notifications from /pending and replay
-      // them, even though the user has already seen the cards here.
-      // markDelivered comes from the provider context and dedupes
-      // internally, so any ids already acked (e.g. by an earlier X
-      // click) won't trigger a second POST.
-      if (!wasOpen && unread > 0) {
-        const serverIds = [];
-        for (const n of notifications) {
-          if (n.dismissed) continue;
-          const sid = n.metadata?.serverNotificationId;
-          if (sid != null) serverIds.push(sid);
-        }
-        if (serverIds.length > 0) markDelivered(serverIds);
-        dismissAll();
+    // Opening = move everything currently floating into the panel,
+    // and acknowledge any still-pending server-side rows. Without
+    // the server ack, a second device reconnecting later would
+    // re-fetch the same notifications from /pending and replay
+    // them, even though the user has already seen the cards here.
+    // markDelivered comes from the provider context and dedupes
+    // internally, so any ids already acked (e.g. by an earlier X
+    // click) won't trigger a second POST.
+    if (!open && unread > 0) {
+      const serverIds = [];
+      for (const n of notifications) {
+        if (n.dismissed) continue;
+        const sid = n.metadata?.serverNotificationId;
+        if (sid != null) serverIds.push(sid);
       }
-      return !wasOpen;
-    });
+      if (serverIds.length > 0) markDelivered(serverIds);
+      dismissAll();
+    }
+    onSetOpen?.(!open);
   };
 
   return (
@@ -103,7 +105,7 @@ export default function NotificationBell({
       <NotificationCenter
         open={open}
         anchor={buttonRef.current}
-        onClose={() => setOpen(false)}
+        onClose={() => onSetOpen?.(false)}
         onAction={onAction}
         onClearAll={onClearAll}
       />
