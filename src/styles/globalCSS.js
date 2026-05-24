@@ -3770,94 +3770,79 @@ html.dark .typo-modal-toggle {
   width: 100%;
   padding: 11px 14px;
   border-radius: 16px;
-  /* Toast mode: near-opaque white surface with a 1.5 px solid border
-     in the variant accent colour. The "neon rectangle" feel comes from
-     layered box-shadow halos in the same accent: a tight ring (0 0 8px)
-     that makes the border appear to emit light, and a wider soft cloud
-     (0 0 22px) for the ambient glow. Both animate gently via
-     gkToastGlow so the light breathes without being distracting.
-     All glow values are CSS variables so dark-mode overrides can
-     simply intensify them without touching the keyframe. */
-  --gk-notif-glow-soft:    rgba(99, 102, 241, 0.22);
-  --gk-notif-glow-tight:   rgba(99, 102, 241, 0.55);
-  --gk-notif-glow-wide:    rgba(99, 102, 241, 0.22);
-  --gk-notif-glow-ambient: rgba(15, 23, 42, 0.10);
-  --gk-notif-inset-shine:  rgba(255, 255, 255, 0.82);
+  /* Toast mode: clean LED-strip look. A 1.5 px solid border in the
+     variant colour does most of the work; a second crisp 1 px ring
+     immediately outside the border (via spread, 0 blur) doubles the
+     strip so it reads as a sharp lit edge rather than a stroke. A
+     tiny 4 px bleed adds just enough light to feel emissive without
+     becoming a diffuse halo, and the drop shadow stays neutral
+     (slate grey, not accent) so the card sits cleanly on its
+     surface. No pulse — the strip is static. */
+  --gk-notif-glow-ring:  rgba(99, 102, 241, 0.32);
+  --gk-notif-glow-bleed: rgba(99, 102, 241, 0.45);
   background: rgba(252, 252, 255, 0.97);
   border: 1.5px solid var(--gk-notif-accent, #6366f1);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow:
+    0 0 0 1px   var(--gk-notif-glow-ring),
+    0 0 4px 0   var(--gk-notif-glow-bleed),
+    0 6px 14px -2px rgba(15, 23, 42, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
   color: #1d1d1f;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  animation:
-    gkNotifIn   280ms cubic-bezier(.22,.61,.36,1) both,
-    gkToastGlow 3.8s  ease-in-out infinite 400ms;
+  animation: gkNotifIn 280ms cubic-bezier(.22,.61,.36,1) both;
 }
 html.dark .gk-notif-card {
-  --gk-notif-inset-shine:  rgba(255, 255, 255, 0.06);
-  --gk-notif-glow-ambient: rgba(0, 0, 0, 0.55);
   background: rgba(18, 18, 28, 0.97);
   color: #f0f0f5;
+  box-shadow:
+    0 0 0 1px   var(--gk-notif-glow-ring),
+    0 0 5px 0   var(--gk-notif-glow-bleed),
+    0 6px 14px -2px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-/* Variant accent colour + per-variant glow palette.
-   Light-mode glows are measured so the card reads as "lit from the
-   border" — tight halo ≈0.55 opacity, wide cloud ≈0.22. Dark mode
-   overrides push both values higher because the dark background
-   absorbs more light and needs a stronger source to feel the same. */
+/* Variant accent colour + per-variant LED palette. Two values only:
+   the crisp 1 px ring just outside the border, and the tight 4 px
+   bleed that gives the strip its "emissive" feel. Dark-mode rules
+   below bump both values up to keep the strip readable on a near-
+   black card. */
 .gk-notif-card--info {
-  --gk-notif-accent:       #3b82f6;
-  --gk-notif-glow-soft:    rgba(59, 130, 246, 0.22);
-  --gk-notif-glow-tight:   rgba(59, 130, 246, 0.55);
-  --gk-notif-glow-wide:    rgba(59, 130, 246, 0.22);
-  --gk-notif-glow-ambient: rgba(59, 130, 246, 0.12);
+  --gk-notif-accent:     #3b82f6;
+  --gk-notif-glow-ring:  rgba(59, 130, 246, 0.32);
+  --gk-notif-glow-bleed: rgba(59, 130, 246, 0.45);
 }
 .gk-notif-card--success {
-  --gk-notif-accent:       #10b981;
-  --gk-notif-glow-soft:    rgba(16, 185, 129, 0.22);
-  --gk-notif-glow-tight:   rgba(16, 185, 129, 0.55);
-  --gk-notif-glow-wide:    rgba(16, 185, 129, 0.22);
-  --gk-notif-glow-ambient: rgba(16, 185, 129, 0.12);
+  --gk-notif-accent:     #10b981;
+  --gk-notif-glow-ring:  rgba(16, 185, 129, 0.32);
+  --gk-notif-glow-bleed: rgba(16, 185, 129, 0.45);
 }
 .gk-notif-card--warning {
-  --gk-notif-accent:       #f59e0b;
-  --gk-notif-glow-soft:    rgba(245, 158, 11, 0.22);
-  --gk-notif-glow-tight:   rgba(245, 158, 11, 0.55);
-  --gk-notif-glow-wide:    rgba(245, 158, 11, 0.22);
-  --gk-notif-glow-ambient: rgba(245, 158, 11, 0.12);
+  --gk-notif-accent:     #f59e0b;
+  --gk-notif-glow-ring:  rgba(245, 158, 11, 0.32);
+  --gk-notif-glow-bleed: rgba(245, 158, 11, 0.45);
 }
 .gk-notif-card--error {
-  --gk-notif-accent:       #ef4444;
-  --gk-notif-glow-soft:    rgba(239, 68, 68, 0.22);
-  --gk-notif-glow-tight:   rgba(239, 68, 68, 0.55);
-  --gk-notif-glow-wide:    rgba(239, 68, 68, 0.22);
-  --gk-notif-glow-ambient: rgba(239, 68, 68, 0.12);
+  --gk-notif-accent:     #ef4444;
+  --gk-notif-glow-ring:  rgba(239, 68, 68, 0.32);
+  --gk-notif-glow-bleed: rgba(239, 68, 68, 0.45);
 }
-/* Dark mode: stronger glow intensities so the halo reads clearly
-   against the near-black card surface. */
 html.dark .gk-notif-card--info {
-  --gk-notif-glow-soft:    rgba(59, 130, 246, 0.30);
-  --gk-notif-glow-tight:   rgba(59, 130, 246, 0.72);
-  --gk-notif-glow-wide:    rgba(59, 130, 246, 0.34);
-  --gk-notif-glow-ambient: rgba(59, 130, 246, 0.22);
+  --gk-notif-glow-ring:  rgba(59, 130, 246, 0.45);
+  --gk-notif-glow-bleed: rgba(59, 130, 246, 0.60);
 }
 html.dark .gk-notif-card--success {
-  --gk-notif-glow-soft:    rgba(16, 185, 129, 0.30);
-  --gk-notif-glow-tight:   rgba(16, 185, 129, 0.72);
-  --gk-notif-glow-wide:    rgba(16, 185, 129, 0.34);
-  --gk-notif-glow-ambient: rgba(16, 185, 129, 0.22);
+  --gk-notif-glow-ring:  rgba(16, 185, 129, 0.45);
+  --gk-notif-glow-bleed: rgba(16, 185, 129, 0.60);
 }
 html.dark .gk-notif-card--warning {
-  --gk-notif-glow-soft:    rgba(245, 158, 11, 0.30);
-  --gk-notif-glow-tight:   rgba(245, 158, 11, 0.72);
-  --gk-notif-glow-wide:    rgba(245, 158, 11, 0.34);
-  --gk-notif-glow-ambient: rgba(245, 158, 11, 0.22);
+  --gk-notif-glow-ring:  rgba(245, 158, 11, 0.45);
+  --gk-notif-glow-bleed: rgba(245, 158, 11, 0.60);
 }
 html.dark .gk-notif-card--error {
-  --gk-notif-glow-soft:    rgba(239, 68, 68, 0.30);
-  --gk-notif-glow-tight:   rgba(239, 68, 68, 0.72);
-  --gk-notif-glow-wide:    rgba(239, 68, 68, 0.34);
-  --gk-notif-glow-ambient: rgba(239, 68, 68, 0.22);
+  --gk-notif-glow-ring:  rgba(239, 68, 68, 0.45);
+  --gk-notif-glow-bleed: rgba(239, 68, 68, 0.60);
 }
 
 /* All variants render a filled Tabler glyph in the accent colour,
@@ -4082,28 +4067,6 @@ html.dark .gk-notif-card.gk-notif-card--center {
 @keyframes gkNotifIn {
   from { opacity: 0; transform: translateY(-8px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0)    scale(1);    }
-}
-/* Gentle breathing: the outer glow cloud expands slightly at 50 %
-   and contracts back, giving the impression of a live, pulsing edge
-   without any colour change or distracting motion. The spread/radius
-   delta is kept small so it reads as ambience, not animation. */
-@keyframes gkToastGlow {
-  0%, 100% {
-    box-shadow:
-      0 0 0 1px    var(--gk-notif-glow-soft,    rgba(99,102,241,0.22)),
-      0 0 8px 0px  var(--gk-notif-glow-tight,   rgba(99,102,241,0.55)),
-      0 0 22px 0px var(--gk-notif-glow-wide,    rgba(99,102,241,0.22)),
-      0 8px 20px -2px var(--gk-notif-glow-ambient, rgba(15,23,42,0.10)),
-      inset 0 1px 0 var(--gk-notif-inset-shine, rgba(255,255,255,0.82));
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px    var(--gk-notif-glow-soft,    rgba(99,102,241,0.22)),
-      0 0 12px 2px var(--gk-notif-glow-tight,   rgba(99,102,241,0.55)),
-      0 0 32px 3px var(--gk-notif-glow-wide,    rgba(99,102,241,0.22)),
-      0 8px 20px -2px var(--gk-notif-glow-ambient, rgba(15,23,42,0.10)),
-      inset 0 1px 0 var(--gk-notif-inset-shine, rgba(255,255,255,0.82));
-  }
 }
 
 /* ───────── Android-style mobile toast ─────────
