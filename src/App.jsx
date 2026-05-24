@@ -701,12 +701,30 @@ export default function App() {
   // action that hands off to selfUpdate.startUpdate. The duration is
   // pinned to 30 s regardless of the user's notification-duration
   // preference so the update CTA always gets a fair on-screen window.
+  //
+  // Capped at 3 displays per admin per latest-version: a counter is
+  // persisted in localStorage, keyed by the user id + the version
+  // string. A new release resets the counter (the key changes), so
+  // the next published version starts fresh from 0.
   const updateNotifiedVersionRef = useRef(null);
   useEffect(() => {
     if (!currentUser?.is_admin) return;
     if (!updateInfo?.updateAvailable || !updateInfo?.latestVersion) return;
     if (updateNotifiedVersionRef.current === updateInfo.latestVersion) return;
     updateNotifiedVersionRef.current = updateInfo.latestVersion;
+    const storageKey = `gk:updateNotifShown:${currentUser.id || "anon"}:${updateInfo.latestVersion}`;
+    let shown = 0;
+    try {
+      shown = parseInt(localStorage.getItem(storageKey) || "0", 10) || 0;
+    } catch (_e) {
+      /* private mode / disabled storage — fall through and show */
+    }
+    if (shown >= 3) return;
+    try {
+      localStorage.setItem(storageKey, String(shown + 1));
+    } catch (_e) {
+      /* ignore — counter just won't persist this session */
+    }
     notify({
       type: "update_available",
       variant: "success",
@@ -729,6 +747,7 @@ export default function App() {
     });
   }, [
     currentUser?.is_admin,
+    currentUser?.id,
     updateInfo?.updateAvailable,
     updateInfo?.latestVersion,
     notify,
