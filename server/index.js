@@ -1246,92 +1246,52 @@ app.post("/api/register", (req, res) => {
 
   const hash = bcrypt.hashSync(password, 10);
   const info = insertPendingUser.run(name?.trim() || "User", email.trim(), hash, nowISO());
-  console.log("[notif-debug:register] pending_user inserted", {
-    pendingId: info.lastInsertRowid,
-    name: name?.trim() || "User",
-    email: email.trim(),
-  });
-
-  // Diagnostic payload echoed back in the HTTP response so the
-  // incognito session (no server log access) can confirm exactly
-  // what the persistence + broadcast loop did. Inspect via DevTools
-  // → Network → /api/register → Response.
-  const debugInfo = {
-    pendingId: info.lastInsertRowid,
-    adminsCount: 0,
-    admins: [],
-    perAdmin: [],
-  };
 
   // Persist a notification row per admin AND deliver the live SSE event
   // each with its own row id, so the recipient's client can ack /
-  // remove the right row when the admin acts.
+  // remove the right row when the admin acts. Stored values:
+  //   - sender_user_id = recipient's own id (the row has no human
+  //     sender — the schema requires sender_user_id NOT NULL so we
+  //     self-reference; the client reads sender_name, not the FK).
+  //   - note_id        = NULL (note_id has a FK to notes(id) so we
+  //     can't reuse it for a pending_users id; the pendingId lives
+  //     in `message` instead, which is free for this type since the
+  //     body is rendered client-side from sender_name + note_title).
+  //   - note_title     = registrant email (rendered in the message)
+  //   - sender_name    = registrant name (rendered in the message)
+  //   - message        = String(pending_users.id) — target of the
+  //                      approve / reject actions.
   try {
-    const admins = db.prepare("SELECT id, name, email FROM users WHERE is_admin = 1").all();
-    console.log("[notif-debug:register] admins found:", admins.length, admins.map(a => ({ id: a.id, email: a.email })));
-    debugInfo.adminsCount = admins.length;
-    debugInfo.admins = admins.map((a) => ({ id: a.id, email: a.email }));
-    if (admins.length === 0) {
-      console.warn("[notif-debug:register] NO ADMINS in DB — nothing to notify");
-    }
+    const admins = db.prepare("SELECT id FROM users WHERE is_admin = 1").all();
     const createdAt = nowISO();
     for (const a of admins) {
-      const adminInfo = {
-        adminId: a.id,
-        adminEmail: a.email,
-        notificationId: null,
-        sseClientCount: 0,
-        error: null,
-      };
-      try {
-        // note_id has FK → notes(id); we have NO note here, only a
-        // pending_users id. Store NULL in note_id (FK accepts NULL)
-        // and stash the pendingId in `message` (free for this type,
-        // since the client renders the body from sender_name +
-        // note_title via i18n). Numeric value stringified — the
-        // server query and the client parse both go through Number().
-        const row = insertNotification.run(
-          a.id,
-          a.id,
-          "pending_user_registered",
-          null,
-          email.trim(),
-          name?.trim() || "User",
-          "info",
-          String(info.lastInsertRowid),
-          0,
-          "user-clock",
-          createdAt,
-        );
-        adminInfo.notificationId = row.lastInsertRowid;
-        console.log("[notif-debug:register] inserted notification row", {
-          adminId: a.id,
-          adminEmail: a.email,
-          notificationId: row.lastInsertRowid,
-        });
-        adminInfo.sseClientCount = sseClients?.get?.(a.id)?.size ?? 0;
-        console.log("[notif-debug:register] SSE clients for admin", a.id, "=", adminInfo.sseClientCount);
-        sendEventToUser(a.id, {
-          type: "pending_user_registered",
-          pendingId: info.lastInsertRowid,
-          name: name?.trim() || "User",
-          email: email.trim(),
-          notificationId: row.lastInsertRowid,
-          createdAt,
-        });
-        console.log("[notif-debug:register] sendEventToUser called for admin", a.id);
-      } catch (perAdminErr) {
-        adminInfo.error = String(perAdminErr?.message || perAdminErr);
-        console.error("[notif-debug:register] FAILED for admin", a.id, perAdminErr);
-      }
-      debugInfo.perAdmin.push(adminInfo);
+      const row = insertNotification.run(
+        a.id,
+        a.id,
+        "pending_user_registered",
+        null,
+        email.trim(),
+        name?.trim() || "User",
+        "info",
+        String(info.lastInsertRowid),
+        0,
+        "user-clock",
+        createdAt,
+      );
+      sendEventToUser(a.id, {
+        type: "pending_user_registered",
+        pendingId: info.lastInsertRowid,
+        name: name?.trim() || "User",
+        email: email.trim(),
+        notificationId: row.lastInsertRowid,
+        createdAt,
+      });
     }
   } catch (e) {
-    debugInfo.outerError = String(e?.message || e);
-    console.error("[notif-debug:register] outer failure", e);
+    console.warn("[notifications] pending_user_registered persist failed:", e?.message);
   }
 
-  res.status(202).json({ pending: true, _debug: debugInfo });
+  res.status(202).json({ pending: true });
 });
 
 app.post("/api/login", (req, res) => {

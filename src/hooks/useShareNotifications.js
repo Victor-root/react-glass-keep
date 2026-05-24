@@ -253,25 +253,17 @@ export function useShareNotifications({ token, userId }) {
   // so the live toast and the history entry are interchangeable
   // surfaces for the same row.
   const showPendingUserToast = useCallback((n) => {
-    console.log("[notif-debug:client:pending] showPendingUserToast called", n);
-    if (!n) { console.warn("[notif-debug:client:pending] empty payload — dropping"); return; }
+    if (!n) return;
     const id = n.notificationId ?? n.id;
     if (id != null) {
-      if (shownIdsRef.current.has(id)) {
-        console.warn("[notif-debug:client:pending] DEDUP — already shown id", id);
-        return;
-      }
+      if (shownIdsRef.current.has(id)) return;
       shownIdsRef.current.add(id);
     }
     const userName = String(n.name ?? n.sender_name ?? "").trim();
     const userEmail = String(n.email ?? n.note_title ?? "").trim();
     const pendingId = n.pendingId ?? n.note_id ?? null;
     const fn = notifyRef.current;
-    if (typeof fn !== "function") {
-      console.error("[notif-debug:client:pending] notifyRef is NOT a function — provider not wired?");
-      return;
-    }
-    console.log("[notif-debug:client:pending] calling notify()", { id, userName, userEmail, pendingId });
+    if (typeof fn !== "function") return;
     fn({
       type: "pending_user_registered",
       variant: "info",
@@ -374,7 +366,6 @@ export function useShareNotifications({ token, userId }) {
 
         // ── Pending: replay as active toasts ────────────────────────
         const pending = pendingData?.notifications || [];
-        console.log("[notif-debug:client:fetch] /notifications/pending →", pending.length, "rows", pending.map(p => ({ id: p.id, type: p.type })));
         for (const n of pending) {
           const payload = {
             id: n.id,

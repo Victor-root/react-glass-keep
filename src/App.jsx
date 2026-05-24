@@ -3086,7 +3086,7 @@ export default function App() {
         es = new EventSource(url.toString());
 
         es.onopen = () => {
-          console.log("SSE connected", { userId: currentUserRef.current?.id, is_admin: currentUserRef.current?.is_admin });
+          console.log("SSE connected");
           setSseConnected(true);
           // SSE onopen through a reverse proxy does NOT prove the backend is
           // alive — the proxy accepts the TCP connection even when the backend
@@ -3159,9 +3159,6 @@ export default function App() {
               syncEngineRef.current.notifyServerReachable();
             }
             const msg = JSON.parse(e.data || "{}");
-            if (msg && msg.type) {
-              console.log("[notif-debug:sse] msg type=", msg.type, msg);
-            }
             // Apply a `user_settings_updated` payload (live cross-tab
             // / cross-device sync). Validators mirror the initial-load
             // path so the same set of acceptable values applies; each
@@ -3358,19 +3355,11 @@ export default function App() {
               // identical everywhere.
               removeByServerIdsNotif(msg.ids);
             } else if (msg && msg.type === "pending_user_registered") {
-              console.log(
-                "[notif-debug:sse:pending] received",
-                {
-                  is_admin: currentUserRef.current?.is_admin,
-                  currentUserId: currentUserRef.current?.id,
-                  notificationId: msg.notificationId,
-                  pendingId: msg.pendingId,
-                  name: msg.name,
-                  email: msg.email,
-                },
-              );
+              // Admin notification: a new user is awaiting approval.
+              // Routes through showPendingUserToast so the live toast
+              // carries the same Accepter / Refuser actions as its
+              // history twin (built from the persisted DB row).
               if (currentUserRef.current?.is_admin) {
-                console.log("[notif-debug:sse:pending] is admin → calling showPendingUserToast");
                 showPendingUserToast({
                   notificationId: msg.notificationId,
                   pendingId: msg.pendingId,
@@ -3378,8 +3367,6 @@ export default function App() {
                   email: msg.email,
                 });
                 loadPendingUsers?.();
-              } else {
-                console.warn("[notif-debug:sse:pending] NOT admin — dropping notification");
               }
             } else if (msg && msg.type === "user_settings_updated" && msg.settings) {
               // Live sync of user preferences from another session of
