@@ -101,7 +101,7 @@ export default function useCollaboration(token, {
         token,
         body: mode ? { mode } : undefined,
       });
-      showToast(t("collaboratorRemovedSuccessfully"), "success");
+      showToast(t("collaboratorRemovedSuccessfully"), "success", undefined, "unshare");
       if (collaborationDialogNoteId) {
         loadNoteCollaborators(collaborationDialogNoteId);
       }
@@ -177,7 +177,7 @@ export default function useCollaboration(token, {
         ),
       );
 
-      showToast(t("addedCollaboratorSuccessfully").replace("{username}", String(username)), "success");
+      showToast(t("addedCollaboratorSuccessfully").replace("{username}", String(username)), "success", undefined, "share");
       setCollaboratorUsername("");
       setShowUserDropdown(false);
       setFilteredUsers([]);

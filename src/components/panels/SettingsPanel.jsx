@@ -205,7 +205,7 @@ export default function SettingsPanel({
       const dataUrl = await fileToCompressedDataURL(file, 256, 0.85);
       await api("/user/avatar", { method: "PUT", body: { avatar_url: dataUrl }, token });
       onProfileUpdated?.({ avatar_url: dataUrl });
-      showToast(t("photoUpdated"), "success");
+      showToast(t("photoUpdated"), "success", undefined, "camera");
     } catch (err) {
       showToast(localizeServerError(err.message, "uploadFailed"), "error");
     }
@@ -216,7 +216,7 @@ export default function SettingsPanel({
     try {
       await api("/user/avatar", { method: "DELETE", token });
       onProfileUpdated?.({ avatar_url: null });
-      showToast(t("photoRemoved"), "info");
+      showToast(t("photoRemoved"), "info", undefined, "camera");
     } catch (err) {
       showToast(localizeServerError(err.message, "removeFailed"), "error");
     }

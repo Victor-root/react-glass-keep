@@ -54,17 +54,13 @@ export default function NotificationViewport({
   position = "top-right",
   onAction,
 }) {
-  const { notifications, dismiss } = useNotifications();
+  const { notifications, remove } = useNotifications();
   if (typeof document === "undefined") return null;
   const active = notifications.filter((n) => !n.dismissed).slice(0, MAX_VISIBLE);
   if (active.length === 0) return null;
   const positionClass = POSITION_CLASS[position] || POSITION_CLASS["top-right"];
   const isBottom = position.startsWith("bottom");
   const closeSide = closeSideForPosition(position);
-  // Bottom-anchored stacks render the newest notification at the bottom
-  // (closest to the anchor edge), top-anchored stacks render the newest
-  // at the top — both match user intuition about "the new thing comes in
-  // at the edge it's anchored to".
   const ordered = isBottom ? active.slice().reverse() : active;
   const node = (
     <div className={`gk-notif-viewport ${positionClass}`}>
@@ -72,7 +68,12 @@ export default function NotificationViewport({
         <NotificationCard
           key={n.id}
           notification={n}
-          onDismiss={dismiss}
+          // Manual close on the floating card hard-removes the row
+          // — the user said "if I clicked the X I don't want it in
+          // history". Auto-dismiss timers still go through the
+          // provider's soft DISMISS path so timed-out cards keep
+          // showing in the centre.
+          onDismiss={remove}
           onAction={onAction}
           closeSide={closeSide}
         />

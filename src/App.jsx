@@ -565,11 +565,13 @@ export default function App() {
     setNotifDefaultDuration(notificationsDuration);
   }, [notificationsDuration, setNotifDefaultDuration]);
   const showToast = useCallback(
-    (message, type = "success", duration) => {
+    (message, type = "success", duration, icon) => {
       // Pre-existing variants used by the codebase: "success" | "error"
       // | "info". The provider accepts the same set under `variant`.
       // When the caller didn't pass a duration we let the provider's
-      // 10-second default apply.
+      // 10-second default apply. The optional 4th argument is a
+      // semantic icon key ("trash", "archive", "save", …); callers
+      // that don't pass one fall back to the variant glyph.
       const variant =
         type === "success" || type === "error" || type === "info" || type === "warning"
           ? type
@@ -579,6 +581,7 @@ export default function App() {
         variant,
         message,
         duration: duration === undefined ? undefined : duration,
+        icon: icon || null,
       });
     },
     [notify],
@@ -1341,7 +1344,7 @@ export default function App() {
           invalidateTrashedNotesCache();
           setNotes((prev) => prev.filter((n) => !selectedIds.includes(String(n.id))));
           onExitMulti();
-          showToast(t("bulkDeletedSuccess").replace("{count}", String(count)), "success");
+          showToast(t("bulkDeletedSuccess").replace("{count}", String(count)), "success", undefined, "trash-x");
         },
       });
     } else {
@@ -1373,7 +1376,7 @@ export default function App() {
           invalidateTrashedNotesCache();
           setNotes((prev) => prev.filter((n) => !selectedIds.includes(String(n.id))));
           onExitMulti();
-          showToast(t("bulkTrashedSuccess").replace("{count}", String(count)), "success");
+          showToast(t("bulkTrashedSuccess").replace("{count}", String(count)), "success", undefined, "trash");
         },
       });
     }
@@ -1469,7 +1472,7 @@ export default function App() {
     invalidateTrashedNotesCache();
     setNotes((prev) => prev.filter((n) => !selectedIds.includes(String(n.id))));
     onExitMulti();
-    showToast(t("bulkRestoredSuccess").replace("{count}", String(count)), "success");
+    showToast(t("bulkRestoredSuccess").replace("{count}", String(count)), "success", undefined, "restore");
   };
 
   const onBulkArchive = async () => {
@@ -1504,7 +1507,12 @@ export default function App() {
     }
 
     onExitMulti();
-    showToast(t(isArchiving ? "bulkArchivedSuccess" : "bulkUnarchivedSuccess").replace("{count}", String(count)), "success");
+    showToast(
+      t(isArchiving ? "bulkArchivedSuccess" : "bulkUnarchivedSuccess").replace("{count}", String(count)),
+      "success",
+      undefined,
+      isArchiving ? "archive" : "archive-off",
+    );
   };
 
   const onUpdateChecklistItem = async (noteId, itemId, checked) => {
@@ -3156,6 +3164,8 @@ export default function App() {
                 showToast(
                   t("pendingUserToast", { name: msg.name || msg.email || "" }),
                   "info",
+                  undefined,
+                  "user-clock",
                 );
                 loadPendingUsers?.();
               }
@@ -3888,7 +3898,12 @@ export default function App() {
       closeModal();
     }
 
-    showToast(t(archived ? "noteArchived" : "noteUnarchived"), "success");
+    showToast(
+      t(archived ? "noteArchived" : "noteUnarchived"),
+      "success",
+      undefined,
+      archived ? "archive" : "archive-off",
+    );
 
     await enqueueWithLease(nid, { type: "archive", noteId: nid, payload: { archived: !!archived, client_updated_at: nowIso } }, leaseId);
   };
@@ -4890,7 +4905,7 @@ export default function App() {
         setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
         invalidateNotesCache();
         invalidateTrashedNotesCache();
-        showToast(t("emptyNoteDeleted"), "info", 3000);
+        showToast(t("emptyNoteDeleted"), "info", 3000, "trash");
         freshlyCreatedNoteRef.current = null;
         (async () => {
           try {
@@ -5133,7 +5148,7 @@ export default function App() {
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("notePermanentlyDeleted"), "success");
+      showToast(t("notePermanentlyDeleted"), "success", undefined, "trash-x");
       await enqueueWithLease(nid, { type: "permanentDelete", noteId: nid, payload: { client_updated_at: new Date().toISOString() } }, leaseId);
     } else if (isOwner && isCollabNote && mode === "delete_for_all") {
       // Owner chose to delete the shared note for everyone.
@@ -5149,7 +5164,7 @@ export default function App() {
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteDeletedForAll"), "success");
+      showToast(t("noteDeletedForAll"), "success", undefined, "trash-x");
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: nowIso, mode: "delete_for_all" } }, leaseId);
     } else if (isOwner && isCollabNote) {
       // Owner chose "remove for me" on a shared note. Server transfers
@@ -5162,7 +5177,7 @@ export default function App() {
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteMovedToTrash"), "success");
+      showToast(t("noteMovedToTrash"), "success", undefined, "trash");
       const leaseId = acquireLocalLease(nid);
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: new Date().toISOString(), mode: "remove_self" } }, leaseId);
     } else if (!isOwner) {
@@ -5178,7 +5193,7 @@ export default function App() {
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteMovedToTrash"), "success");
+      showToast(t("noteMovedToTrash"), "success", undefined, "trash");
       const leaseId = acquireLocalLease(nid);
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: new Date().toISOString(), mode: "remove_self" } }, leaseId);
     } else {
@@ -5194,7 +5209,7 @@ export default function App() {
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteMovedToTrash"), "success");
+      showToast(t("noteMovedToTrash"), "success", undefined, "trash");
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: nowIso } }, leaseId);
     }
   };
@@ -5238,7 +5253,7 @@ export default function App() {
     invalidateTrashedNotesCache();
     setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
     closeModal();
-    showToast(t("noteRestoredFromTrash"), "success");
+    showToast(t("noteRestoredFromTrash"), "success", undefined, "restore");
     await enqueueWithLease(nid, { type: "restore", noteId: nid, payload: { client_updated_at: nowIso } }, leaseId);
   };
   const togglePin = async (id, toPinned) => {
@@ -5669,7 +5684,7 @@ export default function App() {
     );
     invalidateNotesCache();
     enqueueWithLease(newId, { type: "create", noteId: newId, payload: newNote }, leaseId);
-    showToast(t("noteDuplicated"), "success");
+    showToast(t("noteDuplicated"), "success", undefined, "copy");
     closeModal();
   };
 
@@ -6532,7 +6547,7 @@ export default function App() {
               setSession((prev) => ({ ...prev, token: res.token, user: res.user }));
               setAuth({ ...getAuth(), token: res.token, user: res.user });
             }
-            showToast(t("passwordChangedSuccess"), "success");
+            showToast(t("passwordChangedSuccess"), "success", undefined, "key");
           }}
         />
       )}
@@ -6549,7 +6564,7 @@ export default function App() {
               setSession((prev) => ({ ...prev, token: res.token, user: res.user }));
               setAuth({ ...getAuth(), token: res.token, user: res.user });
             }
-            showToast(t("passwordChangedSuccess"), "success");
+            showToast(t("passwordChangedSuccess"), "success", undefined, "key");
           }}
         />
       )}

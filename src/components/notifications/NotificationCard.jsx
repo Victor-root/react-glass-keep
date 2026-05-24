@@ -26,12 +26,55 @@ const VARIANT_CLASS = {
   info: "gk-notif-card--info",
 };
 
-function VariantGlyph({ variant }) {
-  const className = "tabler-icon tabler-icon--filled gk-notif-card__icon-glyph";
-  if (variant === "success") return <TI.CircleCheckFilled className={className} />;
-  if (variant === "warning") return <TI.AlertTriangleFilled className={className} />;
-  if (variant === "error") return <TI.AlertCircleFilled className={className} />;
-  return <TI.InfoCircleFilled className={className} />;
+// Semantic icon keys → Tabler component. Callers pass an explicit
+// `icon` field on the notification spec (e.g. `icon: "trash"` for a
+// move-to-trash toast). The mapping keeps the choice in one place
+// rather than scattering icon references across the codebase. When
+// the key is missing or unknown we fall back to the variant glyph.
+const SEMANTIC_ICONS = {
+  trash: { Comp: TI.Trash, filled: false },
+  "trash-x": { Comp: TI.TrashX, filled: false },
+  restore: { Comp: TI.ArrowBackUp, filled: false },
+  archive: { Comp: TI.Archive, filled: false },
+  "archive-off": { Comp: TI.ArchiveOff, filled: false },
+  copy: { Comp: TI.Copy, filled: false },
+  save: { Comp: TI.DeviceFloppy, filled: false },
+  note: { Comp: TI.Note, filled: false },
+  edit: { Comp: TI.Pencil, filled: false },
+  share: { Comp: TI.UserShare, filled: false },
+  unshare: { Comp: TI.UserX, filled: false },
+  "user-plus": { Comp: TI.UserPlus, filled: false },
+  "user-check": { Comp: TI.UserCheck, filled: false },
+  "user-x": { Comp: TI.UserX, filled: false },
+  "user-clock": { Comp: TI.UserClock, filled: false },
+  users: { Comp: TI.Users, filled: false },
+  key: { Comp: TI.Key, filled: false },
+  shield: { Comp: TI.ShieldLock, filled: false },
+  qr: { Comp: TI.Qrcode, filled: false },
+  camera: { Comp: TI.Camera, filled: false },
+  refresh: { Comp: TI.Refresh, filled: false },
+  power: { Comp: TI.Power, filled: false },
+};
+
+function VariantGlyph({ variant, iconKey }) {
+  const className = "tabler-icon gk-notif-card__icon-glyph";
+  const semantic = iconKey ? SEMANTIC_ICONS[iconKey] : null;
+  if (semantic && semantic.Comp) {
+    const Comp = semantic.Comp;
+    return (
+      <Comp
+        className={`${className}${semantic.filled ? " tabler-icon--filled" : ""}`}
+      />
+    );
+  }
+  // Fallback: variant-coloured filled glyph (info / success / warning
+  // / error). These are always filled, so the --filled modifier flips
+  // the default outline-icon CSS to fill: currentColor.
+  const filledClass = `${className} tabler-icon--filled`;
+  if (variant === "success") return <TI.CircleCheckFilled className={filledClass} />;
+  if (variant === "warning") return <TI.AlertTriangleFilled className={filledClass} />;
+  if (variant === "error") return <TI.AlertCircleFilled className={filledClass} />;
+  return <TI.InfoCircleFilled className={filledClass} />;
 }
 
 function fallbackTitle(variant) {
@@ -74,7 +117,7 @@ export default function NotificationCard({
   closeSide = "left",
 }) {
   if (!notification) return null;
-  const { id, title, message, variant, dismissible, action, createdAt } =
+  const { id, title, message, variant, dismissible, action, createdAt, icon: iconKey } =
     notification;
   const klass = VARIANT_CLASS[variant] || VARIANT_CLASS.info;
   const closeKlass =
@@ -102,7 +145,7 @@ export default function NotificationCard({
       {time ? <span className="gk-notif-card__time">{time}</span> : null}
 
       <span className="gk-notif-card__icon" aria-hidden="true">
-        <VariantGlyph variant={variant} />
+        <VariantGlyph variant={variant} iconKey={iconKey} />
       </span>
 
       <div className="gk-notif-card__body">

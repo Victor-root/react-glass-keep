@@ -855,7 +855,7 @@ export default function SecondaryNoteInstance({
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("notePermanentlyDeleted"), "success");
+      showToast(t("notePermanentlyDeleted"), "success", undefined, "trash-x");
       await enqueueWithLease(nid, { type: "permanentDelete", noteId: nid, payload: { client_updated_at: nowIso } }, leaseId);
     } else if (isOwner && isCollabNote && mode === "delete_for_all") {
       const leaseId = acquireLocalLease(nid);
@@ -867,7 +867,7 @@ export default function SecondaryNoteInstance({
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteDeletedForAll"), "success");
+      showToast(t("noteDeletedForAll"), "success", undefined, "trash-x");
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: nowIso, mode: "delete_for_all" } }, leaseId);
     } else if (isOwner && isCollabNote) {
       try { await idbDeleteNote(nid, currentUser?.id, sessionId); } catch (e) { console.error(e); }
@@ -875,7 +875,7 @@ export default function SecondaryNoteInstance({
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteMovedToTrash"), "success");
+      showToast(t("noteMovedToTrash"), "success", undefined, "trash");
       const leaseId = acquireLocalLease(nid);
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: nowIso, mode: "remove_self" } }, leaseId);
     } else if (!isOwner) {
@@ -884,7 +884,7 @@ export default function SecondaryNoteInstance({
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteMovedToTrash"), "success");
+      showToast(t("noteMovedToTrash"), "success", undefined, "trash");
       const leaseId = acquireLocalLease(nid);
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: nowIso, mode: "remove_self" } }, leaseId);
     } else {
@@ -898,7 +898,7 @@ export default function SecondaryNoteInstance({
       invalidateTrashedNotesCache();
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
       closeModal();
-      showToast(t("noteMovedToTrash"), "success");
+      showToast(t("noteMovedToTrash"), "success", undefined, "trash");
       await enqueueWithLease(nid, { type: "trash", noteId: nid, payload: { client_updated_at: nowIso } }, leaseId);
     }
   };
@@ -919,7 +919,7 @@ export default function SecondaryNoteInstance({
     invalidateTrashedNotesCache();
     setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
     closeModal();
-    showToast(t("noteRestoredFromTrash"), "success");
+    showToast(t("noteRestoredFromTrash"), "success", undefined, "restore");
     await enqueueWithLease(nid, { type: "restore", noteId: nid, payload: { client_updated_at: nowIso } }, leaseId);
   };
 
@@ -940,7 +940,12 @@ export default function SecondaryNoteInstance({
       setNotes((prev) => prev.filter((n) => String(n.id) !== nid));
     }
     if (archived) closeModal();
-    showToast(t(archived ? "noteArchived" : "noteUnarchived"), "success");
+    showToast(
+      t(archived ? "noteArchived" : "noteUnarchived"),
+      "success",
+      undefined,
+      archived ? "archive" : "archive-off",
+    );
     await enqueueWithLease(nid, { type: "archive", noteId: nid, payload: { archived: !!archived, client_updated_at: nowIso } }, leaseId);
   };
 
@@ -1137,7 +1142,7 @@ export default function SecondaryNoteInstance({
     setNotes((prev) => sortNotesByRecency([localNote, ...(Array.isArray(prev) ? prev : [])]));
     invalidateNotesCache();
     enqueueWithLease(newId, { type: "create", noteId: newId, payload: newNote }, leaseId);
-    showToast(t("noteDuplicated"), "success");
+    showToast(t("noteDuplicated"), "success", undefined, "copy");
     closeModal();
   };
 

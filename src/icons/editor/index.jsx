@@ -115,6 +115,12 @@ import volumeSvg           from "./tabler/volume.svg?raw";
 import clockSvg            from "./tabler/clock.svg?raw";
 import userShareSvg        from "./tabler/user-share.svg?raw";
 import userXSvg            from "./tabler/user-x.svg?raw";
+import archiveSvg          from "./tabler/archive.svg?raw";
+import archiveOffSvg       from "./tabler/archive-off.svg?raw";
+import copySvg             from "./tabler/copy.svg?raw";
+import arrowBackUpSvg      from "./tabler/arrow-back-up.svg?raw";
+import userCheckSvg        from "./tabler/user-check.svg?raw";
+import trashXSvg           from "./tabler/trash-x.svg?raw";
 
 // Cache of sanitised markup keyed by the raw SVG string. The transformation
 // only depends on the SVG source, so each icon is processed exactly once.
@@ -252,6 +258,12 @@ export const TI = {
   Clock:                (p) => <TablerIcon svg={clockSvg} {...p} />,
   UserShare:            (p) => <TablerIcon svg={userShareSvg} {...p} />,
   UserX:                (p) => <TablerIcon svg={userXSvg} {...p} />,
+  Archive:              (p) => <TablerIcon svg={archiveSvg} {...p} />,
+  ArchiveOff:           (p) => <TablerIcon svg={archiveOffSvg} {...p} />,
+  Copy:                 (p) => <TablerIcon svg={copySvg} {...p} />,
+  ArrowBackUp:          (p) => <TablerIcon svg={arrowBackUpSvg} {...p} />,
+  UserCheck:            (p) => <TablerIcon svg={userCheckSvg} {...p} />,
+  TrashX:               (p) => <TablerIcon svg={trashXSvg} {...p} />,
 };
 
 export default TI;

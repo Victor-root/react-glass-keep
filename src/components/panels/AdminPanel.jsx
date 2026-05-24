@@ -282,7 +282,7 @@ export default function AdminPanel({
     setIsCreatingUser(true);
     try {
       await createUser(newUserForm);
-      showToast(t("userCreatedSuccessfullyBang"), "success");
+      showToast(t("userCreatedSuccessfullyBang"), "success", undefined, "user-plus");
     } catch {
       // useAdminActions already surfaces the error toast.
     } finally {
@@ -316,7 +316,7 @@ export default function AdminPanel({
       };
       if (editUserForm.password) updateData.password = editUserForm.password;
       await updateUser(editingUser.id, updateData);
-      showToast(t("userUpdatedSuccessfullyBang"), "success");
+      showToast(t("userUpdatedSuccessfullyBang"), "success", undefined, "user-check");
       setEditUserModalOpen(false);
       setEditingUser(null);
     } catch (err) {
@@ -450,7 +450,7 @@ export default function AdminPanel({
                               onConfirm: async () => {
                                 try {
                                   await rejectPendingUser(p.id);
-                                  showToast(t("registrationRejected"), "info");
+                                  showToast(t("registrationRejected"), "info", undefined, "user-x");
                                 } catch (err) {
                                   showToast(localizeServerError(err.message, "failedRejectUser"), "error");
                                 }
@@ -467,7 +467,7 @@ export default function AdminPanel({
                           onClick={async () => {
                             try {
                               await approvePendingUser(p.id);
-                              showToast(t("registrationApproved"), "success");
+                              showToast(t("registrationApproved"), "success", undefined, "user-check");
                             } catch (err) {
                               showToast(localizeServerError(err.message, "failedApproveUser"), "error");
                             }

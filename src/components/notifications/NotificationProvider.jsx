@@ -182,6 +182,10 @@ export function NotificationProvider({ children }) {
       title: input.title != null ? String(input.title) : null,
       message: input.message != null ? String(input.message) : "",
       variant,
+      // Semantic icon key (e.g. "trash", "archive", "save"). The
+      // card resolves it via its own SEMANTIC_ICONS map; if the key
+      // is unknown / null the card falls back to the variant glyph.
+      icon: input.icon != null ? String(input.icon) : null,
       createdAt: Date.now(),
       duration,
       dismissible: input.dismissible !== false,
