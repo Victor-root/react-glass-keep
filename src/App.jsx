@@ -3133,24 +3133,24 @@ export default function App() {
                 }
               }
             } else if (msg && msg.type === "note_shared") {
-              // A live share notification. Show the card and mark the
-              // row delivered so a quick reload doesn't replay it.
+              // A live share notification. The bell calls markDelivered
+              // when the panel is opened — we don't ack here because the
+              // server's notification_delivered broadcast would race with
+              // the just-rendered card and clear it on the same tick.
               showShareNotificationToast({
                 id: msg.notificationId,
                 senderName: msg.senderName,
                 noteTitle: msg.noteTitle,
                 noteId: msg.noteId,
               });
-              if (msg.notificationId) {
-                markShareNotificationsDelivered([msg.notificationId]);
-              }
             } else if (msg && msg.type === "note_access_revoked_notification") {
               // Live notification for either side of a revoke. The
               // notificationType field on the payload picks the right
               // title/message pair (ex-collaborator vs owner, with
               // copy vs without). The accompanying `note_access_revoked`
               // event still drives the local note removal on the
-              // ex-collaborator side.
+              // ex-collaborator side. Delivery ack is deferred to the
+              // bell (same reason as note_shared above).
               showRevokeNotificationToast({
                 id: msg.notificationId,
                 notificationType: msg.notificationType,
@@ -3158,9 +3158,6 @@ export default function App() {
                 noteTitle: msg.noteTitle,
                 noteId: msg.noteId,
               });
-              if (msg.notificationId) {
-                markShareNotificationsDelivered([msg.notificationId]);
-              }
             } else if (msg && msg.type === "test_notification") {
               // Dev/test notification dispatched via the
               // scripts/test-notification.cjs CLI. Routed through the
