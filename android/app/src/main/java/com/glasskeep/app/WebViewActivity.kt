@@ -120,6 +120,37 @@ class WebViewActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Native Android Toast bridge. The in-app notification system on
+     * mobile delegates to this so the small dark pill at the bottom
+     * is the real system widget (Toast.makeText) instead of a CSS
+     * imitation rendered by the WebView.
+     *
+     * `show(message, durationLong)` honours Android's two canonical
+     * lengths — SHORT (~2 s) or LONG (~3.5 s). The JS side picks
+     * LONG when the notification is persistent or carries a >3 s
+     * duration so a verbose share message stays on screen long
+     * enough to read.
+     *
+     * Toasts are passive by design (no actions, no close button),
+     * so any action button on the original notification stays
+     * accessible only through the in-app notification centre.
+     */
+    inner class ToastBridge {
+        @JavascriptInterface
+        fun show(message: String) {
+            show(message, false)
+        }
+
+        @JavascriptInterface
+        fun show(message: String, durationLong: Boolean) {
+            runOnUiThread {
+                val length = if (durationLong) Toast.LENGTH_LONG else Toast.LENGTH_SHORT
+                Toast.makeText(this@WebViewActivity, message, length).show()
+            }
+        }
+    }
+
     /** Called from JavaScript for theme-color sync and server change */
     inner class ThemeBridge {
         @JavascriptInterface
@@ -436,6 +467,13 @@ class WebViewActivity : AppCompatActivity() {
 
         webView.apply {
             addJavascriptInterface(ThemeBridge(), "AndroidTheme")
+            // window.AndroidToast.show(message, durationLong) — the
+            // mobile notification toast uses this when running inside
+            // the Android wrapper so it renders the real native
+            // Toast.makeText widget instead of a CSS pill. Pure-PWA
+            // sessions don't see the bridge and fall back to the JS
+            // implementation in NotificationMobileToast.
+            addJavascriptInterface(ToastBridge(), "AndroidToast")
             // Exposes window.AndroidPasskey to the WebView. The polyfill
             // injected on every page load (see onPageStarted below) wraps
             // it into the Promise-friendly window.GlassKeepAndroidPasskey

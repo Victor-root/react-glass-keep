@@ -1,33 +1,24 @@
-// Android-style toast for touch devices.
+// Mobile notification dispatcher.
 //
-// Replaces the floating glass cards on mobile (PWA + Android WebView)
-// because the user wanted the small dark pill that slides up from
-// the bottom — the platform's native toast aesthetic — rather than
-// the desktop-style stacked cards.
+// Inside the Android wrapper (window.AndroidToast bridge present)
+// every new notification fires a real native Toast.makeText —
+// platform-correct, exactly like the OS handles app toasts. The
+// CSS pill below is the PWA-only fallback for browser sessions
+// where there's no bridge to delegate to.
 //
-// Behaviour:
-//   - One toast at a time. A new arrival hides the previous and
-//     slides up in its place (mirrors Android's queue-of-one).
-//   - Auto-dismisses on the notification's `duration` (10 s default
-//     unless the caller passed something else / `persistent: true`).
-//   - Tap-anywhere dismisses early.
-//   - When an action is present (e.g. "Ouvrir" on a shared-note),
-//     it renders as an inline accent label on the right; tapping it
-//     triggers the App-level onAction handler and dismisses.
-//   - Doesn't show a close button (Android toasts don't have one);
-//     the X stays exclusive to the notification centre.
+// The native toast carries the notification's text content; the
+// action button (e.g. "Ouvrir" on a shared note) stays accessible
+// through the in-app notification centre, since Android's native
+// toast widget is intentionally passive (no inline buttons).
 //
-// The notification centre + bell still work as on desktop — only the
-// floating viewport changes.
-//
-// Uses the same NotificationProvider so the history list stays
-// consistent with the desktop tree.
+// Either way, the notification still lands in the provider's
+// history list so the bell + panel work the same on every form
+// factor.
 
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNotifications } from "./NotificationProvider.jsx";
 import TI from "../../icons/editor/index.jsx";
-import { t } from "../../i18n";
 
 const VARIANT_GLYPH = {
   success: TI.CircleCheckFilled,
@@ -80,20 +71,50 @@ function renderMessage(message) {
   });
 }
 
+function hasAndroidBridge() {
+  if (typeof window === "undefined") return false;
+  const b = window.AndroidToast;
+  return !!(b && typeof b.show === "function");
+}
+
+// Build the plain-text payload for the native toast. Strips the
+// `**bold**` markers the in-app card uses; the OS widget can't show
+// bold inline anyway. Title + message glued with a colon so a share
+// notification reads as "Note partagée: Victor a partagé la note …".
+function buildToastText(notif) {
+  const stripBold = (s) => (s || "").replace(/\*\*([^*]+)\*\*/g, "$1");
+  const title = stripBold(notif.title);
+  const message = stripBold(notif.message);
+  if (title && message) return `${title}: ${message}`;
+  return title || message || "";
+}
+
+function shouldUseLong(notif) {
+  if (notif.persistent) return true;
+  if (typeof notif.duration === "number" && notif.duration > 3000) return true;
+  return false;
+}
+
 export default function NotificationMobileToast({ onAction }) {
   const { notifications, remove } = useNotifications();
-  // Newest non-dismissed entry. Auto-dismissed (timer) and X-removed
-  // (REMOVE) entries both stop appearing here.
   const current = notifications.find((n) => !n.dismissed) || null;
   const [visible, setVisible] = useState(false);
   const lastIdRef = useRef(null);
 
-  // Slide-in on each new notification; let the provider's own
-  // timer drive auto-dismiss so the duration stays user-controlled.
   useEffect(() => {
     if (current && current.id !== lastIdRef.current) {
       lastIdRef.current = current.id;
-      setVisible(true);
+      if (hasAndroidBridge()) {
+        // Native Toast — fire-and-forget. The OS controls timing
+        // and dismissal, so we don't render any DOM ourselves.
+        try {
+          window.AndroidToast.show(buildToastText(current), shouldUseLong(current));
+        } catch (_e) {}
+        setVisible(false);
+      } else {
+        // PWA / browser fallback: render the CSS pill.
+        setVisible(true);
+      }
     } else if (!current) {
       setVisible(false);
       lastIdRef.current = null;
@@ -101,6 +122,10 @@ export default function NotificationMobileToast({ onAction }) {
   }, [current]);
 
   if (typeof document === "undefined") return null;
+  // Inside the Android wrapper we never render — the OS toast IS the
+  // notification. Centre + bell still work because they read from
+  // the same provider.
+  if (hasAndroidBridge()) return null;
   if (!current || !visible) return null;
 
   const { Comp, filled } = pickGlyph(current);
