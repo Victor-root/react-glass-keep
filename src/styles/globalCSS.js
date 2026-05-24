@@ -4269,6 +4269,8 @@ html.dark .gk-notif-card.gk-notif-card--center {
   z-index: 70;
   left: 50%;
   transform: translateX(-50%);
+  /* Anchor the countdown bar absolutely against the pill. */
+  isolation: isolate;
   width: max-content;
   max-width: calc(100vw - 24px);
   bottom: calc(var(--safe-bottom, 0px) + 24px);
@@ -4417,6 +4419,45 @@ html.dark .gk-mobile-toast__action:active { background: rgba(255, 255, 255, 0.14
 @keyframes gkMobileToastIn {
   from { opacity: 0; transform: translate(-50%, 24px); }
   to   { opacity: 1; transform: translate(-50%, 0);    }
+}
+
+/* Auto-dismiss countdown bar — same anatomy as the desktop card so
+   the two surfaces feel like one design system. A clipped 14-px-tall
+   band hugs the pill's inner bottom curve (16 px outer − 2.5 px
+   border = 13.5 px), and a 3.6-px fill scaleX-animates from 1 → 0
+   in sync with the provider's dismiss timer (animation-duration set
+   inline from the notification's effective duration). */
+.gk-mobile-toast__countdown-clip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 14px;
+  border-bottom-left-radius: 13.5px;
+  border-bottom-right-radius: 13.5px;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.gk-mobile-toast__countdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3.6px;
+}
+.gk-mobile-toast__countdown-fill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--gk-notif-accent, #6366f1)
+  );
+  transform-origin: left center;
+  animation-name: gkNotifCountdown;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
 }
 
 /* Stacked layout — opt-in via actionLayout:"below" on the notification.

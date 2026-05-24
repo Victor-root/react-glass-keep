@@ -15,7 +15,7 @@
 // history list so the bell + panel work the same on every form
 // factor.
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNotifications } from "./NotificationProvider.jsx";
 import TI from "../../icons/editor/index.jsx";
@@ -184,6 +184,38 @@ export default function NotificationMobileToast({ onAction }) {
 
   const { Comp, filled } = pickGlyph(current);
   const stacked = current.actionLayout === "below" && !!current.action;
+  // Effective duration the toast will actually stay on screen — the
+  // queue-cycler above slices the user's duration by queueSize when
+  // multiple notifs are pending, so the countdown bar needs to mirror
+  // that slice to finish at the same instant the toast dismisses.
+  const queueSize = notificationsRef.current.reduce(
+    (acc, n) => (n.dismissed ? acc : acc + 1),
+    0,
+  );
+  let effectiveDuration = null;
+  if (typeof current.duration === "number" && current.duration > 0) {
+    effectiveDuration =
+      queueSize > 1
+        ? Math.max(800, Math.floor(current.duration / queueSize))
+        : current.duration;
+  }
+  const showCountdown = effectiveDuration && effectiveDuration > 0;
+  const countdownFillRef = useRef(null);
+  // Same mount-time anchor trick as the desktop card: feed the elapsed
+  // time back as a NEGATIVE animation-delay so the scaleX(0) frame
+  // lands at the exact moment dismiss() fires, even if React commit
+  // happened a few ms / frames after notify().
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (!showCountdown) return;
+    const el = countdownFillRef.current;
+    if (!el || !current.createdAt) return;
+    const elapsed = Math.max(
+      0,
+      Math.min(effectiveDuration, Date.now() - current.createdAt),
+    );
+    el.style.animationDelay = `-${elapsed}ms`;
+  }, [current?.id]);
   const handleTap = () => {
     setVisible(false);
     remove(current.id);
@@ -225,6 +257,17 @@ export default function NotificationMobileToast({ onAction }) {
         >
           {current.action.label}
         </button>
+      ) : null}
+      {showCountdown ? (
+        <div className="gk-mobile-toast__countdown-clip" aria-hidden="true">
+          <div className="gk-mobile-toast__countdown">
+            <div
+              ref={countdownFillRef}
+              className="gk-mobile-toast__countdown-fill"
+              style={{ animationDuration: `${effectiveDuration}ms` }}
+            />
+          </div>
+        </div>
       ) : null}
     </div>
   );
