@@ -3770,63 +3770,95 @@ html.dark .typo-modal-toggle {
   width: 100%;
   padding: 11px 14px;
   border-radius: 16px;
-  /* Frosted glass with the faintest violet → blue tint (RGB stops
-     are almost-white with a few digits of difference) — just
-     enough to lift the card off a pure-white background but not
-     enough to read as "violet glass". The border itself stays
-     subtle; the "RGB-LED" character comes from a tight outer halo
-     box-shadow that bleeds violet/blue light a few pixels past
-     the rim without thickening the line itself. */
-  border: 1px solid transparent;
-  background:
-    linear-gradient(135deg,
-      rgba(250, 247, 255, 0.58) 0%,
-      rgba(245, 249, 255, 0.58) 100%) padding-box,
-    linear-gradient(135deg,
-      rgba(167, 139, 250, 0.32) 0%,
-      rgba(96, 165, 250, 0.32) 100%) border-box;
-  backdrop-filter: blur(50px) saturate(200%);
-  -webkit-backdrop-filter: blur(50px) saturate(200%);
-  box-shadow:
-    /* Tight LED bleed — two stacked halos. The first hugs the rim
-       (4 px spread) so the edge reads as a thin violet/blue line;
-       the second spreads further (12 px) and fades fast, giving
-       the soft outward glow of a real LED. */
-    0 0 4px rgba(129, 140, 248, 0.55),
-    0 0 12px rgba(99, 102, 241, 0.28),
-    0 14px 36px rgba(15, 23, 42, 0.18),
-    0 4px 12px rgba(15, 23, 42, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  /* Toast mode: near-opaque white surface with a 1.5 px solid border
+     in the variant accent colour. The "neon rectangle" feel comes from
+     layered box-shadow halos in the same accent: a tight ring (0 0 8px)
+     that makes the border appear to emit light, and a wider soft cloud
+     (0 0 22px) for the ambient glow. Both animate gently via
+     gkToastGlow so the light breathes without being distracting.
+     All glow values are CSS variables so dark-mode overrides can
+     simply intensify them without touching the keyframe. */
+  --gk-notif-glow-soft:    rgba(99, 102, 241, 0.22);
+  --gk-notif-glow-tight:   rgba(99, 102, 241, 0.55);
+  --gk-notif-glow-wide:    rgba(99, 102, 241, 0.22);
+  --gk-notif-glow-ambient: rgba(15, 23, 42, 0.10);
+  --gk-notif-inset-shine:  rgba(255, 255, 255, 0.82);
+  background: rgba(252, 252, 255, 0.97);
+  border: 1.5px solid var(--gk-notif-accent, #6366f1);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   color: #1d1d1f;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  animation: gkNotifIn 280ms cubic-bezier(.22,.61,.36,1) both;
+  animation:
+    gkNotifIn   280ms cubic-bezier(.22,.61,.36,1) both,
+    gkToastGlow 3.8s  ease-in-out infinite 400ms;
 }
 html.dark .gk-notif-card {
-  background:
-    linear-gradient(135deg,
-      rgba(44, 42, 56, 0.65) 0%,
-      rgba(40, 44, 56, 0.65) 100%) padding-box,
-    linear-gradient(135deg,
-      rgba(167, 139, 250, 0.30) 0%,
-      rgba(96, 165, 250, 0.30) 100%) border-box;
-  box-shadow:
-    0 0 4px rgba(167, 139, 250, 0.65),
-    0 0 14px rgba(129, 140, 248, 0.35),
-    0 14px 36px rgba(0, 0, 0, 0.55),
-    0 4px 12px rgba(76, 29, 149, 0.20),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  color: #f5f5f7;
+  --gk-notif-inset-shine:  rgba(255, 255, 255, 0.06);
+  --gk-notif-glow-ambient: rgba(0, 0, 0, 0.55);
+  background: rgba(18, 18, 28, 0.97);
+  color: #f0f0f5;
 }
 
-/* Variant accent — used by the variant icon. Card chrome stays
-   neutral so the glass look reads as one unified surface. Every
-   variant has its own canonical Tabler icon, so success now ALSO
-   carries an indicator (a green filled circle-check) instead of
-   relying on absence-of-chip to communicate the state. */
-.gk-notif-card--info    { --gk-notif-accent: #3b82f6; }
-.gk-notif-card--success { --gk-notif-accent: #10b981; }
-.gk-notif-card--warning { --gk-notif-accent: #f59e0b; }
-.gk-notif-card--error   { --gk-notif-accent: #ef4444; }
+/* Variant accent colour + per-variant glow palette.
+   Light-mode glows are measured so the card reads as "lit from the
+   border" — tight halo ≈0.55 opacity, wide cloud ≈0.22. Dark mode
+   overrides push both values higher because the dark background
+   absorbs more light and needs a stronger source to feel the same. */
+.gk-notif-card--info {
+  --gk-notif-accent:       #3b82f6;
+  --gk-notif-glow-soft:    rgba(59, 130, 246, 0.22);
+  --gk-notif-glow-tight:   rgba(59, 130, 246, 0.55);
+  --gk-notif-glow-wide:    rgba(59, 130, 246, 0.22);
+  --gk-notif-glow-ambient: rgba(59, 130, 246, 0.12);
+}
+.gk-notif-card--success {
+  --gk-notif-accent:       #10b981;
+  --gk-notif-glow-soft:    rgba(16, 185, 129, 0.22);
+  --gk-notif-glow-tight:   rgba(16, 185, 129, 0.55);
+  --gk-notif-glow-wide:    rgba(16, 185, 129, 0.22);
+  --gk-notif-glow-ambient: rgba(16, 185, 129, 0.12);
+}
+.gk-notif-card--warning {
+  --gk-notif-accent:       #f59e0b;
+  --gk-notif-glow-soft:    rgba(245, 158, 11, 0.22);
+  --gk-notif-glow-tight:   rgba(245, 158, 11, 0.55);
+  --gk-notif-glow-wide:    rgba(245, 158, 11, 0.22);
+  --gk-notif-glow-ambient: rgba(245, 158, 11, 0.12);
+}
+.gk-notif-card--error {
+  --gk-notif-accent:       #ef4444;
+  --gk-notif-glow-soft:    rgba(239, 68, 68, 0.22);
+  --gk-notif-glow-tight:   rgba(239, 68, 68, 0.55);
+  --gk-notif-glow-wide:    rgba(239, 68, 68, 0.22);
+  --gk-notif-glow-ambient: rgba(239, 68, 68, 0.12);
+}
+/* Dark mode: stronger glow intensities so the halo reads clearly
+   against the near-black card surface. */
+html.dark .gk-notif-card--info {
+  --gk-notif-glow-soft:    rgba(59, 130, 246, 0.30);
+  --gk-notif-glow-tight:   rgba(59, 130, 246, 0.72);
+  --gk-notif-glow-wide:    rgba(59, 130, 246, 0.34);
+  --gk-notif-glow-ambient: rgba(59, 130, 246, 0.22);
+}
+html.dark .gk-notif-card--success {
+  --gk-notif-glow-soft:    rgba(16, 185, 129, 0.30);
+  --gk-notif-glow-tight:   rgba(16, 185, 129, 0.72);
+  --gk-notif-glow-wide:    rgba(16, 185, 129, 0.34);
+  --gk-notif-glow-ambient: rgba(16, 185, 129, 0.22);
+}
+html.dark .gk-notif-card--warning {
+  --gk-notif-glow-soft:    rgba(245, 158, 11, 0.30);
+  --gk-notif-glow-tight:   rgba(245, 158, 11, 0.72);
+  --gk-notif-glow-wide:    rgba(245, 158, 11, 0.34);
+  --gk-notif-glow-ambient: rgba(245, 158, 11, 0.22);
+}
+html.dark .gk-notif-card--error {
+  --gk-notif-glow-soft:    rgba(239, 68, 68, 0.30);
+  --gk-notif-glow-tight:   rgba(239, 68, 68, 0.72);
+  --gk-notif-glow-wide:    rgba(239, 68, 68, 0.34);
+  --gk-notif-glow-ambient: rgba(239, 68, 68, 0.22);
+}
 
 /* All variants render a filled Tabler glyph in the accent colour,
    with no coloured chip background — the icon itself carries the
@@ -4025,13 +4057,15 @@ html.dark .gk-notif-card__close:hover { background: rgba(180, 180, 190, 1); }
   /* Inside the near-opaque panel the card needs no heavy blur of its
      own — it just sits as a clean white tile. No backdrop-filter so
      it can't pull colour from behind the panel. Variant identity
-     comes from the 3 px left accent bar + the icon only. */
+     comes from the 3 px left accent bar + the icon only.
+     Animation is reset to entry-only: no glow pulse inside the panel. */
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-left: 3px solid var(--gk-notif-accent, rgba(0, 0, 0, 0.10));
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  animation: gkNotifIn 280ms cubic-bezier(.22,.61,.36,1) both;
 }
 .gk-notif-card.gk-notif-card--center.gk-notif-card--compact {
   padding-left: 10px;
@@ -4048,6 +4082,28 @@ html.dark .gk-notif-card.gk-notif-card--center {
 @keyframes gkNotifIn {
   from { opacity: 0; transform: translateY(-8px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+/* Gentle breathing: the outer glow cloud expands slightly at 50 %
+   and contracts back, giving the impression of a live, pulsing edge
+   without any colour change or distracting motion. The spread/radius
+   delta is kept small so it reads as ambience, not animation. */
+@keyframes gkToastGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px    var(--gk-notif-glow-soft,    rgba(99,102,241,0.22)),
+      0 0 8px 0px  var(--gk-notif-glow-tight,   rgba(99,102,241,0.55)),
+      0 0 22px 0px var(--gk-notif-glow-wide,    rgba(99,102,241,0.22)),
+      0 8px 20px -2px var(--gk-notif-glow-ambient, rgba(15,23,42,0.10)),
+      inset 0 1px 0 var(--gk-notif-inset-shine, rgba(255,255,255,0.82));
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px    var(--gk-notif-glow-soft,    rgba(99,102,241,0.22)),
+      0 0 12px 2px var(--gk-notif-glow-tight,   rgba(99,102,241,0.55)),
+      0 0 32px 3px var(--gk-notif-glow-wide,    rgba(99,102,241,0.22)),
+      0 8px 20px -2px var(--gk-notif-glow-ambient, rgba(15,23,42,0.10)),
+      inset 0 1px 0 var(--gk-notif-inset-shine, rgba(255,255,255,0.82));
+  }
 }
 
 /* ───────── Android-style mobile toast ─────────
