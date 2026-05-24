@@ -4564,12 +4564,18 @@ html.dark .gk-notif-bell-dot {
    sheet). Same Android-style pill via ::after, same touch-target
    height. Drag UP to close. */
 .gk-notif-center-grabber {
+  /* margin-top:auto pushes the grabber to the bottom edge of the
+     flex column regardless of how short the list is (empty state,
+     one notification, etc.) so the affordance always sits where the
+     user expects it on a full-screen sheet. flex-shrink:0 keeps it
+     from collapsing when the list grows tall enough to fill the
+     column on its own. */
+  margin-top: auto;
   flex-shrink: 0;
-  height: 14px;
+  height: 18px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding-top: 4px;
   cursor: grab;
   touch-action: none;
   user-select: none;

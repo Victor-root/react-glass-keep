@@ -67,12 +67,21 @@ export default function NotificationCenter({
     if (open) {
       setRendering(true);
       if (mobileNow) {
-        // requestAnimationFrame, not setState directly: the panel must
-        // first paint at translateY(-100%) (its CSS resting state),
-        // THEN we add .is-open so the transition has a from-frame to
-        // animate from.
-        const r = requestAnimationFrame(() => setAnimOpen(true));
-        return () => cancelAnimationFrame(r);
+        // Double requestAnimationFrame: rAF #1 fires before the next
+        // paint (when the panel has been committed but maybe not yet
+        // rendered), rAF #2 fires the frame AFTER, which is reliably
+        // past the first paint at translateY(-100%). Adding .is-open
+        // then gives the transform transition a real from-frame to
+        // animate from — a single rAF was sometimes batched in the
+        // same paint and the slide-in skipped silently.
+        let r2 = 0;
+        const r1 = requestAnimationFrame(() => {
+          r2 = requestAnimationFrame(() => setAnimOpen(true));
+        });
+        return () => {
+          cancelAnimationFrame(r1);
+          if (r2) cancelAnimationFrame(r2);
+        };
       }
       setAnimOpen(true);
       return undefined;
