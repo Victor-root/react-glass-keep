@@ -587,10 +587,36 @@ export default function AdminPanel({
                           onClick={() => {
                             showGenericConfirm({
                               title: t("deleteUser"),
-                              message: t("deleteUserConfirm").replace("{name}", user.name),
+                              // Include the email in the danger message
+                              // so the admin can tell two same-named
+                              // accounts apart before confirming.
+                              message: t("deleteUserConfirm", {
+                                name: user.name,
+                                email: user.email,
+                              }),
                               confirmText: t("delete"),
                               danger: true,
-                              onConfirm: () => deleteUser(user.id),
+                              onConfirm: async () => {
+                                // Only show the success toast AFTER
+                                // the server confirms — useAdminActions
+                                // throws on error and the alert there
+                                // surfaces the failure.
+                                try {
+                                  const deleted = await deleteUser(user.id);
+                                  if (deleted) {
+                                    showToast?.(
+                                      t("userDeletedToast", {
+                                        name: deleted.name || deleted.email,
+                                      }),
+                                      "success",
+                                      undefined,
+                                      "user-x",
+                                    );
+                                  }
+                                } catch (_e) {
+                                  // Error already surfaced by deleteUser
+                                }
+                              },
                             });
                           }}
                           className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60 transition-colors"

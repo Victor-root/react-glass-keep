@@ -3158,7 +3158,51 @@ app.delete("/api/admin/users/:id", auth, adminOnly, (req, res) => {
   }
 
   deleteUserStmt.run(id);
-  res.json({ ok: true });
+
+  // Notify every OTHER admin. The acting admin already sees the
+  // operation succeed locally, so they get a plain success toast in
+  // the panel instead — sending them the row too would feel like
+  // self-reflection. Persisted + SSE'd so offline admins also see it
+  // when they next reconnect.
+  try {
+    const otherAdmins = db
+      .prepare("SELECT id FROM users WHERE is_admin = 1 AND id != ?")
+      .all(req.user.id);
+    if (otherAdmins.length > 0) {
+      const createdAt = nowISO();
+      const targetName = target.name || target.email || "";
+      const adminName = req.user.name || req.user.email || "";
+      for (const a of otherAdmins) {
+        const row = insertNotification.run(
+          a.id,
+          req.user.id,
+          "user_deleted",
+          null,
+          targetName,
+          adminName,
+          "warning",
+          null,
+          0,
+          "user-x",
+          createdAt,
+        );
+        sendEventToUser(a.id, {
+          type: "user_deleted_notification",
+          notificationId: row.lastInsertRowid,
+          deletedName: targetName,
+          adminName,
+          createdAt,
+        });
+      }
+    }
+  } catch (e) {
+    console.warn("[notifications] user_deleted notification failed:", e?.message);
+  }
+
+  res.json({
+    ok: true,
+    deletedUser: { id: target.id, name: target.name, email: target.email },
+  });
 });
 
 // Create user from admin panel

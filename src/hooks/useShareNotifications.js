@@ -86,6 +86,18 @@ function buildHistoryEntry(n) {
     if (type === "note_access_revoked_with_copy" && noteId) {
       action = { label: t("noteSharedAction"), noteId: String(noteId) };
     }
+  } else if (type === "user_deleted") {
+    // Admin-side audit notification. note_title holds the deleted
+    // user's display name; sender_name holds the acting admin's name.
+    const deletedName = n.note_title || "";
+    const adminName = n.sender_name || "";
+    title = t("userDeletedNotifTitle");
+    message = t("userDeletedNotifMessage", {
+      name: deletedName,
+      admin: adminName,
+    });
+    variant = "warning";
+    icon = icon || "user-x";
   } else if (type === "pending_user_registered") {
     // Admin alert. note_id holds pending_users.id; note_title holds
     // the registrant's email; sender_name holds the registrant's
@@ -207,6 +219,29 @@ export function useShareNotifications({ token, userId }) {
         ? { label: t("noteSharedAction"), noteId: String(noteId) }
         : null,
       metadata: { serverNotificationId: id, noteId },
+    });
+  }, []);
+
+  // Admin audit notification when another admin deletes a user.
+  const showUserDeletedToast = useCallback((n) => {
+    if (!n) return;
+    const id = n.notificationId ?? n.id;
+    if (id != null) {
+      if (shownIdsRef.current.has(id)) return;
+      shownIdsRef.current.add(id);
+    }
+    const deletedName = String(n.deletedName ?? n.note_title ?? "").trim();
+    const adminName = String(n.adminName ?? n.sender_name ?? "").trim();
+    const fn = notifyRef.current;
+    if (typeof fn !== "function") return;
+    fn({
+      type: "user_deleted",
+      variant: "warning",
+      title: t("userDeletedNotifTitle"),
+      message: t("userDeletedNotifMessage", { name: deletedName, admin: adminName }),
+      icon: "user-x",
+      dismissible: true,
+      metadata: { serverNotificationId: id },
     });
   }, []);
 
@@ -354,6 +389,12 @@ export function useShareNotifications({ token, userId }) {
               name: n.sender_name,
               email: n.note_title,
             });
+          } else if (n.type === "user_deleted") {
+            showUserDeletedToast({
+              notificationId: n.id,
+              deletedName: n.note_title,
+              adminName: n.sender_name,
+            });
           } else if (n.variant || n.message) {
             // Generic persisted notification (test-CLI, future events).
             const fn = notifyRef.current;
@@ -396,9 +437,9 @@ export function useShareNotifications({ token, userId }) {
     return () => {
       cancelled = true;
     };
-  }, [token, userId, showShareToast, showRevokeToast, showPendingUserToast, markDelivered]);
+  }, [token, userId, showShareToast, showRevokeToast, showPendingUserToast, showUserDeletedToast, markDelivered]);
 
-  return { showShareToast, showRevokeToast, showPendingUserToast, markDelivered, markRemoved };
+  return { showShareToast, showRevokeToast, showPendingUserToast, showUserDeletedToast, markDelivered, markRemoved };
 }
 
 export default useShareNotifications;

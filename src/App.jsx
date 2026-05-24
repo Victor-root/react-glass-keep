@@ -667,6 +667,7 @@ export default function App() {
     showShareToast: showShareNotificationToast,
     showRevokeToast: showRevokeNotificationToast,
     showPendingUserToast,
+    showUserDeletedToast,
     markDelivered: markShareNotificationsDelivered,
     markRemoved: markShareNotificationsRemoved,
   } = useShareNotifications({ token, userId: currentUser?.id });
@@ -1689,6 +1690,7 @@ export default function App() {
     pendingUsers,
     newUserForm, setNewUserForm,
     updateAdminSettings, createUser, deleteUser, updateUser,
+    loadAllUsers,
     loadPendingUsers, approvePendingUser, rejectPendingUser,
     openAdminPanel,
   } = useAdminActions(token, {
@@ -3246,6 +3248,20 @@ export default function App() {
                   email: msg.email,
                 });
                 loadPendingUsers?.();
+              }
+            } else if (msg && msg.type === "user_deleted_notification") {
+              // Audit notification for OTHER admins: someone got
+              // deleted. The acting admin doesn't receive this — they
+              // saw the success toast in the panel.
+              if (currentUserRef.current?.is_admin) {
+                showUserDeletedToast({
+                  notificationId: msg.notificationId,
+                  deletedName: msg.deletedName,
+                  adminName: msg.adminName,
+                });
+                // Refresh the user list so the deleted row disappears
+                // from this admin's panel without a manual reload.
+                loadAllUsers?.();
               }
             } else if (msg && msg.type === "note_access_revoked" && msg.noteId) {
               // Collaboration access revoked — note owner removed us.
