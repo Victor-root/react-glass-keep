@@ -313,16 +313,17 @@ export default function NotificationCenter({
     >
       <header className="gk-notif-center__header">
         <div className="gk-notif-center__brand">
-          <img
-            src="/favicon-32x32.png"
-            srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
-            alt=""
-            aria-hidden="true"
-            className="gk-notif-center__logo"
-            draggable="false"
-          />
+          <span className="gk-notif-center__logo-wrap" aria-hidden="true">
+            <img
+              src="/favicon-32x32.png"
+              srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
+              alt=""
+              className="gk-notif-center__logo"
+              draggable="false"
+            />
+          </span>
           <h2 className="gk-notif-center__title">
-            GlassKeep {t("notificationCenterTitle")}
+            {t("notificationCenterTitle")}
           </h2>
         </div>
         <div className="gk-notif-center__header-actions">

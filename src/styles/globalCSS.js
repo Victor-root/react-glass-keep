@@ -4755,47 +4755,25 @@ html.dark .gk-notif-center__header-btn:hover { background: rgba(255,255,255,0.07
 .gk-notif-center__close:hover { opacity: 1; background: rgba(0,0,0,0.06); }
 html.dark .gk-notif-center__close:hover { background: rgba(255,255,255,0.08); }
 
-/* ── Mobile-only premium header treatment ──────────────────────────
-   Mobile sheet header was reading as a flat system panel: hard
-   white, hard 1 px bottom separator, gradient title barely showing
-   through the stroke. The block below restyles ONLY the mobile
-   sheet header — dimensions, padding, layout and behaviour are
-   untouched. */
+/* ── Mobile-only header treatment ──────────────────────────────────
+   Sober, app-native panel header. Same dimensions / padding /
+   layout / behaviour as the base rules; this block only tweaks
+   colours, softens the bottom separator, and wraps the logo in a
+   discreet capsule. NO big gradient, NO accent glow, NO contour. */
 
-/* Layered backdrop: a very pale lilac base + a radial glow
-   anchored on the LEFT so the brand gradient is felt under the
-   logo + title without painting the whole row. Replaces the flat
-   white panel-header look. */
+/* Very faint lilac wash so the header reads as a GlassKeep surface
+   without being branded-loud. Hard 1 px bottom separator is dropped
+   in favour of a soft fade below. */
 .gk-notif-center--mobile .gk-notif-center__header {
   position: relative;
-  background:
-    radial-gradient(120% 220% at 0% 50%, rgba(139, 92, 246, 0.16), rgba(99, 102, 241, 0.06) 35%, transparent 62%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(249, 246, 255, 0.92));
+  background: linear-gradient(180deg, rgba(248, 246, 255, 0.96), rgba(249, 246, 255, 0.88));
   border-bottom: none;
 }
 html.dark .gk-notif-center--mobile .gk-notif-center__header {
-  background:
-    radial-gradient(120% 220% at 0% 50%, rgba(139, 92, 246, 0.24), rgba(99, 102, 241, 0.10) 35%, transparent 62%),
-    linear-gradient(180deg, rgba(34, 34, 44, 0.96), rgba(28, 28, 38, 0.94));
+  background: linear-gradient(180deg, rgba(32, 30, 42, 0.96), rgba(28, 28, 38, 0.90));
 }
 
-/* Discreet brand identity: a 1 px gradient strip at the very top
-   edge of the header — fades in from the sides so it reads as an
-   ornament, not a divider. Pseudo-element, no height impact. */
-.gk-notif-center--mobile .gk-notif-center__header::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #8b5cf6 28%, #6366f1 72%, transparent);
-  opacity: 0.55;
-  pointer-events: none;
-}
-
-/* Soft bottom separator: replaces the hard 1 px line with a 6 px
-   gradient fade that bleeds into the list area. Mobile only. */
+/* Soft 6 px bottom fade that bleeds into the list — no hard line. */
 .gk-notif-center--mobile .gk-notif-center__header::after {
   content: "";
   position: absolute;
@@ -4807,51 +4785,60 @@ html.dark .gk-notif-center--mobile .gk-notif-center__header {
   pointer-events: none;
 }
 html.dark .gk-notif-center--mobile .gk-notif-center__header::after {
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.22), transparent);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.20), transparent);
 }
 
-/* Drop the contour-stroke on mobile — with the new tinted backdrop
-   the gradient pops without an outline, and the stroke was muddying
-   the rendering. Use a slightly deeper violet/indigo pair so the
-   title reads as a richer brand colour against the tinted bg. */
+/* Title back to a neutral dark colour — no gradient, no stroke. The
+   GlassKeep identity sits in the small logo capsule next to it,
+   not in the type. */
 .gk-notif-center--mobile .gk-notif-center__title {
+  background: none;
+  -webkit-text-fill-color: initial;
+  color: #1d1d1f;
   -webkit-text-stroke: 0;
-  background: linear-gradient(90deg, #7c3aed, #4f46e5);
-  -webkit-background-clip: text;
-  background-clip: text;
+  letter-spacing: 0;
+}
+html.dark .gk-notif-center--mobile .gk-notif-center__title {
+  color: #f0f0f5;
 }
 
-/* Logo gets a hint of relief: a soft 1 px brand-tinted ring plus a
-   tiny ambient shadow so it doesn't sit flat on the tinted bg. */
+/* Soft "capsule" around the logo: pale brand-tinted bg, no harsh
+   ring, no glow. Logo itself is shrunk and held inside so the icon
+   is present but discreet. Total capsule footprint matches the
+   prior bare 22 px logo, so the header height stays put. */
+.gk-notif-center--mobile .gk-notif-center__logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: rgba(99, 102, 241, 0.10);
+}
+html.dark .gk-notif-center--mobile .gk-notif-center__logo-wrap {
+  background: rgba(139, 92, 246, 0.18);
+}
 .gk-notif-center--mobile .gk-notif-center__logo {
-  box-shadow:
-    0 0 0 1px rgba(139, 92, 246, 0.20),
-    0 1px 3px rgba(99, 102, 241, 0.22);
-}
-html.dark .gk-notif-center--mobile .gk-notif-center__logo {
-  box-shadow:
-    0 0 0 1px rgba(139, 92, 246, 0.32),
-    0 1px 4px rgba(0, 0, 0, 0.35);
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  box-shadow: none;
 }
 
-/* Close button reads as a discreet brand-tinted chip instead of the
-   default opacity-0.6 glyph — still subdued but visually consistent
-   with the header. Dimensions unchanged. */
+/* Close button stays simple and discreet — neutral hover, no brand
+   tint, default size unchanged. */
 .gk-notif-center--mobile .gk-notif-center__close {
-  background: rgba(99, 102, 241, 0.08);
-  color: #5a4cb8;
-  opacity: 0.85;
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
 }
 .gk-notif-center--mobile .gk-notif-center__close:hover {
-  background: rgba(99, 102, 241, 0.16);
+  background: rgba(0, 0, 0, 0.06);
   opacity: 1;
 }
-html.dark .gk-notif-center--mobile .gk-notif-center__close {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.85);
-}
 html.dark .gk-notif-center--mobile .gk-notif-center__close:hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .gk-notif-center__list {
