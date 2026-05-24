@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { uid } from "../utils/helpers.js";
 import { serializeAudioContent } from "../utils/audioNote.js";
+import { contentToPlain } from "../utils/richText.js";
 
 /**
  * useDraftNote — Deferred creation lifecycle for blank notes opened via the
@@ -43,16 +44,6 @@ export default function useDraftNote(ctx) {
     // Only materialise when the open modal is actually this draft. Protects
     // against a stale ref matching state from a different note.
     if (String(ctx.activeId) !== String(draft.id)) return false;
-    // eslint-disable-next-line no-console
-    console.log("[gk-debug] materializeDraftIfNeeded called", {
-      draftId: draft.id,
-      draftType: draft.type,
-      mTitle: ctx.mTitle,
-      mBody: ctx.mBody,
-      mDrawingData: ctx.mDrawingData,
-      overrides,
-      stack: new Error().stack,
-    });
 
     // Callers may pass the not-yet-committed state (e.g. syncChecklistItems is
     // invoked right after setMItems so mItems from closure is still stale).
@@ -80,7 +71,10 @@ export default function useDraftNote(ctx) {
         (p) => Array.isArray(p?.points) && p.points.length >= 2,
       );
       const titleEmpty = !(ctx.mTitle || "").trim();
-      const bodyEmpty = !(body || "").trim();
+      // Body is the Tiptap text-caption envelope for draw notes; an empty
+      // editor still serialises to a non-trivial JSON string, so collapse
+      // through contentToPlain before checking emptiness.
+      const bodyEmpty = !contentToPlain(body || "").trim();
       const noImages =
         !Array.isArray(ctx.mImages) || ctx.mImages.length === 0;
       const noTags =
@@ -94,16 +88,9 @@ export default function useDraftNote(ctx) {
         noColor &&
         meaningfulPaths.length === 0
       ) {
-        // eslint-disable-next-line no-console
-        console.log("[gk-debug] materializeDraftIfNeeded REJECTED (empty drawing)");
         return false;
       }
     }
-    // eslint-disable-next-line no-console
-    console.log("[gk-debug] materializeDraftIfNeeded WILL MATERIALISE", {
-      draftId: draft.id,
-      draftType: draft.type,
-    });
 
     // Clear the ref synchronously so concurrent effects don't re-enter.
     pendingDraftRef.current = null;
@@ -230,8 +217,6 @@ export default function useDraftNote(ctx) {
     ctx.setModalMenuOpen(false);
     pendingDraftRef.current = { id: tempId, type };
     freshlyCreatedNoteRef.current = tempId;
-    // eslint-disable-next-line no-console
-    console.log("[gk-debug] createAndOpenBlankNote", { tempId, type });
     ctx.setOpen(true);
   };
 

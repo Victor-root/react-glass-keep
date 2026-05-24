@@ -3580,8 +3580,6 @@ export default function App() {
   useEffect(() => {
     if (!open || !activeId || mType !== "draw") return;
     if (skipNextDrawingAutosave.current) {
-      // eslint-disable-next-line no-console
-      console.log("[gk-debug] drawing autosave: SKIPPED via skipNextDrawingAutosave");
       skipNextDrawingAutosave.current = false;
       return;
     }
@@ -3592,12 +3590,6 @@ export default function App() {
     const currentJson = JSON.stringify(
       mDrawingData || { paths: [], dimensions: null },
     );
-    // eslint-disable-next-line no-console
-    console.log("[gk-debug] drawing autosave effect fired", {
-      prevJson,
-      currentJson,
-      equal: prevJson === currentJson,
-    });
     if (prevJson === currentJson) return;
 
     // A real draw stroke reached us — materialise the draft before we save
@@ -4909,18 +4901,6 @@ export default function App() {
   };
 
   const closeModal = () => {
-    // eslint-disable-next-line no-console
-    console.log("[gk-debug] closeModal called", {
-      activeId,
-      mType,
-      pendingDraft: pendingDraftRef.current,
-      freshlyCreated: freshlyCreatedNoteRef.current,
-      mTitle,
-      mBody,
-      mDrawingData,
-      mImages,
-      mItems,
-    });
     // Prevent double-triggering while exit animation is running
     if (modalClosingTimerRef.current) return;
     // Clear the post-SBS replay-suppression flag so noteModalOut can run
@@ -4939,16 +4919,10 @@ export default function App() {
     if (pendingDraftRef.current && String(activeId) === String(pendingDraftRef.current.id)) {
       const draftId = String(pendingDraftRef.current.id);
       const draftType = pendingDraftRef.current.type;
-      // eslint-disable-next-line no-console
-      console.log("[gk-debug] closeModal -> pendingDraft branch (silent discard + toast for draw)", { draftId, draftType });
       pendingDraftRef.current = null;
       freshlyCreatedNoteRef.current = null;
       setNotes((prev) => {
         const next = prev.filter((n) => String(n.id) !== draftId);
-        if (next.length !== prev.length) {
-          // eslint-disable-next-line no-console
-          console.log("[gk-debug] closeModal -> defensive setNotes filter removed draft from list", { draftId });
-        }
         return next.length === prev.length ? prev : next;
       });
       if (draftType === "draw") {
@@ -4957,11 +4931,6 @@ export default function App() {
       startModalExitAnimation();
       return;
     }
-    // eslint-disable-next-line no-console
-    console.log("[gk-debug] closeModal -> pendingDraft branch SKIPPED", {
-      pendingDraftRef: pendingDraftRef.current,
-      activeId,
-    });
 
     // Auto-trash any note the user emptied before closing — fresh or not.
     // Body emptiness is checked through contentToPlain so the Tiptap JSON
@@ -4993,27 +4962,21 @@ export default function App() {
       // For each note type, "body" means what the user actually authored —
       // the rich-text doc for text notes, the items list for checklists,
       // the drawing strokes (+ optional inline text) for draw notes.
+      // Draw notes' body is the Tiptap text caption envelope (an empty
+      // editor still serialises to {"v":1,"format":"tiptap","doc":{...}})
+      // so we must collapse it through contentToPlain before trimming —
+      // a raw `!mBody?.trim()` would always be false on an empty draw
+      // caption and would block the auto-trash entirely.
       const bodyEmpty = mType === "text"
         ? !contentToPlain(mBody).trim()
         : mType === "checklist"
           ? !Array.isArray(mItems) || mItems.length === 0
           : mType === "audio"
             ? isAudioContentEmpty(mBody)
-            : !mBody?.trim() && meaningfulPaths.length === 0;
+            : !contentToPlain(mBody).trim() && meaningfulPaths.length === 0;
       const titleEmpty = !mTitle?.trim();
       const noImages = !Array.isArray(mImages) || mImages.length === 0;
-      // eslint-disable-next-line no-console
-      console.log("[gk-debug] closeModal empty-check", {
-        mType,
-        drawPathsLen: drawPaths.length,
-        meaningfulPathsLen: meaningfulPaths.length,
-        titleEmpty,
-        bodyEmpty,
-        noImages,
-      });
       if (titleEmpty && bodyEmpty && noImages) {
-        // eslint-disable-next-line no-console
-        console.log("[gk-debug] closeModal -> trash branch FIRING", { activeId });
         const nid = String(activeId);
         const nowIso = new Date().toISOString();
         // Server contract: a note must be trashed before it can be
