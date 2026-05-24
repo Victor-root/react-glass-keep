@@ -4684,12 +4684,20 @@ html.dark .gk-notif-center__header {
   text-overflow: ellipsis;
   /* Whole title (brand wordmark + localised "Notifications") shares
      the app's violet→indigo gradient so it reads as a single
-     decorated heading. */
+     decorated heading. Plus a hair-thin dark stroke around the
+     letters so the gradient pops on the pale panel background —
+     without it the indigo/violet pair washes into #f9f6ff. */
   background: linear-gradient(90deg, #8b5cf6, #6366f1);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   letter-spacing: -0.01em;
+  -webkit-text-stroke: 0.4px rgba(15, 23, 42, 0.22);
+}
+html.dark .gk-notif-center__title {
+  /* On the dark panel the contrast already pops; just nudge the
+     stroke to a light tint so glyph edges stay crisp. */
+  -webkit-text-stroke: 0.4px rgba(255, 255, 255, 0.18);
 }
 /* Brand row inside the panel header — small rounded logo + the
    gradient title. Sits inside the existing 10 px-padding header so
