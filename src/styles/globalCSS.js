@@ -4078,8 +4078,10 @@ html.dark .gk-notif-card.gk-notif-card--center {
 .gk-mobile-toast {
   position: fixed;
   z-index: 70;
-  left: 12px;
-  right: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 24px);
   bottom: calc(var(--safe-bottom, 0px) + 24px);
   display: flex;
   align-items: center;
@@ -4224,8 +4226,8 @@ html.dark .gk-mobile-toast__action:hover { background: rgba(255, 255, 255, 0.08)
 html.dark .gk-mobile-toast__action:active { background: rgba(255, 255, 255, 0.14); }
 
 @keyframes gkMobileToastIn {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  from { opacity: 0; transform: translate(-50%, 24px); }
+  to   { opacity: 1; transform: translate(-50%, 0);    }
 }
 
 /* Bell + badge */
