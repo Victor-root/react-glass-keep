@@ -179,9 +179,15 @@ export default function NotesHeader({
             draggable="false"
           />
 
-          {/* Mobile: stacked name + badge */}
+          {/* Mobile: stacked name + badge. With the QR quick-action
+              also pinned to the header (qrQuickEnabled), 5 buttons
+              + the title overflow narrow phones; in that case we
+              hide the "Glass Keep" wordmark since the logo image
+              right next to it already carries the brand. */}
           <div className={`flex flex-col ${mobileOnly} leading-tight relative`}>
-            <h1 className="text-lg font-bold">Glass Keep</h1>
+            {!qrQuickEnabled && (
+              <h1 className="text-lg font-bold">Glass Keep</h1>
+            )}
             <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1 max-w-[160px]">
               <span className="shrink-0 w-3 h-3 [&>svg]:w-3 [&>svg]:h-3"><SectionIcon /></span>
               <span className="truncate">{sectionLabel}</span>
@@ -424,8 +430,12 @@ export default function NotesHeader({
             </button>
           </div>
 
-          {/* Mobile: sync icon + 3-dot menu */}
-          <div className={`${mobileOnly} flex items-center gap-1`}>
+          {/* Mobile: bell + sync + (optional QR) + 3-dot menu. Tightened
+              gap and per-button padding so the row still fits next to
+              the search icon when the QR quick-action is enabled —
+              five buttons on a narrow phone otherwise pushed the kebab
+              partly off-screen. */}
+          <div className={`${mobileOnly} flex items-center gap-0`}>
             {notificationBellMobile}
             <SyncStatusIcon dark={dark} syncStatus={syncStatus} onSyncNow={handleSyncNow} syncDropdownOpen={syncDropdownOpen} setSyncDropdownOpen={setSyncDropdownOpen} instanceLocked={instanceLocked} />
             {qrQuickEnabled && (

@@ -177,33 +177,14 @@ export default function App() {
   // an empty object = all collapsed; persisted in localStorage and synced
   // to the user's server settings so the layout follows them across
   // devices.
-  const [settingsOpenSections, setSettingsOpenSections] = useState(() => {
-    try {
-      const stored = localStorage.getItem("settingsOpenSections");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          return parsed;
-        }
-      }
-    } catch (e) {}
-    return {};
-  });
-  // Same idea for the Admin-panel categories. Server-synced under its
-  // own key so toggling a Settings section doesn't clobber the Admin
-  // layout (and vice versa).
-  const [adminOpenSections, setAdminOpenSections] = useState(() => {
-    try {
-      const stored = localStorage.getItem("adminOpenSections");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          return parsed;
-        }
-      }
-    } catch (e) {}
-    return {};
-  });
+  // Per-section expansion state for the Settings side sheet. NOT
+  // persisted — every time the user closes and reopens the panel,
+  // categories should be fully collapsed again. The reset happens
+  // in a small effect below that watches settingsPanelOpen flipping
+  // to false.
+  const [settingsOpenSections, setSettingsOpenSections] = useState({});
+  // Same for the Admin panel.
+  const [adminOpenSections, setAdminOpenSections] = useState({});
   const [sidebarWidth, setSidebarWidth] = useState(() => {
     try {
       return parseInt(localStorage.getItem("sidebarWidth")) || 288;
@@ -1023,34 +1004,10 @@ export default function App() {
           setReadModeEnabled(settings.readModeEnabled);
           localStorage.setItem("readModeEnabled", String(settings.readModeEnabled));
         }
-        if (
-          settings &&
-          settings.settingsOpenSections &&
-          typeof settings.settingsOpenSections === "object" &&
-          !Array.isArray(settings.settingsOpenSections)
-        ) {
-          setSettingsOpenSections(settings.settingsOpenSections);
-          try {
-            localStorage.setItem(
-              "settingsOpenSections",
-              JSON.stringify(settings.settingsOpenSections),
-            );
-          } catch (e) {}
-        }
-        if (
-          settings &&
-          settings.adminOpenSections &&
-          typeof settings.adminOpenSections === "object" &&
-          !Array.isArray(settings.adminOpenSections)
-        ) {
-          setAdminOpenSections(settings.adminOpenSections);
-          try {
-            localStorage.setItem(
-              "adminOpenSections",
-              JSON.stringify(settings.adminOpenSections),
-            );
-          } catch (e) {}
-        }
+        // settingsOpenSections / adminOpenSections are intentionally
+        // NOT loaded from the server — the side panels reset to all-
+        // collapsed every time they open. See the reset effects near
+        // the settingsPanelOpen / adminPanelOpen state declarations.
         if (settings && typeof settings.floatingCardsEnabled === "boolean") {
           setFloatingCardsEnabled(settings.floatingCardsEnabled);
           localStorage.setItem("floatingCardsEnabled", String(settings.floatingCardsEnabled));
@@ -1208,39 +1165,6 @@ export default function App() {
     }
   }, [readModeEnabled, token]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "settingsOpenSections",
-        JSON.stringify(settingsOpenSections),
-      );
-    } catch (e) {}
-    if (!sidebarSettingsLoadedRef.current) return;
-    if (token) {
-      api("/user/settings", {
-        method: "PATCH",
-        token,
-        body: { settingsOpenSections },
-      }).catch(() => {});
-    }
-  }, [settingsOpenSections, token]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "adminOpenSections",
-        JSON.stringify(adminOpenSections),
-      );
-    } catch (e) {}
-    if (!sidebarSettingsLoadedRef.current) return;
-    if (token) {
-      api("/user/settings", {
-        method: "PATCH",
-        token,
-        body: { adminOpenSections },
-      }).catch(() => {});
-    }
-  }, [adminOpenSections, token]);
 
   // Save floating cards preference to localStorage and server
   useEffect(() => {
@@ -1869,6 +1793,16 @@ export default function App() {
 
   // Settings panel state
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+  // Reset Settings / Admin section accordions whenever the panel
+  // closes so the next open lands fully collapsed regardless of
+  // what the user had expanded last time. NOT persisted: the panels
+  // are deliberately ephemeral in their layout.
+  useEffect(() => {
+    if (!settingsPanelOpen) setSettingsOpenSections({});
+  }, [settingsPanelOpen]);
+  useEffect(() => {
+    if (!adminPanelOpen) setAdminOpenSections({});
+  }, [adminPanelOpen]);
   // Lifted from SettingsPanel so the centralised overlay back-button
   // stack (and the safe-area-aware scrim) can react to the typography
   // sub-modal opening / closing.
