@@ -1252,17 +1252,37 @@ app.post("/api/register", (req, res) => {
     email: email.trim(),
   });
 
+  // Diagnostic payload echoed back in the HTTP response so the
+  // incognito session (no server log access) can confirm exactly
+  // what the persistence + broadcast loop did. Inspect via DevTools
+  // → Network → /api/register → Response.
+  const debugInfo = {
+    pendingId: info.lastInsertRowid,
+    adminsCount: 0,
+    admins: [],
+    perAdmin: [],
+  };
+
   // Persist a notification row per admin AND deliver the live SSE event
   // each with its own row id, so the recipient's client can ack /
   // remove the right row when the admin acts.
   try {
     const admins = db.prepare("SELECT id, name, email FROM users WHERE is_admin = 1").all();
     console.log("[notif-debug:register] admins found:", admins.length, admins.map(a => ({ id: a.id, email: a.email })));
+    debugInfo.adminsCount = admins.length;
+    debugInfo.admins = admins.map((a) => ({ id: a.id, email: a.email }));
     if (admins.length === 0) {
       console.warn("[notif-debug:register] NO ADMINS in DB — nothing to notify");
     }
     const createdAt = nowISO();
     for (const a of admins) {
+      const adminInfo = {
+        adminId: a.id,
+        adminEmail: a.email,
+        notificationId: null,
+        sseClientCount: 0,
+        error: null,
+      };
       try {
         const row = insertNotification.run(
           a.id,
@@ -1277,13 +1297,14 @@ app.post("/api/register", (req, res) => {
           "user-clock",
           createdAt,
         );
+        adminInfo.notificationId = row.lastInsertRowid;
         console.log("[notif-debug:register] inserted notification row", {
           adminId: a.id,
           adminEmail: a.email,
           notificationId: row.lastInsertRowid,
         });
-        const sseConnCount = sseClients?.get?.(a.id)?.size ?? 0;
-        console.log("[notif-debug:register] SSE clients for admin", a.id, "=", sseConnCount);
+        adminInfo.sseClientCount = sseClients?.get?.(a.id)?.size ?? 0;
+        console.log("[notif-debug:register] SSE clients for admin", a.id, "=", adminInfo.sseClientCount);
         sendEventToUser(a.id, {
           type: "pending_user_registered",
           pendingId: info.lastInsertRowid,
@@ -1294,14 +1315,17 @@ app.post("/api/register", (req, res) => {
         });
         console.log("[notif-debug:register] sendEventToUser called for admin", a.id);
       } catch (perAdminErr) {
+        adminInfo.error = String(perAdminErr?.message || perAdminErr);
         console.error("[notif-debug:register] FAILED for admin", a.id, perAdminErr);
       }
+      debugInfo.perAdmin.push(adminInfo);
     }
   } catch (e) {
+    debugInfo.outerError = String(e?.message || e);
     console.error("[notif-debug:register] outer failure", e);
   }
 
-  res.status(202).json({ pending: true });
+  res.status(202).json({ pending: true, _debug: debugInfo });
 });
 
 app.post("/api/login", (req, res) => {
