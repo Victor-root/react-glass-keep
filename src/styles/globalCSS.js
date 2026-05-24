@@ -4275,20 +4275,8 @@ html.dark .gk-notif-card.gk-notif-card--center {
   max-width: calc(100vw - 24px);
   /* Default to bottom-anchored — the .gk-mobile-toast--anchor-top /
      --anchor-bottom modifier classes (added at render time from the
-     user's mobile position preference) override one of these so
-     only one of top/bottom is set at a time. */
+     user's mobile position preference) override just top/bottom. */
   bottom: calc(var(--safe-bottom, 0px) + 24px);
-}
-.gk-mobile-toast.gk-mobile-toast--anchor-top {
-  /* Sit BELOW the sticky app header (~72 px on mobile) rather than
-     stacking on top of it. Safe-top accounts for the system status
-     bar / notch above the header. */
-  top: calc(var(--safe-top, 0px) + 88px);
-  bottom: auto;
-}
-.gk-mobile-toast.gk-mobile-toast--anchor-bottom {
-  bottom: calc(var(--safe-bottom, 0px) + 24px);
-  top: auto;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -4315,6 +4303,20 @@ html.dark .gk-notif-card.gk-notif-card--center {
   line-height: 1.3;
   animation: gkMobileToastIn 220ms cubic-bezier(.22,.61,.36,1) both;
   cursor: pointer;
+}
+/* Anchor variants — touch ONLY top/bottom. All visual styling stays
+   in the base .gk-mobile-toast rule above so both anchors get the
+   same background, border, animation, etc. */
+.gk-mobile-toast.gk-mobile-toast--anchor-top {
+  /* Sit BELOW the sticky app header (~72 px on mobile) rather than
+     stacking on top of it. Safe-top accounts for the system status
+     bar / notch above the header. */
+  top: calc(var(--safe-top, 0px) + 88px);
+  bottom: auto;
+}
+.gk-mobile-toast.gk-mobile-toast--anchor-bottom {
+  bottom: calc(var(--safe-bottom, 0px) + 24px);
+  top: auto;
 }
 html.dark .gk-mobile-toast {
   background:
