@@ -311,11 +311,14 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
 
   const showCountdown = !!(burstSlice && burstSlice > 0 && current);
   const countdownFillRef = useRef(null);
-  // Anchor the bar's animation-delay so its scaleX(0) frame lands at
-  // the same wall-clock instant the cycler dismisses. Measured from
-  // displayStartRef (when current became visible) — NOT from
-  // createdAt, which would put the bar way past full-depleted for
-  // notifs that sat queued for a while.
+  // Detects the burstSlice null → value transition (settle just
+  // fired) so we can reset displayStartRef. Without this, the
+  // first notif of a burst is "visible without bar" during the
+  // settling window (100–300ms), and when the bar finally appears
+  // it's anchored on displayStart from BEFORE the settle, so it
+  // starts at e.g. 19% depleted and the cycler shortens its slice
+  // accordingly. Resetting at the settle moment realigns both.
+  const prevBurstSliceRef = useRef(null);
   useLayoutEffect(() => {
     if (!showCountdown || !current) return;
     const el = countdownFillRef.current;
@@ -323,6 +326,18 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
       dlog("bar-anchor skipped (no fill el)", `id=…${current.id.slice(-4)}`);
       return;
     }
+    // burstSlice just became non-null → the bar is rendering for
+    // the first time on this notif. Anchor "display start" at now
+    // so the bar runs the full slice and the cycler does too.
+    if (prevBurstSliceRef.current == null && burstSlice != null) {
+      displayStartRef.current = Date.now();
+      dlog(
+        "display-start reset (burst settle)",
+        `id=…${current.id.slice(-4)}`,
+        `t=${displayStartRef.current - __gkn_t0}ms`,
+      );
+    }
+    prevBurstSliceRef.current = burstSlice;
     const elapsed = Math.max(
       0,
       Math.min(burstSlice, Date.now() - displayStartRef.current),
