@@ -694,6 +694,42 @@ export default function App() {
     isAdmin: !!currentUser?.is_admin,
   });
 
+  // Surface "new version available" as a notification (admin-only).
+  // Replaces the old green "↘ Nouvelle version disponible" pointer
+  // next to the admin shield. The green status dot on the shield is
+  // kept; this card adds a one-click "Mettre à jour maintenant"
+  // action that hands off to selfUpdate.startUpdate. The duration is
+  // pinned to 30 s regardless of the user's notification-duration
+  // preference so the update CTA always gets a fair on-screen window.
+  const updateNotifiedVersionRef = useRef(null);
+  useEffect(() => {
+    if (!currentUser?.is_admin) return;
+    if (!updateInfo?.updateAvailable || !updateInfo?.latestVersion) return;
+    if (updateNotifiedVersionRef.current === updateInfo.latestVersion) return;
+    updateNotifiedVersionRef.current = updateInfo.latestVersion;
+    notify({
+      type: "update_available",
+      variant: "success",
+      icon: "refresh",
+      title: t("newVersionAvailable"),
+      message: t("updateAvailableDescription").replace(
+        "{version}",
+        updateInfo.latestVersion,
+      ),
+      duration: 30000,
+      action: {
+        kind: "start_self_update",
+        label: t("selfUpdateButton"),
+        latestVersion: updateInfo.latestVersion,
+      },
+    });
+  }, [
+    currentUser?.is_admin,
+    updateInfo?.updateAvailable,
+    updateInfo?.latestVersion,
+    notify,
+  ]);
+
   // Sync-domain refs (owned by autosave, not by modal UI hook)
   const skipNextItemsAutosave = useRef(false);
   const prevItemsRef = useRef([]);
@@ -4614,6 +4650,34 @@ export default function App() {
             removeNotification(notif.id);
           }
         });
+      return;
+    }
+    if (a.kind === "start_self_update" && a.latestVersion) {
+      // Same one-click path as the admin panel's "Mettre à jour
+      // maintenant" button: surface the generic confirm dialog, then
+      // hand off to selfUpdate.startUpdate which opens the existing
+      // update-progress modal. Dismiss the notification either way so
+      // the card doesn't linger behind the confirm.
+      const latestVersion = a.latestVersion;
+      const fire = () => {
+        try {
+          selfUpdate?.startUpdate({ latestVersion });
+        } catch (_e) {
+          /* startUpdate surfaces its own errors via the modal */
+        }
+      };
+      showGenericConfirm({
+        title: t("selfUpdateConfirmTitle").replace("{version}", latestVersion),
+        message: t("selfUpdateConfirmMessage").replace(
+          "{version}",
+          latestVersion,
+        ),
+        confirmText: t("selfUpdateConfirmButton"),
+        cancelText: t("cancel"),
+        variant: "success",
+        onConfirm: fire,
+      });
+      dismissNotification(notif.id);
       return;
     }
     if (a.noteId) {

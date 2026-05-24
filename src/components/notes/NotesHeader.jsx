@@ -399,29 +399,6 @@ export default function NotesHeader({
                     </span>
                   )}
                 </button>
-                {hasUpdate && (
-                  <span
-                    className={`absolute top-[calc(100%-10px)] left-1/2 -translate-x-1/2 z-20 inline-flex flex-col items-center px-2 whitespace-nowrap pointer-events-none ${dark ? "text-emerald-400" : "text-emerald-600"}`}
-                  >
-                    <svg
-                      aria-hidden="true"
-                      className="h-3 w-16 opacity-80"
-                      viewBox="0 0 64 12"
-                    >
-                      <path
-                        d="M14 10 H28 C30 10 31 5 32 5 C33 5 34 10 36 10 H50"
-                        stroke="currentColor"
-                        fill="none"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <span className="text-[11px] font-semibold leading-none">
-                      {t("newVersionAvailable")} !
-                    </span>
-                  </span>
-                )}
               </div>
             )}
             <span className="flex items-center gap-2">
@@ -584,31 +561,7 @@ export default function NotesHeader({
                           </span>
                         )}
                       </span>
-                      <span className="flex flex-col gap-0">
-                        <span>{t("adminPanel")}</span>
-                        {hasUpdate && (
-                          <span className={`-mt-1 flex flex-col items-center text-[11px] font-semibold leading-none ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
-                            <span aria-hidden="true" className="self-stretch flex items-end h-3 opacity-80">
-                              <span className="flex-1 h-[2px] bg-current mb-[1px]" />
-                              <svg
-                                className="h-3 w-2 shrink-0"
-                                viewBox="0 0 8 12"
-                              >
-                                <path
-                                  d="M0 10 C2 10 3 5 4 5 C5 5 6 10 8 10"
-                                  stroke="currentColor"
-                                  fill="none"
-                                  strokeWidth="2"
-                                  strokeLinecap="butt"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                              <span className="flex-1 h-[2px] bg-current mb-[1px]" />
-                            </span>
-                            <span>{t("newVersionAvailable")} !</span>
-                          </span>
-                        )}
-                      </span>
+                      <span>{t("adminPanel")}</span>
                     </button>
                   )}
                   <button
