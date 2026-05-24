@@ -1076,7 +1076,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   serverUpdateAvailable: "Mise à jour du serveur disponible",
   serverUpdateAvailableDescription:
     "Une nouvelle version du serveur GlassKeep est disponible (v{version}). Mettez à jour quand vous le souhaitez, vos données ne seront pas affectées.",
-  appVersionSectionTitle: "Version de l'application",
+  appVersionSectionTitle: "Version du serveur",
   updateUpToDateDescription: "Vous êtes à jour.",
   updateAvailableDescription:
     "Une nouvelle version est disponible (v{version}). Mettez à jour quand vous le souhaitez, vos données ne seront pas affectées.",
