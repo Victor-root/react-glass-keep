@@ -222,7 +222,7 @@ function scheduleInlineCopyHide() {
     inlineCopyEl?.classList.remove("rt-inline-code-copy--sticky");
     inlineCopyTarget = null;
     inlineCopyHideTimer = null;
-  }, 180);
+  }, 1000);
 }
 function hideInlineCopyImmediate() {
   if (inlineCopyHideTimer) {
