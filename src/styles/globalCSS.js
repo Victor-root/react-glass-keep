@@ -4408,13 +4408,10 @@ html.dark .gk-mobile-toast--error {
   color: inherit;
   opacity: 0.85;
   word-break: break-word;
-  /* Cap at two lines so a verbose message can't push the toast to
-     swallow half the screen. Tapping the toast still reveals the
-     full text via the centre panel. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  /* No line clamp — the pill grows vertically to fit the full
+     message. Truncating was hiding important content (e.g. the
+     "but a copy was kept for you" tail on access-revoked toasts)
+     when the same notification displayed fine in the panel. */
 }
 .gk-mobile-toast__action {
   flex: 0 0 auto;
