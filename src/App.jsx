@@ -3181,9 +3181,11 @@ export default function App() {
                   ? { serverNotificationId: msg.notificationId }
                   : null,
               });
-              if (msg.notificationId) {
-                markShareNotificationsDelivered([msg.notificationId]);
-              }
+              // Do NOT mark delivered here: that would trigger a
+              // `notification_delivered` SSE back from the server which
+              // immediately dismisses the card we just showed. The bell
+              // calls markDelivered when the panel is opened, which is
+              // the right moment to record "user has seen this".
             } else if (msg && msg.type === "notifications_cleared") {
               // Another device wiped the user's notification history.
               // Mirror locally so the centre panel + viewport stay in
