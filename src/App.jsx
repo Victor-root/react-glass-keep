@@ -1734,14 +1734,14 @@ export default function App() {
   // sub-modal opening / closing.
   const [typographyModalOpen, setTypographyModalOpen] = useState(false);
 
-  // Notification center open state — kept here only so the PTR-lock
-  // effect can disable pull-to-refresh while the panel is up.
-  // It is NOT in overlayOpenCount because the panel's open state lives
-  // inside NotificationBell itself (we use a local-state-plus-callback
-  // pattern to avoid the desktop+mobile bell duplication issue) and we
-  // don't have a way to close it from App.jsx, so wiring it into the
-  // back-button stack would corrupt the history depth.
+  // Notification center open state. The actual open/closed state lives
+  // inside NotificationBell (local, to avoid the desktop+mobile bell
+  // duplicating the panel). The bell reports its state up via
+  // onOpenChange and exposes a close handle via closeNotifBellRef so
+  // App.jsx can include it in overlayOpenCount (PTR lock + Android
+  // back-button history machinery).
   const [notifCenterOpen, setNotifCenterOpen] = useState(false);
+  const closeNotifBellRef = useRef(null);
 
   // Sync dropdown state (lifted for back button support)
   const [syncDropdownOpen, setSyncDropdownOpen] = useState(false);
@@ -4062,7 +4062,7 @@ export default function App() {
   const overlayOpenCount = [
     imgViewOpen, confirmDeleteOpen, genericConfirmOpen,
     collaborationModalOpen, showModalColorPop, showModalFmt, modalMenuOpen,
-    modalKebabOpen, modalTagFocused, syncDropdownOpen, mobileSearchOpen,
+    modalKebabOpen, modalTagFocused, notifCenterOpen, syncDropdownOpen, mobileSearchOpen,
     showColorPop, showComposerFmt, headerMenuOpen, multiMode,
     typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
     noteAiOpen, changelogOpen,
@@ -4089,22 +4089,17 @@ export default function App() {
     }
   }, [overlayOpenCount]);
 
-  // Disable pull-to-refresh when any overlay (or the notification center)
-  // is open. Two delivery paths:
+  // Disable pull-to-refresh when any overlay is open. Two delivery paths:
   //   1. Native Android — the JS bridge disables the SwipeRefreshLayout.
   //   2. Chrome PWA — html/body get overscroll-behavior:none via the
-  //      .gk-overlay-locked class (defined in globalCSS.js). No overflow
-  //      changes — we don't want to fight the panel's own scroll.
-  // notifCenterOpen is OR-merged here rather than included in
-  // overlayOpenCount because the notification panel's state lives inside
-  // NotificationBell (local state, with an onOpenChange callback up to
-  // here). Mixing it into the history-pushing overlayOpenCount machinery
-  // without a way to close it from App.jsx would desync the back stack.
+  //      .gk-overlay-locked class (defined in globalCSS.js).
+  // notifCenterOpen is part of overlayOpenCount now that closeNotifBellRef
+  // gives App.jsx a way to close the panel from the popstate handler.
   useEffect(() => {
-    const locked = overlayOpenCount > 0 || notifCenterOpen;
+    const locked = overlayOpenCount > 0;
     document.documentElement.classList.toggle("gk-overlay-locked", locked);
     try { window.AndroidTheme?.setRefreshEnabled(!locked); } catch (_) {}
-  }, [overlayOpenCount, notifCenterOpen]);
+  }, [overlayOpenCount]);
 
   useEffect(() => {
     const onPopState = () => {
@@ -4131,6 +4126,7 @@ export default function App() {
       if (noteAiOpen) { setNoteAiOpen(false); return; }
       if (open) { closeModalRef.current?.(); return; }
       if (fabOpen) { setFabOpen(false); return; }
+      if (notifCenterOpen) { closeNotifBellRef.current?.(); return; }
       if (syncDropdownOpen) { setSyncDropdownOpen(false); return; }
       if (mobileSearchOpen) { setSearch(""); setMobileSearchOpen(false); return; }
       if (showColorPop) { setShowColorPop(false); return; }
@@ -4146,7 +4142,7 @@ export default function App() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [imgViewOpen, confirmDeleteOpen, genericConfirmOpen, collaborationModalOpen,
       showModalColorPop, showModalFmt, modalMenuOpen, modalKebabOpen, modalTagFocused,
-      syncDropdownOpen, mobileSearchOpen, showColorPop, showComposerFmt,
+      notifCenterOpen, syncDropdownOpen, mobileSearchOpen, showColorPop, showComposerFmt,
       headerMenuOpen, multiMode, typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
       noteAiOpen, changelogOpen]);
 
@@ -6593,6 +6589,7 @@ export default function App() {
             onAction={handleNotificationAction}
             onClearAll={clearAllNotificationsSynced}
             onOpenChange={setNotifCenterOpen}
+            closeRef={closeNotifBellRef}
           />
         }
         notificationBellMobile={
@@ -6601,6 +6598,7 @@ export default function App() {
             onAction={handleNotificationAction}
             onClearAll={clearAllNotificationsSynced}
             onOpenChange={setNotifCenterOpen}
+            closeRef={closeNotifBellRef}
           />
         }
       />

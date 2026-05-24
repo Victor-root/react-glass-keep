@@ -97,15 +97,23 @@ export default function NotificationCenter({
   const isMobile =
     typeof window !== "undefined" && window.innerWidth < SHEET_BREAKPOINT_PX;
 
-  // Desktop: anchor under the bell button. Mobile: full-width sheet.
+  // Desktop: anchor under the bell button. Mobile: full-screen sheet
+  // — covers the entire viewport (minus safe-area insets) so the panel
+  // feels like a dedicated screen on small devices. The header keeps
+  // the X button so the user always has an obvious close affordance.
   let style;
   if (isMobile) {
     style = {
       position: "fixed",
-      top: "calc(var(--safe-top, 0px) + 56px)",
-      left: 8,
-      right: 8,
-      maxHeight: "70vh",
+      top: "var(--safe-top, 0px)",
+      bottom: "var(--safe-bottom, 0px)",
+      left: 0,
+      right: 0,
+      // Full-screen looks wrong with rounded corners and the elevated
+      // glass border — drop both so the sheet reads as a screen, not a
+      // floating card.
+      borderRadius: 0,
+      border: "none",
     };
   } else if (anchor && typeof anchor.getBoundingClientRect === "function") {
     const r = anchor.getBoundingClientRect();

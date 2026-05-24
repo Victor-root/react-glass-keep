@@ -30,6 +30,11 @@ export default function NotificationBell({
   // so the local state stays correctly per-instance and we never end
   // up rendering two NotificationCenter portals at once.
   onOpenChange,
+  // Optional ref the parent can use to close the panel from outside
+  // (e.g. App.jsx's popstate handler for the Android back button).
+  // Whichever instance is currently open writes its close fn into the
+  // ref; the closed one leaves it alone. Cleared on close.
+  closeRef,
 }) {
   const { notifications, dismissAll, markDelivered } = useNotifications();
   const [open, setOpen] = useState(false);
@@ -39,6 +44,14 @@ export default function NotificationBell({
   useEffect(() => {
     onOpenChange?.(open);
   }, [open, onOpenChange]);
+
+  // Expose a close handle while open so the parent can dismiss the
+  // panel without owning the state (back button, programmatic close).
+  useEffect(() => {
+    if (!open || !closeRef) return undefined;
+    closeRef.current = () => setOpen(false);
+    return () => { if (closeRef) closeRef.current = null; };
+  }, [open, closeRef]);
 
   const unread = notifications.reduce(
     (acc, n) => (n.dismissed ? acc : acc + 1),
