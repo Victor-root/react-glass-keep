@@ -255,7 +255,13 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
     return () => {
       clearTimeout(h);
     };
-  }, [burstSlice, current?.id]);
+    // notifications is in the dep array on purpose: the settle
+    // timer must restart on every new arrival so it fires 100ms
+    // after the LAST arrival of the burst, not 100ms after the
+    // first. Once burstSlice is set, the early return at the top
+    // makes subsequent re-runs cheap no-ops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [burstSlice, current?.id, notifications]);
 
   useEffect(() => {
     if (current && current.id !== lastIdRef.current) {
