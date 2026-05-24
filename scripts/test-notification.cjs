@@ -369,15 +369,18 @@ async function main() {
     return;
   }
 
-  // --colors: fire exactly 4 persistent notifications, one per variant.
+  // --colors: fire exactly 4 notifications, one per variant. By default
+  // each notification follows the recipient's duration preference (i.e.
+  // it auto-dismisses according to the user's settings). Pass --persistent
+  // alongside to override and keep them on screen until manually closed.
   // Useful for checking the LED border + tint rendering for all colours
   // without flooding the panel with the full gallery.
   if (args.colors) {
     const samples = [
-      { variant: "info",    title: "Info",          message: "Notification de type information.",   persistent: true },
-      { variant: "success", title: "Succès",         message: "Opération réalisée avec succès.",     persistent: true },
-      { variant: "warning", title: "Avertissement",  message: "Attention, une action est requise.",  persistent: true },
-      { variant: "error",   title: "Erreur",         message: "Une erreur est survenue.",            persistent: true },
+      { variant: "info",    title: "Info",          message: "Notification de type information." },
+      { variant: "success", title: "Succès",         message: "Opération réalisée avec succès." },
+      { variant: "warning", title: "Avertissement",  message: "Attention, une action est requise." },
+      { variant: "error",   title: "Erreur",         message: "Une erreur est survenue." },
     ];
     for (const s of samples) {
       await sendOne(cfg, token, args, s);
