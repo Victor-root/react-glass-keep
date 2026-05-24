@@ -126,7 +126,7 @@ function hideTooltip() {
 // the user hovers another inline `<code>` or re-enters the button),
 // giving the user enough time to reach and click it without having to
 // keep the cursor on the underlying inline code.
-const INLINE_COPY_VISIBLE_MS = 3000;
+const INLINE_COPY_VISIBLE_MS = 2000;
 let inlineCopyEl = null;
 let inlineCopyTarget = null;
 let inlineCopyHideTimer = null;
@@ -393,7 +393,6 @@ function armCodeBlock(wrapper) {
   }
   armedCodeBlockEl = wrapper;
   wrapper.setAttribute("data-armed", "true");
-  ensureScrollReflowListener();
   armedCodeBlockHideTimer = setTimeout(() => {
     armedCodeBlockHideTimer = null;
     clearCodeBlockArm();
@@ -414,28 +413,10 @@ function armInlineCode(codeEl) {
   }
   armedInlineCodeEl = codeEl;
   showInlineCopyFor(codeEl, { sticky: true });
-  ensureScrollReflowListener();
   armedInlineCodeHideTimer = setTimeout(() => {
     armedInlineCodeHideTimer = null;
     clearInlineCodeArm();
   }, MOBILE_ARM_AUTO_HIDE_MS);
-}
-
-// Global capture-phase scroll listener that re-positions the sticky
-// inline-code button to follow its anchor as the user scrolls. The
-// code-block button has its own per-node scroll listener inside the
-// NodeView (see CodeBlockCopy.js). Registered lazily on first arm and
-// never torn down — handler is cheap (single rect read) and the
-// singletons live for the page lifetime.
-let scrollReflowRegistered = false;
-function ensureScrollReflowListener() {
-  if (scrollReflowRegistered) return;
-  scrollReflowRegistered = true;
-  const handler = () => {
-    if (armedInlineCodeEl) positionInlineCopyForCurrent();
-  };
-  document.addEventListener("scroll", handler, { passive: true, capture: true });
-  window.addEventListener("resize", handler, { passive: true });
 }
 
 /* -------------------- the plugin -------------------- */
