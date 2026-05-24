@@ -342,7 +342,7 @@ export default function NotificationCard({
       ref={cardRef}
       role="status"
       aria-live={variant === "error" ? "assertive" : "polite"}
-      className={`gk-notif-card ${klass}${compact ? " gk-notif-card--compact" : ""}${closeKlass}${modeKlass}${swipeKlass}`}
+      className={`gk-notif-card ${klass}${compact ? " gk-notif-card--compact" : ""}${closeKlass}${modeKlass}${swipeKlass}${actionLayout === "below" && !compact ? " gk-notif-card--wide" : ""}`}
     >
       {dismissible !== false && !swipeable ? (
         <button

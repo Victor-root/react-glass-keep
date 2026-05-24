@@ -3750,6 +3750,16 @@ html.dark .typo-modal-toggle {
   width: 360px;
 }
 .gk-notif-viewport > * { pointer-events: auto; }
+/* Wide cards (callers that opted into actionLayout:"below" because
+   their message is long) bump the whole viewport to a roomier width
+   so the message wraps over fewer lines. Scoped via :has() so the
+   bump only applies while a wide card is actually visible; the
+   default 360px returns the moment it dismisses. Caps at the
+   viewport with a 16px safety margin so portrait phones never see
+   the card overflow horizontally. */
+.gk-notif-viewport:has(.gk-notif-card--wide) {
+  width: min(480px, calc(100vw - 16px));
+}
 .gk-notif-viewport--top-left {
   top: calc(var(--safe-top, 0px) + 0.5rem);
   left: 12px;
