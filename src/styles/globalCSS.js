@@ -1264,6 +1264,26 @@ html:not(.dark) .code-copy-btn {
   vertical-align: baseline;
 }
 
+/* Desktop hover-only: on fine pointers, hide the inline copy button by
+   default and reveal it when the user hovers the adjacent <code> or
+   the button itself, mirroring the code-block copy button. The hide
+   transition keeps a small delay so the cursor can cross the 6 px gap
+   between code and button without the button vanishing mid-motion.
+   Coarse-pointer devices (touch) keep the button permanently visible
+   — there's no hover state to rely on, and the existing tap-friendly
+   layout already lets the user reach it in one finger move. */
+@media (pointer: fine) {
+  .inline-code-copy-btn {
+    opacity: 0;
+    transition: opacity 0.15s linear 0.25s;
+  }
+  code:hover + .inline-code-copy-btn,
+  .inline-code-copy-btn:hover {
+    opacity: 1;
+    transition-delay: 0s;
+  }
+}
+
 /* ============================================================
    Edit-mode link / code affordances (EditExtras + CodeBlockCopy)
    ============================================================
