@@ -3713,12 +3713,15 @@ export default function App() {
     setSession(null);
     setNotes([]);
     setSyncStatus(SYNC_STATUS_RESET);
-    // Wipe the in-memory notification list — the provider lives above
-    // App so its state would otherwise survive logout and the next
-    // session's /notifications/pending replay would stack duplicates
-    // on top of the still-active cards from this one. Pending rows
-    // come back fresh on the new login via the same replay path.
-    clearNotifications();
+    // NOTE: we intentionally do NOT call clearNotifications() here.
+    // The provider lives above App so its state survives logout.
+    // Dismissed entries (notification center history) must survive —
+    // those rows are already acked server-side so /notifications/pending
+    // will not replay them, meaning clearing them would permanently
+    // destroy the user's history. Active entries (dismissed:false) are
+    // deduplicated by the ADD reducer (which blocks a re-ADD when a
+    // non-dismissed entry with the same serverNotificationId already
+    // exists), so no duplicates stack up on reconnect either.
     // Clear session-scoped localStorage caches only (preserve UI prefs like dark mode)
     const uid = userId || "anonymous";
     const s = sid || "no-session";
