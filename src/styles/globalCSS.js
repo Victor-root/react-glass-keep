@@ -3780,8 +3780,10 @@ html.dark .typo-modal-toggle {
      surface. No pulse — the strip is static. */
   --gk-notif-glow-ring:  rgba(99, 102, 241, 0.32);
   --gk-notif-glow-bleed: rgba(99, 102, 241, 0.45);
-  background: rgba(252, 252, 255, 0.97);
-  border: 1.5px solid var(--gk-notif-accent, #6366f1);
+  --gk-notif-bg-tint:    rgba(99, 102, 241, 0.06);
+  background: linear-gradient(var(--gk-notif-bg-tint), var(--gk-notif-bg-tint)),
+              rgba(252, 252, 255, 0.97);
+  border: 2.5px solid var(--gk-notif-accent, #6366f1);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   box-shadow:
@@ -3794,7 +3796,8 @@ html.dark .typo-modal-toggle {
   animation: gkNotifIn 280ms cubic-bezier(.22,.61,.36,1) both;
 }
 html.dark .gk-notif-card {
-  background: rgba(18, 18, 28, 0.97);
+  background: linear-gradient(var(--gk-notif-bg-tint), var(--gk-notif-bg-tint)),
+              rgba(18, 18, 28, 0.97);
   color: #f0f0f5;
   box-shadow:
     0 0 0 1px   var(--gk-notif-glow-ring),
@@ -3810,21 +3813,25 @@ html.dark .gk-notif-card {
    black card. */
 .gk-notif-card--info {
   --gk-notif-accent:     #3b82f6;
+  --gk-notif-bg-tint:    rgba(59, 130, 246, 0.06);
   --gk-notif-glow-ring:  rgba(59, 130, 246, 0.32);
   --gk-notif-glow-bleed: rgba(59, 130, 246, 0.45);
 }
 .gk-notif-card--success {
   --gk-notif-accent:     #10b981;
+  --gk-notif-bg-tint:    rgba(16, 185, 129, 0.06);
   --gk-notif-glow-ring:  rgba(16, 185, 129, 0.32);
   --gk-notif-glow-bleed: rgba(16, 185, 129, 0.45);
 }
 .gk-notif-card--warning {
   --gk-notif-accent:     #f59e0b;
+  --gk-notif-bg-tint:    rgba(245, 158, 11, 0.07);
   --gk-notif-glow-ring:  rgba(245, 158, 11, 0.32);
   --gk-notif-glow-bleed: rgba(245, 158, 11, 0.45);
 }
 .gk-notif-card--error {
   --gk-notif-accent:     #ef4444;
+  --gk-notif-bg-tint:    rgba(239, 68, 68, 0.06);
   --gk-notif-glow-ring:  rgba(239, 68, 68, 0.32);
   --gk-notif-glow-bleed: rgba(239, 68, 68, 0.45);
 }
