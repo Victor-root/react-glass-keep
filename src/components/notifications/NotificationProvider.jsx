@@ -405,6 +405,13 @@ export function NotificationProvider({ children }) {
       duration,
       dismissible: input.dismissible !== false,
       action: input.action || null,
+      // Multi-action surface (e.g. Accepter / Refuser on the admin
+      // pending-user toast). Card.jsx picks `actions` when it's a
+      // non-empty array, else falls back to the legacy single
+      // `action` field — both can coexist on the same notif.
+      actions: Array.isArray(input.actions) && input.actions.length > 0
+        ? input.actions
+        : null,
       metadata: input.metadata || null,
       dismissed: false,
       dismissedAt: null,
