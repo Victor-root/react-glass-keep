@@ -4413,6 +4413,16 @@ html.dark .gk-mobile-toast--error {
      "but a copy was kept for you" tail on access-revoked toasts)
      when the same notification displayed fine in the panel. */
 }
+/* Wrapper for one or more action buttons inside the pill. flex
+   container so multi-action cards (Accept / Reject on pending-user
+   notifs, etc.) lay out as a small inline button group. */
+.gk-mobile-toast__actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: -4px;
+}
 .gk-mobile-toast__action {
   flex: 0 0 auto;
   font-size: 12.5px;
@@ -4421,9 +4431,18 @@ html.dark .gk-mobile-toast--error {
   background: transparent;
   border: none;
   padding: 4px 10px;
-  margin-right: -4px;
   border-radius: 8px;
   cursor: pointer;
+}
+/* Secondary action (the "Reject" half of an Accept/Reject pair)
+   reads as a neutral outline so the primary CTA stays the default. */
+.gk-mobile-toast__action--secondary {
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  color: inherit;
+  padding: 3px 9px;
+}
+html.dark .gk-mobile-toast__action--secondary {
+  border-color: rgba(255, 255, 255, 0.22);
 }
 .gk-mobile-toast__action:hover { background: rgba(0, 0, 0, 0.05); }
 .gk-mobile-toast__action:active { background: rgba(0, 0, 0, 0.10); }
@@ -4502,11 +4521,13 @@ html.dark .gk-mobile-toast__action:active { background: rgba(255, 255, 255, 0.14
 }
 .gk-mobile-toast--stacked .gk-mobile-toast__icon  { grid-area: icon; margin-top: 1px; }
 .gk-mobile-toast--stacked .gk-mobile-toast__body  { grid-area: body; }
-.gk-mobile-toast--stacked .gk-mobile-toast__action {
+.gk-mobile-toast--stacked .gk-mobile-toast__actions {
   grid-area: action;
   justify-self: end;
-  padding: 6px 12px;
   margin-right: -4px;
+}
+.gk-mobile-toast--stacked .gk-mobile-toast__action {
+  padding: 6px 12px;
   font-size: 13px;
 }
 /* Title can wrap (no ellipsis truncation) and message gets full lines. */

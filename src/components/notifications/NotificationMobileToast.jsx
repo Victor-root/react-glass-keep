@@ -357,14 +357,27 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
   if (suppressed) return null;
 
   const { Comp, filled } = pickGlyph(current);
-  const stacked = current.actionLayout === "below" && !!current.action;
+  // Unified action list — prefer the multi-action `actions` field
+  // (Accept/Reject on pending-user notifs, etc.), fall back to the
+  // single `action` field. Matches the desktop card's behaviour so
+  // multi-action notifs are usable from the floating pill, not just
+  // from the panel.
+  const actionList =
+    Array.isArray(current.actions) && current.actions.length > 0
+      ? current.actions
+      : current.action
+        ? [current.action]
+        : [];
+  const stacked = current.actionLayout === "below" && actionList.length > 0;
   const handleTap = () => {
     setVisible(false);
     remove(current.id);
   };
-  const handleAction = (e) => {
+  const handleAction = (e, chosenAction) => {
     e.stopPropagation();
-    if (onAction) onAction(current);
+    // Forward both args — the App-level dispatcher branches on
+    // chosenAction.kind for multi-action cards.
+    if (onAction) onAction(current, chosenAction);
     setVisible(false);
     remove(current.id);
   };
@@ -391,14 +404,23 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
           </span>
         ) : null}
       </span>
-      {current.action ? (
-        <button
-          type="button"
-          className="gk-mobile-toast__action"
-          onClick={handleAction}
-        >
-          {current.action.label}
-        </button>
+      {actionList.length > 0 ? (
+        <span className="gk-mobile-toast__actions">
+          {actionList.map((a, i) => {
+            const secondary =
+              a.kind === "reject_pending_user" || a.variant === "secondary";
+            return (
+              <button
+                key={i}
+                type="button"
+                className={`gk-mobile-toast__action${secondary ? " gk-mobile-toast__action--secondary" : ""}`}
+                onClick={(e) => handleAction(e, a)}
+              >
+                {a.label}
+              </button>
+            );
+          })}
+        </span>
       ) : null}
       {showCountdown ? (
         <div className="gk-mobile-toast__countdown-clip" aria-hidden="true">
