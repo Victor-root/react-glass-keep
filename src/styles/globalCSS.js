@@ -3921,37 +3921,33 @@ html.dark .gk-notif-card--error {
        full saturation for the fill so the bar reads as part of the
        card's coloured identity. */
 .gk-notif-card__countdown-clip {
+  /* Stays inside the padding-box so the wrapper can't be obscured
+     by neighbouring cards' shadows or the viewport's own stacking
+     quirks. Bottom corners match the card's INNER border curve
+     (16 px outer − 2.5 px border = 13.5 px) so the strip's
+     silhouette follows the card. */
   position: absolute;
-  /* Stretch the clip 2.5 px past the padding-box on the sides and
-     bottom so the strip OVERLAPS the card's solid bottom border
-     instead of sitting just above it. Without this overlap, the
-     full-saturation border below the slightly-softer bar fill
-     reads as a thin darker seam between the bar and the card's
-     edge. Outer corners switch to the card's OUTER 16-px radius
-     for the same reason — they replace the rounded bottom of the
-     card itself. */
-  left: -2.5px;
-  right: -2.5px;
-  bottom: -2.5px;
-  height: 16px;
-  border-bottom-left-radius: 16px;
-  border-bottom-right-radius: 16px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 14px;
+  border-bottom-left-radius: 13.5px;
+  border-bottom-right-radius: 13.5px;
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
 }
 .gk-notif-card__countdown {
-  /* 3.6 px visible + 2.5 px down into the border area = 6.1 px of
-     coloured strip from the card body down to the outer edge. The
-     gradient blends from a soft accent tint at the top (where it
-     meets the body) to the full accent at the bottom (matching the
-     border colour it now visually replaces), so the strip reads as
-     one continuous block — no horizontal seam top or bottom. */
+  /* Track is a vertical gradient: soft accent tint at the top so it
+     blends into the body bg, full accent at the bottom so its colour
+     meets the card's bottom border seamlessly (same colour on both
+     sides of the inner-border line — no visible seam between the
+     strip and the card edge). */
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 6.1px;
+  height: 3.6px;
   background: linear-gradient(
     to bottom,
     color-mix(in srgb, var(--gk-notif-accent, #6366f1) 16%, transparent),
@@ -3961,9 +3957,9 @@ html.dark .gk-notif-card--error {
 .gk-notif-card__countdown-fill {
   position: absolute;
   inset: 0;
-  /* Solid accent at full saturation so the fill side of the strip
-     reads as one continuous colour with the border it overlaps
-     — no 90 %-vs-100 % delta to create a hairline at the join. */
+  /* Solid accent at full saturation so the fill matches the card's
+     border colour — the transition fill-to-border is then the same
+     colour on both sides, invisible. */
   background: var(--gk-notif-accent, #6366f1);
   transform-origin: left center;
   animation-name: gkNotifCountdown;
