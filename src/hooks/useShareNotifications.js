@@ -78,6 +78,13 @@ function buildHistoryEntry(n) {
     title = t(titleKeyMap[type] || "noteAccessRevokedTitle");
     message = t(msgKeyMap[type] || "noteAccessRevokedToast", { sender, title: `**${noteTitle}**` });
     variant = "warning";
+    // When a copy was conserved, expose an "Ouvrir" shortcut that
+    // points to the copy. The server persists the copy's id in the
+    // note_id column for this type so we can read it straight off
+    // the history row.
+    if (type === "note_access_revoked_with_copy" && noteId) {
+      action = { label: t("noteSharedAction"), noteId: String(noteId) };
+    }
   } else if (n.message) {
     // Generic / test notification — use stored fields directly.
     title = n.note_title || null;
@@ -200,6 +207,10 @@ export function useShareNotifications({ token, userId }) {
     const sender = String(n.senderName ?? n.sender_name ?? "").trim();
     const rawTitle = String(n.noteTitle ?? n.note_title ?? "").trim();
     const noteTitle = rawTitle || t("untitledNote");
+    // For `note_access_revoked_with_copy` the server now sends the
+    // surviving copy's id as `noteId`; for the other revoke variants
+    // there's nothing to open so this is unused.
+    const noteId = n.noteId ?? n.note_id ?? null;
     const fn = notifyRef.current;
     if (typeof fn !== "function") return;
 
@@ -231,8 +242,11 @@ export function useShareNotifications({ token, userId }) {
       message: t(messageKey, { sender, title: `**${noteTitle}**` }),
       // Same as the share toast: defer to the user's duration pref.
       dismissible: true,
-      action: null,
-      metadata: { serverNotificationId: id },
+      action:
+        typeKey === "note_access_revoked_with_copy" && noteId
+          ? { label: t("noteSharedAction"), noteId: String(noteId) }
+          : null,
+      metadata: { serverNotificationId: id, noteId },
     });
   }, []);
 

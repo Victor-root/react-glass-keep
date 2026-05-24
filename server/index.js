@@ -2010,14 +2010,20 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
     try {
       const revokeCreatedAt = nowISO();
       // -- Ex-collaborator notification --
+      // When a copy was granted, persist the COPY's id in note_id so
+      // the recipient's "Ouvrir" action targets the note they actually
+      // still have access to. Plain revoke (no copy) keeps the
+      // original id for historical context — the action falls back to
+      // null on the client side.
       const recipientType = shouldGrantCopy
         ? "note_access_revoked_with_copy"
         : "note_access_revoked";
+      const recipientNoteId = shouldGrantCopy ? copyNoteId : noteId;
       const revokeRow = insertNotification.run(
         userIdToRemove,
         req.user.id,
         recipientType,
-        noteId,
+        recipientNoteId,
         note.title || "",
         req.user.name || req.user.email || "",
         null,
@@ -2031,7 +2037,7 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
         notificationType: recipientType,
         notificationId: revokeRow.lastInsertRowid,
         senderName: req.user.name || req.user.email || "",
-        noteId,
+        noteId: recipientNoteId,
         noteTitle: note.title || "",
         withCopy: shouldGrantCopy,
         createdAt: revokeCreatedAt,
