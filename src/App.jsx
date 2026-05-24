@@ -298,9 +298,9 @@ export default function App() {
   });
   // Notification viewport position. Persisted alongside the other UI
   // prefs (localStorage + /api/user/settings) — see save effect below.
-  // Default depends on form factor: top-right on desktop, top-center on
-  // mobile because a right-anchored 360-px stack would crowd the cards
-  // toward the screen edge with no room to breathe.
+  // Default is top-center for everyone: the centre anchor reads well
+  // on every form factor and stays out of the way of right-side UI
+  // elements (bell, action buttons).
   const [notificationsPosition, setNotificationsPosition] = useState(() => {
     const validPositions = [
       "top-left",
@@ -314,20 +314,18 @@ export default function App() {
       const stored = localStorage.getItem("notificationsPosition");
       if (validPositions.includes(stored)) return stored;
     } catch (e) {}
-    if (typeof window !== "undefined" && window.innerWidth < 640) {
-      return "top-center";
-    }
-    return "top-right";
+    return "top-center";
   });
-  // Notification sound toggle. Defaults to on — the ding is short
-  // and quiet enough that the user opt-out is the right default.
+  // Notification sound toggle. Defaults to off — sound is opt-in so
+  // a fresh install doesn't surprise the user with a ding on the
+  // first toast.
   const [notificationsSound, setNotificationsSound] = useState(() => {
     try {
       const stored = localStorage.getItem("notificationsSound");
       if (stored === "0" || stored === "false") return false;
       if (stored === "1" || stored === "true") return true;
     } catch (e) {}
-    return true;
+    return false;
   });
   // Per-category sound opt-out. Six buckets so the user can opt out
   // by semantic group rather than just "everything else":
