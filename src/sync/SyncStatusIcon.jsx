@@ -170,6 +170,13 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
   const [forceSyncing, setForceSyncing] = useState(false);
   const menuRef = useRef(null);
   const btnRef = useRef(null);
+  // Same swallow-next-click pattern as the header kebab menu. The host
+  // <header> has transform: translateY(0) which clips any fixed-inset-0
+  // backdrop to the header rect, leaving the rest of the screen open.
+  // So we use a document-level pointerdown listener instead, then swallow
+  // the follow-up click to stop it reaching note cards behind the panel.
+  const swallowNextClickRef = useRef(false);
+  const swallowClearTimerRef = useRef(null);
 
   // Force re-render every 10s so "time ago" stays fresh
   const [, setTick] = useState(0);
@@ -179,20 +186,56 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
     return () => clearInterval(id);
   }, [open]);
 
-  // Close on outside click
+  // Permanent click swallower — mounted once, never torn down.
   useEffect(() => {
-    if (!open) return;
-    const handleClick = (e) => {
-      if (
-        menuRef.current && !menuRef.current.contains(e.target) &&
-        btnRef.current && !btnRef.current.contains(e.target)
-      ) {
-        setOpen(false);
+    const onClick = (e) => {
+      if (!swallowNextClickRef.current) return;
+      swallowNextClickRef.current = false;
+      if (swallowClearTimerRef.current) {
+        clearTimeout(swallowClearTimerRef.current);
+        swallowClearTimerRef.current = null;
+      }
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      if (swallowClearTimerRef.current) {
+        clearTimeout(swallowClearTimerRef.current);
+        swallowClearTimerRef.current = null;
       }
     };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Disable browser pull-to-refresh while the dropdown is open.
+  useEffect(() => {
+    if (!open) return undefined;
+    const prev = document.body.style.overscrollBehavior;
+    document.body.style.overscrollBehavior = "none";
+    return () => { document.body.style.overscrollBehavior = prev; };
   }, [open]);
+
+  // Close on outside tap/click — pointerdown + flag prevents the follow-up
+  // click from reaching elements behind the panel on mobile.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = (e) => {
+      if (menuRef.current && menuRef.current.contains(e.target)) return;
+      if (btnRef.current && btnRef.current.contains(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      swallowNextClickRef.current = true;
+      if (swallowClearTimerRef.current) clearTimeout(swallowClearTimerRef.current);
+      swallowClearTimerRef.current = setTimeout(() => {
+        swallowNextClickRef.current = false;
+        swallowClearTimerRef.current = null;
+      }, 500);
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [open, setOpen]);
 
   if (!syncStatus) return null;
 
@@ -270,11 +313,6 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
 
       {open && (
         <>
-          {/* Backdrop for mobile */}
-          <div
-            className="fixed inset-0 z-[1099] sm:hidden"
-            onClick={() => setOpen(false)}
-          />
           {/* On mobile we used `absolute right-0` relative to the
               wrapper around the sync icon — that's a ~40 px-wide
               container, so the 280-340 px popover extended off the

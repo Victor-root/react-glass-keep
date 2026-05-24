@@ -30,26 +30,74 @@ export default function NotificationCenter({
   const { notifications, remove, dismissAll, clear } = useNotifications();
   const handleClearAll = onClearAll || clear;
   const panelRef = useRef(null);
+  // Used by the pointerdown handler below — same pattern as NotesHeader's
+  // header kebab menu. A single tap fires pointerdown → pointerup → click.
+  // Closing on pointerdown would remove the listener before the click fires,
+  // letting the click fall through to whatever is behind the panel. Instead
+  // we preventDefault + stopPropagation on pointerdown, set the flag, and
+  // keep a permanent click listener that swallows the follow-up event even
+  // after the panel state has already changed to closed.
+  const swallowNextClickRef = useRef(false);
+  const swallowClearTimerRef = useRef(null);
+
+  // Permanent click swallower — mounted once, never torn down.
+  useEffect(() => {
+    const onClick = (e) => {
+      if (!swallowNextClickRef.current) return;
+      swallowNextClickRef.current = false;
+      if (swallowClearTimerRef.current) {
+        clearTimeout(swallowClearTimerRef.current);
+        swallowClearTimerRef.current = null;
+      }
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    document.addEventListener("click", onClick, true);
+    return () => {
+      document.removeEventListener("click", onClick, true);
+      if (swallowClearTimerRef.current) {
+        clearTimeout(swallowClearTimerRef.current);
+        swallowClearTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // Disable browser pull-to-refresh while the panel is open so an upward
+  // swipe inside (or above) the list doesn't reload the page on mobile.
+  useEffect(() => {
+    if (!open) return undefined;
+    const prev = document.body.style.overscrollBehavior;
+    document.body.style.overscrollBehavior = "none";
+    return () => { document.body.style.overscrollBehavior = prev; };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => {
       if (e.key === "Escape") onClose && onClose();
     };
-    const onDocMouseDown = (e) => {
+    const onPointerDown = (e) => {
       const panel = panelRef.current;
       if (!panel) return;
       if (panel.contains(e.target)) return;
-      // Ignore clicks on the anchor itself — the button's own toggle
-      // handler runs after this and would re-open the panel otherwise.
+      // Ignore taps on the anchor — the bell button's own toggle runs after
+      // this and would immediately re-open the panel otherwise.
       if (anchor && anchor.contains(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      swallowNextClickRef.current = true;
+      if (swallowClearTimerRef.current) clearTimeout(swallowClearTimerRef.current);
+      swallowClearTimerRef.current = setTimeout(() => {
+        swallowNextClickRef.current = false;
+        swallowClearTimerRef.current = null;
+      }, 500);
       onClose && onClose();
     };
     document.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onDocMouseDown, true);
+    document.addEventListener("pointerdown", onPointerDown, true);
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onDocMouseDown, true);
+      document.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [open, onClose, anchor]);
 
