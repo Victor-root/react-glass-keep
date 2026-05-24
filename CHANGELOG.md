@@ -1,6 +1,6 @@
 # 📋 Changelog
 
-## 🚀 v2.4.0 — 2026-05-21
+## 🚀 v2.4.0 — 2026-05-24
 
 Headline change: a **completely rewritten in-app notification system**. Every toast, error, share alert and admin event now flows through a single provider, renders as a premium LED-neon card in the floating viewport, and shows up in a new **Notification Center** panel (bell icon in the header) with full cross-device history sync over SSE. The release also lands actionable admin notifications (approve / refuse pending registrations, deletion confirmations), live cross-session sync of user settings, a mobile Notification Center with swipe-to-dismiss, a collaboration-notification pass (owners get told when collaborators walk away), an editor paste/copy polish pass, a **"Read mode for notes"** opt-out, and a major Android app maturity pass (in-app APK self-updater, first-launch welcome screen, F-Droid-aware build).
 
@@ -15,12 +15,9 @@ Headline change: a **completely rewritten in-app notification system**. Every to
 - 🛂 **Approve / Refuse from admin pending-registration notifications** — when a new user signs up, admins get a notification with inline **Approve** and **Refuse** actions so the decision can be made without opening the admin panel
 - 🗑️ **Real confirmation when deleting a user (admin)** — admin user deletion now goes through a proper confirmation flow instead of a single click
 - 📣 **Admin notification when a user is deleted** — admins receive a notification whenever an account is removed, so the action is visible across the team
-- 🔓 **"Ouvrir" action on retained copies after access removal** — when a note owner revokes your access but lets you keep a personal copy, the notification now exposes a direct **Ouvrir** button to jump to that copy
+- 🔓 **"Open" action on retained copies after access removal** — when a note owner revokes your access but lets you keep a personal copy, the notification now exposes a direct **Open** button to jump to that copy
 - 🤝 **Collaboration notifications** — the four-state revoke message (with / without copy, ex-collaborator side / owner side) plus a brand-new **"X left this note"** toast for the owner when a collaborator walks away (either by removing themselves in the collaboration modal or by deleting their copy from their own list)
-- 📱 **Unified mobile in-app notification pill** — mobile notifications now use the same GlassKeep-styled in-app card across browser, PWA and Android WebView, preserving actions, variant colours and countdown bars instead of falling back to native OS toasts
-- 🧪 **Test-notification CLI** (`scripts/test-notification.cjs`) — admin-only helper that fires a notification end-to-end through the real SSE pipeline. Flags: `--all` (one of each variant), `--colors` (4 persistent variants for visual checks), `--gallery` (every notification kind the app produces in one shot), `--persistent`, `--icon`, `--to <email>`
 - 📋 **Paste-mode preference** — Settings toggle to make Ctrl+V always paste as plain text, with the Plain / Formatted choice stacked under the relevant description
-- 🔗 **Auto-link on plain-text paste** — pasting a URL into a rich-text note now turns it into a real anchor instead of leaving the raw text
 - 👁 **"Read mode for notes" toggle** — when off, text and drawing notes open directly in edit mode and the read/edit button is hidden from the modal footer; ideal for users who edit far more often than they re-read. Default stays on so existing users keep the read-by-default behaviour. Saved server-side, applied across all your devices
 - 🪟 **Collapsible categories** in the Settings and Admin panels — open/closed state per category persisted in `localStorage` and synced via `PATCH /user/settings`
 - 📐 **Configurable sidebar breakpoint** — the "Always show sidebar on wide screens" threshold is now a 5-preset dropdown (Tablet → Desktop, default 1280 px) instead of the hard-coded 700 px
@@ -31,9 +28,6 @@ Headline change: a **completely rewritten in-app notification system**. Every to
 - 📦 **APK filename auto-versioned** — Android Studio's Build → Build APK(s) now produces `GlassKeep-v<versionName>.apk` directly, matching the asset name the in-app updater scans for on GitHub Releases
 
 ### 🔄 Changed
-- 🎨 **Notification visual style** — the LED-strip border (2.5 px solid + a 1 px crisp outline ring + a 4 px tight bleed, all in the variant colour) replaces the generic toast chrome. Cards inside the panel use a neutral near-opaque white surface with a 3 px left accent bar so the panel doesn't stack a second gradient on top of itself
-- ⬆️ **Top-anchored notifications float above the header** — `top-left/center/right` positions now sit just under the safe-area inset (instead of being pushed below the 96 px header), giving the cards visual priority over chrome
-- 🔧 **Default notification preferences** — fresh installs now start at `top-center`, 10 s duration, sound **off** (was top-right desktop / top-center mobile, 10 s, sound on). Sound is opt-in so the very first toast doesn't ding
 - 📲 **Mobile single-tap arms code-block / inline-code copy** — touch devices used to need a long-press or two taps; one tap now arms the copy button, which auto-hides after 5 s if not used
 
 ### 🐛 Fixed
