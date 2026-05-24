@@ -193,7 +193,17 @@ export function useShareNotifications({ token, userId }) {
             handled.push(n.id);
           }
         }
-        if (handled.length > 0) markDelivered(handled);
+        // We do NOT call markDelivered(handled) here. The server's
+        // notification_delivered broadcast would race back and
+        // dismiss the cards we just rendered (same race that hit the
+        // SSE handlers and was fixed there). Instead, every card
+        // acks itself on its natural resolution path: user clicks X
+        // (provider's dismiss/remove → ackDeliveredById), auto-
+        // dismiss timer fires (notify's timer → ackDeliveredById),
+        // or the bell is opened (its own markDelivered call). The
+        // worst case if the user reloads before any of those is one
+        // extra replay — strictly better than a card that vanishes
+        // in 10 ms.
       } catch {
         // Offline / 401 — the rows remain pending and we'll retry on
         // the next session.

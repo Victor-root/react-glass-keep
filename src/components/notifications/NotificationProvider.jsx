@@ -72,16 +72,11 @@ function reducer(state, action) {
       // a reducer guarantees we see the latest state for every row
       // (including the just-added one) rather than a snapshot from
       // a stale closure.
-      // Persistent rows (duration === null) are skipped: "delivered"
-      // means the server acknowledged receipt, not that the user has
-      // resolved the notification. Persistent cards stay visible
-      // until the user manually closes them or opens the bell.
       const ids = action.ids;
       if (!ids || ids.size === 0) return state;
       const ts = Date.now();
       return state.map((n) => {
         if (n.dismissed) return n;
-        if (n.duration === null) return n;
         const sid = n.metadata?.serverNotificationId;
         if (sid == null) return n;
         if (!ids.has(Number(sid))) return n;
@@ -102,6 +97,15 @@ function reducer(state, action) {
     }
     case "CLEAR":
       return [];
+    case "CLEAR_SERVER_BACKED":
+      // Cross-device "Clear all" — only wipe rows backed by a server
+      // notification id. Local-only toasts (UI feedback such as
+      // "Note moved to trash") have no server counterpart and must
+      // survive a remote clear so the user doesn't lose unrelated
+      // history on this device.
+      return state.filter(
+        (n) => n.metadata?.serverNotificationId == null,
+      );
     default:
       return state;
   }
@@ -122,6 +126,24 @@ export function NotificationProvider({ children }) {
   // user pref) doesn't re-render the whole subtree. `notify` reads
   // the latest value when scheduling each new notification.
   const defaultDurationRef = useRef(FALLBACK_DEFAULT_DURATION);
+  // Latest state mirror so dismiss/remove/timer can look up a
+  // notification's serverNotificationId without going through the
+  // (potentially stale) closure that scheduled the call.
+  const notificationsRef = useRef([]);
+  useEffect(() => {
+    notificationsRef.current = notifications;
+  }, [notifications]);
+  // App-provided delivery-ack POST (markShareNotificationsDelivered).
+  // The provider calls it whenever a server-backed notification is
+  // resolved on this device (X click, auto-dismiss timer, REMOVE).
+  // Held in a ref so the consumer can swap implementations without
+  // re-rendering the whole subtree.
+  const onMarkDeliveredRef = useRef(null);
+  // Server ids we've already acked on this device — dedupes against
+  // the bell's own markDelivered call AND against the dismiss-after-
+  // dismissAll path (where the row is dismissed via DISMISS_ALL but
+  // a subsequent REMOVE on the same id would re-POST otherwise).
+  const ackedServerIdsRef = useRef(new Set());
 
   const setDefaultDuration = useCallback((ms) => {
     // null / undefined means "persistent" — no auto-dismiss.
@@ -134,6 +156,43 @@ export function NotificationProvider({ children }) {
       defaultDurationRef.current = n;
     }
   }, []);
+
+  const setOnMarkDelivered = useCallback((fn) => {
+    onMarkDeliveredRef.current = typeof fn === "function" ? fn : null;
+  }, []);
+
+  // Public ack helper — dedupes by server id and forwards fresh ones
+  // to the App-provided callback. The bell uses this on panel-open
+  // so the same ids it broadcasts to the server don't trigger a
+  // second POST when the user later clicks X on a leftover card.
+  const markDelivered = useCallback((serverIds) => {
+    const fn = onMarkDeliveredRef.current;
+    if (!fn || !Array.isArray(serverIds) || serverIds.length === 0) return;
+    const fresh = [];
+    for (const raw of serverIds) {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) continue;
+      if (ackedServerIdsRef.current.has(n)) continue;
+      ackedServerIdsRef.current.add(n);
+      fresh.push(n);
+    }
+    if (fresh.length > 0) fn(fresh);
+  }, []);
+
+  // Internal helper: look up the notification's serverNotificationId
+  // and route it through markDelivered. Called by dismiss/remove/
+  // timer so every "user resolved this card" code path acks the
+  // server — without it, rows linger as "pending" and replay at the
+  // next /notifications/pending fetch.
+  const ackDeliveredById = useCallback(
+    (localId) => {
+      const notif = notificationsRef.current.find((x) => x.id === localId);
+      if (!notif) return;
+      const sid = notif.metadata?.serverNotificationId;
+      if (sid != null) markDelivered([sid]);
+    },
+    [markDelivered],
+  );
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -154,17 +213,19 @@ export function NotificationProvider({ children }) {
   const dismiss = useCallback(
     (id) => {
       cancelTimer(id);
+      ackDeliveredById(id);
       dispatch({ type: "DISMISS", id });
     },
-    [cancelTimer],
+    [cancelTimer, ackDeliveredById],
   );
 
   const remove = useCallback(
     (id) => {
       cancelTimer(id);
+      ackDeliveredById(id);
       dispatch({ type: "REMOVE", id });
     },
-    [cancelTimer],
+    [cancelTimer, ackDeliveredById],
   );
 
   // Cross-device dismissal — clears any active card whose
@@ -194,6 +255,24 @@ export function NotificationProvider({ children }) {
     timersRef.current.forEach((h) => clearTimeout(h));
     timersRef.current.clear();
     dispatch({ type: "CLEAR" });
+  }, []);
+
+  // Cross-device "Clear all" — wipe only server-backed rows so local
+  // toasts (UI feedback that never hit the DB) survive a remote
+  // device's clear. Only the timers for the rows we're about to drop
+  // need to be cancelled; local toasts keep their own timers.
+  const clearServerBacked = useCallback(() => {
+    const list = notificationsRef.current;
+    for (const n of list) {
+      if (n.metadata?.serverNotificationId != null) {
+        const h = timersRef.current.get(n.id);
+        if (h !== undefined) {
+          clearTimeout(h);
+          timersRef.current.delete(n.id);
+        }
+      }
+    }
+    dispatch({ type: "CLEAR_SERVER_BACKED" });
   }, []);
 
   const notify = useCallback((spec) => {
@@ -239,12 +318,18 @@ export function NotificationProvider({ children }) {
     if (duration && duration > 0) {
       const handle = setTimeout(() => {
         timersRef.current.delete(id);
+        // Auto-dismiss counts as the user-side resolution for a
+        // server-backed row: the toast was on screen for the full
+        // configured duration, the user had every chance to see it.
+        // Without this ack the row stays pending and /notifications/
+        // pending replays it at the next reload.
+        ackDeliveredById(id);
         dispatch({ type: "DISMISS", id });
       }, duration);
       timersRef.current.set(id, handle);
     }
     return id;
-  }, []);
+  }, [ackDeliveredById]);
 
   const value = {
     notifications,
@@ -254,7 +339,10 @@ export function NotificationProvider({ children }) {
     dismissByServerIds,
     dismissAll,
     clear,
+    clearServerBacked,
     setDefaultDuration,
+    setOnMarkDelivered,
+    markDelivered,
   };
 
   return (
@@ -272,7 +360,10 @@ const NOOP_VALUE = {
   dismissByServerIds: () => {},
   dismissAll: () => {},
   clear: () => {},
+  clearServerBacked: () => {},
   setDefaultDuration: () => {},
+  setOnMarkDelivered: () => {},
+  markDelivered: () => {},
 };
 
 export function useNotifications() {

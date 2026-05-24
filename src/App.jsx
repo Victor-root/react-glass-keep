@@ -559,8 +559,10 @@ export default function App() {
     dismiss: dismissNotification,
     dismissByServerIds: dismissByServerIdsNotif,
     clear: clearNotifications,
+    clearServerBacked: clearServerBackedNotifications,
     notifications: allNotifications,
     setDefaultDuration: setNotifDefaultDuration,
+    setOnMarkDelivered: setNotifOnMarkDelivered,
   } = useNotifications();
 
   // Cross-device-aware "Clear all" wrapper. The provider's bare
@@ -664,6 +666,15 @@ export default function App() {
     showRevokeToast: showRevokeNotificationToast,
     markDelivered: markShareNotificationsDelivered,
   } = useShareNotifications({ token, userId: currentUser?.id });
+
+  // Wire the App-level POST helper into the provider so every
+  // dismiss / remove / auto-dismiss path acks the server. Without
+  // this, closing a card with X (or letting it auto-dismiss) would
+  // leave the row pending and /notifications/pending would replay
+  // it at the next reload.
+  useEffect(() => {
+    setNotifOnMarkDelivered(markShareNotificationsDelivered);
+  }, [setNotifOnMarkDelivered, markShareNotificationsDelivered]);
 
   // GitHub release update notification (admin-only, fail-silent).
   const updateInfo = useUpdateCheck({
@@ -3185,11 +3196,11 @@ export default function App() {
               // the right moment to record "user has seen this".
             } else if (msg && msg.type === "notifications_cleared") {
               // Another device wiped the user's notification history.
-              // Mirror locally so the centre panel + viewport stay in
-              // sync. The originating device also receives this event
-              // but a CLEAR dispatch on an already-empty array is a
-              // no-op.
-              clearNotifications();
+              // Only drop server-backed rows: local-only toasts (e.g.
+              // "Note moved to trash", in-app UI feedback) have no DB
+              // counterpart and a remote clear must not erase them
+              // from this device.
+              clearServerBackedNotifications();
             } else if (msg && msg.type === "notification_delivered" && Array.isArray(msg.ids)) {
               // Cross-device dismissal — another tab/device (or this
               // one) just acknowledged these server notification ids.
@@ -6487,7 +6498,6 @@ export default function App() {
           <NotificationBell
             dark={dark}
             onAction={handleNotificationAction}
-            markDelivered={markShareNotificationsDelivered}
             onClearAll={clearAllNotificationsSynced}
           />
         }
@@ -6495,7 +6505,6 @@ export default function App() {
           <NotificationBell
             dark={dark}
             onAction={handleNotificationAction}
-            markDelivered={markShareNotificationsDelivered}
             onClearAll={clearAllNotificationsSynced}
           />
         }

@@ -1099,7 +1099,10 @@ function createShareNotification({ recipientId, senderId, senderName, noteId, no
     const createdAt = nowISO();
     // Share notifications regenerate their text client-side from
     // sender_name + note_title via i18n, so variant/message stay
-    // null. Persistent so they stick around until manually closed.
+    // null. is_persistent=0 because the client (showShareToast)
+    // defers duration to the user's notification-duration pref —
+    // storing 1 here would be misleading if a future replay path
+    // ever started honouring n.persistent for share/revoke rows.
     const result = insertNotification.run(
       recipientId,
       senderId,
@@ -1109,7 +1112,7 @@ function createShareNotification({ recipientId, senderId, senderName, noteId, no
       senderName || "",
       null,
       null,
-      1,
+      0,
       null,
       createdAt,
     );
@@ -2011,7 +2014,7 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
         req.user.name || req.user.email || "",
         null,
         null,
-        1,
+        0,
         null,
         revokeCreatedAt,
       );
@@ -2045,7 +2048,7 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
         removedName,
         null,
         null,
-        1,
+        0,
         null,
         revokeCreatedAt,
       );

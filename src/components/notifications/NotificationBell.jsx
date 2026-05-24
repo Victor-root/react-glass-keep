@@ -22,10 +22,9 @@ import { t } from "../../i18n";
 export default function NotificationBell({
   dark,
   onAction,
-  markDelivered,
   onClearAll,
 }) {
-  const { notifications, dismissAll } = useNotifications();
+  const { notifications, dismissAll, markDelivered } = useNotifications();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
 
@@ -52,16 +51,17 @@ export default function NotificationBell({
       // the server ack, a second device reconnecting later would
       // re-fetch the same notifications from /pending and replay
       // them, even though the user has already seen the cards here.
+      // markDelivered comes from the provider context and dedupes
+      // internally, so any ids already acked (e.g. by an earlier X
+      // click) won't trigger a second POST.
       if (!wasOpen && unread > 0) {
-        if (typeof markDelivered === "function") {
-          const serverIds = [];
-          for (const n of notifications) {
-            if (n.dismissed) continue;
-            const sid = n.metadata?.serverNotificationId;
-            if (sid != null) serverIds.push(sid);
-          }
-          if (serverIds.length > 0) markDelivered(serverIds);
+        const serverIds = [];
+        for (const n of notifications) {
+          if (n.dismissed) continue;
+          const sid = n.metadata?.serverNotificationId;
+          if (sid != null) serverIds.push(sid);
         }
+        if (serverIds.length > 0) markDelivered(serverIds);
         dismissAll();
       }
       return !wasOpen;
