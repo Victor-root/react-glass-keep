@@ -131,9 +131,8 @@ export default function NotificationCard({
   swipeable = false,
 }) {
   const cardRef = useRef(null);
-  // Touch tracking via refs — never triggers React re-renders so the
+  // Tracking via refs — never triggers React re-renders so the
   // transform follows the finger without batching lag.
-  const startXRef = useRef(null);
   const deltaRef = useRef(0);
   // Stable refs for dismiss callback and notification id so the single
   // useEffect never needs to re-register listeners when props update.
@@ -147,31 +146,71 @@ export default function NotificationCard({
     const el = cardRef.current;
     if (!el) return undefined;
 
-    const onTouchStart = () => {
-      startXRef.current = null; // reset until first move
+    // Pointer events give us a single uniform stream for touch + pen +
+    // mouse, plus setPointerCapture so we keep receiving move events
+    // even if the finger drifts outside the card during a fling. This
+    // is what makes the card stick to the finger in real time.
+    let startX = 0;
+    let startY = 0;
+    let active = false;          // a pointer is down on this card
+    let locked = false;          // direction confirmed horizontal
+    let activeId = null;
+
+    const reset = () => {
+      active = false;
+      locked = false;
+      activeId = null;
+    };
+
+    const onPointerDown = (e) => {
+      // Restrict to touch/pen — mouse should not trigger swipe gestures
+      // on desktop in case the panel ever shows up there.
+      if (e.pointerType === "mouse") return;
+      activeId = e.pointerId;
+      startX = e.clientX;
+      startY = e.clientY;
+      active = true;
+      locked = false;
       deltaRef.current = 0;
       el.style.transition = "none";
     };
 
-    const onTouchMove = (e) => {
-      // Latch start position on first move so we don't count the
-      // pointerdown offset.
-      if (startXRef.current === null) {
-        startXRef.current = e.touches[0].clientX;
-        return;
+    const onPointerMove = (e) => {
+      if (!active || e.pointerId !== activeId) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+
+      if (!locked) {
+        // 6 px deadband so a tap that wobbles slightly doesn't move
+        // the card. Once movement exceeds it, commit to a direction.
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        if (Math.abs(dy) > Math.abs(dx)) {
+          // Vertical gesture → bail out, let the panel list scroll.
+          reset();
+          return;
+        }
+        locked = true;
+        // Claim the pointer so subsequent moves arrive here even if
+        // the finger leaves the card's bounding box mid-swipe.
+        try { el.setPointerCapture(activeId); } catch (_) {}
       }
-      const dx = e.touches[0].clientX - startXRef.current;
+
       deltaRef.current = dx;
-      // Direct DOM write — bypasses React rendering for 60 fps tracking.
+      // Direct DOM write — bypasses React's render queue so the card
+      // moves in lock-step with the finger.
       el.style.transform = `translateX(${dx}px)`;
       el.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 200));
     };
 
-    const onTouchEnd = () => {
-      if (startXRef.current === null) return;
-      startXRef.current = null;
+    const onPointerEnd = (e) => {
+      if (!active || e.pointerId !== activeId) return;
+      const wasLocked = locked;
       const dx = deltaRef.current;
-      el.style.transition = "transform 0.25s ease, opacity 0.25s ease";
+      try { el.releasePointerCapture(activeId); } catch (_) {}
+      reset();
+      if (!wasLocked) return; // Was a tap or vertical scroll — nothing to animate.
+
+      el.style.transition = "transform 0.25s ease-out, opacity 0.25s ease-out";
       if (Math.abs(dx) >= SWIPE_DISMISS_THRESHOLD) {
         const dir = dx > 0 ? 1 : -1;
         el.style.transform = `translateX(${dir * SWIPE_EXIT_PX}px)`;
@@ -182,21 +221,18 @@ export default function NotificationCard({
       } else {
         el.style.transform = "translateX(0)";
         el.style.opacity = "1";
-        setTimeout(() => {
-          if (el) el.style.transition = "";
-        }, 300);
       }
     };
 
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: true });
-    el.addEventListener("touchend", onTouchEnd, { passive: true });
-    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    el.addEventListener("pointerdown", onPointerDown);
+    el.addEventListener("pointermove", onPointerMove);
+    el.addEventListener("pointerup", onPointerEnd);
+    el.addEventListener("pointercancel", onPointerEnd);
     return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("touchend", onTouchEnd);
-      el.removeEventListener("touchcancel", onTouchEnd);
+      el.removeEventListener("pointerdown", onPointerDown);
+      el.removeEventListener("pointermove", onPointerMove);
+      el.removeEventListener("pointerup", onPointerEnd);
+      el.removeEventListener("pointercancel", onPointerEnd);
     };
   }, [swipeable]);
 
