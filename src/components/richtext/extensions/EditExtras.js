@@ -199,13 +199,82 @@ function positionInlineCopyForCurrent() {
   // own layer. Once placed, the scroll container drags the button
   // along with the rest of the content — no scroll listener needed.
   const hostRect = host.getBoundingClientRect();
-  const top =
-    lastRect.top - hostRect.top + host.scrollTop +
-    (lastRect.height - btnR.height) / 2;
-  const left =
-    lastRect.right - hostRect.left + host.scrollLeft + 4;
+  const GAP = 4;
+  const preferredLeft =
+    lastRect.right - hostRect.left + host.scrollLeft + GAP;
+  // Fall back to the line below when the right-of-line slot would push
+  // the button past the host's visible right edge — typical of an
+  // inline code that ends flush with the viewport on narrow mobile
+  // widths. The button gets clamped to stay inside the host and a
+  // spacer is dropped after the code's block ancestor so the next
+  // paragraph / list item moves out of the way instead of being
+  // overlapped.
+  const innerRight = host.clientWidth;
+  const overflowsRight = preferredLeft + btnR.width + GAP > innerRight;
+  let top;
+  let left;
+  if (overflowsRight) {
+    top = lastRect.bottom - hostRect.top + host.scrollTop + GAP;
+    const desiredRight = Math.min(
+      lastRect.right - hostRect.left + host.scrollLeft,
+      innerRight - GAP,
+    );
+    left = Math.max(GAP, desiredRight - btnR.width);
+    applyBelowSpacerFor(code, btnR.height + GAP * 2);
+  } else {
+    top =
+      lastRect.top - hostRect.top + host.scrollTop +
+      (lastRect.height - btnR.height) / 2;
+    left = preferredLeft;
+    clearBelowSpacer();
+  }
   el.style.top = `${Math.round(top)}px`;
   el.style.left = `${Math.round(left)}px`;
+}
+
+// Push-down spacer used by positionInlineCopyForCurrent when the
+// button can't fit beside the inline code and has to drop to the line
+// below. Inserting a block-level placeholder after the code's nearest
+// block ancestor reserves the vertical room the button now occupies
+// so the following content moves down instead of being covered.
+let belowSpacerEl = null;
+function findBlockAncestor(node) {
+  let cur = node?.parentElement;
+  while (cur) {
+    let display;
+    try {
+      display = window.getComputedStyle(cur).display;
+    } catch (_e) {
+      display = "";
+    }
+    if (display && display !== "inline" && display !== "contents") return cur;
+    cur = cur.parentElement;
+  }
+  return null;
+}
+function applyBelowSpacerFor(codeEl, height) {
+  const block = findBlockAncestor(codeEl);
+  if (!block || !block.parentNode) return;
+  if (!belowSpacerEl) {
+    belowSpacerEl = document.createElement("div");
+    belowSpacerEl.className = "rt-inline-code-copy-spacer";
+    belowSpacerEl.setAttribute("aria-hidden", "true");
+    belowSpacerEl.style.pointerEvents = "none";
+    belowSpacerEl.style.margin = "0";
+    belowSpacerEl.style.padding = "0";
+  }
+  belowSpacerEl.style.height = `${height}px`;
+  if (
+    belowSpacerEl.parentNode !== block.parentNode ||
+    belowSpacerEl.previousSibling !== block
+  ) {
+    block.parentNode.insertBefore(belowSpacerEl, block.nextSibling);
+  }
+}
+function clearBelowSpacer() {
+  if (belowSpacerEl && belowSpacerEl.parentNode) {
+    belowSpacerEl.parentNode.removeChild(belowSpacerEl);
+  }
 }
 function showInlineCopyFor(codeEl, { sticky = false } = {}) {
   inlineCopyTarget = codeEl;
@@ -254,6 +323,7 @@ function scheduleInlineCopyHide() {
     inlineCopyEl?.classList.remove("rt-inline-code-copy--sticky");
     inlineCopyTarget = null;
     inlineCopyHideTimer = null;
+    clearBelowSpacer();
   }, INLINE_COPY_VISIBLE_MS);
 }
 function hideInlineCopyImmediate() {
@@ -265,6 +335,7 @@ function hideInlineCopyImmediate() {
   inlineCopyEl?.classList.remove("rt-inline-code-copy--visible");
   inlineCopyEl?.classList.remove("rt-inline-code-copy--sticky");
   inlineCopyTarget = null;
+  clearBelowSpacer();
 }
 
 let linkPopoverEl = null;
