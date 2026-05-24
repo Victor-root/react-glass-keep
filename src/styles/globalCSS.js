@@ -3697,21 +3697,18 @@ html.dark .typo-modal-toggle {
 }
 .gk-notif-viewport > * { pointer-events: auto; }
 .gk-notif-viewport--top-left {
-  /* Sits below the sticky NotesHeader (96 px desktop / 80 px mobile,
-     matching the multi-select-dock offsets). Without this the stack
-     would overlap the header logo + button row. */
-  top: calc(var(--safe-top, 0px) + 96px + 0.5rem);
+  top: calc(var(--safe-top, 0px) + 0.5rem);
   left: 12px;
   align-items: flex-start;
 }
 .gk-notif-viewport--top-center {
-  top: calc(var(--safe-top, 0px) + 96px + 0.5rem);
+  top: calc(var(--safe-top, 0px) + 0.5rem);
   left: 50%;
   transform: translateX(-50%);
   align-items: center;
 }
 .gk-notif-viewport--top-right {
-  top: calc(var(--safe-top, 0px) + 96px + 0.5rem);
+  top: calc(var(--safe-top, 0px) + 0.5rem);
   right: 12px;
   align-items: flex-end;
 }
@@ -3732,14 +3729,10 @@ html.dark .typo-modal-toggle {
   align-items: flex-end;
 }
 @media (max-width: 699px) {
-  /* Header drops to ~80 px tall on the narrow-tablet range
-     (mirrors the multi-select-dock's own breakpoint). Pull the
-     top-anchored viewport up to match so a small viewport doesn't
-     keep a desktop-sized gap above the cards. */
   .gk-notif-viewport--top-left,
   .gk-notif-viewport--top-center,
   .gk-notif-viewport--top-right {
-    top: calc(var(--safe-top, 0px) + 80px + 0.5rem);
+    top: calc(var(--safe-top, 0px) + 0.5rem);
   }
 }
 @media (max-width: 639px) {
