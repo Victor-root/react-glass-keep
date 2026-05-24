@@ -111,43 +111,13 @@ function shouldUseLong(notif) {
   return false;
 }
 
-// ── Debug logger ────────────────────────────────────────────────────
-// Logs all mobile-toast lifecycle events to the console with a
-// monotonic timestamp so we can reconstruct the exact sequence from
-// a copy-paste. Filter the devtools console by "[gkn]" to keep only
-// these lines.
-const __gkn_t0 = Date.now();
-function dlog(...args) {
-  try {
-    const dt = Date.now() - __gkn_t0;
-    // eslint-disable-next-line no-console
-    console.log(`[gkn +${dt}ms]`, ...args);
-  } catch (_e) {}
-}
-function idsShort(arr) {
-  return arr
-    .map(
-      (n) =>
-        `${(n.id || "?").slice(-4)}${n.dismissed ? "✗" : "✓"}`,
-    )
-    .join(",");
-}
-
 export default function NotificationMobileToast({ onAction, suppressed = false, position = "bottom" }) {
   const { notifications, remove, dismissLocal, cancelAutoDismiss } = useNotifications();
   const [visible, setVisible] = useState(false);
   const lastIdRef = useRef(null);
   const notificationsRef = useRef(notifications);
-  // Log every notifications array mutation so we can see arrivals
-  // and external dismissals as the provider sees them.
-  const prevNotifIdsRef = useRef("");
   useEffect(() => {
     notificationsRef.current = notifications;
-    const snapshot = idsShort(notifications);
-    if (snapshot !== prevNotifIdsRef.current) {
-      dlog("notifications=", snapshot, `(len=${notifications.length})`);
-      prevNotifIdsRef.current = snapshot;
-    }
   }, [notifications]);
 
   // ── Sticky displayed-id ────────────────────────────────────────────
@@ -186,40 +156,24 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
   // (handles persistent notifs and the brief settling window before
   // the first burst snapshot is taken).
   let current = null;
-  let pickReason = "none";
   if (burst && burst.ids[burst.cursor]) {
     const id = burst.ids[burst.cursor];
     current = notifications.find((n) => n.id === id) || null;
-    if (current) pickReason = "burst-cursor";
   }
   if (!current) {
     if (displayedIdRef.current != null) {
       const sticky = notifications.find(
         (n) => n.id === displayedIdRef.current && !n.dismissed,
       );
-      if (sticky) {
-        current = sticky;
-        pickReason = "sticky";
-      }
+      if (sticky) current = sticky;
     }
   }
   if (!current) {
     current = notifications.find((n) => !n.dismissed) || null;
     if (current && current.id !== displayedIdRef.current) {
-      const prev = displayedIdRef.current;
       displayedIdRef.current = current.id;
       displayStartRef.current = Date.now();
-      dlog(
-        "display-start",
-        `id=…${current.id.slice(-4)}`,
-        `prev=${prev ? "…" + prev.slice(-4) : "null"}`,
-        `t=${displayStartRef.current - __gkn_t0}ms`,
-      );
-      pickReason = "fresh";
     } else if (!current) {
-      if (displayedIdRef.current != null) {
-        dlog("display-end (no active notif)");
-      }
       displayedIdRef.current = null;
       displayStartRef.current = 0;
     }
@@ -231,15 +185,8 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
     // Burst cursor moved to a new id (cycler advanced). Update the
     // sticky tracker and stamp display start so the bar's
     // animation-delay anchor is fresh for this slot.
-    const prev = displayedIdRef.current;
     displayedIdRef.current = current.id;
     displayStartRef.current = Date.now();
-    dlog(
-      "display-start",
-      `id=…${current.id.slice(-4)}`,
-      `prev=${prev ? "…" + prev.slice(-4) : "null"}`,
-      `t=${displayStartRef.current - __gkn_t0}ms`,
-    );
   }
 
   // burstSlice derived from burst object — keeps the rest of the
@@ -264,7 +211,6 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
   // closing the panel reveals nothing (until a fresh notif arrives).
   useEffect(() => {
     if (suppressed && burst != null) {
-      dlog("burst-end (panel opened)", `was slice=${burst.slice}`);
       setBurst(null);
     }
   }, [suppressed, burst]);
@@ -278,11 +224,7 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
     if (hasAndroidBridge()) return undefined;
     if (!current) return undefined;
     const dur = current.duration;
-    if (typeof dur !== "number" || dur <= 0) {
-      dlog("burst-settle skipped (persistent / no duration)", `id=…${current.id.slice(-4)}`);
-      return undefined;
-    }
-    dlog("burst-settle scheduled (100ms)", `seed=…${current.id.slice(-4)}`, `dur=${dur}`);
+    if (typeof dur !== "number" || dur <= 0) return undefined;
     const h = setTimeout(() => {
       const fresh = notificationsRef.current;
       // Snapshot ids in chronological order (notifications is
@@ -294,20 +236,11 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
         if (n.persistent || typeof n.duration !== "number" || n.duration <= 0) continue;
         eligibleIds.push(n.id);
       }
-      if (eligibleIds.length === 0) {
-        dlog("burst-settle fired but eligible=0, abort");
-        return;
-      }
+      if (eligibleIds.length === 0) return;
       const slice =
         eligibleIds.length > 1
           ? Math.max(800, Math.floor(dur / eligibleIds.length))
           : dur;
-      dlog(
-        "burst-settle fired",
-        `queueSize=${eligibleIds.length}`,
-        `dur=${dur}`,
-        `slice=${slice}ms`,
-      );
       // Take ownership of every notif we're about to rotate
       // through: cancel each one's provider auto-dismiss timer so
       // it can't fire mid-burst. Combined with the snapshot below
@@ -315,12 +248,9 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
       // cycle from external dismissals (provider timer OR SSE
       // notification_delivered from a desktop session's bar end).
       if (cancelAutoDismiss) {
-        let cancelled = 0;
         for (const id of eligibleIds) {
           cancelAutoDismiss(id);
-          cancelled++;
         }
-        dlog("burst-take-ownership", `cancelled=${cancelled} provider timer(s)`);
       }
       setBurst({ ids: eligibleIds, cursor: 0, slice });
     }, 100);
@@ -344,11 +274,9 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
         } catch (_e) {}
         setVisible(false);
       } else {
-        dlog("setVisible(true)", `id=…${current.id.slice(-4)}`, `pick=${pickReason}`);
         setVisible(true);
       }
     } else if (!current) {
-      dlog("setVisible(false) (no current)");
       setVisible(false);
       lastIdRef.current = null;
     }
@@ -374,31 +302,16 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
     const elapsed = Date.now() - displayStartRef.current;
     const remaining = Math.max(0, burst.slice - elapsed);
     const id = current.id;
-    dlog(
-      "cycler-set",
-      `id=…${id.slice(-4)}`,
-      `cursor=${burst.cursor}/${burst.ids.length - 1}`,
-      `burstSlice=${burst.slice}`,
-      `elapsedSinceDisplay=${elapsed}`,
-      `remaining=${remaining}`,
-    );
     const h = setTimeout(() => {
-      dlog("cycler-fire → advance", `id=…${id.slice(-4)}`);
       dismissLocal(id);
       setBurst((b) => {
         if (!b) return null;
         const next = b.cursor + 1;
-        if (next >= b.ids.length) {
-          dlog("burst exhausted at cursor", b.cursor);
-          return null;
-        }
+        if (next >= b.ids.length) return null;
         return { ...b, cursor: next };
       });
     }, remaining);
-    return () => {
-      dlog("cycler-cleanup", `id=…${id.slice(-4)}`);
-      clearTimeout(h);
-    };
+    return () => clearTimeout(h);
   }, [current?.id, burst, dismissLocal]);
 
   const showCountdown = !!(burstSlice && burstSlice > 0 && current);
@@ -423,63 +336,34 @@ export default function NotificationMobileToast({ onAction, suppressed = false, 
 
     if (!showCountdown || !current) return;
     const el = countdownFillRef.current;
-    if (!el) {
-      dlog("bar-anchor skipped (no fill el)", `id=…${current.id.slice(-4)}`);
-      return;
-    }
+    if (!el) return;
     // burstSlice just became non-null → the bar is rendering for
     // the first time on this notif. Anchor "display start" at now
     // so the bar runs the full slice and the cycler does too.
     if (prevSlice == null && burstSlice != null) {
       displayStartRef.current = Date.now();
-      dlog(
-        "display-start reset (burst settle)",
-        `id=…${current.id.slice(-4)}`,
-        `t=${displayStartRef.current - __gkn_t0}ms`,
-      );
     }
     const elapsed = Math.max(
       0,
       Math.min(burstSlice, Date.now() - displayStartRef.current),
     );
     el.style.animationDelay = `-${elapsed}ms`;
-    dlog(
-      "bar-anchor",
-      `id=…${current.id.slice(-4)}`,
-      `animDuration=${burstSlice}ms`,
-      `animDelay=-${elapsed}ms`,
-    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, burstSlice]);
 
   if (typeof document === "undefined") return null;
   if (hasAndroidBridge()) return null;
-  if (!current || !visible) {
-    dlog("render → null", `current=${current ? "…" + current.id.slice(-4) : "null"}`, `visible=${visible}`);
-    return null;
-  }
-  if (suppressed) {
-    dlog("render → null (suppressed by panel)");
-    return null;
-  }
-  dlog(
-    "render → pill",
-    `id=…${current.id.slice(-4)}`,
-    `variant=${current.variant || "info"}`,
-    `showCountdown=${showCountdown}`,
-    `burstSlice=${burstSlice}`,
-  );
+  if (!current || !visible) return null;
+  if (suppressed) return null;
 
   const { Comp, filled } = pickGlyph(current);
   const stacked = current.actionLayout === "below" && !!current.action;
   const handleTap = () => {
-    dlog("tap → remove", `id=…${current.id.slice(-4)}`);
     setVisible(false);
     remove(current.id);
   };
   const handleAction = (e) => {
     e.stopPropagation();
-    dlog("action → remove", `id=…${current.id.slice(-4)}`);
     if (onAction) onAction(current);
     setVisible(false);
     remove(current.id);
