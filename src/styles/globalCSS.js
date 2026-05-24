@@ -3902,24 +3902,34 @@ html.dark .gk-notif-card--error {
 /* Auto-dismiss countdown bar — only rendered on floating toasts that
    have a finite duration. The fill's animation-duration is set inline
    from the notification's actual duration so it always finishes at
-   the exact moment the provider's timer fires. */
+   the exact moment the provider's timer fires.
+
+   Rendered as a thicker, edge-to-edge progress strip flush against
+   the inside of the card's bottom border. Variant accent is reused
+   for both the resting track (low opacity) and the active fill
+   (full saturation), so the bar reads as part of the card's coloured
+   identity instead of a stuck-on widget. Bottom corners follow the
+   card's inner radius (16 px outer − 2.5 px border ≈ 13.5 px) so the
+   strip curves with the silhouette and the fill stays clipped at
+   the corners. */
 .gk-notif-card__countdown {
   position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 4px;
-  height: 2px;
-  border-radius: 2px;
-  background: rgba(0, 0, 0, 0.06);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: color-mix(in srgb, var(--gk-notif-accent, #6366f1) 16%, transparent);
+  border-bottom-left-radius: 13.5px;
+  border-bottom-right-radius: 13.5px;
   overflow: hidden;
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
 }
 .gk-notif-card__countdown-fill {
   position: absolute;
   inset: 0;
   background: var(--gk-notif-accent, #6366f1);
-  opacity: 0.7;
+  opacity: 0.9;
   transform-origin: left center;
   animation-name: gkNotifCountdown;
   animation-timing-function: linear;
@@ -3930,7 +3940,7 @@ html.dark .gk-notif-card--error {
   to   { transform: scaleX(0); }
 }
 html.dark .gk-notif-card__countdown {
-  background: rgba(255, 255, 255, 0.10);
+  background: color-mix(in srgb, var(--gk-notif-accent, #6366f1) 24%, transparent);
 }
 
 /* All variants render a filled Tabler glyph in the accent colour,
