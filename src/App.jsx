@@ -730,8 +730,8 @@ export default function App() {
       type: "update_available",
       variant: "success",
       icon: "refresh",
-      title: t("newVersionAvailable"),
-      message: t("updateAvailableDescription").replace(
+      title: t("serverUpdateAvailable"),
+      message: t("serverUpdateAvailableDescription").replace(
         "{version}",
         updateInfo.latestVersion,
       ),

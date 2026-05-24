@@ -1069,6 +1069,9 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   noteAiChatQuickExplainPrompt: "Explain this note.",
   updateAvailable: "available",
   newVersionAvailable: "New version available",
+  serverUpdateAvailable: "Server update available",
+  serverUpdateAvailableDescription:
+    "A new version of the GlassKeep server is available (v{version}). Update at your convenience — your data will not be affected.",
   appVersionSectionTitle: "App version",
   updateUpToDateDescription: "You are running the latest version.",
   updateAvailableDescription:

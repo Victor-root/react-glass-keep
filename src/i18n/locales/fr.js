@@ -1070,6 +1070,9 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   noteAiChatQuickExplainPrompt: "Explique cette note.",
   updateAvailable: "disponible",
   newVersionAvailable: "Nouvelle version disponible",
+  serverUpdateAvailable: "Mise à jour du serveur disponible",
+  serverUpdateAvailableDescription:
+    "Une nouvelle version du serveur GlassKeep est disponible (v{version}). Mettez à jour quand vous le souhaitez, vos données ne seront pas affectées.",
   appVersionSectionTitle: "Version de l'application",
   updateUpToDateDescription: "Vous êtes à jour.",
   updateAvailableDescription:
