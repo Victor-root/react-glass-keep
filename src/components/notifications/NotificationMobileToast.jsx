@@ -419,7 +419,15 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
       {showCountdown ? (
         <div className="gk-mobile-toast__countdown-clip" aria-hidden="true">
           <div className="gk-mobile-toast__countdown">
+            {/* key={current.id} forces React to re-mount this DOM
+                node every time the cycler advances. Without it, the
+                bar element stays alive across cycles, its CSS
+                animation has already run to scaleX(0), and changing
+                style.animationDelay imperatively does NOT restart
+                a completed animation. Remount = fresh animation
+                from full to empty for every notif of the burst. */}
             <div
+              key={current.id}
               ref={countdownFillRef}
               className="gk-mobile-toast__countdown-fill"
               style={{ animationDuration: `${burstSlice}ms` }}
