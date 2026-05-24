@@ -3756,46 +3756,28 @@ html.dark .typo-modal-toggle {
   width: 100%;
   padding: 11px 14px;
   border-radius: 16px;
-  border: 1px solid transparent;
-  /* Background opacity dropped from ~0.78 to ~0.42 so the page
-     underneath shows through clearly. Blur cranked from 34 px to
-     50 px so the see-through layer reads as proper frosted glass
-     (sharp content behind would be distracting at this much
-     transparency). saturate(200%) boosts the colour bleeding
-     through so the violet/blue identity stays present even though
-     the gradient is much fainter on its own. */
-  background:
-    linear-gradient(135deg,
-      rgba(238, 232, 255, 0.42) 0%,
-      rgba(230, 230, 255, 0.38) 50%,
-      rgba(218, 232, 255, 0.42) 100%) padding-box,
-    linear-gradient(135deg,
-      rgba(167, 139, 250, 0.62) 0%,
-      rgba(99, 102, 241, 0.62) 50%,
-      rgba(96, 165, 250, 0.62) 100%) border-box;
+  /* Flat translucent surface — gradient dropped. Heavy backdrop
+     blur over a neutral white/dark wash lets the page underneath
+     show through as a soft frosted backdrop without any coloured
+     tint of its own. */
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
   box-shadow:
-    0 14px 36px rgba(76, 29, 149, 0.16),
-    0 4px 12px rgba(99, 102, 241, 0.12),
+    0 14px 36px rgba(15, 23, 42, 0.18),
+    0 4px 12px rgba(15, 23, 42, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
   color: #1d1d1f;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   animation: gkNotifIn 280ms cubic-bezier(.22,.61,.36,1) both;
 }
 html.dark .gk-notif-card {
-  background:
-    linear-gradient(135deg,
-      rgba(42, 32, 72, 0.45) 0%,
-      rgba(36, 34, 76, 0.42) 50%,
-      rgba(32, 38, 72, 0.45) 100%) padding-box,
-    linear-gradient(135deg,
-      rgba(167, 139, 250, 0.55) 0%,
-      rgba(129, 140, 248, 0.50) 50%,
-      rgba(96, 165, 250, 0.50) 100%) border-box;
+  background: rgba(40, 40, 45, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow:
     0 14px 36px rgba(0, 0, 0, 0.55),
-    0 4px 12px rgba(76, 29, 149, 0.32),
+    0 4px 12px rgba(0, 0, 0, 0.32),
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
   color: #f5f5f7;
 }
@@ -4117,22 +4099,16 @@ html.dark .gk-notif-bell-badge {
   z-index: 75;
   color: #1d1d1f;
   border-radius: 14px;
-  /* Same transparency treatment as the cards (0.42 light / 0.45
-     dark) over a 50 px blur, so the panel reads as a frosted
-     extension of the same glass surface rather than a solid sheet.
-     The list inside is text-heavy; the strong blur keeps every
-     line legible regardless of what sits underneath. */
-  background:
-    linear-gradient(135deg,
-      rgba(238, 232, 255, 0.55) 0%,
-      rgba(230, 230, 255, 0.52) 50%,
-      rgba(218, 232, 255, 0.55) 100%);
+  /* Same flat frosted wash as the cards, just a bit more opaque so
+     a stack of rows stays readable when the panel is open over
+     busy content. No gradient — neutral white/dark only. */
+  background: rgba(255, 255, 255, 0.55);
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
-  border: 1px solid rgba(124, 58, 237, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow:
-    0 18px 40px -10px rgba(76, 29, 149, 0.25),
-    0 8px 18px -6px rgba(99, 102, 241, 0.16),
+    0 18px 40px -10px rgba(15, 23, 42, 0.25),
+    0 8px 18px -6px rgba(15, 23, 42, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
   display: flex;
   flex-direction: column;
@@ -4141,15 +4117,11 @@ html.dark .gk-notif-bell-badge {
 }
 html.dark .gk-notif-center {
   color: #f5f5f7;
-  background:
-    linear-gradient(135deg,
-      rgba(42, 32, 72, 0.62) 0%,
-      rgba(36, 34, 76, 0.60) 50%,
-      rgba(32, 38, 72, 0.62) 100%);
-  border: 1px solid rgba(167, 139, 250, 0.32);
+  background: rgba(40, 40, 45, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow:
     0 18px 40px -10px rgba(0, 0, 0, 0.65),
-    0 8px 18px -6px rgba(76, 29, 149, 0.45),
+    0 8px 18px -6px rgba(0, 0, 0, 0.45),
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 @keyframes gkNotifCenterIn {
