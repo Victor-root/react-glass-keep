@@ -39,6 +39,7 @@ Headline change: a **completely rewritten in-app notification system**. Every to
 - 🔗 **Tapping a link in a note no longer pops the mobile keyboard** — iOS / Android Chrome were focusing the underlying ProseMirror surface on the same touch event that fired the link. Capture-phase guards now block the focus while letting the link navigate through
 - 🎨 **Empty drawing drafts and accidental taps ignored** — stray single taps on the drawing canvas no longer create empty drawing notes
 - 🧷 **Hidden accordion content marked `aria-hidden` + `inert`** so screen readers and Tab navigation skip it
+- ↩️ **Redo restores edits after autosave** — once a note had been autosaved (green check in the modal header), pressing Redo right after an Undo silently kept the undone content on screen. The rich-text editor's echo-prevention ref was left pointing at the user's last typed doc after an external `setContent`, so the redone value was treated as a self-echo and skipped. The ref now tracks what's actually installed in the editor, so redo applies the snapshot every time
 - 📱 **Mobile scroll FPS lift on the notes list** — dropped the per-card backdrop blur on touch devices, memoised the masonry card render, and added `loading="lazy"` to inline note images. The desktop glass aesthetic stays unchanged
 
 ### 🛠️ Upgrade
