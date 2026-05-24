@@ -557,6 +557,7 @@ export default function App() {
   const {
     notify,
     dismiss: dismissNotification,
+    dismissByServerIds: dismissByServerIdsNotif,
     notifications: allNotifications,
     setDefaultDuration: setNotifDefaultDuration,
   } = useNotifications();
@@ -610,16 +611,6 @@ export default function App() {
     if (variant === "error") return "error";
     return "info";
   };
-
-  // Latest-known notifications mirror — the SSE handler reads this
-  // out of a closure that was captured when `[token]` last changed,
-  // so without the ref it would only see the snapshot from that
-  // moment. Used by the `notification_delivered` cross-device sync
-  // case below to find local cards matching the incoming server ids.
-  const notificationsRef = useRef(allNotifications);
-  useEffect(() => {
-    notificationsRef.current = allNotifications;
-  }, [allNotifications]);
 
   // Discrete ding whenever a NEW notification appears. We compare
   // `createdAt` rather than the array's first id, because closing
@@ -3175,21 +3166,13 @@ export default function App() {
             } else if (msg && msg.type === "notification_delivered" && Array.isArray(msg.ids)) {
               // Cross-device dismissal — another tab/device (or this
               // one) just acknowledged these server notification ids.
-              // Dismiss any local card still showing them so the user
-              // sees the same state everywhere. We dismiss (soft
-              // hide, stays in history) rather than remove because
-              // the centre panel should still surface them — only
-              // the floating display needs to clear.
-              const incomingIds = new Set(
-                msg.ids.map((x) => Number(x)).filter((x) => Number.isFinite(x)),
-              );
-              for (const n of notificationsRef.current) {
-                if (n.dismissed) continue;
-                const sid = n.metadata?.serverNotificationId;
-                if (sid != null && incomingIds.has(Number(sid))) {
-                  dismissNotification(n.id);
-                }
-              }
+              // We route through the reducer dispatcher because
+              // notificationsRef hasn't necessarily caught up with a
+              // just-added card (React commits the mirror useEffect
+              // after the current microtask). The reducer sees the
+              // latest state for every row, including the one whose
+              // ADD action ran one microtask ago.
+              dismissByServerIdsNotif(msg.ids);
             } else if (msg && msg.type === "pending_user_registered") {
               // Admin notification: a new user is awaiting approval.
               if (currentUserRef.current?.is_admin) {

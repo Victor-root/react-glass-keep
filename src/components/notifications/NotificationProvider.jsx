@@ -64,6 +64,25 @@ function reducer(state, action) {
           ? { ...n, dismissed: true, dismissedAt: Date.now() }
           : n,
       );
+    case "DISMISS_BY_SERVER_IDS": {
+      // Cross-device sync — match by the stored
+      // metadata.serverNotificationId so a `notification_delivered`
+      // broadcast can clear active cards even when the matching
+      // ADD action is still being flushed by React. Running through
+      // a reducer guarantees we see the latest state for every row
+      // (including the just-added one) rather than a snapshot from
+      // a stale closure.
+      const ids = action.ids;
+      if (!ids || ids.size === 0) return state;
+      const ts = Date.now();
+      return state.map((n) => {
+        if (n.dismissed) return n;
+        const sid = n.metadata?.serverNotificationId;
+        if (sid == null) return n;
+        if (!ids.has(Number(sid))) return n;
+        return { ...n, dismissed: true, dismissedAt: ts };
+      });
+    }
     case "REMOVE":
       // Hard delete: drop the row entirely. Used by the per-item X
       // in the notification center, so the user can prune history
@@ -143,6 +162,23 @@ export function NotificationProvider({ children }) {
     [cancelTimer],
   );
 
+  // Cross-device dismissal — clears any active card whose
+  // metadata.serverNotificationId is in `ids`. The reducer dispatch
+  // is the only way to safely act on "newly added notifications" in
+  // the same microtask: notificationsRef.current isn't updated
+  // until React commits the useEffect that mirrors state, but the
+  // reducer always operates on the latest array.
+  const dismissByServerIds = useCallback((ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    const set = new Set();
+    for (const raw of ids) {
+      const n = Number(raw);
+      if (Number.isFinite(n)) set.add(n);
+    }
+    if (set.size === 0) return;
+    dispatch({ type: "DISMISS_BY_SERVER_IDS", ids: set });
+  }, []);
+
   const dismissAll = useCallback(() => {
     timersRef.current.forEach((h) => clearTimeout(h));
     timersRef.current.clear();
@@ -210,6 +246,7 @@ export function NotificationProvider({ children }) {
     notify,
     dismiss,
     remove,
+    dismissByServerIds,
     dismissAll,
     clear,
     setDefaultDuration,
@@ -227,6 +264,7 @@ const NOOP_VALUE = {
   notify: () => null,
   dismiss: () => {},
   remove: () => {},
+  dismissByServerIds: () => {},
   dismissAll: () => {},
   clear: () => {},
   setDefaultDuration: () => {},
