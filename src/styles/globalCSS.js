@@ -4755,6 +4755,105 @@ html.dark .gk-notif-center__header-btn:hover { background: rgba(255,255,255,0.07
 .gk-notif-center__close:hover { opacity: 1; background: rgba(0,0,0,0.06); }
 html.dark .gk-notif-center__close:hover { background: rgba(255,255,255,0.08); }
 
+/* ── Mobile-only premium header treatment ──────────────────────────
+   Mobile sheet header was reading as a flat system panel: hard
+   white, hard 1 px bottom separator, gradient title barely showing
+   through the stroke. The block below restyles ONLY the mobile
+   sheet header — dimensions, padding, layout and behaviour are
+   untouched. */
+
+/* Layered backdrop: a very pale lilac base + a radial glow
+   anchored on the LEFT so the brand gradient is felt under the
+   logo + title without painting the whole row. Replaces the flat
+   white panel-header look. */
+.gk-notif-center--mobile .gk-notif-center__header {
+  position: relative;
+  background:
+    radial-gradient(120% 220% at 0% 50%, rgba(139, 92, 246, 0.16), rgba(99, 102, 241, 0.06) 35%, transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(249, 246, 255, 0.92));
+  border-bottom: none;
+}
+html.dark .gk-notif-center--mobile .gk-notif-center__header {
+  background:
+    radial-gradient(120% 220% at 0% 50%, rgba(139, 92, 246, 0.24), rgba(99, 102, 241, 0.10) 35%, transparent 62%),
+    linear-gradient(180deg, rgba(34, 34, 44, 0.96), rgba(28, 28, 38, 0.94));
+}
+
+/* Discreet brand identity: a 1 px gradient strip at the very top
+   edge of the header — fades in from the sides so it reads as an
+   ornament, not a divider. Pseudo-element, no height impact. */
+.gk-notif-center--mobile .gk-notif-center__header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #8b5cf6 28%, #6366f1 72%, transparent);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* Soft bottom separator: replaces the hard 1 px line with a 6 px
+   gradient fade that bleeds into the list area. Mobile only. */
+.gk-notif-center--mobile .gk-notif-center__header::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.05), transparent);
+  pointer-events: none;
+}
+html.dark .gk-notif-center--mobile .gk-notif-center__header::after {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.22), transparent);
+}
+
+/* Drop the contour-stroke on mobile — with the new tinted backdrop
+   the gradient pops without an outline, and the stroke was muddying
+   the rendering. Use a slightly deeper violet/indigo pair so the
+   title reads as a richer brand colour against the tinted bg. */
+.gk-notif-center--mobile .gk-notif-center__title {
+  -webkit-text-stroke: 0;
+  background: linear-gradient(90deg, #7c3aed, #4f46e5);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Logo gets a hint of relief: a soft 1 px brand-tinted ring plus a
+   tiny ambient shadow so it doesn't sit flat on the tinted bg. */
+.gk-notif-center--mobile .gk-notif-center__logo {
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.20),
+    0 1px 3px rgba(99, 102, 241, 0.22);
+}
+html.dark .gk-notif-center--mobile .gk-notif-center__logo {
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.32),
+    0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* Close button reads as a discreet brand-tinted chip instead of the
+   default opacity-0.6 glyph — still subdued but visually consistent
+   with the header. Dimensions unchanged. */
+.gk-notif-center--mobile .gk-notif-center__close {
+  background: rgba(99, 102, 241, 0.08);
+  color: #5a4cb8;
+  opacity: 0.85;
+}
+.gk-notif-center--mobile .gk-notif-center__close:hover {
+  background: rgba(99, 102, 241, 0.16);
+  opacity: 1;
+}
+html.dark .gk-notif-center--mobile .gk-notif-center__close {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+}
+html.dark .gk-notif-center--mobile .gk-notif-center__close:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
 .gk-notif-center__list {
   overflow-y: auto;
   /* Prevent swipe-translated cards from creating a horizontal
