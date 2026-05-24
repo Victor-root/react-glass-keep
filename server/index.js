@@ -3127,6 +3127,17 @@ app.post("/api/admin/pending-users/:id/approve", auth, adminOnly, (req, res) => 
   try { promoteToAdminIfNeeded(pending.email); } catch {}
 
   const user = getUserById.get(info.lastInsertRowid);
+  // Live-sync to every other admin session so their AdminPanel
+  // pending / users lists refresh without waiting for a manual
+  // reload. The acting admin's tab gets it too — its useEffect
+  // dedup keeps it cheap, and there's no source-tab skip logic
+  // needed because reload is idempotent.
+  broadcastToAdmins({
+    type: "pending_user_resolved",
+    action: "approved",
+    pendingId: id,
+    newUserId: user.id,
+  });
   res.json({
     id: user.id,
     name: user.name,
@@ -3142,6 +3153,11 @@ app.post("/api/admin/pending-users/:id/reject", auth, adminOnly, (req, res) => {
   if (!pending) return res.status(404).json({ error: "Pending registration not found." });
   deletePendingById.run(id);
   cleanupPendingUserNotifications(id);
+  broadcastToAdmins({
+    type: "pending_user_resolved",
+    action: "rejected",
+    pendingId: id,
+  });
   res.json({ ok: true });
 });
 

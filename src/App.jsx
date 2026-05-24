@@ -3481,6 +3481,19 @@ export default function App() {
                 });
                 loadPendingUsers?.();
               }
+            } else if (msg && msg.type === "pending_user_resolved") {
+              // Another admin (or this one on a different tab) just
+              // approved / rejected a pending registration. Refresh
+              // the AdminPanel lists so the row disappears for every
+              // admin in real time. The bell-notification card is
+              // already cleared by the existing notification_removed
+              // SSE the server sends alongside (via
+              // cleanupPendingUserNotifications), so we only handle
+              // the panel state here.
+              if (currentUserRef.current?.is_admin) {
+                loadPendingUsers?.();
+                if (msg.action === "approved") loadAllUsers?.();
+              }
             } else if (msg && msg.type === "user_settings_updated" && msg.settings) {
               // Live sync of user preferences from another session of
               // the same user. Skip our own echo (originClientId
