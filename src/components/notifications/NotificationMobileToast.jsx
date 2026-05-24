@@ -141,7 +141,11 @@ export default function NotificationMobileToast({ onAction }) {
   };
 
   const node = (
-    <div className="gk-mobile-toast" role="status" onClick={handleTap}>
+    <div
+      className={`gk-mobile-toast gk-mobile-toast--${current.variant || "info"}`}
+      role="status"
+      onClick={handleTap}
+    >
       <span className="gk-mobile-toast__icon" aria-hidden="true">
         <Comp
           className={`tabler-icon${filled ? " tabler-icon--filled" : ""}`}

@@ -4069,66 +4069,134 @@ html.dark .gk-notif-card.gk-notif-card--center {
   to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
-/* ───────── Android-style mobile toast ─────────
-   Compact dark pill anchored at the bottom of the viewport — matches
-   the platform's native toast aesthetic (single line, fades in,
-   tap-to-dismiss). Used on coarse-pointer devices in place of the
-   floating glass-card stack. */
+/* ───────── Mobile PWA toast ─────────
+   Full-width bottom-anchored card on PWA / browser sessions. Uses the
+   same LED-strip visual language as the desktop floating cards — 2.5 px
+   variant-coloured border + crisp 1 px outer ring + a soft 4 px bleed.
+   The Android wrapper short-circuits this entirely and routes through
+   the native Toast.makeText bridge instead. */
 .gk-mobile-toast {
   position: fixed;
   z-index: 70;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(var(--safe-bottom, 0px) + 32px);
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--safe-bottom, 0px) + 24px);
   display: flex;
   align-items: center;
-  gap: 10px;
-  max-width: calc(100vw - 24px);
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(40, 40, 44, 0.94);
-  color: #fff;
+  gap: 11px;
+  padding: 11px 14px;
+  border-radius: 16px;
+  /* Same vars / palette as the desktop card. The fallback is indigo so
+     a notification fired with an unknown variant still gets a coloured
+     border instead of going transparent. */
+  --gk-notif-glow-ring:  rgba(99, 102, 241, 0.32);
+  --gk-notif-glow-bleed: rgba(99, 102, 241, 0.45);
+  --gk-notif-bg-tint:    rgba(99, 102, 241, 0.06);
+  background:
+    linear-gradient(var(--gk-notif-bg-tint), var(--gk-notif-bg-tint)),
+    rgba(252, 252, 255, 0.97);
+  border: 2.5px solid var(--gk-notif-accent, #6366f1);
+  box-shadow:
+    0 0 0 1px   var(--gk-notif-glow-ring),
+    0 0 4px 0   var(--gk-notif-glow-bleed),
+    0 6px 14px -2px rgba(15, 23, 42, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
+  color: #1d1d1f;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.3;
-  box-shadow:
-    0 12px 28px rgba(0, 0, 0, 0.32),
-    0 4px 10px rgba(0, 0, 0, 0.18);
   animation: gkMobileToastIn 220ms cubic-bezier(.22,.61,.36,1) both;
   cursor: pointer;
 }
 html.dark .gk-mobile-toast {
-  background: rgba(28, 28, 32, 0.96);
+  background:
+    linear-gradient(var(--gk-notif-bg-tint), var(--gk-notif-bg-tint)),
+    rgba(18, 18, 28, 0.97);
+  color: #f0f0f5;
+  box-shadow:
+    0 0 0 1px   var(--gk-notif-glow-ring),
+    0 0 5px 0   var(--gk-notif-glow-bleed),
+    0 6px 14px -2px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
+
+/* Variant palette — mirrors .gk-notif-card--* so the mobile toast and
+   the desktop card stay visually synced when both appear in the same
+   user's history (centre panel). */
+.gk-mobile-toast--info {
+  --gk-notif-accent:     #3b82f6;
+  --gk-notif-bg-tint:    rgba(59, 130, 246, 0.06);
+  --gk-notif-glow-ring:  rgba(59, 130, 246, 0.32);
+  --gk-notif-glow-bleed: rgba(59, 130, 246, 0.45);
+}
+.gk-mobile-toast--success {
+  --gk-notif-accent:     #10b981;
+  --gk-notif-bg-tint:    rgba(16, 185, 129, 0.06);
+  --gk-notif-glow-ring:  rgba(16, 185, 129, 0.32);
+  --gk-notif-glow-bleed: rgba(16, 185, 129, 0.45);
+}
+.gk-mobile-toast--warning {
+  --gk-notif-accent:     #f59e0b;
+  --gk-notif-bg-tint:    rgba(245, 158, 11, 0.07);
+  --gk-notif-glow-ring:  rgba(245, 158, 11, 0.32);
+  --gk-notif-glow-bleed: rgba(245, 158, 11, 0.45);
+}
+.gk-mobile-toast--error {
+  --gk-notif-accent:     #ef4444;
+  --gk-notif-bg-tint:    rgba(239, 68, 68, 0.06);
+  --gk-notif-glow-ring:  rgba(239, 68, 68, 0.32);
+  --gk-notif-glow-bleed: rgba(239, 68, 68, 0.45);
+}
+html.dark .gk-mobile-toast--info {
+  --gk-notif-glow-ring:  rgba(59, 130, 246, 0.45);
+  --gk-notif-glow-bleed: rgba(59, 130, 246, 0.60);
+}
+html.dark .gk-mobile-toast--success {
+  --gk-notif-glow-ring:  rgba(16, 185, 129, 0.45);
+  --gk-notif-glow-bleed: rgba(16, 185, 129, 0.60);
+}
+html.dark .gk-mobile-toast--warning {
+  --gk-notif-glow-ring:  rgba(245, 158, 11, 0.45);
+  --gk-notif-glow-bleed: rgba(245, 158, 11, 0.60);
+}
+html.dark .gk-mobile-toast--error {
+  --gk-notif-glow-ring:  rgba(239, 68, 68, 0.45);
+  --gk-notif-glow-bleed: rgba(239, 68, 68, 0.60);
+}
+
 .gk-mobile-toast__icon {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  opacity: 0.95;
+  color: var(--gk-notif-accent, #6366f1);
+}
+.gk-mobile-toast__icon .tabler-icon {
+  width: 22px;
+  height: 22px;
 }
 .gk-mobile-toast__body {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   overflow: hidden;
 }
 .gk-mobile-toast__title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.96);
+  color: inherit;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .gk-mobile-toast__message {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.88);
+  font-size: 12.5px;
+  color: inherit;
+  opacity: 0.85;
   word-break: break-word;
   /* Cap at two lines so a verbose message can't push the toast to
      swallow half the screen. Tapping the toast still reveals the
@@ -4142,16 +4210,18 @@ html.dark .gk-mobile-toast {
   flex: 0 0 auto;
   font-size: 12.5px;
   font-weight: 700;
-  color: #93c5fd;
+  color: var(--gk-notif-accent, #6366f1);
   background: transparent;
   border: none;
-  padding: 4px 8px;
+  padding: 4px 10px;
   margin-right: -4px;
-  border-radius: 999px;
+  border-radius: 8px;
   cursor: pointer;
 }
-.gk-mobile-toast__action:hover { background: rgba(255, 255, 255, 0.08); }
-.gk-mobile-toast__action:active { background: rgba(255, 255, 255, 0.14); }
+.gk-mobile-toast__action:hover { background: rgba(0, 0, 0, 0.05); }
+.gk-mobile-toast__action:active { background: rgba(0, 0, 0, 0.10); }
+html.dark .gk-mobile-toast__action:hover { background: rgba(255, 255, 255, 0.08); }
+html.dark .gk-mobile-toast__action:active { background: rgba(255, 255, 255, 0.14); }
 
 @keyframes gkMobileToastIn {
   from { opacity: 0; transform: translate(-50%, 24px); }
