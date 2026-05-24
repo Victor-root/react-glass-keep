@@ -134,7 +134,7 @@ function idsShort(arr) {
 }
 
 export default function NotificationMobileToast({ onAction, suppressed = false }) {
-  const { notifications, remove, dismissLocal } = useNotifications();
+  const { notifications, remove, dismissLocal, cancelAutoDismiss } = useNotifications();
   const [visible, setVisible] = useState(false);
   const lastIdRef = useRef(null);
   const notificationsRef = useRef(notifications);
@@ -250,6 +250,21 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
         `dur=${dur}`,
         `slice=${slice}ms`,
       );
+      // Take ownership of every notif we're about to rotate
+      // through: cancel each one's provider auto-dismiss timer so
+      // it can't fire mid-burst and kill a notif before the cycler
+      // reaches it. Only affects THIS session — desktop / other
+      // tabs of the same user have their own provider and timers.
+      if (cancelAutoDismiss) {
+        let cancelled = 0;
+        for (const n of fresh) {
+          if (n.dismissed) continue;
+          if (n.persistent || typeof n.duration !== "number" || n.duration <= 0) continue;
+          cancelAutoDismiss(n.id);
+          cancelled++;
+        }
+        dlog("burst-take-ownership", `cancelled=${cancelled} provider timer(s)`);
+      }
       setBurstSlice(slice);
     }, 100);
     return () => {

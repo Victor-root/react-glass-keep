@@ -496,6 +496,14 @@ export function NotificationProvider({ children }) {
     markDelivered,
     mergeHistory,
     dismissLocal,
+    // Cancel a notification's auto-dismiss setTimeout WITHOUT
+    // dismissing it. Used by the mobile pill when it takes
+    // ownership of a queue: the per-notif provider timer would
+    // otherwise fire mid-burst and dismiss notifs the cycler
+    // hadn't reached yet. Stays in the local session only — no
+    // POST, no SSE — so other sessions of the same user are
+    // unaffected.
+    cancelAutoDismiss: cancelTimer,
   };
 
   return (
@@ -521,6 +529,7 @@ const NOOP_VALUE = {
   markDelivered: () => {},
   mergeHistory: () => {},
   dismissLocal: () => {},
+  cancelAutoDismiss: () => {},
 };
 
 export function useNotifications() {
