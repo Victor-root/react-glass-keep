@@ -4936,16 +4936,14 @@ export default function App() {
       // perceives as "I didn't draw anything" — without filtering, the
       // auto-trash would skip the note because drawPaths.length is
       // non-zero, and an empty card would stick around in the list.
-      // We only apply this filter for FRESH notes (this session's
-      // create button) so an existing dot-style drawing the user
-      // saved on purpose isn't auto-trashed on re-open / close.
-      const isFreshNote =
-        freshlyCreatedNoteRef.current === String(activeId);
-      const effectiveDrawPaths = isFreshNote
-        ? drawPaths.filter(
-            (p) => Array.isArray(p?.points) && p.points.length >= 2,
-          )
-        : drawPaths;
+      // The combination titleEmpty + bodyEmpty + noImages is already
+      // conservative enough that a deliberate dot-only drawing with no
+      // title and no images is vanishingly rare; applying the filter
+      // here lets accidental taps on the canvas resolve to "empty"
+      // without keeping a junk card around.
+      const meaningfulPaths = drawPaths.filter(
+        (p) => Array.isArray(p?.points) && p.points.length >= 2,
+      );
       // For each note type, "body" means what the user actually authored —
       // the rich-text doc for text notes, the items list for checklists,
       // the drawing strokes (+ optional inline text) for draw notes.
@@ -4955,7 +4953,7 @@ export default function App() {
           ? !Array.isArray(mItems) || mItems.length === 0
           : mType === "audio"
             ? isAudioContentEmpty(mBody)
-            : !mBody?.trim() && effectiveDrawPaths.length === 0;
+            : !mBody?.trim() && meaningfulPaths.length === 0;
       const titleEmpty = !mTitle?.trim();
       const noImages = !Array.isArray(mImages) || mImages.length === 0;
       if (titleEmpty && bodyEmpty && noImages) {
