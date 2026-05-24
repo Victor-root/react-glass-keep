@@ -112,7 +112,7 @@ function shouldUseLong(notif) {
 }
 
 export default function NotificationMobileToast({ onAction, suppressed = false }) {
-  const { notifications, remove, dismiss } = useNotifications();
+  const { notifications, remove, dismissLocal } = useNotifications();
   const current = notifications.find((n) => !n.dismissed) || null;
   const [visible, setVisible] = useState(false);
   const lastIdRef = useRef(null);
@@ -168,12 +168,18 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
     if (queueSize <= 1) return undefined; // Single notif — let the provider's own timer handle it.
     const share = Math.max(800, Math.floor(userDuration / queueSize));
     const h = setTimeout(() => {
-      // Soft dismiss — same path the provider's auto-dismiss takes,
-      // so the row lands in the history panel like a normal toast.
-      dismiss(current.id);
+      // dismissLocal (not dismiss) — same visual effect on this
+      // session but does NOT POST /notifications/delivered, so no
+      // SSE broadcast reaches the user's other sessions. A desktop
+      // session of the same user keeps its own bar running until
+      // its provider's setTimeout fires at full duration. The
+      // provider's own fallback timer here still fires later and
+      // performs the ack (its dispatch is a no-op since this row
+      // is already dismissed).
+      dismissLocal(current.id);
     }, share);
     return () => clearTimeout(h);
-  }, [current?.id, dismiss]);
+  }, [current?.id, dismissLocal]);
 
   // Countdown bar — declared at the top of the component so the hook
   // call site is stable across renders (the early returns below would

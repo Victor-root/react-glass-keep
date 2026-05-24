@@ -288,6 +288,22 @@ export function NotificationProvider({ children }) {
     [cancelTimer, ackDeliveredById],
   );
 
+  // Silent dismiss — marks the notification dismissed in this
+  // session's state WITHOUT acking delivery to the server. Used by
+  // the mobile pill cycler so per-slice dismissals don't trigger a
+  // POST /notifications/delivered, which would broadcast a
+  // notification_delivered SSE event to the same user's other
+  // sessions (e.g. a desktop tab) and cut their card short mid-bar.
+  // The provider's own auto-dismiss setTimeout still fires at
+  // `duration` ms after notify() and performs the ack normally —
+  // its dispatch DISMISS is then a no-op since this method already
+  // marked the row dismissed. Net effect: the server eventually
+  // learns the row was delivered, but the cycler doesn't drive the
+  // cross-device broadcast.
+  const dismissLocal = useCallback((id) => {
+    dispatch({ type: "DISMISS", id });
+  }, []);
+
   const remove = useCallback(
     (id) => {
       cancelTimer(id);
@@ -479,6 +495,7 @@ export function NotificationProvider({ children }) {
     setOnMarkRemoved,
     markDelivered,
     mergeHistory,
+    dismissLocal,
   };
 
   return (
@@ -503,6 +520,7 @@ const NOOP_VALUE = {
   setOnMarkRemoved: () => {},
   markDelivered: () => {},
   mergeHistory: () => {},
+  dismissLocal: () => {},
 };
 
 export function useNotifications() {
