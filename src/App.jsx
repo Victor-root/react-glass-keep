@@ -4910,9 +4910,24 @@ export default function App() {
     // Unmaterialised draft: the user opened a blank note via the creation
     // buttons and never touched it, so nothing was ever persisted. Just run
     // the exit animation and drop the pending state — no IDB/queue work.
+    // Defensive: also remove the draft id from `notes` in case some path
+    // accidentally added it before closeModal fired (this should be a no-op
+    // in the normal flow, but it covers any reproducer where the user
+    // reports "empty note appeared in the list" without a materialise step
+    // they can identify). Drawing notes additionally fire the empty-note
+    // toast so the user gets feedback that the discard happened.
     if (pendingDraftRef.current && String(activeId) === String(pendingDraftRef.current.id)) {
+      const draftId = String(pendingDraftRef.current.id);
+      const draftType = pendingDraftRef.current.type;
       pendingDraftRef.current = null;
       freshlyCreatedNoteRef.current = null;
+      setNotes((prev) => {
+        const next = prev.filter((n) => String(n.id) !== draftId);
+        return next.length === prev.length ? prev : next;
+      });
+      if (draftType === "draw") {
+        showToast(t("emptyNoteDeleted"), "info", 3000, "trash");
+      }
       startModalExitAnimation();
       return;
     }
