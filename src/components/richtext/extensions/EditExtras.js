@@ -121,6 +121,12 @@ function hideTooltip() {
   tooltipEl?.classList.remove("rt-link-tooltip--visible");
 }
 
+// Lifetime of the floating "Copier" overlay after it appears on hover.
+// The button stays visible this long total (timer restarted whenever
+// the user hovers another inline `<code>` or re-enters the button),
+// giving the user enough time to reach and click it without having to
+// keep the cursor on the underlying inline code.
+const INLINE_COPY_VISIBLE_MS = 3000;
 let inlineCopyEl = null;
 let inlineCopyTarget = null;
 let inlineCopyHideTimer = null;
@@ -213,6 +219,10 @@ function showInlineCopyFor(codeEl, { sticky = false } = {}) {
   // Defer positioning to next frame so the just-shown element has
   // measurable dimensions.
   requestAnimationFrame(positionInlineCopyForCurrent);
+  // Desktop hover: arm the auto-hide so the button stays visible for a
+  // few seconds without requiring the cursor to stay on the inline
+  // code. Sticky (mobile tap) is dismissed by an explicit outside tap.
+  if (!sticky) scheduleInlineCopyHide();
 }
 function scheduleInlineCopyHide() {
   if (inlineCopySticky) return;
@@ -222,7 +232,7 @@ function scheduleInlineCopyHide() {
     inlineCopyEl?.classList.remove("rt-inline-code-copy--sticky");
     inlineCopyTarget = null;
     inlineCopyHideTimer = null;
-  }, 1000);
+  }, INLINE_COPY_VISIBLE_MS);
 }
 function hideInlineCopyImmediate() {
   if (inlineCopyHideTimer) {
