@@ -3530,19 +3530,26 @@ html.dark .typo-modal-toggle {
 /* Desktop micro-compact: when the toolbar's own inline-size shrinks to
    the ~880 px range (modal at max-w-4xl with the scrollbar gutter
    reserved), trim a few pixels off each control so all four super-
-   groups still tuck onto two ribbon rows. The savings (~4 px/button,
-   8 px on .rt-btn--wide, 6 px × 6 on .rt-style-btn, 4 px on each
-   .rt-sep) add up to ~100 px of recovered horizontal room — enough
-   margin to absorb the scrollbar gutter without wrapping a group.
+   groups still tuck onto two ribbon rows.
+
+   The :not() chain is load-bearing — without it the base .rt-btn
+   override would also raise the min-width of variants like
+   .rt-btn--chevron (20 px), .rt-btn--narrow (64 px), .rt-btn--link
+   (68 px) and grow them instead of shrinking the toolbar. Only plain
+   buttons and .rt-btn--swatch are reduced; the named variants keep
+   the widths they were designed with.
 
    Guarded by min-width: 641 px so the mobile bottom-sheet (which uses
    its own dedicated .mobile-fmt-sheet-content layout) is never touched. */
 @media (min-width: 641px) {
   @container rt-toolbar (max-width: 880px) {
-    .rt-toolbar .rt-btn { min-width: 32px; padding: 0 6px; }
-    .rt-toolbar .rt-btn--wide { width: 122px; flex: 0 0 122px; }
-    .rt-toolbar .rt-style-btn { width: 78px; flex: 0 0 78px; }
-    .rt-toolbar .rt-sep { margin: 2px 4px; }
+    .rt-btn:not(.rt-btn--wide):not(.rt-btn--narrow):not(.rt-btn--chevron):not(.rt-btn--block):not(.rt-btn--link):not(.rt-btn--menu) {
+      min-width: 32px;
+      padding: 0 6px;
+    }
+    .rt-btn--wide { width: 122px; flex: 0 0 122px; }
+    .rt-style-btn { width: 78px; flex: 0 0 78px; }
+    .rt-sep { margin: 2px 4px; }
   }
 }
 
