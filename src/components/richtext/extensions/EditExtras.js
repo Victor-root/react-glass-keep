@@ -219,10 +219,34 @@ function showInlineCopyFor(codeEl, { sticky = false } = {}) {
   // Defer positioning to next frame so the just-shown element has
   // measurable dimensions.
   requestAnimationFrame(positionInlineCopyForCurrent);
+  // Keep the button glued to its inline-code anchor while the user
+  // scrolls the editor / modal. Registered lazily on first show and
+  // reused for every subsequent appearance (desktop hover + mobile
+  // sticky alike).
+  ensureInlineCopyScrollListener();
   // Desktop hover: arm the auto-hide so the button stays visible for a
   // few seconds without requiring the cursor to stay on the inline
   // code. Sticky (mobile tap) is dismissed by an explicit outside tap.
   if (!sticky) scheduleInlineCopyHide();
+}
+
+// Capture-phase scroll + resize listener that re-anchors the inline
+// copy button to the right edge of its underlying `<code>`. The
+// code-block button uses its own per-NodeView scroll listener in
+// CodeBlockCopy.js, so this one is restricted to the inline overlay.
+// Lazy + permanent — handler is a single rect read when nothing is
+// shown.
+let inlineCopyScrollListenerRegistered = false;
+function ensureInlineCopyScrollListener() {
+  if (inlineCopyScrollListenerRegistered) return;
+  inlineCopyScrollListenerRegistered = true;
+  const reposition = () => {
+    if (inlineCopyTarget && inlineCopyEl?.classList.contains("rt-inline-code-copy--visible")) {
+      positionInlineCopyForCurrent();
+    }
+  };
+  document.addEventListener("scroll", reposition, { passive: true, capture: true });
+  window.addEventListener("resize", reposition, { passive: true });
 }
 function scheduleInlineCopyHide() {
   if (inlineCopySticky) return;
