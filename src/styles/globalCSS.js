@@ -1223,16 +1223,9 @@ html.dark .modal-footer-btn--pin-active:hover {
 /* Shared theme for code-copy buttons. Applied to the in-editor /
    view-mode code-block button AND to the portaled inline-code button
    (.rt-inline-code-copy below), so both surfaces look identical
-   regardless of which DOM context they end up rendered in. Explicit
-   font-family / font-weight / line-height because the inline button
-   sits in document.body and would otherwise inherit different defaults
-   than the in-editor block button. */
+   regardless of which DOM context they end up rendered in. */
 .code-copy-btn {
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
   font-size: .75rem;
-  font-weight: 500;
-  line-height: 1;
   padding: .2rem .45rem;
   border-radius: .35rem;
   background: var(--note-color, #111);
