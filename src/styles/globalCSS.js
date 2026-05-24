@@ -1255,33 +1255,13 @@ html:not(.dark) .code-copy-btn {
   opacity: 1;
 }
 
-/* Read-mode inline copy button. Inherits the full visual theme from
-   .code-copy-btn (background, padding, radius, shadow, hover) — this
-   rule only adds the inline-flow spacing so the button sits cleanly
-   right after its inline code element instead of touching it. */
+/* Legacy class kept for the rare case an inline copy button is still
+   inserted as a sibling. Read-mode now uses the same floating overlay
+   as edit-mode (.rt-inline-code-copy), so this rule only ensures any
+   stray sibling button still picks up the spacing tweak. */
 .inline-code-copy-btn {
   margin-left: 6px;
   vertical-align: baseline;
-}
-
-/* Desktop hover-only: on fine pointers, hide the inline copy button by
-   default and reveal it when the user hovers the adjacent <code> or
-   the button itself, mirroring the code-block copy button. The hide
-   transition keeps a small delay so the cursor can cross the 6 px gap
-   between code and button without the button vanishing mid-motion.
-   Coarse-pointer devices (touch) keep the button permanently visible
-   — there's no hover state to rely on, and the existing tap-friendly
-   layout already lets the user reach it in one finger move. */
-@media (pointer: fine) {
-  .inline-code-copy-btn {
-    opacity: 0;
-    transition: opacity 0.15s linear 0.25s;
-  }
-  code:hover + .inline-code-copy-btn,
-  .inline-code-copy-btn:hover {
-    opacity: 1;
-    transition-delay: 0s;
-  }
 }
 
 /* ============================================================

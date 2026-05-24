@@ -730,3 +730,112 @@ export const EditExtras = Extension.create({
 });
 
 export default EditExtras;
+
+/* -------------------- read-mode inline copy -------------------- */
+
+/* Wire the same inline-code copy affordance onto a non-editor
+   container so the read-only renderer behaves identically to the
+   editor: desktop hovers reveal the floating "Copier" overlay, mobile
+   taps arm it sticky and a second tap (or a tap elsewhere inside the
+   container) dismisses it. We reuse the singleton overlay + armed
+   state from the editor side, so the visibility timer (2 s),
+   positioning, theming and clipboard logic stay in one place — no
+   parallel implementation to drift.
+   Returns a cleanup function the caller invokes when the view-mode
+   container unmounts or the modal closes. */
+export function attachReadModeInlineCopy(root) {
+  if (!root) return () => {};
+
+  let touchInfo = null;
+
+  const onMouseOver = (event) => {
+    if (hasCoarsePointer()) return;
+    const code = closestInlineCode(event.target);
+    if (code) showInlineCopyFor(code);
+  };
+
+  const onMouseOut = (event) => {
+    const code = closestInlineCode(event.target);
+    if (!code) return;
+    const related = event.relatedTarget;
+    if (related && (code.contains(related) || related === inlineCopyEl)) return;
+    scheduleInlineCopyHide();
+  };
+
+  const onTouchStart = (event) => {
+    if (!hasCoarsePointer()) return;
+    if (event.touches.length !== 1) {
+      touchInfo = null;
+      return;
+    }
+    const target = eventElement(event);
+    if (isInsideCopyButton(target)) {
+      touchInfo = null;
+      return;
+    }
+    const inlineCode = closestInlineCode(target);
+    const t0 = event.touches[0];
+    touchInfo = {
+      inlineCode,
+      startX: t0.clientX,
+      startY: t0.clientY,
+    };
+  };
+
+  const onTouchEnd = (event) => {
+    if (!touchInfo) return;
+    const { inlineCode, startX, startY } = touchInfo;
+    touchInfo = null;
+    const ct = event.changedTouches && event.changedTouches[0];
+    if (ct) {
+      const dx = Math.abs(ct.clientX - startX);
+      const dy = Math.abs(ct.clientY - startY);
+      if (dx > TAP_MOVE_PX || dy > TAP_MOVE_PX) return;
+    }
+    if (inlineCode) {
+      if (armedInlineCodeEl === inlineCode) {
+        clearInlineCodeArm();
+        return;
+      }
+      // Block the synthesised click so the tap purely arms the button
+      // without bubbling into the modal's link / scrim handlers.
+      event.preventDefault();
+      armInlineCode(inlineCode);
+      return;
+    }
+    // Tap landed elsewhere inside the rendered container: dismiss any
+    // armed inline code so the user gets a clean state back.
+    if (armedInlineCodeEl) clearInlineCodeArm();
+  };
+
+  const onTouchCancel = () => {
+    touchInfo = null;
+  };
+
+  root.addEventListener("mouseover", onMouseOver);
+  root.addEventListener("mouseout", onMouseOut);
+  root.addEventListener("touchstart", onTouchStart, {
+    passive: true,
+    capture: true,
+  });
+  root.addEventListener("touchend", onTouchEnd, {
+    passive: false,
+    capture: true,
+  });
+  root.addEventListener("touchcancel", onTouchCancel, {
+    passive: true,
+    capture: true,
+  });
+
+  return () => {
+    root.removeEventListener("mouseover", onMouseOver);
+    root.removeEventListener("mouseout", onMouseOut);
+    root.removeEventListener("touchstart", onTouchStart, { capture: true });
+    root.removeEventListener("touchend", onTouchEnd, { capture: true });
+    root.removeEventListener("touchcancel", onTouchCancel, { capture: true });
+    // Drop any state owned by this container so the next mount starts
+    // clean and a stale arm doesn't outlive the view-mode session.
+    clearInlineCodeArm();
+    hideInlineCopyImmediate();
+  };
+}
