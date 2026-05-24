@@ -2114,6 +2114,24 @@ app.post("/api/notifications/mark-delivered", auth, (req, res) => {
   res.json({ ok: true });
 });
 
+// Cross-device "Clear all" — when the user wipes the notification
+// centre on one device, every other tab / device for the same user
+// should reflect that wipe without waiting for a refresh. We also
+// flip any still-undelivered rows to delivered_at so they don't
+// come back the next time /pending is queried.
+app.post("/api/notifications/clear", auth, (req, res) => {
+  const now = nowISO();
+  try {
+    db.prepare(
+      "UPDATE notifications SET delivered_at = ? WHERE recipient_user_id = ? AND delivered_at IS NULL",
+    ).run(now, req.user.id);
+  } catch (e) {
+    console.warn("[notifications] clear UPDATE failed:", e?.message);
+  }
+  sendEventToUser(req.user.id, { type: "notifications_cleared" });
+  res.json({ ok: true });
+});
+
 // Dev/test endpoint: synthesise a notification and push it via SSE
 // the same way a real event would arrive. Admin-only because there's
 // no reason a regular user should be able to make arbitrary toasts

@@ -19,7 +19,12 @@ import NotificationCenter from "./NotificationCenter.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { t } from "../../i18n";
 
-export default function NotificationBell({ dark, onAction, markDelivered }) {
+export default function NotificationBell({
+  dark,
+  onAction,
+  markDelivered,
+  onClearAll,
+}) {
   const { notifications, dismissAll } = useNotifications();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -100,6 +105,7 @@ export default function NotificationBell({ dark, onAction, markDelivered }) {
         anchor={buttonRef.current}
         onClose={() => setOpen(false)}
         onAction={onAction}
+        onClearAll={onClearAll}
       />
     </>
   );

@@ -21,8 +21,14 @@ export default function NotificationCenter({
   anchor,
   onClose,
   onAction,
+  // App-provided wrapper that also POSTs /notifications/clear so the
+  // wipe propagates to other tabs / devices via SSE. Falls back to
+  // the provider's local-only clear() when not supplied (kept for
+  // standalone use of the component in tests / future panes).
+  onClearAll,
 }) {
   const { notifications, remove, dismissAll, clear } = useNotifications();
+  const handleClearAll = onClearAll || clear;
   const panelRef = useRef(null);
 
   useEffect(() => {
@@ -114,7 +120,7 @@ export default function NotificationCenter({
             <button
               type="button"
               className="gk-notif-center__header-btn"
-              onClick={() => clear()}
+              onClick={() => handleClearAll()}
             >
               {t("notificationsClearAll")}
             </button>

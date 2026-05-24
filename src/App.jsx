@@ -558,9 +558,23 @@ export default function App() {
     notify,
     dismiss: dismissNotification,
     dismissByServerIds: dismissByServerIdsNotif,
+    clear: clearNotifications,
     notifications: allNotifications,
     setDefaultDuration: setNotifDefaultDuration,
   } = useNotifications();
+
+  // Cross-device-aware "Clear all" wrapper. The provider's bare
+  // clear() is local-only; this version also POSTs to the server so
+  // every other tab / device of the same user wipes its own history
+  // in real time (the server broadcasts `notifications_cleared` to
+  // every connected SSE client). Marks any still-undelivered server
+  // rows as delivered too so they don't reappear in /pending.
+  const clearAllNotificationsSynced = useCallback(() => {
+    clearNotifications();
+    const tk = token;
+    if (!tk) return;
+    api("/notifications/clear", { method: "POST", token: tk }).catch(() => {});
+  }, [clearNotifications, token]);
   // Apply the user's preferred default duration to the provider —
   // every subsequent `notify()` without an explicit duration uses it.
   useEffect(() => {
@@ -3151,7 +3165,11 @@ export default function App() {
               // Dev/test notification dispatched via the
               // scripts/test-notification.cjs CLI. Routed through the
               // generic notify() so it inherits the standard card UI,
-              // history entry and unread badge.
+              // history entry and unread badge. metadata carries the
+              // server-side id so the cross-device dismiss broadcast
+              // (`notification_delivered`) can find this card in
+              // state — without it, dismissByServerIds would have
+              // nothing to match against.
               notify({
                 type: "test",
                 variant: msg.variant || "info",
@@ -3159,10 +3177,20 @@ export default function App() {
                 message: msg.message || "",
                 persistent: !!msg.persistent,
                 icon: msg.icon || null,
+                metadata: msg.notificationId
+                  ? { serverNotificationId: msg.notificationId }
+                  : null,
               });
               if (msg.notificationId) {
                 markShareNotificationsDelivered([msg.notificationId]);
               }
+            } else if (msg && msg.type === "notifications_cleared") {
+              // Another device wiped the user's notification history.
+              // Mirror locally so the centre panel + viewport stay in
+              // sync. The originating device also receives this event
+              // but a CLEAR dispatch on an already-empty array is a
+              // no-op.
+              clearNotifications();
             } else if (msg && msg.type === "notification_delivered" && Array.isArray(msg.ids)) {
               // Cross-device dismissal — another tab/device (or this
               // one) just acknowledged these server notification ids.
@@ -6461,6 +6489,7 @@ export default function App() {
             dark={dark}
             onAction={handleNotificationAction}
             markDelivered={markShareNotificationsDelivered}
+            onClearAll={clearAllNotificationsSynced}
           />
         }
         notificationBellMobile={
@@ -6468,6 +6497,7 @@ export default function App() {
             dark={dark}
             onAction={handleNotificationAction}
             markDelivered={markShareNotificationsDelivered}
+            onClearAll={clearAllNotificationsSynced}
           />
         }
       />
