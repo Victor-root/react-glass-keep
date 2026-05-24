@@ -62,6 +62,7 @@ import AdminView from "./components/notes/AdminView.jsx";
 import NotesUI from "./components/notes/NotesUI.jsx";
 import GenericConfirmDialog from "./components/common/GenericConfirmDialog.jsx";
 import NotificationViewport from "./components/notifications/NotificationViewport.jsx";
+import NotificationMobileToast from "./components/notifications/NotificationMobileToast.jsx";
 import NotificationBell from "./components/notifications/NotificationBell.jsx";
 import { useNotifications } from "./components/notifications/NotificationProvider.jsx";
 import { playNotificationDing } from "./utils/notificationSound.js";
@@ -610,20 +611,22 @@ export default function App() {
     return "info";
   };
 
-  // Discrete ding whenever a new notification appears, gated by the
-  // master sound toggle AND the per-category opt-outs. The provider
-  // returns the list newest-first; we just need to detect when
-  // index 0's id changes to play exactly once per addition.
-  const lastDingedIdRef = useRef(null);
+  // Discrete ding whenever a NEW notification appears. We compare
+  // `createdAt` rather than the array's first id, because closing
+  // the top card promotes whatever was below it to index 0 —
+  // tracking the id alone would mistake the promotion for a new
+  // arrival and re-ding every time the user dismissed a card. The
+  // creation timestamp only moves forward when notify() actually
+  // inserts a new entry, so the comparison stays correct across
+  // dismiss / remove / close-X.
+  const lastDingedAtRef = useRef(0);
   useEffect(() => {
     const newest = allNotifications[0];
     if (!newest) return;
-    if (lastDingedIdRef.current === newest.id) return;
-    if (newest.dismissed) {
-      lastDingedIdRef.current = newest.id;
-      return;
-    }
-    lastDingedIdRef.current = newest.id;
+    const t = newest.createdAt || 0;
+    if (t <= lastDingedAtRef.current) return;
+    lastDingedAtRef.current = t;
+    if (newest.dismissed) return;
     if (!notificationsSound) return;
     const category = soundCategoryFor(newest);
     if (notificationsSoundTypes[category] === false) return;
@@ -6531,10 +6534,23 @@ export default function App() {
         showToast={showToast}
       />
 
-      <NotificationViewport
-        position={notificationsPosition}
-        onAction={handleNotificationAction}
-      />
+      {/* Mobile vs. desktop floating display. On coarse-pointer
+          devices we swap the glass-card stack for an Android-style
+          dark pill at the bottom of the screen — the platform's
+          native toast aesthetic feels less out of place on a phone
+          than a multi-card overlay would. Width gate is the same
+          640 px breakpoint the rest of the UI uses for "mobile",
+          and the coarse-pointer check filters out desktop browsers
+          with a touchscreen. The notification centre + bell stay
+          on every form factor. */}
+      {windowWidth < 640 ? (
+        <NotificationMobileToast onAction={handleNotificationAction} />
+      ) : (
+        <NotificationViewport
+          position={notificationsPosition}
+          onAction={handleNotificationAction}
+        />
+      )}
 
       {/* Forced password change (first login with temp password) */}
       {mustChangePassword && (

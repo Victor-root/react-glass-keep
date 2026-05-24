@@ -3761,19 +3761,18 @@ html.dark .typo-modal-toggle {
   border: 1px solid transparent;
   background:
     linear-gradient(135deg,
-      rgba(248, 244, 255, 0.78) 0%,
-      rgba(238, 234, 255, 0.74) 35%,
-      rgba(240, 232, 252, 0.74) 65%,
-      rgba(252, 232, 244, 0.78) 100%) padding-box,
+      rgba(244, 240, 255, 0.80) 0%,
+      rgba(236, 234, 255, 0.76) 50%,
+      rgba(225, 235, 255, 0.78) 100%) padding-box,
     linear-gradient(135deg,
       rgba(167, 139, 250, 0.55) 0%,
-      rgba(96, 165, 250, 0.55) 50%,
-      rgba(244, 114, 182, 0.55) 100%) border-box;
+      rgba(99, 102, 241, 0.55) 50%,
+      rgba(96, 165, 250, 0.55) 100%) border-box;
   backdrop-filter: blur(34px) saturate(190%);
   -webkit-backdrop-filter: blur(34px) saturate(190%);
   box-shadow:
     0 14px 36px rgba(76, 29, 149, 0.18),
-    0 4px 12px rgba(99, 102, 241, 0.12),
+    0 4px 12px rgba(99, 102, 241, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
   color: #1d1d1f;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -3782,13 +3781,13 @@ html.dark .typo-modal-toggle {
 html.dark .gk-notif-card {
   background:
     linear-gradient(135deg,
-      rgba(40, 30, 70, 0.78) 0%,
-      rgba(35, 32, 75, 0.78) 50%,
-      rgba(55, 32, 60, 0.78) 100%) padding-box,
+      rgba(42, 32, 72, 0.80) 0%,
+      rgba(36, 34, 76, 0.80) 50%,
+      rgba(32, 38, 72, 0.80) 100%) padding-box,
     linear-gradient(135deg,
       rgba(167, 139, 250, 0.55) 0%,
-      rgba(129, 140, 248, 0.5) 50%,
-      rgba(244, 114, 182, 0.5) 100%) border-box;
+      rgba(129, 140, 248, 0.50) 50%,
+      rgba(96, 165, 250, 0.50) 100%) border-box;
   box-shadow:
     0 14px 36px rgba(0, 0, 0, 0.55),
     0 4px 12px rgba(76, 29, 149, 0.32),
@@ -3996,6 +3995,95 @@ html.dark .gk-notif-card__close:hover { background: rgba(180, 180, 190, 1); }
   to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 
+/* ───────── Android-style mobile toast ─────────
+   Compact dark pill anchored at the bottom of the viewport — matches
+   the platform's native toast aesthetic (single line, fades in,
+   tap-to-dismiss). Used on coarse-pointer devices in place of the
+   floating glass-card stack. */
+.gk-mobile-toast {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--safe-bottom, 0px) + 32px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100vw - 24px);
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(40, 40, 44, 0.94);
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.3;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.32),
+    0 4px 10px rgba(0, 0, 0, 0.18);
+  animation: gkMobileToastIn 220ms cubic-bezier(.22,.61,.36,1) both;
+  cursor: pointer;
+}
+html.dark .gk-mobile-toast {
+  background: rgba(28, 28, 32, 0.96);
+}
+.gk-mobile-toast__icon {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0.95;
+}
+.gk-mobile-toast__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+}
+.gk-mobile-toast__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.96);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gk-mobile-toast__message {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.88);
+  word-break: break-word;
+  /* Cap at two lines so a verbose message can't push the toast to
+     swallow half the screen. Tapping the toast still reveals the
+     full text via the centre panel. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.gk-mobile-toast__action {
+  flex: 0 0 auto;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #93c5fd;
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  margin-right: -4px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.gk-mobile-toast__action:hover { background: rgba(255, 255, 255, 0.08); }
+.gk-mobile-toast__action:active { background: rgba(255, 255, 255, 0.14); }
+
+@keyframes gkMobileToastIn {
+  from { opacity: 0; transform: translate(-50%, 24px); }
+  to   { opacity: 1; transform: translate(-50%, 0);    }
+}
+
 /* Bell + badge */
 .gk-notif-bell-badge {
   position: absolute;
@@ -4026,15 +4114,15 @@ html.dark .gk-notif-bell-badge {
   border-radius: 14px;
   background:
     linear-gradient(135deg,
-      rgba(248, 244, 255, 0.88) 0%,
-      rgba(238, 234, 255, 0.86) 50%,
-      rgba(252, 232, 244, 0.88) 100%);
+      rgba(244, 240, 255, 0.90) 0%,
+      rgba(236, 234, 255, 0.88) 50%,
+      rgba(225, 235, 255, 0.90) 100%);
   backdrop-filter: blur(34px) saturate(190%);
   -webkit-backdrop-filter: blur(34px) saturate(190%);
   border: 1px solid rgba(124, 58, 237, 0.22);
   box-shadow:
     0 18px 40px -10px rgba(76, 29, 149, 0.25),
-    0 8px 18px -6px rgba(99, 102, 241, 0.16),
+    0 8px 18px -6px rgba(99, 102, 241, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.5);
   display: flex;
   flex-direction: column;
@@ -4045,9 +4133,9 @@ html.dark .gk-notif-center {
   color: #f5f5f7;
   background:
     linear-gradient(135deg,
-      rgba(40, 30, 70, 0.88) 0%,
-      rgba(35, 32, 75, 0.88) 50%,
-      rgba(55, 32, 60, 0.88) 100%);
+      rgba(42, 32, 72, 0.90) 0%,
+      rgba(36, 34, 76, 0.90) 50%,
+      rgba(32, 38, 72, 0.90) 100%);
   border: 1px solid rgba(167, 139, 250, 0.28);
   box-shadow:
     0 18px 40px -10px rgba(0, 0, 0, 0.65),
