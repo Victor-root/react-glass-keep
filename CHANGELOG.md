@@ -6,7 +6,7 @@ Headline change: a **completely rewritten in-app notification system**. Every to
 
 ### ➕ Added
 - 🔔 **Centralised notification system** — a new context provider replaces the legacy toast layer. One `notify({ variant, title, message, icon, action, persistent })` call surfaces a floating card with a 2.5 px LED-style border in the variant colour (info=blue / success=green / warning=amber / error=red), a tinted background, the right Tabler icon, and an optional inline action button
-- 🪟 **Notification Center panel** — bell icon in the header shows an unread badge and opens a neutral glass panel listing the full history with per-row actions, per-row delete, and a single **"Clear all / Effacer"** button. Closing the bell hides the floating stack so the panel becomes the single source of truth
+- 🪟 **Notification Center panel** — bell icon in the header shows an unread badge and opens a neutral glass panel listing the full history with per-row actions, per-row delete, and a single **"Clear all"** button. Closing the bell hides the floating stack so the panel becomes the single source of truth
 - ⏳ **Countdown bar on temporary notifications** — auto-dismissing cards now show a full-width bottom-edge progress bar in the notification's variant colour, synced with the remaining display time
 - 📱 **Mobile Notification Center with swipe-to-dismiss** — the panel goes full-screen on mobile, the device back button closes it, and individual cards can be swiped away
 - 📡 **Cross-device history sync over SSE** — the notification history is stored server-side and replayed on every device. Opening the bell, deleting a row or clicking "Clear all" syncs across all open sessions; history also survives sign-out / sign-in cycles without duplicating cards
@@ -43,16 +43,16 @@ Headline change: a **completely rewritten in-app notification system**. Every to
 
 ### 🛠️ Upgrade
 
-> **Si vous êtes sur v2.3.5 ou supérieur**, la mise à jour se fait directement depuis l'application (Paramètres → Application → Vérifier les mises à jour).
+> **If you're on v2.3.5 or above**, the update can be triggered directly from the app (Settings → Application → Check for updates).
 
-> **Si vous êtes en dessous de v2.3.5**, utilisez la commande correspondant à votre installation :
+> **If you're below v2.3.5**, use the command matching your install:
 
-**Installation native :**
+**Native install:**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Victor-root/glasskeep-enhanced/main/install.sh | sudo bash
 ```
 
-**Docker :**
+**Docker:**
 ```bash
 docker compose pull && docker compose up -d
 ```
