@@ -134,48 +134,58 @@ let inlineCopyHideTimer = null;
 // (sticky) until the user taps elsewhere or taps the same code again.
 // Desktop hover shows it briefly and hides on mouseout.
 let inlineCopySticky = false;
-function getInlineCopyEl() {
-  if (inlineCopyEl && inlineCopyEl.isConnected) return inlineCopyEl;
-  inlineCopyEl = document.createElement("button");
-  inlineCopyEl.type = "button";
-  // Share .code-copy-btn with the code-block button so font/colors/
-  // padding/shadow are guaranteed identical; .rt-inline-code-copy
-  // contributes only positioning + show/hide.
-  inlineCopyEl.className = "rt-inline-code-copy code-copy-btn";
-  inlineCopyEl.setAttribute("data-copy-btn", "1");
-  inlineCopyEl.textContent = t("copy");
-  inlineCopyEl.addEventListener("mousedown", (e) => e.preventDefault());
-  inlineCopyEl.addEventListener("mouseenter", () => {
-    if (inlineCopyHideTimer) {
-      clearTimeout(inlineCopyHideTimer);
-      inlineCopyHideTimer = null;
-    }
-  });
-  inlineCopyEl.addEventListener("mouseleave", () => {
-    if (!inlineCopySticky) scheduleInlineCopyHide();
-  });
-  inlineCopyEl.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!inlineCopyTarget) return;
-    const text = inlineCopyTarget.textContent || "";
-    try {
-      navigator.clipboard?.writeText(text);
-    } catch (_e) {}
-    const old = t("copy");
-    inlineCopyEl.textContent = t("copied");
-    clearTimeout(inlineCopyEl._gkResetTimer);
-    inlineCopyEl._gkResetTimer = setTimeout(() => {
-      inlineCopyEl.textContent = old;
-    }, 1200);
-  });
-  document.body.appendChild(inlineCopyEl);
+function getInlineCopyEl(host) {
+  // Lazy-create the singleton button. The element is re-used across
+  // shows; only its host (the editor's scroll container) may change.
+  if (!inlineCopyEl || !inlineCopyEl.isConnected) {
+    inlineCopyEl = document.createElement("button");
+    inlineCopyEl.type = "button";
+    // Share .code-copy-btn with the code-block button so font/colors/
+    // padding/shadow are guaranteed identical; .rt-inline-code-copy
+    // contributes only positioning + show/hide.
+    inlineCopyEl.className = "rt-inline-code-copy code-copy-btn";
+    inlineCopyEl.setAttribute("data-copy-btn", "1");
+    inlineCopyEl.textContent = t("copy");
+    inlineCopyEl.addEventListener("mousedown", (e) => e.preventDefault());
+    inlineCopyEl.addEventListener("mouseenter", () => {
+      if (inlineCopyHideTimer) {
+        clearTimeout(inlineCopyHideTimer);
+        inlineCopyHideTimer = null;
+      }
+    });
+    inlineCopyEl.addEventListener("mouseleave", () => {
+      if (!inlineCopySticky) scheduleInlineCopyHide();
+    });
+    inlineCopyEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!inlineCopyTarget) return;
+      const text = inlineCopyTarget.textContent || "";
+      try {
+        navigator.clipboard?.writeText(text);
+      } catch (_e) {}
+      const old = t("copy");
+      inlineCopyEl.textContent = t("copied");
+      clearTimeout(inlineCopyEl._gkResetTimer);
+      inlineCopyEl._gkResetTimer = setTimeout(() => {
+        inlineCopyEl.textContent = old;
+      }, 1200);
+    });
+  }
+  // Attach (or re-attach) to the right host so the button lives in
+  // the editor's scroll context and rides the scroll naturally.
+  const target = host || document.body;
+  if (inlineCopyEl.parentElement !== target) {
+    target.appendChild(inlineCopyEl);
+  }
   return inlineCopyEl;
 }
 function positionInlineCopyForCurrent() {
   const code = inlineCopyTarget;
   const el = inlineCopyEl;
   if (!code || !el || !el.isConnected) return;
+  const host = el.parentElement;
+  if (!host) return;
   // Anchor the button right after the visual END of the inline code,
   // vertically centered on the line that contains its last fragment.
   // `getClientRects()` returns one rect per line for inline content,
@@ -184,12 +194,16 @@ function positionInlineCopyForCurrent() {
   const lastRect = rects[rects.length - 1];
   if (!lastRect) return;
   const btnR = el.getBoundingClientRect();
-  let top = lastRect.top + (lastRect.height - btnR.height) / 2;
-  let left = lastRect.right + 4;
-  if (top < 4) top = 4;
-  if (left < 4) left = 4;
-  const maxLeft = window.innerWidth - btnR.width - 4;
-  if (left > maxLeft) left = maxLeft;
+  // Convert viewport-relative rects into the host's scrolled
+  // content-coordinate space so the button sits inside the editor's
+  // own layer. Once placed, the scroll container drags the button
+  // along with the rest of the content — no scroll listener needed.
+  const hostRect = host.getBoundingClientRect();
+  const top =
+    lastRect.top - hostRect.top + host.scrollTop +
+    (lastRect.height - btnR.height) / 2;
+  const left =
+    lastRect.right - hostRect.left + host.scrollLeft + 4;
   el.style.top = `${Math.round(top)}px`;
   el.style.left = `${Math.round(left)}px`;
 }
@@ -200,7 +214,13 @@ function showInlineCopyFor(codeEl, { sticky = false } = {}) {
     clearTimeout(inlineCopyHideTimer);
     inlineCopyHideTimer = null;
   }
-  const el = getInlineCopyEl();
+  // Host the button inside the same scroll container as the code —
+  // .modal-scroll-themed when we're in a note modal, otherwise fall
+  // back to body. The button is position:absolute inside this host,
+  // so it scrolls with the content and is clipped by the host's
+  // overflow when the inline `<code>` leaves the visible area.
+  const host = codeEl.closest(".modal-scroll-themed") || document.body;
+  const el = getInlineCopyEl(host);
   // Propagate the modal's note-colour CSS vars to the portaled button
   // so the gradient matches the surrounding modal instead of falling
   // back to #111.
@@ -217,36 +237,14 @@ function showInlineCopyFor(codeEl, { sticky = false } = {}) {
   el.classList.add("rt-inline-code-copy--visible");
   el.classList.toggle("rt-inline-code-copy--sticky", sticky);
   // Defer positioning to next frame so the just-shown element has
-  // measurable dimensions.
+  // measurable dimensions. After this one placement, the button
+  // rides the scroll container natively — its position:absolute
+  // coords are relative to the scrolled content, not the viewport.
   requestAnimationFrame(positionInlineCopyForCurrent);
-  // Keep the button glued to its inline-code anchor while the user
-  // scrolls the editor / modal. Registered lazily on first show and
-  // reused for every subsequent appearance (desktop hover + mobile
-  // sticky alike).
-  ensureInlineCopyScrollListener();
   // Desktop hover: arm the auto-hide so the button stays visible for a
   // few seconds without requiring the cursor to stay on the inline
   // code. Sticky (mobile tap) is dismissed by an explicit outside tap.
   if (!sticky) scheduleInlineCopyHide();
-}
-
-// Capture-phase scroll + resize listener that re-anchors the inline
-// copy button to the right edge of its underlying `<code>`. The
-// code-block button uses its own per-NodeView scroll listener in
-// CodeBlockCopy.js, so this one is restricted to the inline overlay.
-// Lazy + permanent — handler is a single rect read when nothing is
-// shown.
-let inlineCopyScrollListenerRegistered = false;
-function ensureInlineCopyScrollListener() {
-  if (inlineCopyScrollListenerRegistered) return;
-  inlineCopyScrollListenerRegistered = true;
-  const reposition = () => {
-    if (inlineCopyTarget && inlineCopyEl?.classList.contains("rt-inline-code-copy--visible")) {
-      positionInlineCopyForCurrent();
-    }
-  };
-  document.addEventListener("scroll", reposition, { passive: true, capture: true });
-  window.addEventListener("resize", reposition, { passive: true });
 }
 function scheduleInlineCopyHide() {
   if (inlineCopySticky) return;

@@ -458,7 +458,10 @@ export default function useModalState({ notes, currentUser, closeModalRef, runFo
         )
           return;
         const btn = document.createElement("button");
-        btn.className = "inline-code-copy-btn";
+        // Share .code-copy-btn with the edit-mode overlay so both
+        // surfaces look identical; .inline-code-copy-btn only adds
+        // the inline-flow spacing.
+        btn.className = "inline-code-copy-btn code-copy-btn";
         btn.textContent = t("copy");
         btn.setAttribute("data-copy-btn", "1");
         btn.addEventListener("click", (e) => {

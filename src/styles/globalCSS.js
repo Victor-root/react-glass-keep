@@ -1255,13 +1255,13 @@ html:not(.dark) .code-copy-btn {
   opacity: 1;
 }
 
+/* Read-mode inline copy button. Inherits the full visual theme from
+   .code-copy-btn (background, padding, radius, shadow, hover) — this
+   rule only adds the inline-flow spacing so the button sits cleanly
+   right after its `<code>` instead of touching it. */
 .inline-code-copy-btn {
   margin-left: 6px;
-  font-size: .7rem;
-  padding: .05rem .35rem;
-  border-radius: .35rem;
-  border: 1px solid var(--border-light);
-  background: rgba(0,0,0,0.06);
+  vertical-align: baseline;
 }
 
 /* ============================================================
@@ -1289,14 +1289,17 @@ html:not(.dark) .code-copy-btn {
   opacity: 1;
 }
 
-/* Floating "Copier" overlay anchored to inline code. Portaled into
-   document.body so it can float above any modal scroll container.
-   The visual theme (font, padding, colours, shadow) is shared with
-   the code-block button via the .code-copy-btn class also applied
-   to this element — only positioning + show/hide live here. */
+/* "Copier" overlay anchored to inline code. Lives INSIDE the editor's
+   scroll container (e.g. .modal-scroll-themed) as a position:absolute
+   child, so it rides the scroll along with the underlying `<code>`
+   and is clipped naturally when the line leaves the viewport — no JS
+   scroll listener required. The visual theme (font, padding, colours,
+   shadow) is shared with the code-block button via .code-copy-btn. */
 .rt-inline-code-copy {
-  position: fixed;
-  z-index: 10050;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s;
