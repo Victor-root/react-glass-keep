@@ -15,7 +15,7 @@
 // children, so title / message remain XSS-safe even when the values
 // originate from the server.
 
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useLayoutEffect } from "react";
 import TI from "../../icons/editor/index.jsx";
 import { t } from "../../i18n";
 
@@ -139,11 +139,10 @@ export default function NotificationCard({
   const notifIdRef = useRef(notification?.id);
   useEffect(() => { onDismissRef.current = onDismiss; });
   useEffect(() => { notifIdRef.current = notification?.id; });
-  // Captured once at first render so re-renders don't shuffle the
-  // animation-delay value (which would otherwise restart the CSS
-  // animation each time and re-create the very desync this is meant
-  // to fix). See `countdownStyle` below.
-  const countdownStyleRef = useRef(null);
+  // Ref to the countdown bar's fill DOM node; used by the layout
+  // effect below to compensate the React-mount delay against the
+  // provider's setTimeout reference time.
+  const countdownFillRef = useRef(null);
 
   useEffect(() => {
     if (!swipeable) return undefined;
@@ -313,23 +312,23 @@ export default function NotificationCard({
   // schedules the auto-dismiss the moment it runs (t = createdAt),
   // but the bar only starts animating once React commits and the
   // browser mounts the element — a few ms (sometimes a few hundred
-  // on slow devices) later. Without compensation the bar still has
-  // a few % left at the moment the toast disappears. We capture the
-  // elapsed time at first render and feed it back as a NEGATIVE
-  // animation-delay so the animation effectively "started in the
-  // past" and reaches scaleX(0) at exactly the same instant the
-  // provider's timer fires. Stored in a ref so the value doesn't
-  // recompute on subsequent renders (which would restart the
-  // animation and re-create the desync).
-  if (countdownStyleRef.current === null && showCountdown) {
-    const elapsed = createdAt
-      ? Math.max(0, Math.min(duration, Date.now() - createdAt))
-      : 0;
-    countdownStyleRef.current = {
-      animationDuration: `${duration}ms`,
-      animationDelay: `-${elapsed}ms`,
-    };
-  }
+  // on slow devices) later. Reading Date.now() during render
+  // measures the gap up to the RENDER call, not the actual mount;
+  // there's still another commit + paint gap on top. useLayoutEffect
+  // runs after the DOM mutation and before paint, so Date.now() in
+  // it is effectively the actual mount time — feeding it back as a
+  // NEGATIVE animation-delay lands the scaleX(0) frame at the same
+  // wall-clock instant the provider's timer fires. Mount-only deps
+  // so we don't re-anchor on every render (which would restart the
+  // CSS animation and re-create the very desync this fixes).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useLayoutEffect(() => {
+    if (!showCountdown) return;
+    const el = countdownFillRef.current;
+    if (!el || !createdAt || typeof duration !== "number" || duration <= 0) return;
+    const elapsed = Math.max(0, Math.min(duration, Date.now() - createdAt));
+    el.style.animationDelay = `-${elapsed}ms`;
+  }, []);
 
   const card = (
     <div
@@ -402,8 +401,9 @@ export default function NotificationCard({
         <div className="gk-notif-card__countdown-clip" aria-hidden="true">
           <div className="gk-notif-card__countdown">
             <div
+              ref={countdownFillRef}
               className="gk-notif-card__countdown-fill"
-              style={countdownStyleRef.current || { animationDuration: `${duration}ms` }}
+              style={{ animationDuration: `${duration}ms` }}
             />
           </div>
         </div>
