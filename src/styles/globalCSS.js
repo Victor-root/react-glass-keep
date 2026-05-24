@@ -3759,9 +3759,11 @@ html.dark .typo-modal-toggle {
   /* Flat translucent surface — gradient dropped. Heavy backdrop
      blur over a neutral white/dark wash lets the page underneath
      show through as a soft frosted backdrop without any coloured
-     tint of its own. */
-  background: rgba(255, 255, 255, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+     tint of its own. Opacities matched to the centre panel
+     (0.55 light / 0.62 dark) so a floating card and the open
+     panel read as the same surface treatment. */
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
   box-shadow:
@@ -3773,7 +3775,7 @@ html.dark .typo-modal-toggle {
   animation: gkNotifIn 280ms cubic-bezier(.22,.61,.36,1) both;
 }
 html.dark .gk-notif-card {
-  background: rgba(40, 40, 45, 0.45);
+  background: rgba(40, 40, 45, 0.62);
   border: 1px solid rgba(255, 255, 255, 0.10);
   box-shadow:
     0 14px 36px rgba(0, 0, 0, 0.55),
