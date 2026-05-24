@@ -4084,9 +4084,16 @@ export default function App() {
     }
   }, [overlayOpenCount]);
 
-  // Disable pull-to-refresh on Android when any overlay is open
+  // Disable pull-to-refresh when any overlay is open. Three paths covered:
+  //   1. Native Android — SwipeRefreshLayout is disabled via the JS bridge.
+  //   2. Chrome PWA — html/body get overscroll-behavior:none + overflow:hidden
+  //      via the .gk-overlay-locked class (in globalCSS.js).
+  //   3. Body-scroll lock — same class also pins the underlying page so the
+  //      content doesn't scroll behind an open panel (typical modal behaviour).
   useEffect(() => {
-    try { window.AndroidTheme?.setRefreshEnabled(overlayOpenCount === 0); } catch (_) {}
+    const locked = overlayOpenCount > 0;
+    document.documentElement.classList.toggle("gk-overlay-locked", locked);
+    try { window.AndroidTheme?.setRefreshEnabled(!locked); } catch (_) {}
   }, [overlayOpenCount]);
 
   useEffect(() => {

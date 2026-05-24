@@ -62,22 +62,6 @@ export default function NotificationCenter({
     };
   }, []);
 
-  // Disable browser pull-to-refresh while the panel is open. Must set on
-  // both <html> (Chrome reads PTR from the document element) and <body>
-  // (some browsers read from body). The AndroidTheme path is handled by
-  // App.jsx's overlayOpenCount including notifCenterOpen.
-  useEffect(() => {
-    if (!open) return undefined;
-    const prevHtml = document.documentElement.style.overscrollBehavior;
-    const prevBody = document.body.style.overscrollBehavior;
-    document.documentElement.style.overscrollBehavior = "none";
-    document.body.style.overscrollBehavior = "none";
-    return () => {
-      document.documentElement.style.overscrollBehavior = prevHtml;
-      document.body.style.overscrollBehavior = prevBody;
-    };
-  }, [open]);
-
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => {

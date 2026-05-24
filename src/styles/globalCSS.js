@@ -53,6 +53,23 @@ html.dark body {
   background-image: none;
   background-attachment: fixed;
 }
+
+/* Disable browser pull-to-refresh + lock document scrolling while any
+   overlay (notification center, sync popover, modals, sidebar, …) is
+   open. The class is toggled by App.jsx from the overlayOpenCount
+   effect — so this rule covers every panel automatically without each
+   one having to do its own DOM-level cleanup.
+   The !important is necessary because per-component inline styles
+   would otherwise win and we want the App.jsx-level toggle to be the
+   single source of truth. overflow:hidden is the only reliable way to
+   block PTR on Chrome PWA across short / non-scrollable lists where
+   overscroll-behavior:contain on the inner scroller has no effect. */
+html.gk-overlay-locked,
+html.gk-overlay-locked body {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  overscroll-behavior-y: none !important;
+}
 .glass-card {
   background-color: var(--card-bg-light);
   backdrop-filter: blur(20px);
