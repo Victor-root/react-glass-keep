@@ -4558,6 +4558,14 @@ html.dark .gk-notif-bell-dot {
 .gk-notif-center--mobile.is-open {
   transform: translateY(0);
 }
+/* Allow the list to actually shrink below its content height when the
+   sheet hits max-height — without min-height:0 a flex child resists
+   shrinking past its intrinsic content size and the overflow-y:auto
+   scroll never kicks in. Only relevant in the natural-height mobile
+   sheet (desktop has its own max-height on the panel itself). */
+.gk-notif-center--mobile .gk-notif-center__list {
+  min-height: 0;
+}
 /* Grabber lives at the BOTTOM of the panel (the panel pushes from
    the top, so the bottom is the dismissible edge — mirror of the
    editor sheet, where the grabber sits at the top of a bottom-anchored

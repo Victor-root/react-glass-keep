@@ -249,14 +249,23 @@ export default function NotificationCenter({
     style = {
       position: "fixed",
       top: "var(--safe-top, 0px)",
-      bottom: "var(--safe-bottom, 0px)",
       left: 0,
       right: 0,
-      // Full-screen looks wrong with rounded corners and the elevated
-      // glass border — drop both so the sheet reads as a screen, not a
-      // floating card.
-      borderRadius: 0,
-      border: "none",
+      // Sheet adapts to its content. Caps at the available height
+      // (viewport minus safe-area insets) so a long list still gets
+      // an internal scroll, but a short / empty list shrinks back to
+      // its natural size — with the grabber now exposed, the sheet
+      // no longer needs to claim the full screen to feel done.
+      maxHeight:
+        "calc(100vh - var(--safe-top, 0px) - var(--safe-bottom, 0px))",
+      // Square the bottom corners so the sheet still reads as a panel
+      // pushed down from the top edge; round the bottom corners so
+      // the short / mid-height form factor still feels like a card.
+      borderTopLeftRadius: 0,
+      borderTopRightRadius: 0,
+      borderTop: "none",
+      borderLeft: "none",
+      borderRight: "none",
       // Vertical scroll inside the list is fine; everything else — page
       // swipes, native drag, horizontal pull — must not bleed through to
       // the notes view when the panel is empty.
