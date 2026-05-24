@@ -312,9 +312,21 @@ export default function NotificationCenter({
       aria-label={t("notificationCenterTitle")}
     >
       <header className="gk-notif-center__header">
-        <h2 className="gk-notif-center__title">
-          {t("notificationCenterTitle")}
-        </h2>
+        <div className="gk-notif-center__brand">
+          <img
+            src="/favicon-32x32.png"
+            srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
+            alt=""
+            aria-hidden="true"
+            className="gk-notif-center__logo"
+            draggable="false"
+          />
+          <h2 className="gk-notif-center__title">
+            <span className="gk-notif-center__brand-name">GlassKeep</span>
+            {" "}
+            {t("notificationCenterTitle")}
+          </h2>
+        </div>
         <div className="gk-notif-center__header-actions">
           {hasAny ? (
             <button
