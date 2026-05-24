@@ -141,7 +141,7 @@ export default function NotesHeader({
   const showOfflineBadge = !isOnline || syncStatus?.syncState === "offline" || syncStatus?.serverReachable === false;
   return (
       <header
-        className={`px-1.5 py-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
+        className={`${qrQuickEnabled ? "px-1.5" : "px-2.5"} py-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
         style={{
           // Keep the sticky header tight against the status bar.
           // `--safe-top` falls back to the standard env() value in any
@@ -263,7 +263,7 @@ export default function NotesHeader({
           {!mobileSearchOpen && (
             <button
               type="button"
-              className="p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-600 dark:text-gray-300"
+              className={`${qrQuickEnabled ? "p-1.5" : "p-2"} rounded-full hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-600 dark:text-gray-300`}
               aria-label={t("search")}
               onClick={() => {
                 // iOS Safari only opens the soft keyboard when focus() is
@@ -424,12 +424,12 @@ export default function NotesHeader({
             </button>
           </div>
 
-          {/* Mobile: bell + sync + (optional QR) + 3-dot menu. Tightened
-              gap and per-button padding so the row still fits next to
-              the search icon when the QR quick-action is enabled —
-              five buttons on a narrow phone otherwise pushed the kebab
-              partly off-screen. */}
-          <div className={`${mobileOnly} flex items-center gap-0`}>
+          {/* Mobile: bell + sync + (optional QR) + 3-dot menu. When the
+              QR quick-action is pinned (qrQuickEnabled), five buttons
+              + the title overflow narrow phones, so we tighten the gap
+              and per-button padding ONLY in that case. Without the QR,
+              the row keeps the original looser spacing. */}
+          <div className={`${mobileOnly} flex items-center ${qrQuickEnabled ? "gap-0" : "gap-1"}`}>
             {notificationBellMobile}
             <SyncStatusIcon dark={dark} syncStatus={syncStatus} onSyncNow={handleSyncNow} syncDropdownOpen={syncDropdownOpen} setSyncDropdownOpen={setSyncDropdownOpen} instanceLocked={instanceLocked} />
             {qrQuickEnabled && (
@@ -473,7 +473,7 @@ export default function NotesHeader({
             <button
               ref={headerBtnRef}
               onClick={() => setHeaderMenuOpen((v) => !v)}
-              className="relative p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+              className={`relative ${qrQuickEnabled ? "p-1.5" : "p-2"} rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800`}
               data-tooltip={t("menu")}
               aria-haspopup="menu"
               aria-expanded={headerMenuOpen}
