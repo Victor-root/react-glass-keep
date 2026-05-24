@@ -139,6 +139,11 @@ export default function NotificationCard({
   const notifIdRef = useRef(notification?.id);
   useEffect(() => { onDismissRef.current = onDismiss; });
   useEffect(() => { notifIdRef.current = notification?.id; });
+  // Captured once at first render so re-renders don't shuffle the
+  // animation-delay value (which would otherwise restart the CSS
+  // animation each time and re-create the very desync this is meant
+  // to fix). See `countdownStyle` below.
+  const countdownStyleRef = useRef(null);
 
   useEffect(() => {
     if (!swipeable) return undefined;
@@ -304,6 +309,27 @@ export default function NotificationCard({
   // provider's auto-dismiss timer so they finish together.
   const showCountdown =
     !compact && typeof duration === "number" && duration > 0;
+  // Sync the CSS animation with the provider's setTimeout: notify()
+  // schedules the auto-dismiss the moment it runs (t = createdAt),
+  // but the bar only starts animating once React commits and the
+  // browser mounts the element — a few ms (sometimes a few hundred
+  // on slow devices) later. Without compensation the bar still has
+  // a few % left at the moment the toast disappears. We capture the
+  // elapsed time at first render and feed it back as a NEGATIVE
+  // animation-delay so the animation effectively "started in the
+  // past" and reaches scaleX(0) at exactly the same instant the
+  // provider's timer fires. Stored in a ref so the value doesn't
+  // recompute on subsequent renders (which would restart the
+  // animation and re-create the desync).
+  if (countdownStyleRef.current === null && showCountdown) {
+    const elapsed = createdAt
+      ? Math.max(0, Math.min(duration, Date.now() - createdAt))
+      : 0;
+    countdownStyleRef.current = {
+      animationDuration: `${duration}ms`,
+      animationDelay: `-${elapsed}ms`,
+    };
+  }
 
   const card = (
     <div
@@ -377,7 +403,7 @@ export default function NotificationCard({
           <div className="gk-notif-card__countdown">
             <div
               className="gk-notif-card__countdown-fill"
-              style={{ animationDuration: `${duration}ms` }}
+              style={countdownStyleRef.current || { animationDuration: `${duration}ms` }}
             />
           </div>
         </div>
