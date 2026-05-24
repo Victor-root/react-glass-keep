@@ -350,8 +350,17 @@ export default function NotificationCenter({
                 // the entry is already in the panel, so a "soft
                 // dismiss" would just dim it without freeing space.
                 onDismiss={remove}
-                onAction={(notif) => {
-                  if (onAction) onAction(notif);
+                onAction={(notif, chosenAction) => {
+                  // Forward BOTH args — the App-level dispatcher
+                  // branches on chosenAction.kind for multi-action
+                  // cards (Approve / Reject on a pending-user notif,
+                  // Open on a retained note-copy, etc.). Without
+                  // chosenAction the dispatcher falls back to
+                  // notif.action, which is null for multi-action
+                  // cards, and the click does nothing visible — the
+                  // only side effect is onClose() below, which made
+                  // it look like the button just closed the panel.
+                  if (onAction) onAction(notif, chosenAction);
                   if (onClose) onClose();
                 }}
                 compact
