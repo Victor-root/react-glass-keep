@@ -49,7 +49,7 @@ function LoginSloganRow({ value, onSave, showToast }) {
   return (
     <div className="flex flex-col gap-2 px-3">
       <div className="flex items-center gap-3 min-w-0">
-        <RowIcon icon={TI.Note} />
+        <RowIcon icon={TI.Quote} />
         <div className="min-w-0">
           <div className="font-medium">{t("loginSloganLabel")}</div>
           <div className="text-sm text-gray-500">{t("loginSlogan")}</div>

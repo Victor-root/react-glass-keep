@@ -3019,7 +3019,7 @@ const setLoginBgStmt = db.prepare(`UPDATE app_settings SET login_bg_image = ? WH
 const BRANDING_IMAGE_RE = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/]+=*$/;
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // ~2 MB data URL (≈1.5 MB decoded)
 const MAX_LOGIN_BG_BYTES = 4 * 1024 * 1024; // ~4 MB data URL (≈3 MB decoded)
-const MAX_APP_NAME_LEN = 60;
+const MAX_APP_NAME_LEN = 10;
 const MAX_LOGIN_BLUR = 20; // px
 
 let adminSettings = (function loadAdminSettings() {

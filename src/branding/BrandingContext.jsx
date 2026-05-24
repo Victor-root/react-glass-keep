@@ -26,6 +26,40 @@ const BrandingContext = createContext({
   refreshBranding: () => {},
 });
 
+// --- Document <head> branding (tab title + favicon) -------------------
+// The custom app name drives the browser tab title and the custom logo
+// replaces the favicon. We capture the page's original icon links once
+// so clearing the custom logo restores the bundled favicons exactly.
+const ICON_SELECTOR = 'link[rel~="icon"], link[rel="apple-touch-icon"]';
+let originalIconLinksHTML = null;
+
+function applyDocumentTitle(appName) {
+  document.title = appName || DEFAULT_APP_NAME;
+}
+
+function applyFavicon(logo) {
+  const head = document.head;
+  if (originalIconLinksHTML === null) {
+    originalIconLinksHTML = Array.from(head.querySelectorAll(ICON_SELECTOR))
+      .map((l) => l.outerHTML)
+      .join("");
+  }
+  head.querySelectorAll(ICON_SELECTOR).forEach((l) => l.remove());
+  if (logo) {
+    const icon = document.createElement("link");
+    icon.rel = "icon";
+    icon.href = logo;
+    head.appendChild(icon);
+    const apple = document.createElement("link");
+    apple.rel = "apple-touch-icon";
+    apple.href = logo;
+    head.appendChild(apple);
+  } else if (originalIconLinksHTML) {
+    // Restore the bundled <link rel="icon"> set from index.html.
+    head.insertAdjacentHTML("beforeend", originalIconLinksHTML);
+  }
+}
+
 export function BrandingProvider({ children }) {
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
 
@@ -53,6 +87,14 @@ export function BrandingProvider({ children }) {
   useEffect(() => {
     refreshBranding();
   }, [refreshBranding]);
+
+  // Reflect the custom name/logo in the browser tab (title + favicon).
+  useEffect(() => {
+    applyDocumentTitle(branding.appName);
+  }, [branding.appName]);
+  useEffect(() => {
+    applyFavicon(branding.logo);
+  }, [branding.logo]);
 
   return (
     <BrandingContext.Provider value={{ branding, refreshBranding }}>
