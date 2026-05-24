@@ -3596,6 +3596,18 @@ export default function App() {
     // against it. The create payload will carry the new drawing, and the
     // effect returns because baselines are realigned to the current state.
     if (materializeDraftIfNeeded({ drawing: mDrawingData })) return;
+    // If materialise was rejected because the draft is still empty (no
+    // strokes, no caption, no metadata), keep the draft pending and skip
+    // the autosave — there's nothing to patch, and acquiring a lease /
+    // scheduling a flush for a non-existent server row destabilises
+    // subsequent modal opens (the user reported a flaky "modal opens
+    // then closes immediately" after closing an empty drawing draft).
+    if (
+      pendingDraftRef.current &&
+      String(activeId) === String(pendingDraftRef.current.id)
+    ) {
+      return;
+    }
 
     const dirtyNoteId = String(activeId);
 
@@ -4739,6 +4751,13 @@ export default function App() {
     if (!titleChanged && !textChanged) return;
 
     if (materializeDraftIfNeeded()) return;
+    // Empty-draft rejection: keep pending, skip the patch enqueue.
+    if (
+      pendingDraftRef.current &&
+      String(activeId) === String(pendingDraftRef.current.id)
+    ) {
+      return;
+    }
 
     const nId = String(activeId);
     const leaseId = acquireLocalLease(nId);
