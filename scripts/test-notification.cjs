@@ -54,9 +54,11 @@ function parseArgs(argv) {
     title: null,
     message: null,
     persistent: false,
+    icon: null,
     as: null,
     to: null,
     all: false,
+    gallery: false,
     port: null,
     host: null,
     positional: [],
@@ -71,9 +73,11 @@ function parseArgs(argv) {
     else if (a === "--title") out.title = next();
     else if (a === "--message") out.message = next();
     else if (a === "--persistent") out.persistent = true;
+    else if (a === "--icon") out.icon = next();
     else if (a === "--as") out.as = next();
     else if (a === "--to") out.to = next();
     else if (a === "--all") out.all = true;
+    else if (a === "--gallery") out.gallery = true;
     else if (a === "--port") out.port = Number(next());
     else if (a === "--host") out.host = next();
     else if (!a.startsWith("--")) out.positional.push(a);
@@ -91,12 +95,17 @@ function usage() {
       "",
       "  test-notification.cjs                       Interactive prompt",
       "  test-notification.cjs --all                 One of each variant",
+      "  test-notification.cjs --gallery             EVERY notification kind",
+      "                                                (trash, archive, share,",
+      "                                                revoke, save, … one card",
+      "                                                per real-world scenario)",
       "  test-notification.cjs info \"hello\"",
       "  test-notification.cjs error \"boom\" --persistent",
-      "  test-notification.cjs --variant warning --title \"Heads up\" --message \"...\"",
+      "  test-notification.cjs --variant warning --title \"Heads up\" --message \"...\" --icon trash",
       "  test-notification.cjs --to user@example.com info \"hi\"",
       "",
-      "Flags: --variant --title --message --persistent --as --to --all --port --host",
+      "Flags: --variant --title --message --persistent --icon --as --to",
+      "       --all --gallery --port --host",
       "",
     ].join("\n"),
   );
@@ -220,6 +229,7 @@ async function sendOne(cfg, jwt, args, override) {
     title: override.title ?? args.title,
     message: override.message || args.message,
     persistent: override.persistent ?? args.persistent ?? false,
+    icon: override.icon ?? args.icon ?? null,
   };
   if (args.to) payload.recipientEmail = args.to;
   const res = await requestJson({
@@ -239,11 +249,60 @@ async function sendOne(cfg, jwt, args, override) {
   }
   const where = res.body?.recipient?.email || "self";
   const persistFlag = payload.persistent ? " (persistent)" : "";
+  const iconFlag = payload.icon ? ` [${payload.icon}]` : "";
   console.log(
-    `[ok] ${payload.variant.padEnd(8)} → ${where}${persistFlag}: ${payload.message}`,
+    `[ok] ${payload.variant.padEnd(8)}${iconFlag} → ${where}${persistFlag}: ${payload.message}`,
   );
   return true;
 }
+
+// Real-world catalog of every notification kind the app can produce.
+// Each entry mirrors what a real action would dispatch (variant +
+// icon + roughly the localised message) so the recipient can preview
+// the full visual gallery in one shot without triggering any of the
+// underlying actions.
+const GALLERY = [
+  // ─── Note lifecycle (trash / delete / restore / archive / dup) ───
+  { variant: "success", icon: "trash",     title: "Note placée dans la corbeille",   message: "1 note déplacée vers la corbeille" },
+  { variant: "success", icon: "trash",     title: "Notes placées dans la corbeille", message: "5 notes déplacées vers la corbeille" },
+  { variant: "info",    icon: "trash",     title: "Note vide ignorée",               message: "La note vide a été jetée" },
+  { variant: "success", icon: "trash-x",   title: "Note supprimée définitivement",   message: "La note a été supprimée définitivement" },
+  { variant: "success", icon: "trash-x",   title: "Note supprimée pour tous",        message: "La note partagée a été supprimée pour tous les collaborateurs" },
+  { variant: "success", icon: "trash-x",   title: "Notes supprimées définitivement", message: "3 notes supprimées définitivement" },
+  { variant: "success", icon: "restore",   title: "Note restaurée",                  message: "Note restaurée depuis la corbeille" },
+  { variant: "success", icon: "restore",   title: "Notes restaurées",                message: "4 notes restaurées depuis la corbeille" },
+  { variant: "success", icon: "archive",   title: "Note archivée",                   message: "La note a été archivée" },
+  { variant: "success", icon: "archive",   title: "Notes archivées",                 message: "2 notes archivées" },
+  { variant: "success", icon: "archive-off", title: "Note désarchivée",              message: "La note a été désarchivée" },
+  { variant: "success", icon: "archive-off", title: "Notes désarchivées",            message: "2 notes désarchivées" },
+  { variant: "success", icon: "copy",      title: "Note dupliquée",                  message: "Une copie de la note a été créée" },
+  { variant: "success", icon: "save",      title: "Modifications enregistrées",      message: "Vos changements sont sauvegardés" },
+  // ─── Collaboration ───
+  { variant: "success", icon: "share",     title: "Collaborateur ajouté",            message: "**Alice** a été ajoutée comme collaboratrice" },
+  { variant: "success", icon: "unshare",   title: "Collaborateur retiré",            message: "**Alice** n'a plus accès à cette note" },
+  { variant: "info",                       title: "Note partagée",                   message: "**Bob** a partagé la note **Shopping List** avec vous", persistent: true },
+  { variant: "warning",                    title: "Accès retiré",                    message: "**Bob** vous a retiré l'accès à la note **Shopping List**", persistent: true },
+  { variant: "warning",                    title: "Accès retiré",                    message: "**Bob** vous a retiré l'accès à la note **Shopping List**, mais une copie vous a été conservée", persistent: true },
+  { variant: "warning",                    title: "Collaborateur retiré",            message: "Vous avez retiré **Alice** de la note **Shopping List**", persistent: true },
+  { variant: "warning",                    title: "Collaborateur retiré",            message: "Vous avez retiré **Alice** de la note **Shopping List**, une copie lui a été conservée", persistent: true },
+  // ─── Compte / authentification ───
+  { variant: "success", icon: "key",       title: "Mot de passe modifié",            message: "Votre mot de passe a été changé" },
+  { variant: "success", icon: "qr",        title: "Connexion QR validée",            message: "Connexion par QR code approuvée" },
+  { variant: "success", icon: "camera",    title: "Photo de profil mise à jour",     message: "Votre avatar a été mis à jour" },
+  { variant: "info",    icon: "camera",    title: "Photo de profil supprimée",       message: "Votre avatar a été retiré" },
+  // ─── Administration ───
+  { variant: "success", icon: "user-plus", title: "Utilisateur créé",                message: "Le nouvel utilisateur a été créé avec succès" },
+  { variant: "success", icon: "user-check",title: "Utilisateur modifié",             message: "Les informations de l'utilisateur ont été enregistrées" },
+  { variant: "success", icon: "user-check",title: "Inscription approuvée",           message: "**Charlie** peut désormais se connecter" },
+  { variant: "info",    icon: "user-x",    title: "Inscription refusée",             message: "La demande de **Charlie** a été refusée" },
+  { variant: "info",    icon: "user-clock",title: "Nouvelle inscription",            message: "**Charlie** attend votre approbation" },
+  { variant: "success", icon: "save",      title: "Paramètres enregistrés",          message: "Les paramètres ont bien été sauvegardés" },
+  { variant: "success", icon: "shield",    title: "Chiffrement désactivé",           message: "Le chiffrement au repos a été désactivé" },
+  // ─── Erreurs ───
+  { variant: "error",                      title: "Échec de la mise à jour",         message: "Impossible de sauvegarder les changements" },
+  { variant: "error",                      title: "Erreur réseau",                   message: "Le serveur n'a pas répondu à temps" },
+  { variant: "warning",                    title: "Champs requis",                   message: "Merci de remplir tous les champs obligatoires" },
+];
 
 async function main() {
   const args = parseArgs(process.argv);
@@ -305,6 +364,27 @@ async function main() {
     for (const s of samples) {
       await sendOne(cfg, token, args, s);
     }
+    return;
+  }
+
+  // --gallery: fire EVERY notification kind the app can produce,
+  // sequentially, so the recipient can preview the full visual
+  // catalogue in one go. Each entry mirrors what a real action
+  // would dispatch (variant + icon + localised message text) but
+  // bypasses the underlying side effects — no notes are deleted,
+  // no users are created, no collaboration links are touched.
+  // A 70 ms gap between sends keeps the in-memory provider's
+  // identity-by-id dedup from collapsing entries that happen to
+  // share a creation ms; otherwise React batching would still
+  // render them all but the audible "ding" only fires once per
+  // distinct id.
+  if (args.gallery) {
+    console.log(`Firing ${GALLERY.length} gallery notifications…`);
+    for (const entry of GALLERY) {
+      await sendOne(cfg, token, args, entry);
+      await new Promise((r) => setTimeout(r, 70));
+    }
+    console.log("Gallery done.");
     return;
   }
 

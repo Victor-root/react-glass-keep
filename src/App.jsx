@@ -3154,6 +3154,7 @@ export default function App() {
                 title: msg.title || null,
                 message: msg.message || "",
                 persistent: !!msg.persistent,
+                icon: msg.icon || null,
               });
               if (msg.notificationId) {
                 markShareNotificationsDelivered([msg.notificationId]);

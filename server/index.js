@@ -166,6 +166,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   variant TEXT,
   message TEXT,
   persistent INTEGER NOT NULL DEFAULT 0,
+  icon TEXT,
   created_at TEXT NOT NULL,
   delivered_at TEXT,
   FOREIGN KEY(recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -333,6 +334,9 @@ CREATE TABLE IF NOT EXISTS app_settings (
         db.exec(
           `ALTER TABLE notifications ADD COLUMN persistent INTEGER NOT NULL DEFAULT 0`,
         );
+      }
+      if (!names.has("icon")) {
+        db.exec(`ALTER TABLE notifications ADD COLUMN icon TEXT`);
       }
     });
     tx();
@@ -845,12 +849,12 @@ const updateNoteWithEditor = db.prepare(`
 const insertNotification = db.prepare(`
   INSERT INTO notifications
     (recipient_user_id, sender_user_id, type, note_id, note_title, sender_name,
-     variant, message, persistent, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     variant, message, persistent, icon, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const getPendingNotificationsForUser = db.prepare(`
   SELECT id, sender_user_id, type, note_id, note_title, sender_name,
-         variant, message, persistent, created_at
+         variant, message, persistent, icon, created_at
   FROM notifications
   WHERE recipient_user_id = ? AND delivered_at IS NULL
   ORDER BY created_at ASC
@@ -1106,6 +1110,7 @@ function createShareNotification({ recipientId, senderId, senderName, noteId, no
       null,
       null,
       1,
+      null,
       createdAt,
     );
     sendEventToUser(recipientId, {
@@ -2007,6 +2012,7 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
         null,
         null,
         1,
+        null,
         revokeCreatedAt,
       );
       sendEventToUser(userIdToRemove, {
@@ -2040,6 +2046,7 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
         null,
         null,
         1,
+        null,
         revokeCreatedAt,
       );
       sendEventToUser(req.user.id, {
@@ -2103,6 +2110,7 @@ app.post("/api/notifications/test", auth, adminOnly, (req, res) => {
     title = null,
     message = "",
     persistent = false,
+    icon = null,
     recipientEmail = null,
   } = req.body || {};
 
@@ -2121,7 +2129,7 @@ app.post("/api/notifications/test", auth, adminOnly, (req, res) => {
   }
 
   const createdAt = nowISO();
-  // Test notifications fully serialise variant/message/persistent
+  // Test notifications fully serialise variant/message/persistent/icon
   // so an offline recipient sees the exact same payload on next
   // login that they would have seen live over SSE.
   const result = insertNotification.run(
@@ -2134,6 +2142,7 @@ app.post("/api/notifications/test", auth, adminOnly, (req, res) => {
     variant,
     message,
     persistent ? 1 : 0,
+    icon || null,
     createdAt,
   );
 
@@ -2148,6 +2157,7 @@ app.post("/api/notifications/test", auth, adminOnly, (req, res) => {
     title: title || null,
     message,
     persistent: !!persistent,
+    icon: icon || null,
     createdAt,
   });
 

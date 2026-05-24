@@ -173,9 +173,9 @@ export function useShareNotifications({ token, userId }) {
             handled.push(n.id);
           } else if (n.variant || n.message) {
             // Generic persisted notification — the row carries its
-            // own variant/message/persistent fields (test-CLI
-            // dispatches, future server-side events). Replay it
-            // verbatim instead of dropping it on the floor.
+            // own variant / message / persistent / icon fields
+            // (test-CLI dispatches, future server-side events).
+            // Replay it verbatim instead of dropping it on the floor.
             const fn = notifyRef.current;
             if (typeof fn === "function") {
               fn({
@@ -184,6 +184,7 @@ export function useShareNotifications({ token, userId }) {
                 title: n.note_title || null,
                 message: n.message || "",
                 persistent: !!n.persistent,
+                icon: n.icon || null,
                 metadata: { serverNotificationId: n.id },
               });
             }
