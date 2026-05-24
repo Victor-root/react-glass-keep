@@ -287,7 +287,6 @@ export default function AdminUpdateSection({
         >
           <TI.BrandGithub className="tabler-icon w-4 h-4" />
           {t("openRepo")}
-          <TI.ExternalLink className="tabler-icon w-3.5 h-3.5 opacity-70" />
         </a>
         <button
           type="button"
