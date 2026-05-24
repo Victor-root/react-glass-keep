@@ -537,7 +537,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   loginBackgroundImage: "Image de fond de connexion",
   loginBackgroundImageDesc: "Affichée uniquement sur l'écran de connexion. PNG, JPG ou WebP, jusqu'à 4 Mo.",
   loginBackgroundRecommend: "Recommandé : image paysage, 1920×1080 px (16:9).",
-  loginBackgroundDefaultPreview: "Fond par défaut (utilisé si aucune image n'est définie).",
+  loginBackgroundDefaultPreview: "Fond par défaut",
   loginBackgroundBlurLabel: "Flou de l'arrière-plan",
   loginBackgroundBlurDesc: "Flou appliqué à l'image de fond de la page de connexion.",
   uploadImage: "Importer une image",

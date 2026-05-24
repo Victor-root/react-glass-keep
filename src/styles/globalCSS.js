@@ -1977,6 +1977,66 @@ html.dark .login-deco-card {
   margin-bottom: 7px;
 }
 
+/* Range slider (e.g. login-background blur). The filled portion is
+   painted via an inline linear-gradient background set on the element
+   (works in WebKit + Firefox); this block styles the rail height and a
+   clearly-visible thumb that reads on both light and dark themes. */
+.gk-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+.gk-range::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+.gk-range::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+.gk-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid #6366f1;
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.gk-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #6366f1;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.gk-range:hover::-webkit-slider-thumb { transform: scale(1.12); }
+.gk-range:hover::-moz-range-thumb { transform: scale(1.12); }
+.gk-range:focus-visible::-webkit-slider-thumb,
+.gk-range:active::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25); }
+.gk-range:focus-visible::-moz-range-thumb,
+.gk-range:active::-moz-range-thumb { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25); }
+html.dark .gk-range::-webkit-slider-thumb {
+  background: #e5e7eb;
+  border-color: #818cf8;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+html.dark .gk-range::-moz-range-thumb {
+  background: #e5e7eb;
+  border-color: #818cf8;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
 /* ================================================================
    Rich-text editor (Tiptap) — refined GlassKeep look
    ================================================================ */

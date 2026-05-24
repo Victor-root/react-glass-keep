@@ -152,6 +152,11 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
     setBlur(persistedBlur);
   }, [persistedBlur]);
 
+  // Slider rail: indigo→violet fill up to the current value, neutral
+  // track after it (theme-aware).
+  const blurPct = (blur / MAX_BLUR) * 100;
+  const trackColor = dark ? "rgba(255,255,255,0.14)" : "rgba(148,163,184,0.35)";
+
   // updateAdminSettings persists + updates adminSettings; App's
   // onSettingsUpdated callback then refreshes the live branding context.
   const saveField = (patch) => updateAdminSettings(patch);
@@ -363,7 +368,10 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
             onChange={(e) => setBlur(Number(e.target.value))}
             onPointerUp={commitBlur}
             onKeyUp={commitBlur}
-            className="w-full accent-indigo-600 cursor-pointer"
+            className="gk-range w-full"
+            style={{
+              background: `linear-gradient(to right, #6366f1 0%, #8b5cf6 ${blurPct}%, ${trackColor} ${blurPct}%, ${trackColor} 100%)`,
+            }}
             aria-label={t("loginBackgroundBlurLabel")}
           />
           <div className="flex justify-between text-xs text-gray-400 dark:text-gray-500 mt-1">
