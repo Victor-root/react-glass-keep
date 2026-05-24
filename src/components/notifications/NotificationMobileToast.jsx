@@ -113,31 +113,96 @@ function shouldUseLong(notif) {
 
 export default function NotificationMobileToast({ onAction, suppressed = false }) {
   const { notifications, remove, dismissLocal } = useNotifications();
-  const current = notifications.find((n) => !n.dismissed) || null;
   const [visible, setVisible] = useState(false);
   const lastIdRef = useRef(null);
-  // Ref mirror of the latest notifications array — the queue-cycle
-  // effect reads queueSize ONCE per `current` change without having
-  // to list `notifications` in its dependency array (which would
-  // restart the share timer every time a sibling notif gets dismissed
-  // by us, breaking the cycle).
   const notificationsRef = useRef(notifications);
   useEffect(() => {
     notificationsRef.current = notifications;
   }, [notifications]);
 
+  // ── Sticky displayed-id ────────────────────────────────────────────
+  // The pill shows ONE notification at a time. A newly arriving
+  // notification must NOT pre-empt the one currently on screen —
+  // otherwise rapid bursts of 4+ notifs cause the earlier ones to
+  // flash for a single frame each as `find(!dismissed)` rotates to
+  // the newest every render. We keep showing the same id until
+  // either the cycler dismisses it OR the provider's own auto-dismiss
+  // timer fires.
+  const displayedIdRef = useRef(null);
+  // Wall-clock moment the current notif first became visible. Used
+  // by the bar's animation-delay anchor so the countdown measures
+  // from "now I'm on screen", not from createdAt (which can be far
+  // in the past for notifs that sat queued behind earlier ones).
+  const displayStartRef = useRef(0);
+
+  let current = null;
+  if (displayedIdRef.current != null) {
+    const sticky = notifications.find(
+      (n) => n.id === displayedIdRef.current && !n.dismissed,
+    );
+    if (sticky) current = sticky;
+  }
+  if (!current) {
+    current = notifications.find((n) => !n.dismissed) || null;
+    if (current && current.id !== displayedIdRef.current) {
+      displayedIdRef.current = current.id;
+      displayStartRef.current = Date.now();
+    } else if (!current) {
+      displayedIdRef.current = null;
+      displayStartRef.current = 0;
+    }
+  }
+
+  // ── Burst-slice snapshot ───────────────────────────────────────────
+  // burstSlice is the FROZEN per-notif display duration for the
+  // current burst. Captured at burst start (= when active count
+  // transitions 0 → ≥1) after a short 100 ms settling window so
+  // SSE arrivals that fire in separate task ticks group into the
+  // same snapshot. Stays the same for every notif in the burst —
+  // no live `remaining / queueCount` recalc. Reset to null when
+  // the burst exhausts (no more active notifs).
+  const [burstSlice, setBurstSlice] = useState(null);
+  // End burst when nothing's active anymore.
+  useEffect(() => {
+    const anyActive = notifications.some((n) => !n.dismissed);
+    if (!anyActive && burstSlice != null) setBurstSlice(null);
+  }, [notifications, burstSlice]);
+  // Start burst (with settling) when one isn't running and there's
+  // an eligible notif on screen. The settling timer restarts every
+  // time the effect re-runs (new arrival), so its callback fires
+  // 100 ms after the LAST arrival — that's when we snapshot the
+  // queue size.
+  useEffect(() => {
+    if (burstSlice != null) return undefined;
+    if (hasAndroidBridge()) return undefined;
+    if (!current) return undefined;
+    const dur = current.duration;
+    if (typeof dur !== "number" || dur <= 0) return undefined;
+    const h = setTimeout(() => {
+      const fresh = notificationsRef.current;
+      const queueSize = fresh.reduce(
+        (acc, n) => (n.dismissed ? acc : acc + 1),
+        0,
+      );
+      if (queueSize <= 0) return;
+      const slice =
+        queueSize > 1
+          ? Math.max(800, Math.floor(dur / queueSize))
+          : dur;
+      setBurstSlice(slice);
+    }, 100);
+    return () => clearTimeout(h);
+  }, [burstSlice, current?.id]);
+
   useEffect(() => {
     if (current && current.id !== lastIdRef.current) {
       lastIdRef.current = current.id;
       if (hasAndroidBridge()) {
-        // Native Toast — fire-and-forget. The OS controls timing
-        // and dismissal, so we don't render any DOM ourselves.
         try {
           window.AndroidToast.show(buildToastText(current), shouldUseLong(current));
         } catch (_e) {}
         setVisible(false);
       } else {
-        // PWA / browser fallback: render the CSS pill.
         setVisible(true);
       }
     } else if (!current) {
@@ -146,75 +211,39 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
     }
   }, [current]);
 
-  // PWA queue cycler. The mobile pill shows one notification at a
-  // time, but the provider's per-notification auto-dismiss timers
-  // fire in parallel — so when four toasts arrive at the same moment
-  // the user only ever sees the first, and all four dismiss together
-  // when the duration elapses. To make every pending notification
-  // visible inside roughly the user-configured window, we slice the
-  // duration across the queue (with a floor of 800 ms per slice so
-  // the user can actually read each one) and proactively dismiss the
-  // current at its slice end. The provider's own timer still fires
-  // at full duration, but the row is already dismissed by then so
-  // its DISMISS becomes a no-op.
+  // Cycler — dismisses the displayed notification after burstSlice ms.
+  // Anchored on displayStartRef so remaining time is measured from the
+  // moment the notif became visible, not from when the effect runs
+  // (which can be a frame or two later because of React batching).
   useEffect(() => {
     if (!current || hasAndroidBridge()) return undefined;
-    const userDuration = current.duration;
-    if (typeof userDuration !== "number" || userDuration <= 0) return undefined;
-    const queueSize = notificationsRef.current.reduce(
-      (acc, n) => (n.dismissed ? acc : acc + 1),
-      0,
-    );
-    if (queueSize <= 1) return undefined; // Single notif — let the provider's own timer handle it.
-    const share = Math.max(800, Math.floor(userDuration / queueSize));
+    if (!burstSlice || burstSlice <= 0) return undefined;
+    const elapsed = Date.now() - displayStartRef.current;
+    const remaining = Math.max(0, burstSlice - elapsed);
     const h = setTimeout(() => {
-      // dismissLocal (not dismiss) — same visual effect on this
-      // session but does NOT POST /notifications/delivered, so no
-      // SSE broadcast reaches the user's other sessions. A desktop
-      // session of the same user keeps its own bar running until
-      // its provider's setTimeout fires at full duration. The
-      // provider's own fallback timer here still fires later and
-      // performs the ack (its dispatch is a no-op since this row
-      // is already dismissed).
       dismissLocal(current.id);
-    }, share);
+    }, remaining);
     return () => clearTimeout(h);
-  }, [current?.id, dismissLocal]);
+  }, [current?.id, burstSlice, dismissLocal]);
 
-  // Countdown bar — declared at the top of the component so the hook
-  // call site is stable across renders (the early returns below would
-  // otherwise skip useRef / useLayoutEffect and trip React error #310).
-  // Effective duration mirrors the queue-cycler's slice when several
-  // notifs are pending so the bar finishes exactly when the pill
-  // dismisses; falls back to the raw user duration otherwise.
-  const queueSize = notificationsRef.current.reduce(
-    (acc, n) => (n.dismissed ? acc : acc + 1),
-    0,
-  );
-  let effectiveDuration = null;
-  if (current && typeof current.duration === "number" && current.duration > 0) {
-    effectiveDuration =
-      queueSize > 1
-        ? Math.max(800, Math.floor(current.duration / queueSize))
-        : current.duration;
-  }
-  const showCountdown = !!(effectiveDuration && effectiveDuration > 0);
+  const showCountdown = !!(burstSlice && burstSlice > 0 && current);
   const countdownFillRef = useRef(null);
-  // Same mount-time anchor trick as the desktop card: feed the elapsed
-  // time back as a NEGATIVE animation-delay so the scaleX(0) frame
-  // lands at the exact moment dismiss() fires, even if React commit
-  // happened a few ms / frames after notify().
+  // Anchor the bar's animation-delay so its scaleX(0) frame lands at
+  // the same wall-clock instant the cycler dismisses. Measured from
+  // displayStartRef (when current became visible) — NOT from
+  // createdAt, which would put the bar way past full-depleted for
+  // notifs that sat queued for a while.
   useLayoutEffect(() => {
     if (!showCountdown || !current) return;
     const el = countdownFillRef.current;
-    if (!el || !current.createdAt) return;
+    if (!el) return;
     const elapsed = Math.max(
       0,
-      Math.min(effectiveDuration, Date.now() - current.createdAt),
+      Math.min(burstSlice, Date.now() - displayStartRef.current),
     );
     el.style.animationDelay = `-${elapsed}ms`;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id]);
+  }, [current?.id, burstSlice]);
 
   if (typeof document === "undefined") return null;
   // Inside the Android wrapper we never render — the OS toast IS the
@@ -276,7 +305,7 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
             <div
               ref={countdownFillRef}
               className="gk-mobile-toast__countdown-fill"
-              style={{ animationDuration: `${effectiveDuration}ms` }}
+              style={{ animationDuration: `${burstSlice}ms` }}
             />
           </div>
         </div>
