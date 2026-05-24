@@ -4143,8 +4143,8 @@ html.dark .gk-notif-bell-badge {
   border: 1px solid transparent;
   background:
     linear-gradient(135deg,
-      rgba(250, 247, 255, 0.62) 0%,
-      rgba(245, 249, 255, 0.62) 100%) padding-box,
+      rgba(255, 255, 255, 0.50) 0%,
+      rgba(255, 255, 255, 0.50) 100%) padding-box,
     linear-gradient(135deg,
       rgba(167, 139, 250, 0.32) 0%,
       rgba(96, 165, 250, 0.32) 100%) border-box;
@@ -4155,7 +4155,7 @@ html.dark .gk-notif-bell-badge {
     0 0 14px rgba(99, 102, 241, 0.22),
     0 18px 40px -10px rgba(15, 23, 42, 0.22),
     0 8px 18px -6px rgba(99, 102, 241, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -4166,8 +4166,8 @@ html.dark .gk-notif-center {
   border: 1px solid transparent;
   background:
     linear-gradient(135deg,
-      rgba(44, 42, 56, 0.68) 0%,
-      rgba(40, 44, 56, 0.68) 100%) padding-box,
+      rgba(30, 30, 40, 0.60) 0%,
+      rgba(30, 30, 40, 0.60) 100%) padding-box,
     linear-gradient(135deg,
       rgba(167, 139, 250, 0.30) 0%,
       rgba(96, 165, 250, 0.30) 100%) border-box;
