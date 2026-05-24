@@ -210,6 +210,9 @@ export default function NotificationCenter({
                 // through and the cards don't stack a second heavy
                 // gradient on top of it.
                 mode="center"
+                // Mobile: hide the X and enable horizontal swipe to
+                // dismiss instead.
+                swipeable={isMobile}
               />
             </div>
           ))

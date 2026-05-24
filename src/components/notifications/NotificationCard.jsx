@@ -15,7 +15,7 @@
 // children, so title / message remain XSS-safe even when the values
 // originate from the server.
 
-import React from "react";
+import React, { useRef, useState, useEffect } from "react";
 import TI from "../../icons/editor/index.jsx";
 import { t } from "../../i18n";
 
@@ -109,6 +109,11 @@ function renderMessage(message) {
   });
 }
 
+// Swipe-to-dismiss threshold in pixels.
+const SWIPE_DISMISS_THRESHOLD = 80;
+// translateX applied when flinging off-screen.
+const SWIPE_EXIT_PX = 500;
+
 export default function NotificationCard({
   notification,
   onDismiss,
@@ -121,7 +126,74 @@ export default function NotificationCard({
   // variant identity falls back to the icon + a thin accent bar on
   // the left edge so the panel doesn't stack two heavy gradients.
   mode = "toast",
+  // When true (mobile panel): hides the X button and enables horizontal
+  // swipe to dismiss the card.
+  swipeable = false,
 }) {
+  const cardRef = useRef(null);
+  // Touch tracking — refs so event handlers never go stale.
+  const startXRef = useRef(null);
+  const deltaRef = useRef(0);
+  // Latest onDismiss / id via ref so the single useEffect never needs
+  // to re-register listeners when props update.
+  const onDismissRef = useRef(onDismiss);
+  const notifIdRef = useRef(notification?.id);
+  useEffect(() => { onDismissRef.current = onDismiss; });
+  useEffect(() => { notifIdRef.current = notification?.id; });
+
+  const [translate, setTranslate] = useState(0);
+  // animated=true → apply CSS transition (spring-back or exit fling).
+  // animated=false → raw tracking, no transition lag.
+  const [animated, setAnimated] = useState(false);
+
+  useEffect(() => {
+    if (!swipeable) return undefined;
+    const el = cardRef.current;
+    if (!el) return undefined;
+
+    const onTouchStart = (e) => {
+      startXRef.current = e.touches[0].clientX;
+      deltaRef.current = 0;
+      setAnimated(false);
+      setTranslate(0);
+    };
+
+    const onTouchMove = (e) => {
+      if (startXRef.current === null) return;
+      const dx = e.touches[0].clientX - startXRef.current;
+      deltaRef.current = dx;
+      setTranslate(dx);
+    };
+
+    const onTouchEnd = () => {
+      if (startXRef.current === null) return;
+      startXRef.current = null;
+      const dx = deltaRef.current;
+      setAnimated(true);
+      if (Math.abs(dx) >= SWIPE_DISMISS_THRESHOLD) {
+        const dir = dx > 0 ? 1 : -1;
+        setTranslate(dir * SWIPE_EXIT_PX);
+        setTimeout(() => {
+          onDismissRef.current?.(notifIdRef.current);
+        }, 220);
+      } else {
+        setTranslate(0);
+        setTimeout(() => setAnimated(false), 300);
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: true });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [swipeable]);
+
   if (!notification) return null;
   const { id, title, message, variant, dismissible, action, createdAt, icon: iconKey } =
     notification;
@@ -132,13 +204,28 @@ export default function NotificationCard({
   const time = formatRelativeTime(createdAt);
   const headline = title || fallbackTitle(variant);
 
+  const swipeStyle = swipeable
+    ? {
+        transform: `translateX(${translate}px)`,
+        opacity: Math.max(0, 1 - Math.abs(translate) / 200),
+        transition: animated
+          ? "transform 0.25s ease, opacity 0.25s ease"
+          : "none",
+        touchAction: "pan-y",
+        userSelect: "none",
+        willChange: "transform",
+      }
+    : {};
+
   return (
     <div
+      ref={cardRef}
       role="status"
       aria-live={variant === "error" ? "assertive" : "polite"}
       className={`gk-notif-card ${klass}${compact ? " gk-notif-card--compact" : ""}${closeKlass}${modeKlass}`}
+      style={swipeStyle}
     >
-      {dismissible !== false ? (
+      {dismissible !== false && !swipeable ? (
         <button
           type="button"
           aria-label={t("close")}
