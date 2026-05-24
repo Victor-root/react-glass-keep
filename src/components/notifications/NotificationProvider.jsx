@@ -126,6 +126,33 @@ function reducer(state, action) {
       return state.filter(
         (n) => n.metadata?.serverNotificationId == null,
       );
+    case "MERGE_HISTORY": {
+      // Populate the notification center with already-delivered rows
+      // fetched from the server at login. Runs on every device/tab so
+      // every session sees the same history regardless of which device
+      // originally received each notification.
+      //
+      // Dedup rule: skip any incoming row whose serverNotificationId
+      // already appears in state (active OR dismissed) — the in-memory
+      // version is the authoritative one for this session.
+      const incoming = action.notifications;
+      if (!incoming || incoming.length === 0) return state;
+      const existingSids = new Set(
+        state
+          .map((n) => n.metadata?.serverNotificationId)
+          .filter((x) => x != null),
+      );
+      const toAdd = incoming.filter((n) => {
+        const sid = n.metadata?.serverNotificationId;
+        return sid == null || !existingSids.has(sid);
+      });
+      if (toAdd.length === 0) return state;
+      const merged = [...toAdd, ...state];
+      // Keep newest-first so the history panel shows a consistent
+      // chronological feed across all devices.
+      merged.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      return merged.slice(0, MAX_HISTORY);
+    }
     default:
       return state;
   }
@@ -351,6 +378,16 @@ export function NotificationProvider({ children }) {
     return id;
   }, [ackDeliveredById]);
 
+  // Populate the history panel with already-delivered notifications
+  // fetched from the server at login. Each item must already be a
+  // complete notification object (dismissed:true, createdAt set, etc.)
+  // built by the caller. The reducer deduplicates by serverNotificationId
+  // so calling this multiple times is safe.
+  const mergeHistory = useCallback((items) => {
+    if (!Array.isArray(items) || items.length === 0) return;
+    dispatch({ type: "MERGE_HISTORY", notifications: items });
+  }, []);
+
   const value = {
     notifications,
     notify,
@@ -363,6 +400,7 @@ export function NotificationProvider({ children }) {
     setDefaultDuration,
     setOnMarkDelivered,
     markDelivered,
+    mergeHistory,
   };
 
   return (
@@ -384,6 +422,7 @@ const NOOP_VALUE = {
   setDefaultDuration: () => {},
   setOnMarkDelivered: () => {},
   markDelivered: () => {},
+  mergeHistory: () => {},
 };
 
 export function useNotifications() {

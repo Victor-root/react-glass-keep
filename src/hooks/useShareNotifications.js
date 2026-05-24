@@ -1,49 +1,123 @@
-// Persisted "Note shared with you" notifications, routed through the
-// central notification provider.
+// Persisted notifications (share, revoke, test, generic), routed
+// through the central notification provider.
 //
-// Two delivery paths cooperate:
+// Three delivery paths cooperate so every device sees the same state:
 //
 //   1. SSE (live)    — when the recipient is connected at the moment
-//                      the share happens, the server pushes a
-//                      `note_shared` event. The App-level SSE handler
-//                      calls `showShareToast` directly, then
-//                      `markDelivered` so the row doesn't replay on
-//                      the next reload.
+//                      the event happens, the server pushes a typed
+//                      event (note_shared, note_access_revoked, …).
+//                      The App-level SSE handler calls showShareToast /
+//                      showRevokeToast directly, then markDelivered so
+//                      the row doesn't replay on the next reload.
 //
-//   2. Pending fetch — on every auth (login or reload), the hook
-//                      pulls every still-undelivered notification from
-//                      the server and shows + marks them. Catches the
-//                      cases where the recipient was offline (no SSE
-//                      client) when the share happened.
+//   2. Pending fetch — on every auth (login or reload), the hook pulls
+//                      every still-undelivered notification and shows
+//                      them as active toasts. Catches the cases where
+//                      the recipient was offline when the event fired.
 //
-// `shownIdsRef` deduplicates inside a single session so the rare race
-// where the same notification surfaces via both paths (SSE arrives
-// while the pending fetch is in flight) still only shows one card.
-// Cross-session deduplication is handled by the server marking
-// `delivered_at` once the client has received the row.
+//   3. History fetch — runs alongside the pending fetch. Pulls the last
+//                      100 already-delivered rows and injects them into
+//                      the provider as dismissed entries so the
+//                      notification center history panel is identical
+//                      on every device, tab, and after every reconnect.
 //
-// Notifications are dispatched as `persistent` cards so they stay on
-// screen until the user closes them or clicks the "Ouvrir" action
-// (which opens the note + dismisses). They also appear in the
-// notification center history.
+// `shownIdsRef` deduplicates paths 1 and 2 inside a single session so
+// the rare race where the same notification arrives via both doesn't
+// show duplicate toasts. The provider's ADD reducer deduplicates by
+// serverNotificationId across sessions. History items are deduplicated
+// by the MERGE_HISTORY reducer action.
 
 import { useCallback, useEffect, useRef } from "react";
 import { api } from "../utils/api";
 import { t } from "../i18n";
 import { useNotifications } from "../components/notifications/NotificationProvider.jsx";
 
+// Build a fully-formed notification object from a server history row
+// (delivered_at IS NOT NULL). The shape must satisfy the provider's
+// notification structure so it can be passed directly to mergeHistory.
+function buildHistoryEntry(n) {
+  const sid = n.id;
+  const sender = String(n.sender_name ?? "").trim();
+  const rawTitle = String(n.note_title ?? "").trim();
+  const noteTitle = rawTitle || t("untitledNote");
+  const noteId = n.note_id ?? null;
+  const createdAt = n.created_at ? new Date(n.created_at).getTime() : Date.now();
+  const dismissedAt = n.delivered_at ? new Date(n.delivered_at).getTime() : createdAt;
+
+  let type = n.type || "generic";
+  let title = null;
+  let message = "";
+  let variant = n.variant || "info";
+  let action = null;
+  let icon = n.icon || null;
+
+  if (type === "note_shared") {
+    title = t("noteSharedTitle");
+    message = t("noteSharedToast", { sender, title: `**${noteTitle}**` });
+    variant = "info";
+    action = noteId ? { label: t("noteSharedAction"), noteId: String(noteId) } : null;
+  } else if (
+    type === "note_access_revoked" ||
+    type === "note_access_revoked_with_copy" ||
+    type === "collaborator_removed" ||
+    type === "collaborator_removed_with_copy" ||
+    type === "collaborator_left"
+  ) {
+    const titleKeyMap = {
+      collaborator_removed: "collaboratorRemovedTitle",
+      collaborator_removed_with_copy: "collaboratorRemovedTitle",
+      collaborator_left: "collaboratorLeftTitle",
+      note_access_revoked_with_copy: "noteAccessRevokedTitle",
+    };
+    const msgKeyMap = {
+      collaborator_removed: "collaboratorRemovedToast",
+      collaborator_removed_with_copy: "collaboratorRemovedWithCopyToast",
+      collaborator_left: "collaboratorLeftToast",
+      note_access_revoked_with_copy: "noteAccessRevokedWithCopyToast",
+    };
+    title = t(titleKeyMap[type] || "noteAccessRevokedTitle");
+    message = t(msgKeyMap[type] || "noteAccessRevokedToast", { sender, title: `**${noteTitle}**` });
+    variant = "warning";
+  } else if (n.message) {
+    // Generic / test notification — use stored fields directly.
+    title = n.note_title || null;
+    message = n.message;
+    variant = n.variant || "info";
+  }
+
+  return {
+    id: `hist_${sid}`,
+    type,
+    title,
+    message,
+    variant,
+    icon,
+    createdAt,
+    duration: null,
+    dismissible: true,
+    action,
+    metadata: { serverNotificationId: sid, noteId },
+    dismissed: true,
+    dismissedAt,
+  };
+}
+
 export function useShareNotifications({ token, userId }) {
-  const { notify } = useNotifications();
+  const { notify, mergeHistory } = useNotifications();
   const shownIdsRef = useRef(new Set());
   // Latest-callable refs so the helpers we return stay identity-stable
   // — token comes from App state and notify is provided by context;
   // tying them via refs lets the pending-fetch effect only re-run on
   // login/logout rather than on every App render.
   const notifyRef = useRef(notify);
+  const mergeHistoryRef = useRef(mergeHistory);
   const tokenRef = useRef(token);
   useEffect(() => {
     notifyRef.current = notify;
   }, [notify]);
+  useEffect(() => {
+    mergeHistoryRef.current = mergeHistory;
+  }, [mergeHistory]);
   useEffect(() => {
     tokenRef.current = token;
   }, [token]);
@@ -162,11 +236,18 @@ export function useShareNotifications({ token, userId }) {
     let cancelled = false;
     (async () => {
       try {
-        const data = await api("/notifications/pending", { token });
-        const list = data?.notifications || [];
-        if (cancelled || list.length === 0) return;
-        const handled = [];
-        for (const n of list) {
+        // Fetch pending (undelivered) and history (delivered) in
+        // parallel — both are needed to reconstruct the full,
+        // consistent notification state across every device and tab.
+        const [pendingData, historyData] = await Promise.all([
+          api("/notifications/pending", { token }),
+          api("/notifications/history", { token }),
+        ]);
+        if (cancelled) return;
+
+        // ── Pending: replay as active toasts ────────────────────────
+        const pending = pendingData?.notifications || [];
+        for (const n of pending) {
           const payload = {
             id: n.id,
             notificationType: n.type,
@@ -176,7 +257,6 @@ export function useShareNotifications({ token, userId }) {
           };
           if (n.type === "note_shared") {
             showShareToast(payload);
-            handled.push(n.id);
           } else if (
             n.type === "note_access_revoked" ||
             n.type === "note_access_revoked_with_copy" ||
@@ -185,12 +265,8 @@ export function useShareNotifications({ token, userId }) {
             n.type === "collaborator_left"
           ) {
             showRevokeToast(payload);
-            handled.push(n.id);
           } else if (n.variant || n.message) {
-            // Generic persisted notification — the row carries its
-            // own variant / message / persistent / icon fields
-            // (test-CLI dispatches, future server-side events).
-            // Replay it verbatim instead of dropping it on the floor.
+            // Generic persisted notification (test-CLI, future events).
             const fn = notifyRef.current;
             if (typeof fn === "function") {
               fn({
@@ -203,23 +279,29 @@ export function useShareNotifications({ token, userId }) {
                 metadata: { serverNotificationId: n.id },
               });
             }
-            handled.push(n.id);
           }
         }
-        // We do NOT call markDelivered(handled) here. The server's
-        // notification_delivered broadcast would race back and
-        // dismiss the cards we just rendered (same race that hit the
-        // SSE handlers and was fixed there). Instead, every card
-        // acks itself on its natural resolution path: user clicks X
-        // (provider's dismiss/remove → ackDeliveredById), auto-
-        // dismiss timer fires (notify's timer → ackDeliveredById),
-        // or the bell is opened (its own markDelivered call). The
-        // worst case if the user reloads before any of those is one
-        // extra replay — strictly better than a card that vanishes
-        // in 10 ms.
+        // We do NOT call markDelivered here: the server would broadcast
+        // notification_delivered back immediately and dismiss the cards
+        // we just rendered. Each card self-acks on resolution (X click,
+        // auto-dismiss timer, bell open).
+
+        // ── History: inject as dismissed entries for the history panel ─
+        // Build every delivered row into a dismissed notification object
+        // and merge into the provider. The reducer deduplicates by
+        // serverNotificationId so rows already in state (pending cards
+        // that were dismissed live, or history from a previous page load)
+        // are not duplicated.
+        const history = historyData?.notifications || [];
+        if (history.length > 0) {
+          const entries = history
+            .map(buildHistoryEntry)
+            .filter((e) => e.message || e.title);
+          const fn = mergeHistoryRef.current;
+          if (typeof fn === "function") fn(entries);
+        }
       } catch {
-        // Offline / 401 — the rows remain pending and we'll retry on
-        // the next session.
+        // Offline / 401 — rows remain pending; we'll retry next session.
       }
     })();
     return () => {

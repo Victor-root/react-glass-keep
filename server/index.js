@@ -859,6 +859,14 @@ const getPendingNotificationsForUser = db.prepare(`
   WHERE recipient_user_id = ? AND delivered_at IS NULL
   ORDER BY created_at ASC
 `);
+const getHistoryNotificationsForUser = db.prepare(`
+  SELECT id, sender_user_id, type, note_id, note_title, sender_name,
+         variant, message, persistent, icon, created_at, delivered_at
+  FROM notifications
+  WHERE recipient_user_id = ? AND delivered_at IS NOT NULL
+  ORDER BY delivered_at DESC
+  LIMIT 100
+`);
 const markNotificationDelivered = db.prepare(`
   UPDATE notifications
   SET delivered_at = ?
@@ -2115,6 +2123,15 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
 // those delivered immediately so a quick reload doesn't replay them.
 app.get("/api/notifications/pending", auth, (req, res) => {
   const rows = getPendingNotificationsForUser.all(req.user.id) || [];
+  res.json({ notifications: rows });
+});
+
+// Delivered notifications — used to populate the history panel on any
+// device at login time so every session sees the same notification
+// history regardless of which device originally received each item.
+// Returns the 100 most-recently-delivered rows (newest-first).
+app.get("/api/notifications/history", auth, (req, res) => {
+  const rows = getHistoryNotificationsForUser.all(req.user.id) || [];
   res.json({ notifications: rows });
 });
 
