@@ -75,6 +75,7 @@ import { dataUrlToBlob } from "./utils/audioConvert.js";
 import useModalState from "./hooks/useModalState.js";
 import useDraftNote from "./hooks/useDraftNote.js";
 import useAdminActions from "./hooks/useAdminActions.js";
+import { useBranding } from "./branding/BrandingContext.jsx";
 import { useShareNotifications } from "./hooks/useShareNotifications.js";
 import useImportExport from "./hooks/useImportExport.js";
 import useCollaboration from "./hooks/useCollaboration.js";
@@ -1742,6 +1743,12 @@ export default function App() {
   const [sseConnected, setSseConnected] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
+  // Instance branding (custom app name / logo / login background +
+  // blur). The provider owns the fetch; we only need refreshBranding to
+  // re-pull after an admin saves so the live header / next login render
+  // the new values without a reload.
+  const { refreshBranding } = useBranding();
+
   // Admin panel state (hook)
   const {
     adminPanelOpen, setAdminPanelOpen,
@@ -1756,6 +1763,9 @@ export default function App() {
   } = useAdminActions(token, {
     onSettingsUpdated: (settings) => {
       if (typeof settings.loginSlogan === 'string') setLoginSlogan(settings.loginSlogan);
+      // Branding (name/logo/background/blur) may have changed too —
+      // re-pull the public branding so the live app reflects it.
+      refreshBranding();
     },
   });
   const [allowRegistration, setAllowRegistration] = useState(true);
@@ -3438,11 +3448,14 @@ export default function App() {
               }
             } else if (msg && msg.type === "admin_settings_updated") {
               // Another admin flipped the "allow new accounts"
-              // toggle or changed the login slogan. Pull the fresh
-              // server-side admin settings so this admin's panel
-              // shows the new values immediately.
+              // toggle or changed the login slogan / branding. Pull the
+              // fresh server-side admin settings so this admin's panel
+              // shows the new values immediately, and refresh the live
+              // branding so the header logo/name update without a reload.
+              // (This event is only broadcast to admins.)
               if (currentUserRef.current?.is_admin) {
                 loadAdminSettings?.();
+                refreshBranding();
               }
             } else if (msg && msg.type === "user_settings_updated" && msg.settings) {
               // Live sync of user preferences from another session of

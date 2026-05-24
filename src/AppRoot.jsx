@@ -3,6 +3,7 @@ import App from "./App.jsx";
 import TvApp from "./components/tv/TvApp.jsx";
 import useTvMode from "./hooks/useTvMode.js";
 import { NotificationProvider } from "./components/notifications/NotificationProvider.jsx";
+import { BrandingProvider } from "./branding/BrandingContext.jsx";
 
 // Tiny shell that picks the right top-level tree (phone/desktop vs.
 // Android TV) at every render. Keeping it as a separate component lets
@@ -19,7 +20,9 @@ export default function AppRoot() {
   const isTv = useTvMode();
   return (
     <NotificationProvider>
-      {isTv ? <TvApp /> : <App />}
+      <BrandingProvider>
+        {isTv ? <TvApp /> : <App />}
+      </BrandingProvider>
     </NotificationProvider>
   );
 }

@@ -234,7 +234,11 @@ CREATE INDEX IF NOT EXISTS idx_logos_user ON logos(user_id);
 CREATE TABLE IF NOT EXISTS app_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   allow_new_accounts INTEGER NOT NULL DEFAULT 0,
-  login_slogan TEXT NOT NULL DEFAULT ''
+  login_slogan TEXT NOT NULL DEFAULT '',
+  custom_app_name TEXT NOT NULL DEFAULT '',
+  custom_logo TEXT,
+  login_bg_image TEXT,
+  login_bg_blur INTEGER NOT NULL DEFAULT 0
 );
 `);
 
@@ -337,6 +341,35 @@ CREATE TABLE IF NOT EXISTS app_settings (
       }
       if (!names.has("icon")) {
         db.exec(`ALTER TABLE notifications ADD COLUMN icon TEXT`);
+      }
+    });
+    tx();
+  } catch {
+    // ignore if the table doesn't exist yet (first boot — CREATE
+    // TABLE above will produce the full schema) or ALTER unsupported.
+  }
+})();
+// app_settings-table migrations. The original schema only had
+// allow_new_accounts + login_slogan; the custom-branding feature adds
+// the optional login-page branding columns (custom app name, logo,
+// background image, background blur). All default to empty/NULL so an
+// instance that never configures branding behaves exactly as before.
+(function ensureAppSettingsColumns() {
+  try {
+    const cols = db.prepare(`PRAGMA table_info(app_settings)`).all();
+    const names = new Set(cols.map((c) => c.name));
+    const tx = db.transaction(() => {
+      if (!names.has("custom_app_name")) {
+        db.exec(`ALTER TABLE app_settings ADD COLUMN custom_app_name TEXT NOT NULL DEFAULT ''`);
+      }
+      if (!names.has("custom_logo")) {
+        db.exec(`ALTER TABLE app_settings ADD COLUMN custom_logo TEXT`);
+      }
+      if (!names.has("login_bg_image")) {
+        db.exec(`ALTER TABLE app_settings ADD COLUMN login_bg_image TEXT`);
+      }
+      if (!names.has("login_bg_blur")) {
+        db.exec(`ALTER TABLE app_settings ADD COLUMN login_bg_blur INTEGER NOT NULL DEFAULT 0`);
       }
     });
     tx();
@@ -2966,11 +2999,28 @@ app.delete("/api/logos/:id", auth, (req, res) => {
 // on every login page hit, allowNewAccounts on every signup attempt)
 // don't hit SQLite repeatedly. The mirror is updated on every PATCH so
 // it stays in sync.
-const getAppSettingsRow = db.prepare(`SELECT allow_new_accounts, login_slogan FROM app_settings WHERE id = 1`);
+const getAppSettingsRow = db.prepare(`SELECT allow_new_accounts, login_slogan, custom_app_name, login_bg_blur FROM app_settings WHERE id = 1`);
 const upsertAppSettings = db.prepare(
-  `INSERT INTO app_settings (id, allow_new_accounts, login_slogan) VALUES (1, ?, ?)
-   ON CONFLICT(id) DO UPDATE SET allow_new_accounts=excluded.allow_new_accounts, login_slogan=excluded.login_slogan`,
+  `INSERT INTO app_settings (id, allow_new_accounts, login_slogan, custom_app_name, login_bg_blur) VALUES (1, ?, ?, ?, ?)
+   ON CONFLICT(id) DO UPDATE SET allow_new_accounts=excluded.allow_new_accounts, login_slogan=excluded.login_slogan, custom_app_name=excluded.custom_app_name, login_bg_blur=excluded.login_bg_blur`,
 );
+// Branding images live in their own read/write statements so the
+// (potentially multi-MB) data URLs never get held in the in-memory
+// mirror — which is broadcast to admins on every settings change.
+const getBrandingImagesRow = db.prepare(`SELECT custom_logo, login_bg_image FROM app_settings WHERE id = 1`);
+const setCustomLogoStmt = db.prepare(`UPDATE app_settings SET custom_logo = ? WHERE id = 1`);
+const setLoginBgStmt = db.prepare(`UPDATE app_settings SET login_bg_image = ? WHERE id = 1`);
+
+// Branding upload guards. Images are accepted as base64 data URLs (the
+// same convention as user avatars) — the client rasterises + compresses
+// before upload, so these caps are a server-side safety net rather than
+// the primary limit. Only raster formats are allowed; SVG is rejected to
+// avoid the script-injection surface that inline SVG carries.
+const BRANDING_IMAGE_RE = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/]+=*$/;
+const MAX_LOGO_BYTES = 2 * 1024 * 1024; // ~2 MB data URL (≈1.5 MB decoded)
+const MAX_LOGIN_BG_BYTES = 4 * 1024 * 1024; // ~4 MB data URL (≈3 MB decoded)
+const MAX_APP_NAME_LEN = 60;
+const MAX_LOGIN_BLUR = 20; // px
 
 let adminSettings = (function loadAdminSettings() {
   const row = getAppSettingsRow.get();
@@ -2978,6 +3028,8 @@ let adminSettings = (function loadAdminSettings() {
     return {
       allowNewAccounts: !!row.allow_new_accounts,
       loginSlogan: row.login_slogan || "",
+      appName: row.custom_app_name || "",
+      loginBackgroundBlur: row.login_bg_blur || 0,
     };
   }
   // Fresh install — seed the row from the env var default so subsequent
@@ -2985,19 +3037,32 @@ let adminSettings = (function loadAdminSettings() {
   const seed = {
     allowNewAccounts: process.env.ALLOW_REGISTRATION === "true",
     loginSlogan: "",
+    appName: "",
+    loginBackgroundBlur: 0,
   };
-  upsertAppSettings.run(seed.allowNewAccounts ? 1 : 0, seed.loginSlogan);
+  upsertAppSettings.run(seed.allowNewAccounts ? 1 : 0, seed.loginSlogan, seed.appName, seed.loginBackgroundBlur);
   return seed;
 })();
 
+// Merge the scalar mirror with the on-disk image columns into the full
+// settings shape returned to admins / the public branding endpoint.
+function brandingSettingsPayload() {
+  const images = getBrandingImagesRow.get() || {};
+  return {
+    ...adminSettings,
+    logo: images.custom_logo || null,
+    loginBackground: images.login_bg_image || null,
+  };
+}
+
 // Get admin settings
 app.get("/api/admin/settings", auth, adminOnly, (_req, res) => {
-  res.json(adminSettings);
+  res.json(brandingSettingsPayload());
 });
 
 // Update admin settings
 app.patch("/api/admin/settings", auth, adminOnly, (req, res) => {
-  const { allowNewAccounts, loginSlogan } = req.body || {};
+  const { allowNewAccounts, loginSlogan, appName, loginBackgroundBlur, logo, loginBackground } = req.body || {};
 
   if (typeof allowNewAccounts === 'boolean') {
     adminSettings.allowNewAccounts = allowNewAccounts;
@@ -3005,15 +3070,72 @@ app.patch("/api/admin/settings", auth, adminOnly, (req, res) => {
   if (typeof loginSlogan === 'string') {
     adminSettings.loginSlogan = loginSlogan.slice(0, 200);
   }
+  if (typeof appName === 'string') {
+    adminSettings.appName = appName.trim().slice(0, MAX_APP_NAME_LEN);
+  }
+  if (typeof loginBackgroundBlur === 'number' && Number.isFinite(loginBackgroundBlur)) {
+    adminSettings.loginBackgroundBlur = Math.max(0, Math.min(MAX_LOGIN_BLUR, Math.round(loginBackgroundBlur)));
+  }
 
-  upsertAppSettings.run(adminSettings.allowNewAccounts ? 1 : 0, adminSettings.loginSlogan);
-  // Live-sync to every other admin so their AdminPanel toggles /
-  // slogan reflect the change without a reload.
+  // Image fields use a tri-state contract: an explicit `null` clears the
+  // stored image, a valid data URL replaces it, and `undefined` (the key
+  // omitted) leaves the existing value untouched.
+  if (logo === null) {
+    setCustomLogoStmt.run(null);
+  } else if (typeof logo === 'string' && logo) {
+    if (!BRANDING_IMAGE_RE.test(logo)) {
+      return res.status(400).json({ error: "Logo must be a PNG, JPEG or WebP image data URL." });
+    }
+    if (logo.length > MAX_LOGO_BYTES) {
+      return res.status(413).json({ error: "Logo image is too large." });
+    }
+    setCustomLogoStmt.run(logo);
+  }
+
+  if (loginBackground === null) {
+    setLoginBgStmt.run(null);
+  } else if (typeof loginBackground === 'string' && loginBackground) {
+    if (!BRANDING_IMAGE_RE.test(loginBackground)) {
+      return res.status(400).json({ error: "Background must be a PNG, JPEG or WebP image data URL." });
+    }
+    if (loginBackground.length > MAX_LOGIN_BG_BYTES) {
+      return res.status(413).json({ error: "Background image is too large." });
+    }
+    setLoginBgStmt.run(loginBackground);
+  }
+
+  upsertAppSettings.run(
+    adminSettings.allowNewAccounts ? 1 : 0,
+    adminSettings.loginSlogan,
+    adminSettings.appName,
+    adminSettings.loginBackgroundBlur,
+  );
+  // Live-sync the scalar settings to every other admin so their
+  // AdminPanel toggles / slogan / app name / blur reflect the change
+  // without a reload. The image data URLs are deliberately NOT broadcast
+  // (they can be megabytes) — admins re-pull them via GET /admin/settings
+  // and the live app reads them from GET /api/branding.
   broadcastToAdmins({
     type: "admin_settings_updated",
     settings: { ...adminSettings },
   });
-  res.json(adminSettings);
+  res.json(brandingSettingsPayload());
+});
+
+// Public branding for the login page + app shell. Unauthenticated on
+// purpose: the login screen needs it before any token exists. Returns
+// empty/null when nothing is configured so the client falls back to the
+// bundled defaults. Express adds a content-based ETag automatically, so
+// repeat loads get a cheap 304 while the (possibly large) background
+// data URL is unchanged.
+app.get("/api/branding", (_req, res) => {
+  const images = getBrandingImagesRow.get() || {};
+  res.json({
+    appName: adminSettings.appName || "",
+    logo: images.custom_logo || null,
+    loginBackground: images.login_bg_image || null,
+    loginBackgroundBlur: adminSettings.loginBackgroundBlur || 0,
+  });
 });
 
 // Check if new account creation is allowed (public endpoint)

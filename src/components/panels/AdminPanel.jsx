@@ -6,6 +6,7 @@ import TI from "../../icons/editor/index.jsx";
 import EncryptionAdminSection from "../lock/EncryptionAdminSection.jsx";
 import AiAdminSection from "./AiAdminSection.jsx";
 import AdminUpdateSection from "../admin/AdminUpdateSection.jsx";
+import LoginBrandingSection from "./LoginBrandingSection.jsx";
 import { localizeServerError } from "../../utils/serverErrors.js";
 import { RowIcon, SettingsSection } from "../common/SettingsAccordion.jsx";
 const SectionHeaderIcon = RowIcon;
@@ -528,6 +529,18 @@ export default function AdminPanel({
                 onSave={(slogan) => updateAdminSettings({ loginSlogan: slogan })}
                 showToast={showToast}
               />
+
+              {/* Branding (custom app name, logo, login background +
+                  blur) — separated from the toggle/slogan rows by a
+                  hairline so the section reads as two logical groups. */}
+              <div className="pt-2 border-t border-[var(--border-light)]">
+                <LoginBrandingSection
+                  dark={dark}
+                  adminSettings={adminSettings}
+                  updateAdminSettings={updateAdminSettings}
+                  showToast={showToast}
+                />
+              </div>
             </div>
             </SettingsSection>
           </div>

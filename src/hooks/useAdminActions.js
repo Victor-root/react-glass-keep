@@ -12,6 +12,10 @@ export default function useAdminActions(token, { onSettingsUpdated } = {}) {
   const [adminSettings, setAdminSettings] = useState({
     allowNewAccounts: true,
     loginSlogan: "",
+    appName: "",
+    logo: null,
+    loginBackground: null,
+    loginBackgroundBlur: 0,
   });
   const [allUsers, setAllUsers] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);

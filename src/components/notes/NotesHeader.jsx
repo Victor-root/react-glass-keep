@@ -5,6 +5,7 @@ import { Hamburger, SearchIcon, CloseIcon, GridIcon, ListIcon, SunIcon, MoonIcon
 import TI from "../../icons/editor/index.jsx";
 import SyncStatusIcon from "../../sync/SyncStatusIcon.jsx";
 import UserAvatar from "../common/UserAvatar.jsx";
+import { useBranding, DEFAULT_APP_NAME } from "../../branding/BrandingContext.jsx";
 
 export default function NotesHeader({
   dark,
@@ -59,6 +60,9 @@ export default function NotesHeader({
   notificationBellDesktop = null,
   notificationBellMobile = null,
 }) {
+  const { branding } = useBranding();
+  const appName = branding.appName || DEFAULT_APP_NAME;
+
   // The kebab dropdown can't rely on the typical "fixed inset-0
   // backdrop captures the click" pattern: the host <header> has a
   // permanent `transform: translateY(0)` for its slide-in animation,
@@ -170,18 +174,29 @@ export default function NotesHeader({
             </button>
           )}
 
-          {/* App logo */}
-          <img
-            src="/favicon-32x32.png"
-            srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
-            alt={t("glassKeepLogo")}
-            className="h-7 w-7 rounded-xl shadow-sm select-none pointer-events-none"
-            draggable="false"
-          />
+          {/* App logo — custom logo (single src, no srcSet so it isn't
+              overridden by the bundled 2x/3x defaults) or the bundled
+              favicon with its retina set. */}
+          {branding.logo ? (
+            <img
+              src={branding.logo}
+              alt={appName}
+              className="h-7 w-7 rounded-xl shadow-sm select-none pointer-events-none object-contain"
+              draggable="false"
+            />
+          ) : (
+            <img
+              src="/favicon-32x32.png"
+              srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
+              alt={appName}
+              className="h-7 w-7 rounded-xl shadow-sm select-none pointer-events-none"
+              draggable="false"
+            />
+          )}
 
           {/* Mobile: stacked name + badge */}
           <div className={`flex flex-col ${mobileOnly} leading-tight relative`}>
-            <h1 className="text-lg font-bold">Glass Keep</h1>
+            <h1 className="text-lg font-bold">{appName}</h1>
             <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1 max-w-[160px]">
               <span className="shrink-0 w-3 h-3 [&>svg]:w-3 [&>svg]:h-3"><SectionIcon /></span>
               <span className="truncate">{sectionLabel}</span>
@@ -197,7 +212,7 @@ export default function NotesHeader({
               input down to a few characters ("Reche..."). The section
               badge is the more informative anchor of the two and stays. */}
           <h1 className={`hidden xl:block text-2xl sm:text-3xl font-bold ${isLandscapeMobile ? "!hidden" : ""}`}>
-            Glass Keep
+            {appName}
           </h1>
           <span className={`hidden xl:inline-block h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1 ${isLandscapeMobile ? "!hidden" : ""}`} />
           <span className={`${desktopOnly} text-base font-medium px-3 py-1 rounded-lg bg-indigo-600/10 text-indigo-700 dark:text-indigo-300 border border-indigo-600/20 items-center gap-1.5 max-w-[200px]`}>

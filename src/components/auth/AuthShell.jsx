@@ -2,12 +2,52 @@ import React from "react";
 import { Sun, Moon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { t } from "../../i18n";
+import { useBranding, DEFAULT_APP_NAME } from "../../branding/BrandingContext.jsx";
 
 export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnabled = true, loginSlogan, children, sidePanel }) {
+  const { branding } = useBranding();
+  const appName = branding.appName || DEFAULT_APP_NAME;
+  const logoSrc = branding.logo || "/pwa-192.png";
+  const hasCustomBg = !!branding.loginBackground;
+  const blur = branding.loginBackgroundBlur || 0;
+  // A custom background replaces the decorative floating cards — showing
+  // both would clutter the backdrop and fight for attention.
+  const showDecoCards = floatingCardsEnabled && !hasCustomBg;
+
   return (
     <div className="min-h-screen flex flex-col px-4 relative overflow-hidden">
+      {/* Admin-configured login background. Fixed + behind everything
+          (z-0). The image sits in an overscanned inner layer so the
+          blur's faded edges fall outside the viewport, and a
+          theme-aware scrim on top keeps the form + text legible over
+          any image. Login-only: AuthShell is never used inside the app. */}
+      {hasCustomBg && (
+        <div
+          aria-hidden="true"
+          className="login-custom-bg"
+          style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: blur > 0 ? `-${blur * 2}px` : 0,
+              backgroundImage: `url(${branding.loginBackground})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              filter: blur > 0 ? `blur(${blur}px)` : "none",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: dark ? "rgba(17,17,17,0.55)" : "rgba(255,255,255,0.45)",
+            }}
+          />
+        </div>
+      )}
       {/* Decorative floating note cards */}
-      {floatingCardsEnabled && <div aria-hidden="true">
+      {showDecoCards && <div aria-hidden="true">
         <div className="login-deco-card" style={{"--rot":"-12deg","--dur":"7s","--delay":"0s",top:"8%",left:"6%",borderTop:"3px solid rgba(99,102,241,0.7)"}}>
           <div className="deco-title" style={{background:"rgba(99,102,241,0.5)"}}/>
           <div className="deco-line" style={{width:"90%"}}/>
@@ -86,12 +126,12 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
               into the gap between the two cards. */}
           <div className="text-center mb-6 w-full max-w-md mx-auto lg:mx-0">
             <img
-              src="/pwa-192.png"
-              alt="Glass Keep"
-              className="h-16 w-16 rounded-2xl shadow-lg mx-auto mb-4 select-none pointer-events-none"
+              src={logoSrc}
+              alt={appName}
+              className="h-16 w-16 rounded-2xl shadow-lg mx-auto mb-4 select-none pointer-events-none object-contain"
               draggable="false"
             />
-            <h1 className="text-3xl font-bold">Glass Keep</h1>
+            <h1 className="text-3xl font-bold">{appName}</h1>
             <p className="text-gray-500 dark:text-gray-400">{title}</p>
           </div>
 
