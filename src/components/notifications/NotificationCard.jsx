@@ -111,8 +111,6 @@ function renderMessage(message) {
 
 // Swipe-to-dismiss threshold in pixels.
 const SWIPE_DISMISS_THRESHOLD = 80;
-// translateX applied when flinging off-screen.
-const SWIPE_EXIT_PX = 500;
 
 export default function NotificationCard({
   notification,
@@ -235,10 +233,12 @@ export default function NotificationCard({
       if (!wasLocked) return; // Was a tap or vertical scroll — nothing to animate.
 
       if (Math.abs(dx) >= SWIPE_DISMISS_THRESHOLD) {
-        // Exit animation — slide off the screen edge, then dismiss.
+        // Exit animation — slide off the card's own edge, then dismiss.
+        // 120% of the card's own width keeps the exit contained within
+        // the panel's overflow-x:hidden clip so no scrollbar appears.
         const dir = dx > 0 ? 1 : -1;
         el.style.transition = "transform 0.22s ease-out, opacity 0.22s ease-out";
-        el.style.transform = `translate3d(${dir * SWIPE_EXIT_PX}px, 0, 0)`;
+        el.style.transform = `translate3d(${dir * 120}%, 0, 0)`;
         el.style.opacity = "0";
         if (bg) {
           bg.style.transition = "opacity 0.22s ease-out";

@@ -4395,6 +4395,11 @@ html.dark .gk-notif-center__close:hover { background: rgba(255,255,255,0.08); }
 
 .gk-notif-center__list {
   overflow-y: auto;
+  /* Prevent swipe-translated cards from creating a horizontal
+     scrollbar. overflow-x:hidden + overflow-y:auto is valid CSS —
+     the vertical axis stays scrollable while horizontal paint
+     overflow (card transforms) is clipped at the list boundary. */
+  overflow-x: hidden;
   /* Trap scroll chaining and pull-to-refresh inside the panel — on
      Android PWA / Chrome scrolling up from the top would otherwise
      trigger the browser's reload gesture before the user could see
