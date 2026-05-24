@@ -175,6 +175,41 @@ export default function NotificationMobileToast({ onAction }) {
     return () => clearTimeout(h);
   }, [current?.id, dismiss]);
 
+  // Countdown bar — declared at the top of the component so the hook
+  // call site is stable across renders (the early returns below would
+  // otherwise skip useRef / useLayoutEffect and trip React error #310).
+  // Effective duration mirrors the queue-cycler's slice when several
+  // notifs are pending so the bar finishes exactly when the pill
+  // dismisses; falls back to the raw user duration otherwise.
+  const queueSize = notificationsRef.current.reduce(
+    (acc, n) => (n.dismissed ? acc : acc + 1),
+    0,
+  );
+  let effectiveDuration = null;
+  if (current && typeof current.duration === "number" && current.duration > 0) {
+    effectiveDuration =
+      queueSize > 1
+        ? Math.max(800, Math.floor(current.duration / queueSize))
+        : current.duration;
+  }
+  const showCountdown = !!(effectiveDuration && effectiveDuration > 0);
+  const countdownFillRef = useRef(null);
+  // Same mount-time anchor trick as the desktop card: feed the elapsed
+  // time back as a NEGATIVE animation-delay so the scaleX(0) frame
+  // lands at the exact moment dismiss() fires, even if React commit
+  // happened a few ms / frames after notify().
+  useLayoutEffect(() => {
+    if (!showCountdown || !current) return;
+    const el = countdownFillRef.current;
+    if (!el || !current.createdAt) return;
+    const elapsed = Math.max(
+      0,
+      Math.min(effectiveDuration, Date.now() - current.createdAt),
+    );
+    el.style.animationDelay = `-${elapsed}ms`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id]);
+
   if (typeof document === "undefined") return null;
   // Inside the Android wrapper we never render — the OS toast IS the
   // notification. Centre + bell still work because they read from
@@ -184,38 +219,6 @@ export default function NotificationMobileToast({ onAction }) {
 
   const { Comp, filled } = pickGlyph(current);
   const stacked = current.actionLayout === "below" && !!current.action;
-  // Effective duration the toast will actually stay on screen — the
-  // queue-cycler above slices the user's duration by queueSize when
-  // multiple notifs are pending, so the countdown bar needs to mirror
-  // that slice to finish at the same instant the toast dismisses.
-  const queueSize = notificationsRef.current.reduce(
-    (acc, n) => (n.dismissed ? acc : acc + 1),
-    0,
-  );
-  let effectiveDuration = null;
-  if (typeof current.duration === "number" && current.duration > 0) {
-    effectiveDuration =
-      queueSize > 1
-        ? Math.max(800, Math.floor(current.duration / queueSize))
-        : current.duration;
-  }
-  const showCountdown = effectiveDuration && effectiveDuration > 0;
-  const countdownFillRef = useRef(null);
-  // Same mount-time anchor trick as the desktop card: feed the elapsed
-  // time back as a NEGATIVE animation-delay so the scaleX(0) frame
-  // lands at the exact moment dismiss() fires, even if React commit
-  // happened a few ms / frames after notify().
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useLayoutEffect(() => {
-    if (!showCountdown) return;
-    const el = countdownFillRef.current;
-    if (!el || !current.createdAt) return;
-    const elapsed = Math.max(
-      0,
-      Math.min(effectiveDuration, Date.now() - current.createdAt),
-    );
-    el.style.animationDelay = `-${elapsed}ms`;
-  }, [current?.id]);
   const handleTap = () => {
     setVisible(false);
     remove(current.id);
