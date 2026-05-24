@@ -4022,25 +4022,31 @@ html.dark .gk-notif-card__close:hover { background: rgba(180, 180, 190, 1); }
    The wider left border is offset by trimming padding-left so the
    icon column stays aligned with the header. */
 .gk-notif-card.gk-notif-card--center {
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  border-left: 3px solid var(--gk-notif-accent, rgba(15, 23, 42, 0.10));
-  backdrop-filter: blur(10px) saturate(160%);
-  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  /* Slightly opaque white wash so each card reads as a discrete
+     surface without re-introducing a heavy gradient. Saturation is
+     intentionally clamped at 100% — these cards should absorb the
+     milky panel tone, not amplify whatever leaks through. */
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-left: 3px solid var(--gk-notif-accent, rgba(15, 23, 42, 0.12));
+  backdrop-filter: blur(8px) saturate(100%);
+  -webkit-backdrop-filter: blur(8px) saturate(100%);
   box-shadow:
-    0 1px 2px rgba(15, 23, 42, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+    0 1px 3px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.60);
 }
 .gk-notif-card.gk-notif-card--center.gk-notif-card--compact {
   padding-left: 10px;
 }
 html.dark .gk-notif-card.gk-notif-card--center {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-left: 3px solid var(--gk-notif-accent, rgba(255, 255, 255, 0.14));
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-left: 3px solid var(--gk-notif-accent, rgba(255, 255, 255, 0.18));
+  backdrop-filter: blur(8px) saturate(100%);
+  -webkit-backdrop-filter: blur(8px) saturate(100%);
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 1px 3px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 @keyframes gkNotifIn {
@@ -4170,22 +4176,24 @@ html.dark .gk-notif-bell-badge {
      treatment. Slightly higher opacity than the cards because the
      list is text-heavy and needs more cover to stay legible when
      several rows stack up. */
+  /* Milky-white frosted glass: pure white fill (no violet tint) at
+     0.72 opacity so background colours barely peek through, plus
+     saturate(120%) that de-vivifies whatever does bleed through.
+     The violet/blue accent lives only on the border gradient. */
   border: 1px solid transparent;
   background:
-    linear-gradient(135deg,
-      rgba(255, 255, 255, 0.50) 0%,
-      rgba(255, 255, 255, 0.50) 100%) padding-box,
+    rgba(255, 255, 255, 0.72) padding-box,
     linear-gradient(135deg,
       rgba(167, 139, 250, 0.32) 0%,
       rgba(96, 165, 250, 0.32) 100%) border-box;
-  backdrop-filter: blur(50px) saturate(200%);
-  -webkit-backdrop-filter: blur(50px) saturate(200%);
+  backdrop-filter: blur(50px) saturate(120%);
+  -webkit-backdrop-filter: blur(50px) saturate(120%);
   box-shadow:
-    0 0 4px rgba(129, 140, 248, 0.45),
-    0 0 14px rgba(99, 102, 241, 0.22),
-    0 18px 40px -10px rgba(15, 23, 42, 0.22),
-    0 8px 18px -6px rgba(99, 102, 241, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    0 0 4px rgba(129, 140, 248, 0.40),
+    0 0 14px rgba(99, 102, 241, 0.18),
+    0 18px 40px -10px rgba(15, 23, 42, 0.20),
+    0 8px 18px -6px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.80);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -4195,18 +4203,18 @@ html.dark .gk-notif-center {
   color: #f5f5f7;
   border: 1px solid transparent;
   background:
+    rgba(22, 22, 32, 0.82) padding-box,
     linear-gradient(135deg,
-      rgba(30, 30, 40, 0.60) 0%,
-      rgba(30, 30, 40, 0.60) 100%) padding-box,
-    linear-gradient(135deg,
-      rgba(167, 139, 250, 0.30) 0%,
-      rgba(96, 165, 250, 0.30) 100%) border-box;
+      rgba(167, 139, 250, 0.28) 0%,
+      rgba(96, 165, 250, 0.28) 100%) border-box;
+  backdrop-filter: blur(50px) saturate(120%);
+  -webkit-backdrop-filter: blur(50px) saturate(120%);
   box-shadow:
-    0 0 4px rgba(167, 139, 250, 0.55),
-    0 0 14px rgba(129, 140, 248, 0.28),
-    0 18px 40px -10px rgba(0, 0, 0, 0.65),
-    0 8px 18px -6px rgba(76, 29, 149, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    0 0 4px rgba(167, 139, 250, 0.45),
+    0 0 14px rgba(129, 140, 248, 0.22),
+    0 18px 40px -10px rgba(0, 0, 0, 0.60),
+    0 8px 18px -6px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 @keyframes gkNotifCenterIn {
   from { opacity: 0; transform: translateY(-6px) scale(0.98); }
