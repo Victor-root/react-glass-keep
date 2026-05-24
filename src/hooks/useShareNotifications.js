@@ -84,7 +84,9 @@ export function useShareNotifications({ token, userId }) {
       variant: "info",
       title: t("noteSharedTitle"),
       message: t("noteSharedToast", { sender, title: `**${noteTitle}**` }),
-      persistent: true,
+      // No `persistent` here — let the user's notification-duration
+      // preference decide. If they set 10 s, the toast auto-dismisses
+      // after 10 s; if they set "persistent" globally, it stays.
       dismissible: true,
       action: noteId
         ? { label: t("noteSharedAction"), noteId: String(noteId) }
@@ -136,7 +138,7 @@ export function useShareNotifications({ token, userId }) {
       variant: "warning",
       title: t(titleKey),
       message: t(messageKey, { sender, title: `**${noteTitle}**` }),
-      persistent: true,
+      // Same as the share toast: defer to the user's duration pref.
       dismissible: true,
       action: null,
       metadata: { serverNotificationId: id },
