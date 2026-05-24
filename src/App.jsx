@@ -1826,7 +1826,7 @@ export default function App() {
     pendingUsers,
     newUserForm, setNewUserForm,
     updateAdminSettings, createUser, deleteUser, updateUser,
-    loadAllUsers,
+    loadAdminSettings, loadAllUsers,
     loadPendingUsers, approvePendingUser, rejectPendingUser,
     openAdminPanel,
   } = useAdminActions(token, {
@@ -3493,6 +3493,22 @@ export default function App() {
               if (currentUserRef.current?.is_admin) {
                 loadPendingUsers?.();
                 if (msg.action === "approved") loadAllUsers?.();
+              }
+            } else if (msg && msg.type === "user_list_changed") {
+              // Another admin created / updated a user. Reload the
+              // users list so every admin's AdminPanel reflects the
+              // change in real time. Deletion is handled separately
+              // by user_deleted_notification.
+              if (currentUserRef.current?.is_admin) {
+                loadAllUsers?.();
+              }
+            } else if (msg && msg.type === "admin_settings_updated") {
+              // Another admin flipped the "allow new accounts"
+              // toggle or changed the login slogan. Pull the fresh
+              // server-side admin settings so this admin's panel
+              // shows the new values immediately.
+              if (currentUserRef.current?.is_admin) {
+                loadAdminSettings?.();
               }
             } else if (msg && msg.type === "user_settings_updated" && msg.settings) {
               // Live sync of user preferences from another session of

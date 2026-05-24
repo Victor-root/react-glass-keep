@@ -3007,6 +3007,12 @@ app.patch("/api/admin/settings", auth, adminOnly, (req, res) => {
   }
 
   upsertAppSettings.run(adminSettings.allowNewAccounts ? 1 : 0, adminSettings.loginSlogan);
+  // Live-sync to every other admin so their AdminPanel toggles /
+  // slogan reflect the change without a reload.
+  broadcastToAdmins({
+    type: "admin_settings_updated",
+    settings: { ...adminSettings },
+  });
   res.json(adminSettings);
 });
 
@@ -3266,6 +3272,13 @@ app.post("/api/admin/users", auth, adminOnly, (req, res) => {
   db.prepare(`UPDATE users SET ${updateParts.join(", ")} WHERE id = ?`).run(info.lastInsertRowid);
 
   const user = getUserById.get(info.lastInsertRowid);
+  // Live-sync to every other admin so their users list shows the
+  // new row without a manual reload.
+  broadcastToAdmins({
+    type: "user_list_changed",
+    reason: "created",
+    userId: user.id,
+  });
   res.status(201).json({
     id: user.id,
     name: user.name,
@@ -3344,6 +3357,13 @@ app.patch("/api/admin/users/:id", auth, adminOnly, (req, res) => {
 
   // Return updated user data
   const updatedUser = getUserById.get(id);
+  // Live-sync to every other admin so name / email / role / temp-
+  // password-flag changes show up without a manual reload.
+  broadcastToAdmins({
+    type: "user_list_changed",
+    reason: "updated",
+    userId: updatedUser.id,
+  });
   res.json({
     id: updatedUser.id,
     name: updatedUser.name,
