@@ -159,6 +159,10 @@ export default function NotificationCenter({
                 // row, away from the panel's left edge where it
                 // would otherwise collide with the gutter.
                 closeSide="right"
+                // Neutral glass treatment so the panel's tint shows
+                // through and the cards don't stack a second heavy
+                // gradient on top of it.
+                mode="center"
               />
             </div>
           ))

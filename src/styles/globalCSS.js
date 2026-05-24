@@ -4013,6 +4013,36 @@ html.dark .gk-notif-card__close:hover { background: rgba(180, 180, 190, 1); }
 .gk-notif-card--compact .gk-notif-card__message { font-size: 12px; }
 .gk-notif-card--compact .gk-notif-card__time { top: 9px; right: 14px; }
 
+/* Center mode — used inside the NotificationCenter panel. The panel
+   already provides the frosted glass surface, so the card itself
+   strips its gradient + LED halo and falls back to a near-transparent
+   wash. Variant identity is still readable: the icon stays in its
+   accent colour, and a 3 px left bar in the same accent gives the
+   card a quiet "category stripe" without re-introducing a gradient.
+   The wider left border is offset by trimming padding-left so the
+   icon column stays aligned with the header. */
+.gk-notif-card.gk-notif-card--center {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-left: 3px solid var(--gk-notif-accent, rgba(15, 23, 42, 0.10));
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.30);
+}
+.gk-notif-card.gk-notif-card--center.gk-notif-card--compact {
+  padding-left: 10px;
+}
+html.dark .gk-notif-card.gk-notif-card--center {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--gk-notif-accent, rgba(255, 255, 255, 0.14));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
 @keyframes gkNotifIn {
   from { opacity: 0; transform: translateY(-8px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0)    scale(1);    }

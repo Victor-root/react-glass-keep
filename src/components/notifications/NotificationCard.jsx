@@ -115,6 +115,12 @@ export default function NotificationCard({
   onAction,
   compact = false,
   closeSide = "left",
+  // "toast" (default): premium glass with violet/blue gradient + LED
+  // halo, used by the floating viewport. "center": neutral, near-
+  // transparent glass that lets the panel surface show through — the
+  // variant identity falls back to the icon + a thin accent bar on
+  // the left edge so the panel doesn't stack two heavy gradients.
+  mode = "toast",
 }) {
   if (!notification) return null;
   const { id, title, message, variant, dismissible, action, createdAt, icon: iconKey } =
@@ -122,6 +128,7 @@ export default function NotificationCard({
   const klass = VARIANT_CLASS[variant] || VARIANT_CLASS.info;
   const closeKlass =
     closeSide === "right" ? " gk-notif-card--close-right" : "";
+  const modeKlass = mode === "center" ? " gk-notif-card--center" : "";
   const time = formatRelativeTime(createdAt);
   const headline = title || fallbackTitle(variant);
 
@@ -129,7 +136,7 @@ export default function NotificationCard({
     <div
       role="status"
       aria-live={variant === "error" ? "assertive" : "polite"}
-      className={`gk-notif-card ${klass}${compact ? " gk-notif-card--compact" : ""}${closeKlass}`}
+      className={`gk-notif-card ${klass}${compact ? " gk-notif-card--compact" : ""}${closeKlass}${modeKlass}`}
     >
       {dismissible !== false ? (
         <button
