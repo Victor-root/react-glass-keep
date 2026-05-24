@@ -359,10 +359,11 @@ export default function NotificationCenter({
                 // row, away from the panel's left edge where it
                 // would otherwise collide with the gutter.
                 closeSide="right"
-                // Neutral glass treatment so the panel's tint shows
-                // through and the cards don't stack a second heavy
-                // gradient on top of it.
-                mode="center"
+                // Default "toast" mode so the panel rows render with
+                // the same LED-strip border + variant tint as the
+                // floating active toasts. Card width follows the
+                // panel column via the wrapper (the .gk-notif-card
+                // rule already sets width:100%).
                 // Mobile: hide the X and enable horizontal swipe to
                 // dismiss instead.
                 swipeable={isMobile}
