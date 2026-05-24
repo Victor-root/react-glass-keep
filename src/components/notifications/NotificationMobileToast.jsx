@@ -247,14 +247,14 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
   // a single field.
   const burstSlice = burst ? burst.slice : null;
 
-  // End burst when nothing's active anymore.
-  useEffect(() => {
-    const anyActive = notifications.some((n) => !n.dismissed);
-    if (!anyActive && burst != null) {
-      dlog("burst-end (no active notif), was slice=", burst.slice);
-      setBurst(null);
-    }
-  }, [notifications, burst]);
+  // NOTE: there's intentionally no "end burst when nothing's active"
+  // effect anymore. The cycler is the sole authority for burst
+  // lifecycle: it advances the cursor every slice and setBurst(null)
+  // when the cursor passes burst.ids.length. An external dismiss
+  // (provider timer, SSE broadcast) marks the row dismissed in the
+  // notifications array but the burst snapshot keeps cycling. If we
+  // killed the burst on "no active notif", a stray provider timer or
+  // a desktop session's SSE broadcast would close the pill mid-cycle.
   // Start burst (with settling) when one isn't running and there's
   // an eligible notif on screen. The settling timer restarts every
   // time the effect re-runs (new arrival), so its callback fires

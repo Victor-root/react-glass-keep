@@ -273,10 +273,15 @@ export function NotificationProvider({ children }) {
 
   const cancelTimer = useCallback((id) => {
     const h = timersRef.current.get(id);
-    if (h !== undefined) {
+    const hadTimer = h !== undefined;
+    if (hadTimer) {
       clearTimeout(h);
       timersRef.current.delete(id);
     }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[gkn-provider] cancelTimer id=…${(id || "?").slice(-4)} hadTimer=${hadTimer} remainingTimers=${timersRef.current.size}`,
+    );
   }, []);
 
   const dismiss = useCallback(
