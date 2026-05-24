@@ -5,6 +5,7 @@ const initialState = () => ({
   updateAvailable: false,
   latestVersion: null,
   releaseUrl: null,
+  notificationShownCount: 0,
   currentVersion:
     typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : null,
 });
@@ -23,6 +24,10 @@ export function useUpdateCheck({ token, isAdmin }) {
           updateAvailable: !!data.updateAvailable,
           latestVersion: data.latestVersion || null,
           releaseUrl: data.releaseUrl || null,
+          notificationShownCount:
+            typeof data.notificationShownCount === "number"
+              ? data.notificationShownCount
+              : 0,
           currentVersion:
             data.currentVersion ||
             (typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : null),

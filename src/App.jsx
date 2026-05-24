@@ -702,28 +702,29 @@ export default function App() {
   // pinned to 30 s regardless of the user's notification-duration
   // preference so the update CTA always gets a fair on-screen window.
   //
-  // Capped at 3 displays per admin per latest-version: a counter is
-  // persisted in localStorage, keyed by the user id + the version
-  // string. A new release resets the counter (the key changes), so
-  // the next published version starts fresh from 0.
+  // Capped at 3 displays per admin per latest-version. The counter
+  // lives server-side (table update_notification_views, keyed by
+  // user_id + version) so the cap holds across every device the
+  // admin signs in on, not just the current browser. The /update-check
+  // payload carries the current count; we read it here and skip the
+  // notify() call once it has reached 3. Each fired card POSTs
+  // /update-check/mark-shown to increment.
   const updateNotifiedVersionRef = useRef(null);
   useEffect(() => {
     if (!currentUser?.is_admin) return;
     if (!updateInfo?.updateAvailable || !updateInfo?.latestVersion) return;
     if (updateNotifiedVersionRef.current === updateInfo.latestVersion) return;
+    if ((updateInfo.notificationShownCount || 0) >= 3) return;
     updateNotifiedVersionRef.current = updateInfo.latestVersion;
-    const storageKey = `gk:updateNotifShown:${currentUser.id || "anon"}:${updateInfo.latestVersion}`;
-    let shown = 0;
-    try {
-      shown = parseInt(localStorage.getItem(storageKey) || "0", 10) || 0;
-    } catch (_e) {
-      /* private mode / disabled storage — fall through and show */
-    }
-    if (shown >= 3) return;
-    try {
-      localStorage.setItem(storageKey, String(shown + 1));
-    } catch (_e) {
-      /* ignore — counter just won't persist this session */
+    const tk = token;
+    if (tk) {
+      api("/update-check/mark-shown", {
+        method: "POST",
+        body: { version: updateInfo.latestVersion },
+        token: tk,
+      }).catch(() => {
+        /* counter just won't tick this round; nothing else to do */
+      });
     }
     notify({
       type: "update_available",
@@ -750,7 +751,9 @@ export default function App() {
     currentUser?.id,
     updateInfo?.updateAvailable,
     updateInfo?.latestVersion,
+    updateInfo?.notificationShownCount,
     notify,
+    token,
   ]);
 
   // Sync-domain refs (owned by autosave, not by modal UI hook)

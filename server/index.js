@@ -1152,7 +1152,7 @@ attachUnlockRoutes(app, { db, auth, adminOnly, log: console, broadcastToAll });
 const passkeyVaultModule = require("./encryption/passkeyVault");
 passkeyVaultModule.ensureSchema(db);
 attachPasskeyRoutes(app, { db, auth, adminOnly, signToken, getUserById, log: console });
-attachUpdateRoutes(app, { auth, adminOnly, log: console });
+attachUpdateRoutes(app, { db, auth, adminOnly, log: console });
 attachSelfUpdateRoutes(app, { auth, adminOnly, log: console });
 
 // Digital Asset Links — must answer at /.well-known/assetlinks.json
