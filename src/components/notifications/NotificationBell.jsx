@@ -13,7 +13,7 @@
 // count drops to zero so the bell sits flush in the header during
 // quiet periods.
 
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNotifications } from "./NotificationProvider.jsx";
 import NotificationCenter from "./NotificationCenter.jsx";
 import TI from "../../icons/editor/index.jsx";
@@ -23,14 +23,22 @@ export default function NotificationBell({
   dark,
   onAction,
   onClearAll,
-  // Controlled state — callers lift open/setOpen so the notification
-  // center can be included in the app-level overlay count (back button,
-  // AndroidTheme.setRefreshEnabled, etc.).
-  open,
-  onSetOpen,
+  // Optional callback fired whenever the open state changes. App.jsx
+  // uses this to know when the panel is open without taking over the
+  // state itself — two NotificationBell instances (desktop + mobile)
+  // are mounted in parallel and only the visible one is ever toggled,
+  // so the local state stays correctly per-instance and we never end
+  // up rendering two NotificationCenter portals at once.
+  onOpenChange,
 }) {
   const { notifications, dismissAll, markDelivered } = useNotifications();
+  const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
+
+  // Sync local state up to whichever parent cares (App.jsx for PTR).
+  useEffect(() => {
+    onOpenChange?.(open);
+  }, [open, onOpenChange]);
 
   const unread = notifications.reduce(
     (acc, n) => (n.dismissed ? acc : acc + 1),
@@ -49,25 +57,27 @@ export default function NotificationBell({
   const iconColor = dark ? "#9c9ddb" : "#6366f1";
 
   const handleToggle = () => {
-    // Opening = move everything currently floating into the panel,
-    // and acknowledge any still-pending server-side rows. Without
-    // the server ack, a second device reconnecting later would
-    // re-fetch the same notifications from /pending and replay
-    // them, even though the user has already seen the cards here.
-    // markDelivered comes from the provider context and dedupes
-    // internally, so any ids already acked (e.g. by an earlier X
-    // click) won't trigger a second POST.
-    if (!open && unread > 0) {
-      const serverIds = [];
-      for (const n of notifications) {
-        if (n.dismissed) continue;
-        const sid = n.metadata?.serverNotificationId;
-        if (sid != null) serverIds.push(sid);
+    setOpen((wasOpen) => {
+      // Opening = move everything currently floating into the panel,
+      // and acknowledge any still-pending server-side rows. Without
+      // the server ack, a second device reconnecting later would
+      // re-fetch the same notifications from /pending and replay
+      // them, even though the user has already seen the cards here.
+      // markDelivered comes from the provider context and dedupes
+      // internally, so any ids already acked (e.g. by an earlier X
+      // click) won't trigger a second POST.
+      if (!wasOpen && unread > 0) {
+        const serverIds = [];
+        for (const n of notifications) {
+          if (n.dismissed) continue;
+          const sid = n.metadata?.serverNotificationId;
+          if (sid != null) serverIds.push(sid);
+        }
+        if (serverIds.length > 0) markDelivered(serverIds);
+        dismissAll();
       }
-      if (serverIds.length > 0) markDelivered(serverIds);
-      dismissAll();
-    }
-    onSetOpen?.(!open);
+      return !wasOpen;
+    });
   };
 
   return (
@@ -105,7 +115,7 @@ export default function NotificationBell({
       <NotificationCenter
         open={open}
         anchor={buttonRef.current}
-        onClose={() => onSetOpen?.(false)}
+        onClose={() => setOpen(false)}
         onAction={onAction}
         onClearAll={onClearAll}
       />
