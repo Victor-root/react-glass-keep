@@ -1,5 +1,45 @@
 # 📋 Changelog
 
+## 🚀 v2.4.0 — 2026-05-21
+
+Headline change: a **completely rewritten in-app notification system**. Every toast, error, share alert and admin event now flows through a single provider, renders as a premium LED-neon card in the floating viewport, and shows up in a new **Notification Center** panel (bell icon in the header) with cross-device sync over SSE. The release also lands a collaboration-notification pass (owners get told when collaborators walk away), an editor paste/copy polish pass, and the usual mobile fixes.
+
+### ➕ Added
+- 🔔 **Centralised notification system** — a new context provider replaces the legacy toast layer. One `notify({ variant, title, message, icon, action, persistent })` call surfaces a floating card with a 2.5 px LED-style border in the variant colour (info=blue / success=green / warning=amber / error=red), a tinted background, the right Tabler icon, and an optional inline action button
+- 🪟 **Notification Center panel** — bell icon in the header shows an unread badge and opens a neutral glass panel listing the full history (active + dismissed, "Mark all read", per-row X, "Clear all"). Closing the bell hides the floating stack so the panel becomes the single source of truth
+- ⚙️ **Notifications settings section** — dedicated panel for position (top-left / center / right + bottom variants), default duration (5 s / 10 s / 20 s / 30 s / persistent), master sound toggle and **per-category sound opt-outs** (share / access / success / warning / error / info) with a distinct icon per category
+- 📡 **Cross-device sync over SSE** — opening the bell on one device pushes a `notification_delivered` event so the matching cards dismiss on every other tab. "Clear all" syncs the same way, but only wipes server-backed rows on remote devices so local UI toasts aren't collateral damage
+- 🤝 **Collaboration notifications** — the four-state revoke message (with / without copy, ex-collaborator side / owner side) plus a brand-new **"X left this note"** toast for the owner when a collaborator walks away (either by removing themselves in the collaboration modal or by deleting their copy from their own list)
+- 📱 **Native Android Toast bridge** — on the WebView wrapper, mobile toasts route through `Toast.makeText` so they match the platform's look-and-feel instead of overlaying a web card on top of the system UI
+- 🧪 **Test-notification CLI** (`scripts/test-notification.cjs`) — admin-only helper that fires a notification end-to-end through the real SSE pipeline. Flags: `--all` (one of each variant), `--colors` (4 persistent variants for visual checks), `--gallery` (every notification kind the app produces in one shot), `--persistent`, `--icon`, `--to <email>`
+- 📋 **Paste-mode preference** — Settings toggle to make Ctrl+V always paste as plain text, with the Plain / Formatted choice stacked under the relevant description
+- 🔗 **Auto-link on plain-text paste** — pasting a URL into a rich-text note now turns it into a real anchor instead of leaving the raw text
+
+### 🔄 Changed
+- 🎨 **Notification visual style** — the LED-strip border (2.5 px solid + a 1 px crisp outline ring + a 4 px tight bleed, all in the variant colour) replaces the generic toast chrome. Cards inside the panel use a neutral near-opaque white surface with a 3 px left accent bar so the panel doesn't stack a second gradient on top of itself
+- ⬆️ **Top-anchored notifications float above the header** — `top-left/center/right` positions now sit just under the safe-area inset (instead of being pushed below the 96 px header), giving the cards visual priority over chrome
+- 🔧 **Default notification preferences** — fresh installs now start at `top-center`, 10 s duration, sound **off** (was top-right desktop / top-center mobile, 10 s, sound on). Sound is opt-in so the very first toast doesn't ding
+- 📝 **Cleaner rich-text → plain-text copy** — copying from the editor now produces sane text/plain output: HTML stripped for code-block selections, bare `<li>` re-wrapped, line breaks preserved on paste-back
+- 🔢 **Ordered-list counter resets correctly** — a numbered list that follows a real paragraph break restarts at 1 instead of continuing the previous list's numbering
+- 📲 **Mobile single-tap arms code-block / inline-code copy** — touch devices used to need a long-press or two taps; one tap now arms the copy button, which auto-hides after 5 s if not used
+
+### 🐛 Fixed
+- 🔁 **Double notification when removing a collaborator** — the action fired a local "Removed successfully" toast *and* the SSE-driven revoke toast simultaneously. Local toast dropped — the SSE version is more detailed and handles both sides
+- ⏱ **Test notifications no longer disappear immediately on arrival** — the SSE handler used to mark the row delivered as soon as it arrived, which prompted the server to broadcast a cross-device dismiss that erased the card within ~10 ms on localhost. Delivery ack is now deferred to the natural resolution moment (X click, auto-dismiss expiry, or bell open)
+- ⌛ **Share / revoke notifications respect the user's duration preference** — these were hardcoded `persistent: true` and ignored the 10 s default. Now they follow the global pref like every other notification
+- ✅ **X click and auto-dismiss now ack the server** — closing a card via X (or letting it auto-dismiss) used to leave the row marked "pending" forever, so the same notification replayed on every reload until the user opened the bell. Every "user resolved this" path now acks the server with a deduped POST
+- 🪟 **Cross-device "Clear all" preserves local toasts** — the `notifications_cleared` SSE used to wipe the entire local notification array on every device, including in-app UI toasts that never hit the database. The handler now only drops server-backed rows
+- 🤫 **No more autofocus on existing untitled notes** — opening a note titled "(no title)" used to drop the cursor into the body editor as if it were a new note. Cursor placement now matches saved notes regardless of title
+- 🔗 **Tapping a link in a note no longer pops the mobile keyboard** — iOS / Android Chrome were focusing the underlying ProseMirror surface on the same touch event that fired the link. Capture-phase guards now block the focus while letting the link navigate through
+- 🧩 **Inline-code copy button styled and positioned correctly** — light-mode text colour aligned with the block variant, code spans no longer flagged for spellcheck on mobile
+
+### 🛠️ Upgrade
+
+**Native install:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/Victor-root/glasskeep-enhanced/main/install.sh | sudo bash
+```
+
 ## 🚀 v2.3.8 — 2026-05-20
 
 Two headline changes: **"Read mode for notes"** lets you opt out of the read/edit split (text and drawing notes open straight in edit mode, Google-Keep style), and the Android APK (1.4.0) gains a **fully-integrated in-app updater + a first-launch onboarding screen**. The rest of the release is a polish pass on the Settings and Admin side sheets.
