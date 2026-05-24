@@ -120,9 +120,7 @@ export default function NotificationBell({
           />
         )}
         {unread > 0 ? (
-          <span className="gk-notif-bell-badge" aria-hidden="true">
-            {unread > 9 ? "9+" : unread}
-          </span>
+          <span className="gk-notif-bell-dot" aria-hidden="true" />
         ) : null}
       </button>
       <NotificationCenter

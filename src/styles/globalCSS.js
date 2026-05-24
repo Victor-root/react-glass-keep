@@ -4500,23 +4500,24 @@ html.dark .gk-mobile-toast__action:active { background: rgba(255, 255, 255, 0.14
 }
 
 /* Bell + badge */
-.gk-notif-bell-badge {
+/* Bell indicator — a single coloured dot when at least one toast is
+   still floating in the viewport. We dropped the numeric badge along
+   with the read/unread split: every active notification is already
+   visible in the floating stack, so the count adds no information the
+   user can't see at a glance. The dot keeps the "something is happening"
+   affordance without claiming a number. Same red + white/dark ring as
+   the previous badge so the visual identity stays. */
+.gk-notif-bell-dot {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
   border-radius: 999px;
   background: #ef4444;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 16px;
-  text-align: center;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.96);
 }
-html.dark .gk-notif-bell-badge {
+html.dark .gk-notif-bell-dot {
   box-shadow: 0 0 0 2px rgba(28, 28, 34, 0.98);
 }
 
