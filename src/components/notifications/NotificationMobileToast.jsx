@@ -320,6 +320,15 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
   // accordingly. Resetting at the settle moment realigns both.
   const prevBurstSliceRef = useRef(null);
   useLayoutEffect(() => {
+    // Snapshot the previous value and update the ref UNCONDITIONALLY
+    // before any early-return, otherwise renders where showCountdown
+    // is false (between bursts) skip the update and the ref stays
+    // pinned at the previous burst's slice — making the next
+    // null→value transition look like value→value and skipping the
+    // reset.
+    const prevSlice = prevBurstSliceRef.current;
+    prevBurstSliceRef.current = burstSlice;
+
     if (!showCountdown || !current) return;
     const el = countdownFillRef.current;
     if (!el) {
@@ -329,7 +338,7 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
     // burstSlice just became non-null → the bar is rendering for
     // the first time on this notif. Anchor "display start" at now
     // so the bar runs the full slice and the cycler does too.
-    if (prevBurstSliceRef.current == null && burstSlice != null) {
+    if (prevSlice == null && burstSlice != null) {
       displayStartRef.current = Date.now();
       dlog(
         "display-start reset (burst settle)",
@@ -337,7 +346,6 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
         `t=${displayStartRef.current - __gkn_t0}ms`,
       );
     }
-    prevBurstSliceRef.current = burstSlice;
     const elapsed = Math.max(
       0,
       Math.min(burstSlice, Date.now() - displayStartRef.current),
