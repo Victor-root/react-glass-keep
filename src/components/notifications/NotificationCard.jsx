@@ -15,8 +15,9 @@
 // children, so title / message remain XSS-safe even when the values
 // originate from the server.
 
-import React, { useRef, useEffect, useLayoutEffect } from "react";
+import React, { useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import TI from "../../icons/editor/index.jsx";
+import { useNotifications } from "./NotificationProvider.jsx";
 import { t } from "../../i18n";
 
 const VARIANT_CLASS = {
@@ -308,27 +309,57 @@ export default function NotificationCard({
   // provider's auto-dismiss timer so they finish together.
   const showCountdown =
     !compact && typeof duration === "number" && duration > 0;
-  // Sync the CSS animation with the provider's setTimeout: notify()
-  // schedules the auto-dismiss the moment it runs (t = createdAt),
-  // but the bar only starts animating once React commits and the
-  // browser mounts the element — a few ms (sometimes a few hundred
-  // on slow devices) later. Reading Date.now() during render
-  // measures the gap up to the RENDER call, not the actual mount;
-  // there's still another commit + paint gap on top. useLayoutEffect
-  // runs after the DOM mutation and before paint, so Date.now() in
-  // it is effectively the actual mount time — feeding it back as a
-  // NEGATIVE animation-delay lands the scaleX(0) frame at the same
-  // wall-clock instant the provider's timer fires. Mount-only deps
-  // so we don't re-anchor on every render (which would restart the
-  // CSS animation and re-create the very desync this fixes).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Auto-dismiss sync. Single source of truth = the notification's
+  // `expiresAt` set by the provider when notify() was called. At
+  // mount we measure the actual remaining time from now to that
+  // instant and configure the bar to animate exactly that long,
+  // starting at the fraction of width that still represents the
+  // remaining ratio. scaleX(0) is then guaranteed to land on the
+  // expiresAt tick, and onAnimationEnd dispatches the dismiss in
+  // the same frame — no hand-tuned delays, no magic offsets, no
+  // sub-percent of bar left when the toast disappears. The
+  // provider keeps a +250 ms fallback setTimeout for safety; if
+  // for any reason the animation never fires animationend (tab
+  // backgrounded so long the animation was killed, etc.) the
+  // toast still goes away.
   useLayoutEffect(() => {
     if (!showCountdown) return;
     const el = countdownFillRef.current;
-    if (!el || !createdAt || typeof duration !== "number" || duration <= 0) return;
-    const elapsed = Math.max(0, Math.min(duration, Date.now() - createdAt));
-    el.style.animationDelay = `-${elapsed}ms`;
+    if (!el) return;
+    const exp = notification.expiresAt;
+    if (typeof duration !== "number" || duration <= 0 || !exp) return;
+    const remainingMs = Math.max(0, exp - Date.now());
+    if (remainingMs <= 0) {
+      // Already expired before we got a chance to animate — collapse
+      // the bar so the empty state at least matches the dismissed
+      // state visually; the fallback timer (or animationend on the
+      // collapsed bar) takes care of removing the toast.
+      el.style.setProperty("--gk-countdown-start", "0");
+      el.style.animationDuration = "0ms";
+      return;
+    }
+    const startRatio = Math.min(1, Math.max(0, remainingMs / duration));
+    el.style.setProperty("--gk-countdown-start", String(startRatio));
+    el.style.animationDuration = `${remainingMs}ms`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Pull `dismiss` from the provider so the auto-dismiss path that
+  // fires from animationend stays a SOFT dismiss (matches what the
+  // provider's setTimeout did before — keeps the row visible in the
+  // notification centre history). Falls back to a no-op when the
+  // card is rendered outside a provider (tests / standalone use).
+  const { dismiss: providerDismiss } = useNotifications();
+  const handleCountdownEnd = useCallback(
+    (e) => {
+      // animationend fires for any animation on the element; only
+      // dismiss when it's specifically the countdown's gkNotifCountdown
+      // keyframes that just completed.
+      if (e?.animationName !== "gkNotifCountdown") return;
+      if (typeof providerDismiss === "function") providerDismiss(id);
+    },
+    [id, providerDismiss],
+  );
 
   const card = (
     <div
@@ -404,6 +435,7 @@ export default function NotificationCard({
               ref={countdownFillRef}
               className="gk-notif-card__countdown-fill"
               style={{ animationDuration: `${duration}ms` }}
+              onAnimationEnd={handleCountdownEnd}
             />
           </div>
         </div>

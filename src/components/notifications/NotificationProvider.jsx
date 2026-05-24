@@ -391,6 +391,13 @@ export function NotificationProvider({ children }) {
       duration = defaultDurationRef.current;
     }
 
+    const createdAt = Date.now();
+    // Single source of truth for the auto-dismiss instant: the card's
+    // countdown bar reads expiresAt to compute the remaining time and
+    // its scaleX start ratio, so the bar's animation lines up with
+    // the same wall-clock moment the provider's fallback timer fires.
+    const expiresAt = duration && duration > 0 ? createdAt + duration : null;
+
     const n = {
       id,
       type: input.type || "generic",
@@ -418,8 +425,9 @@ export function NotificationProvider({ children }) {
       // card resolves it via its own SEMANTIC_ICONS map; if the key
       // is unknown / null the card falls back to the variant glyph.
       icon: input.icon != null ? String(input.icon) : null,
-      createdAt: Date.now(),
+      createdAt,
       duration,
+      expiresAt,
       dismissible: input.dismissible !== false,
       action: input.action || null,
       // Multi-action surface (e.g. Accepter / Refuser on the admin
@@ -435,6 +443,14 @@ export function NotificationProvider({ children }) {
     };
     dispatch({ type: "ADD", notification: n });
     if (duration && duration > 0) {
+      // Primary dismiss path is the card's onAnimationEnd on the
+      // countdown bar (fires the moment scaleX(0) is reached). This
+      // setTimeout is a SAFETY fallback that runs slightly AFTER
+      // expiresAt — late enough that the animation has had a chance
+      // to land first, never early enough to make the toast vanish
+      // while there's still bar on screen. dismiss is idempotent so
+      // the late fire is a no-op when the card already dispatched.
+      const SAFETY_BUFFER_MS = 250;
       const handle = setTimeout(() => {
         timersRef.current.delete(id);
         // Auto-dismiss counts as the user-side resolution for a
@@ -444,7 +460,7 @@ export function NotificationProvider({ children }) {
         // pending replays it at the next reload.
         ackDeliveredById(id);
         dispatch({ type: "DISMISS", id });
-      }, duration);
+      }, duration + SAFETY_BUFFER_MS);
       timersRef.current.set(id, handle);
     }
     return id;

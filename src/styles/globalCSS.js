@@ -3966,7 +3966,11 @@ html.dark .gk-notif-card--error {
   animation-fill-mode: forwards;
 }
 @keyframes gkNotifCountdown {
-  from { transform: scaleX(1); }
+  /* The custom property --gk-countdown-start is set imperatively on
+     the fill in useLayoutEffect to (remaining ms / total duration ms).
+     Defaults to 1 when the variable is absent, so a fresh notification
+     still starts at full width without any JS interaction. */
+  from { transform: scaleX(var(--gk-countdown-start, 1)); }
   to   { transform: scaleX(0); }
 }
 
