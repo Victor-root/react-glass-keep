@@ -1088,7 +1088,7 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
   copied: "Copied",
   copyCommand: "Copy command",
   openRepo: "Open repository",
-  openChangelog: "View changelog",
+  openChangelog: "Changelog",
   // ── Self-update (one-click) ────────────────────────────────────────────────
   selfUpdateButton: "Update now",
   selfUpdateRunning: "Update in progress...",
