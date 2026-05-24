@@ -18,7 +18,7 @@ const SHEET_BREAKPOINT_PX = 640;
 // Mobile open/close animation duration. Mirrors the editor's
 // .mobile-fmt-sheet transition curve / timing so the two surfaces
 // feel like they belong to the same design system.
-const MOBILE_ANIM_MS = 320;
+const MOBILE_ANIM_MS = 480;
 // Px the bottom edge has to travel upward (via the grabber drag)
 // before release closes the panel. Same threshold the editor's
 // formatting sheet uses for swipe-to-close.

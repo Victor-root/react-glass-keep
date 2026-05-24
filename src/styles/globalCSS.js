@@ -4552,7 +4552,7 @@ html.dark .gk-notif-bell-dot {
 .gk-notif-center--mobile {
   animation: none;
   transform: translateY(-100%);
-  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.48s cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
 }
 .gk-notif-center--mobile.is-open {

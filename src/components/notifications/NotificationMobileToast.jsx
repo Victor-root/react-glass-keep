@@ -111,7 +111,7 @@ function shouldUseLong(notif) {
   return false;
 }
 
-export default function NotificationMobileToast({ onAction }) {
+export default function NotificationMobileToast({ onAction, suppressed = false }) {
   const { notifications, remove, dismiss } = useNotifications();
   const current = notifications.find((n) => !n.dismissed) || null;
   const [visible, setVisible] = useState(false);
@@ -216,6 +216,9 @@ export default function NotificationMobileToast({ onAction }) {
   // the same provider.
   if (hasAndroidBridge()) return null;
   if (!current || !visible) return null;
+  // Notification centre is open — the same notifications are already
+  // visible inside its list, no need to also overlay the floating pill.
+  if (suppressed) return null;
 
   const { Comp, filled } = pickGlyph(current);
   const stacked = current.actionLayout === "below" && !!current.action;

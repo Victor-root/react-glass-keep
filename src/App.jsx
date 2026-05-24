@@ -6976,7 +6976,14 @@ export default function App() {
           with a touchscreen. The notification centre + bell stay
           on every form factor. */}
       {windowWidth < 640 ? (
-        <NotificationMobileToast onAction={handleNotificationAction} />
+        <NotificationMobileToast
+          onAction={handleNotificationAction}
+          // Suppress the floating mobile pill while the notification
+          // centre sheet is on screen — every active toast is already
+          // visible inside the panel, so doubling it up just covers
+          // part of the list the user just opened.
+          suppressed={notifCenterOpen}
+        />
       ) : (
         <NotificationViewport
           position={notificationsPosition}
