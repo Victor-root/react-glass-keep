@@ -429,6 +429,10 @@ export function NotificationProvider({ children }) {
       actions: Array.isArray(input.actions) && input.actions.length > 0
         ? input.actions
         : null,
+      // Opt-in: "below" forces even a single-action card to render the
+      // button in the dedicated row underneath the message instead of
+      // squeezed inline next to it. Useful for long messages.
+      actionLayout: input.actionLayout === "below" ? "below" : null,
       metadata: input.metadata || null,
       dismissed: false,
       dismissedAt: null,

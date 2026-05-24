@@ -286,7 +286,7 @@ export default function NotificationCard({
   }, [swipeable]);
 
   if (!notification) return null;
-  const { id, title, message, variant, dismissible, action, actions: rawActions, createdAt, duration, icon: iconKey } =
+  const { id, title, message, variant, dismissible, action, actions: rawActions, actionLayout, createdAt, duration, icon: iconKey } =
     notification;
   // Unified action list: prefer the multi-action `actions` field when
   // present, fall back to the single legacy `action` field. Down the
@@ -295,6 +295,13 @@ export default function NotificationCard({
   const actionList = Array.isArray(rawActions) && rawActions.length > 0
     ? rawActions
     : (action ? [action] : []);
+  // Default: a single action sits inline at the end of the message row
+  // (compact). Callers with a long message can pass actionLayout:"below"
+  // to push even a single button into the dedicated row underneath, so
+  // the message wraps naturally at full width instead of being squeezed
+  // next to the button.
+  const renderActionsBelow =
+    actionList.length > 1 || actionLayout === "below";
   const klass = VARIANT_CLASS[variant] || VARIANT_CLASS.info;
   const closeKlass =
     closeSide === "right" ? " gk-notif-card--close-right" : "";
@@ -364,7 +371,7 @@ export default function NotificationCard({
             // the flex row when no message is set.
             <div className="gk-notif-card__message" aria-hidden="true" />
           )}
-          {actionList.length === 1 ? (
+          {actionList.length === 1 && !renderActionsBelow ? (
             <button
               type="button"
               className="gk-notif-card__action-btn"
@@ -374,7 +381,7 @@ export default function NotificationCard({
             </button>
           ) : null}
         </div>
-        {actionList.length > 1 ? (
+        {renderActionsBelow ? (
           <div className="gk-notif-card__actions">
             {actionList.map((a, i) => {
               // The "reject" half of an approve/reject pair (or any

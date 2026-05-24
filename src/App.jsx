@@ -722,6 +722,10 @@ export default function App() {
         label: t("selfUpdateButton"),
         latestVersion: updateInfo.latestVersion,
       },
+      // Long message + a primary CTA — push the button onto its own
+      // row underneath so the description can wrap naturally at full
+      // card width instead of being squeezed beside the button.
+      actionLayout: "below",
     });
   }, [
     currentUser?.is_admin,
