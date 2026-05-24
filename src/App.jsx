@@ -6988,6 +6988,10 @@ export default function App() {
         <NotificationViewport
           position={notificationsPosition}
           onAction={handleNotificationAction}
+          // Same as the mobile pill: hide the floating stack while
+          // the centre panel is open so new arrivals don't double up
+          // on top of the panel that already shows them.
+          suppressed={notifCenterOpen}
         />
       )}
 

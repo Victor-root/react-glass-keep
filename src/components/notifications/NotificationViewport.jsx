@@ -53,9 +53,15 @@ function closeSideForPosition(position) {
 export default function NotificationViewport({
   position = "top-right",
   onAction,
+  // Hide the floating stack while the notification centre panel is
+  // open. New arrivals still land in the provider history (the panel
+  // shows them) but we don't double them up as floating toasts on
+  // top of the panel.
+  suppressed = false,
 }) {
   const { notifications, remove } = useNotifications();
   if (typeof document === "undefined") return null;
+  if (suppressed) return null;
   const active = notifications.filter((n) => !n.dismissed).slice(0, MAX_VISIBLE);
   if (active.length === 0) return null;
   const positionClass = POSITION_CLASS[position] || POSITION_CLASS["top-right"];
