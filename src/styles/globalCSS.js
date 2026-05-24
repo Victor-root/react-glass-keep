@@ -4273,7 +4273,19 @@ html.dark .gk-notif-card.gk-notif-card--center {
   isolation: isolate;
   width: max-content;
   max-width: calc(100vw - 24px);
+  /* Default to bottom-anchored — the .gk-mobile-toast--anchor-top /
+     --anchor-bottom modifier classes (added at render time from the
+     user's mobile position preference) override one of these so
+     only one of top/bottom is set at a time. */
   bottom: calc(var(--safe-bottom, 0px) + 24px);
+}
+.gk-mobile-toast.gk-mobile-toast--anchor-top {
+  top: calc(var(--safe-top, 0px) + 16px);
+  bottom: auto;
+}
+.gk-mobile-toast.gk-mobile-toast--anchor-bottom {
+  bottom: calc(var(--safe-bottom, 0px) + 24px);
+  top: auto;
   display: flex;
   align-items: center;
   gap: 11px;
@@ -4419,6 +4431,14 @@ html.dark .gk-mobile-toast__action:active { background: rgba(255, 255, 255, 0.14
 @keyframes gkMobileToastIn {
   from { opacity: 0; transform: translate(-50%, 24px); }
   to   { opacity: 1; transform: translate(-50%, 0);    }
+}
+/* Top-anchored: slide down from above instead of up from below. */
+.gk-mobile-toast--anchor-top {
+  animation-name: gkMobileToastInTop;
+}
+@keyframes gkMobileToastInTop {
+  from { opacity: 0; transform: translate(-50%, -24px); }
+  to   { opacity: 1; transform: translate(-50%, 0);     }
 }
 
 /* Auto-dismiss countdown bar — same anatomy as the desktop card so

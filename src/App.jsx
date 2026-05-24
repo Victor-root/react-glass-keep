@@ -316,6 +316,18 @@ export default function App() {
     } catch (e) {}
     return "top-center";
   });
+  // Mobile-only position preference (top / bottom). Stored under a
+  // SEPARATE settings key so it syncs across mobile devices via the
+  // same /user/settings pipeline but never overwrites the desktop
+  // position — and vice versa. Default "bottom" preserves the
+  // existing mobile visual.
+  const [notificationsPositionMobile, setNotificationsPositionMobile] = useState(() => {
+    try {
+      const stored = localStorage.getItem("notificationsPositionMobile");
+      if (stored === "top" || stored === "bottom") return stored;
+    } catch (e) {}
+    return "bottom";
+  });
   // Notification sound toggle. Defaults to off — sound is opt-in so
   // a fresh install doesn't surprise the user with a ding on the
   // first toast.
@@ -1077,6 +1089,16 @@ export default function App() {
           setNotificationsPosition(settings.notificationsPosition);
           localStorage.setItem("notificationsPosition", settings.notificationsPosition);
         }
+        if (
+          settings?.notificationsPositionMobile === "top" ||
+          settings?.notificationsPositionMobile === "bottom"
+        ) {
+          setNotificationsPositionMobile(settings.notificationsPositionMobile);
+          localStorage.setItem(
+            "notificationsPositionMobile",
+            settings.notificationsPositionMobile,
+          );
+        }
         if (typeof settings?.notificationsSound === "boolean") {
           setNotificationsSound(settings.notificationsSound);
           localStorage.setItem(
@@ -1340,6 +1362,27 @@ export default function App() {
       }).catch(() => {});
     }
   }, [notificationsPosition]);
+
+  // Same outbound pattern as notificationsPosition but for the
+  // mobile-only top/bottom preference. Server stores under a
+  // separate key, so the value syncs across mobile devices via
+  // user_settings_updated SSE without ever touching the desktop
+  // notificationsPosition value.
+  useEffect(() => {
+    try { localStorage.setItem("notificationsPositionMobile", notificationsPositionMobile); } catch (e) {}
+    if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("notificationsPositionMobile")) {
+      remoteSyncedKeysRef.current.delete("notificationsPositionMobile");
+      return;
+    }
+    if (token) {
+      api("/user/settings", {
+        method: "PATCH",
+        token,
+        body: { notificationsPositionMobile },
+      }).catch(() => {});
+    }
+  }, [notificationsPositionMobile]);
 
   useEffect(() => {
     try {
@@ -3252,6 +3295,14 @@ export default function App() {
                   mark("notificationsPosition");
                   setNotificationsPosition(v);
                   try { localStorage.setItem("notificationsPosition", v); } catch (_) {}
+                }
+              }
+              if (keys.has("notificationsPositionMobile")) {
+                const v = settings.notificationsPositionMobile;
+                if (v === "top" || v === "bottom") {
+                  mark("notificationsPositionMobile");
+                  setNotificationsPositionMobile(v);
+                  try { localStorage.setItem("notificationsPositionMobile", v); } catch (_) {}
                 }
               }
               if (keys.has("notificationsSound")) {
@@ -6653,6 +6704,8 @@ export default function App() {
         setPasteMode={setPasteMode}
         notificationsPosition={notificationsPosition}
         setNotificationsPosition={setNotificationsPosition}
+        notificationsPositionMobile={notificationsPositionMobile}
+        setNotificationsPositionMobile={setNotificationsPositionMobile}
         notificationsSound={notificationsSound}
         setNotificationsSound={setNotificationsSound}
         notificationsSoundTypes={notificationsSoundTypes}
@@ -6978,6 +7031,7 @@ export default function App() {
       {windowWidth < 640 ? (
         <NotificationMobileToast
           onAction={handleNotificationAction}
+          position={notificationsPositionMobile}
           // Suppress the floating mobile pill while the notification
           // centre sheet is on screen — every active toast is already
           // visible inside the panel, so doubling it up just covers

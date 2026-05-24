@@ -55,6 +55,8 @@ export default function SettingsPanel({
   setPasteMode,
   notificationsPosition,
   setNotificationsPosition,
+  notificationsPositionMobile,
+  setNotificationsPositionMobile,
   notificationsSound,
   setNotificationsSound,
   notificationsSoundTypes,
@@ -658,12 +660,9 @@ export default function SettingsPanel({
                     // existing position value stays in the same
                     // namespace as desktop.
                     (() => {
-                      const isBottom = String(notificationsPosition || "top-right").startsWith("bottom");
-                      const mobileValue = isBottom ? "bottom" : "top";
+                      const mobileValue = notificationsPositionMobile === "top" ? "top" : "bottom";
                       const apply = (v) => {
-                        setNotificationsPosition?.(
-                          v === "bottom" ? "bottom-center" : "top-center",
-                        );
+                        setNotificationsPositionMobile?.(v === "top" ? "top" : "bottom");
                       };
                       return (
                         <div

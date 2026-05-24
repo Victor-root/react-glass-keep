@@ -133,7 +133,7 @@ function idsShort(arr) {
     .join(",");
 }
 
-export default function NotificationMobileToast({ onAction, suppressed = false }) {
+export default function NotificationMobileToast({ onAction, suppressed = false, position = "bottom" }) {
   const { notifications, remove, dismissLocal, cancelAutoDismiss } = useNotifications();
   const [visible, setVisible] = useState(false);
   const lastIdRef = useRef(null);
@@ -487,7 +487,7 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
 
   const node = (
     <div
-      className={`gk-mobile-toast gk-mobile-toast--${current.variant || "info"}${stacked ? " gk-mobile-toast--stacked" : ""}`}
+      className={`gk-mobile-toast gk-mobile-toast--${current.variant || "info"}${stacked ? " gk-mobile-toast--stacked" : ""} gk-mobile-toast--anchor-${position === "top" ? "top" : "bottom"}`}
       role="status"
       onClick={handleTap}
     >
