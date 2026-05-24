@@ -111,13 +111,43 @@ function shouldUseLong(notif) {
   return false;
 }
 
+// ── Debug logger ────────────────────────────────────────────────────
+// Logs all mobile-toast lifecycle events to the console with a
+// monotonic timestamp so we can reconstruct the exact sequence from
+// a copy-paste. Filter the devtools console by "[gkn]" to keep only
+// these lines.
+const __gkn_t0 = Date.now();
+function dlog(...args) {
+  try {
+    const dt = Date.now() - __gkn_t0;
+    // eslint-disable-next-line no-console
+    console.log(`[gkn +${dt}ms]`, ...args);
+  } catch (_e) {}
+}
+function idsShort(arr) {
+  return arr
+    .map(
+      (n) =>
+        `${(n.id || "?").slice(-4)}${n.dismissed ? "✗" : "✓"}`,
+    )
+    .join(",");
+}
+
 export default function NotificationMobileToast({ onAction, suppressed = false }) {
   const { notifications, remove, dismissLocal } = useNotifications();
   const [visible, setVisible] = useState(false);
   const lastIdRef = useRef(null);
   const notificationsRef = useRef(notifications);
+  // Log every notifications array mutation so we can see arrivals
+  // and external dismissals as the provider sees them.
+  const prevNotifIdsRef = useRef("");
   useEffect(() => {
     notificationsRef.current = notifications;
+    const snapshot = idsShort(notifications);
+    if (snapshot !== prevNotifIdsRef.current) {
+      dlog("notifications=", snapshot, `(len=${notifications.length})`);
+      prevNotifIdsRef.current = snapshot;
+    }
   }, [notifications]);
 
   // ── Sticky displayed-id ────────────────────────────────────────────
@@ -136,18 +166,33 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
   const displayStartRef = useRef(0);
 
   let current = null;
+  let pickReason = "none";
   if (displayedIdRef.current != null) {
     const sticky = notifications.find(
       (n) => n.id === displayedIdRef.current && !n.dismissed,
     );
-    if (sticky) current = sticky;
+    if (sticky) {
+      current = sticky;
+      pickReason = "sticky";
+    }
   }
   if (!current) {
     current = notifications.find((n) => !n.dismissed) || null;
     if (current && current.id !== displayedIdRef.current) {
+      const prev = displayedIdRef.current;
       displayedIdRef.current = current.id;
       displayStartRef.current = Date.now();
+      dlog(
+        "display-start",
+        `id=…${current.id.slice(-4)}`,
+        `prev=${prev ? "…" + prev.slice(-4) : "null"}`,
+        `t=${displayStartRef.current - __gkn_t0}ms`,
+      );
+      pickReason = "fresh";
     } else if (!current) {
+      if (displayedIdRef.current != null) {
+        dlog("display-end (no active notif)");
+      }
       displayedIdRef.current = null;
       displayStartRef.current = 0;
     }
@@ -165,7 +210,10 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
   // End burst when nothing's active anymore.
   useEffect(() => {
     const anyActive = notifications.some((n) => !n.dismissed);
-    if (!anyActive && burstSlice != null) setBurstSlice(null);
+    if (!anyActive && burstSlice != null) {
+      dlog("burst-end (no active notif), was slice=", burstSlice);
+      setBurstSlice(null);
+    }
   }, [notifications, burstSlice]);
   // Start burst (with settling) when one isn't running and there's
   // an eligible notif on screen. The settling timer restarts every
@@ -177,21 +225,36 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
     if (hasAndroidBridge()) return undefined;
     if (!current) return undefined;
     const dur = current.duration;
-    if (typeof dur !== "number" || dur <= 0) return undefined;
+    if (typeof dur !== "number" || dur <= 0) {
+      dlog("burst-settle skipped (persistent / no duration)", `id=…${current.id.slice(-4)}`);
+      return undefined;
+    }
+    dlog("burst-settle scheduled (100ms)", `seed=…${current.id.slice(-4)}`, `dur=${dur}`);
     const h = setTimeout(() => {
       const fresh = notificationsRef.current;
       const queueSize = fresh.reduce(
         (acc, n) => (n.dismissed ? acc : acc + 1),
         0,
       );
-      if (queueSize <= 0) return;
+      if (queueSize <= 0) {
+        dlog("burst-settle fired but queueSize=0, abort");
+        return;
+      }
       const slice =
         queueSize > 1
           ? Math.max(800, Math.floor(dur / queueSize))
           : dur;
+      dlog(
+        "burst-settle fired",
+        `queueSize=${queueSize}`,
+        `dur=${dur}`,
+        `slice=${slice}ms`,
+      );
       setBurstSlice(slice);
     }, 100);
-    return () => clearTimeout(h);
+    return () => {
+      clearTimeout(h);
+    };
   }, [burstSlice, current?.id]);
 
   useEffect(() => {
@@ -203,12 +266,15 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
         } catch (_e) {}
         setVisible(false);
       } else {
+        dlog("setVisible(true)", `id=…${current.id.slice(-4)}`, `pick=${pickReason}`);
         setVisible(true);
       }
     } else if (!current) {
+      dlog("setVisible(false) (no current)");
       setVisible(false);
       lastIdRef.current = null;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
   // Cycler — dismisses the displayed notification after burstSlice ms.
@@ -220,10 +286,21 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
     if (!burstSlice || burstSlice <= 0) return undefined;
     const elapsed = Date.now() - displayStartRef.current;
     const remaining = Math.max(0, burstSlice - elapsed);
+    dlog(
+      "cycler-set",
+      `id=…${current.id.slice(-4)}`,
+      `burstSlice=${burstSlice}`,
+      `elapsedSinceDisplay=${elapsed}`,
+      `remaining=${remaining}`,
+    );
     const h = setTimeout(() => {
+      dlog("cycler-fire → dismissLocal", `id=…${current.id.slice(-4)}`);
       dismissLocal(current.id);
     }, remaining);
-    return () => clearTimeout(h);
+    return () => {
+      dlog("cycler-cleanup", `id=…${current.id.slice(-4)}`);
+      clearTimeout(h);
+    };
   }, [current?.id, burstSlice, dismissLocal]);
 
   const showCountdown = !!(burstSlice && burstSlice > 0 && current);
@@ -236,33 +313,52 @@ export default function NotificationMobileToast({ onAction, suppressed = false }
   useLayoutEffect(() => {
     if (!showCountdown || !current) return;
     const el = countdownFillRef.current;
-    if (!el) return;
+    if (!el) {
+      dlog("bar-anchor skipped (no fill el)", `id=…${current.id.slice(-4)}`);
+      return;
+    }
     const elapsed = Math.max(
       0,
       Math.min(burstSlice, Date.now() - displayStartRef.current),
     );
     el.style.animationDelay = `-${elapsed}ms`;
+    dlog(
+      "bar-anchor",
+      `id=…${current.id.slice(-4)}`,
+      `animDuration=${burstSlice}ms`,
+      `animDelay=-${elapsed}ms`,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.id, burstSlice]);
 
   if (typeof document === "undefined") return null;
-  // Inside the Android wrapper we never render — the OS toast IS the
-  // notification. Centre + bell still work because they read from
-  // the same provider.
   if (hasAndroidBridge()) return null;
-  if (!current || !visible) return null;
-  // Notification centre is open — the same notifications are already
-  // visible inside its list, no need to also overlay the floating pill.
-  if (suppressed) return null;
+  if (!current || !visible) {
+    dlog("render → null", `current=${current ? "…" + current.id.slice(-4) : "null"}`, `visible=${visible}`);
+    return null;
+  }
+  if (suppressed) {
+    dlog("render → null (suppressed by panel)");
+    return null;
+  }
+  dlog(
+    "render → pill",
+    `id=…${current.id.slice(-4)}`,
+    `variant=${current.variant || "info"}`,
+    `showCountdown=${showCountdown}`,
+    `burstSlice=${burstSlice}`,
+  );
 
   const { Comp, filled } = pickGlyph(current);
   const stacked = current.actionLayout === "below" && !!current.action;
   const handleTap = () => {
+    dlog("tap → remove", `id=…${current.id.slice(-4)}`);
     setVisible(false);
     remove(current.id);
   };
   const handleAction = (e) => {
     e.stopPropagation();
+    dlog("action → remove", `id=…${current.id.slice(-4)}`);
     if (onAction) onAction(current);
     setVisible(false);
     remove(current.id);
