@@ -53,7 +53,14 @@ export function SettingsSection({ icon, title, open, onToggle, children }) {
         inert={!open}
       >
         <div className="overflow-hidden">
-          <div className="pt-4">{children}</div>
+          {/* pb-2 leaves room for a focus-ring on the last interactive
+              element inside the section — without it, overflow:hidden
+              above clips the bottom of the ring (visible on the
+              "Slogan de connexion" input which is the last row of its
+              section). 8 px is enough for a ring-2 shadow + a hair of
+              breathing room and doesn't change perceived section
+              spacing. */}
+          <div className="pt-4 pb-2">{children}</div>
         </div>
       </div>
     </>

@@ -27,10 +27,58 @@
 // serverNotificationId across sessions. History items are deduplicated
 // by the MERGE_HISTORY reducer action.
 
-import { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { api } from "../utils/api";
 import { t } from "../i18n";
 import { useNotifications } from "../components/notifications/NotificationProvider.jsx";
+
+// Build a localized notification body as JSX with the user-provided
+// values rendered as plain text and the chosen ones wrapped in
+// <strong>. Replaces the previous approach of injecting
+// `**${userValue}**` markdown markers into the t() result, which
+// fed user content straight through the renderMessage parser and
+// made `**foo**` inside a note title look bold in the toast.
+//
+// Each highlightKey is substituted into the template with a unique
+// control-character marker, then the resulting string is walked
+// once and every marker is replaced by a <strong>{value}</strong>
+// React element. Markers use  padding bytes that never appear
+// in normal text input, so they survive even if the template (or a
+// user value) contains regular ASCII punctuation.
+function buildHighlightedMessage(templateKey, params, highlightKeys = []) {
+  if (!Array.isArray(highlightKeys) || highlightKeys.length === 0) {
+    return t(templateKey, params);
+  }
+  const mark = (k) => `${k}`;
+  const sub = { ...params };
+  for (const k of highlightKeys) {
+    if (k in sub) sub[k] = mark(k);
+  }
+  const template = t(templateKey, sub);
+  const markers = highlightKeys.map((k) => ({ key: k, marker: mark(k) }));
+  const out = [];
+  let buf = "";
+  let i = 0;
+  while (i < template.length) {
+    let hit = null;
+    for (const m of markers) {
+      if (template.startsWith(m.marker, i)) { hit = m; break; }
+    }
+    if (hit) {
+      if (buf) { out.push(buf); buf = ""; }
+      out.push(
+        React.createElement("strong", { key: `hl-${out.length}` }, params[hit.key]),
+      );
+      i += hit.marker.length;
+    } else {
+      buf += template[i];
+      i += 1;
+    }
+  }
+  if (buf) out.push(buf);
+  if (out.length === 1 && typeof out[0] === "string") return out[0];
+  return React.createElement(React.Fragment, null, ...out);
+}
 
 // Build a fully-formed notification object from a server history row
 // (delivered_at IS NOT NULL). The shape must satisfy the provider's
@@ -54,7 +102,11 @@ function buildHistoryEntry(n) {
 
   if (type === "note_shared") {
     title = t("noteSharedTitle");
-    message = t("noteSharedToast", { sender, title: `**${noteTitle}**` });
+    message = buildHighlightedMessage(
+      "noteSharedToast",
+      { sender, title: noteTitle },
+      ["title"],
+    );
     variant = "info";
     action = noteId ? { label: t("noteSharedAction"), noteId: String(noteId) } : null;
   } else if (
@@ -77,7 +129,11 @@ function buildHistoryEntry(n) {
       note_access_revoked_with_copy: "noteAccessRevokedWithCopyToast",
     };
     title = t(titleKeyMap[type] || "noteAccessRevokedTitle");
-    message = t(msgKeyMap[type] || "noteAccessRevokedToast", { sender, title: `**${noteTitle}**` });
+    message = buildHighlightedMessage(
+      msgKeyMap[type] || "noteAccessRevokedToast",
+      { sender, title: noteTitle },
+      ["title"],
+    );
     variant = "warning";
     // When a copy was conserved, expose an "Ouvrir" shortcut that
     // points to the copy. The server persists the copy's id in the
@@ -92,10 +148,11 @@ function buildHistoryEntry(n) {
     const deletedName = n.note_title || "";
     const adminName = n.sender_name || "";
     title = t("userDeletedNotifTitle");
-    message = t("userDeletedNotifMessage", {
-      name: deletedName,
-      admin: adminName,
-    });
+    message = buildHighlightedMessage(
+      "userDeletedNotifMessage",
+      { name: deletedName, admin: adminName },
+      ["name", "admin"],
+    );
     variant = "warning";
     icon = icon || "user-x";
   } else if (type === "pending_user_registered") {
@@ -109,7 +166,11 @@ function buildHistoryEntry(n) {
     const userName = n.sender_name || "";
     const userEmail = n.note_title || "";
     title = t("pendingUserNotifTitle");
-    message = t("pendingUserNotifMessage", { name: userName, email: userEmail });
+    message = buildHighlightedMessage(
+      "pendingUserNotifMessage",
+      { name: userName, email: userEmail },
+      ["name"],
+    );
     variant = "info";
     icon = icon || "user-clock";
     if (pendingId != null) {
@@ -212,7 +273,11 @@ export function useShareNotifications({ token, userId }) {
       type: "note_shared",
       variant: "info",
       title: t("noteSharedTitle"),
-      message: t("noteSharedToast", { sender, title: `**${noteTitle}**` }),
+      message: buildHighlightedMessage(
+        "noteSharedToast",
+        { sender, title: noteTitle },
+        ["title"],
+      ),
       // No `persistent` here — let the user's notification-duration
       // preference decide. If they set 10 s, the toast auto-dismisses
       // after 10 s; if they set "persistent" globally, it stays.
@@ -240,7 +305,11 @@ export function useShareNotifications({ token, userId }) {
       type: "user_deleted",
       variant: "warning",
       title: t("userDeletedNotifTitle"),
-      message: t("userDeletedNotifMessage", { name: deletedName, admin: adminName }),
+      message: buildHighlightedMessage(
+        "userDeletedNotifMessage",
+        { name: deletedName, admin: adminName },
+        ["name", "admin"],
+      ),
       icon: "user-x",
       dismissible: true,
       metadata: { serverNotificationId: id },
@@ -268,7 +337,11 @@ export function useShareNotifications({ token, userId }) {
       type: "pending_user_registered",
       variant: "info",
       title: t("pendingUserNotifTitle"),
-      message: t("pendingUserNotifMessage", { name: userName, email: userEmail }),
+      message: buildHighlightedMessage(
+        "pendingUserNotifMessage",
+        { name: userName, email: userEmail },
+        ["name"],
+      ),
       icon: "user-clock",
       dismissible: true,
       actions: pendingId != null
@@ -330,7 +403,11 @@ export function useShareNotifications({ token, userId }) {
       type: typeKey,
       variant: "warning",
       title: t(titleKey),
-      message: t(messageKey, { sender, title: `**${noteTitle}**` }),
+      message: buildHighlightedMessage(
+        messageKey,
+        { sender, title: noteTitle },
+        ["title"],
+      ),
       // Same as the share toast: defer to the user's duration pref.
       dismissible: true,
       action:

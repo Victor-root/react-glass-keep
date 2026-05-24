@@ -77,14 +77,30 @@ function hasAndroidBridge() {
   return !!(b && typeof b.show === "function");
 }
 
-// Build the plain-text payload for the native toast. Strips the
-// `**bold**` markers the in-app card uses; the OS widget can't show
-// bold inline anyway. Title + message glued with a colon so a share
-// notification reads as "Note partagée: Victor a partagé la note …".
+// Build the plain-text payload for the native toast. The OS widget
+// can't show inline bold anyway, and notification messages can now
+// be either strings (legacy / system text) or React elements (any
+// message that embeds a highlighted user-provided value — note title,
+// user name, etc.), so we walk both into a flat string. Strings still
+// get the legacy `**bold**` strip for callers that pre-date the JSX
+// path. Title + message glued with a colon so a share notification
+// reads as "Note partagée: Victor a partagé la note …".
+function nodeToText(node) {
+  if (node == null || node === false) return "";
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(nodeToText).join("");
+  const children = node?.props?.children;
+  if (children !== undefined) return nodeToText(children);
+  return "";
+}
 function buildToastText(notif) {
-  const stripBold = (s) => (s || "").replace(/\*\*([^*]+)\*\*/g, "$1");
-  const title = stripBold(notif.title);
-  const message = stripBold(notif.message);
+  const flatten = (v) =>
+    typeof v === "string"
+      ? v.replace(/\*\*([^*]+)\*\*/g, "$1")
+      : nodeToText(v);
+  const title = flatten(notif.title);
+  const message = flatten(notif.message);
   if (title && message) return `${title}: ${message}`;
   return title || message || "";
 }
