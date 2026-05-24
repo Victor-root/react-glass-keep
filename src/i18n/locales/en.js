@@ -676,6 +676,9 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
     "You removed {sender} from the note {title}",
   collaboratorRemovedWithCopyToast:
     "You removed {sender} from the note {title}, they kept a copy",
+  collaboratorLeftTitle: "Collaborator left",
+  collaboratorLeftToast:
+    "{sender} left the collaboration on the note {title}",
   untitledNote: "(untitled)",
   notifications: "Notifications",
   notificationCenterTitle: "Notifications",

@@ -2065,6 +2065,40 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
     } catch (e) {
       console.warn("[notifications] revoke notification failed:", e?.message);
     }
+  } else if (!isOwner) {
+    // Collaborator left the note voluntarily — notify the owner so
+    // they know who walked away. Owner-self-removal is a no-op
+    // notification-wise (would be circular).
+    try {
+      const leftCreatedAt = nowISO();
+      const owner = getUserById.get(note.user_id);
+      if (owner) {
+        const leftRow = insertNotification.run(
+          owner.id,
+          req.user.id,
+          "collaborator_left",
+          noteId,
+          note.title || "",
+          req.user.name || req.user.email || "",
+          null,
+          null,
+          0,
+          null,
+          leftCreatedAt,
+        );
+        sendEventToUser(owner.id, {
+          type: "note_access_revoked_notification",
+          notificationType: "collaborator_left",
+          notificationId: leftRow.lastInsertRowid,
+          senderName: req.user.name || req.user.email || "",
+          noteId,
+          noteTitle: note.title || "",
+          createdAt: leftCreatedAt,
+        });
+      }
+    } catch (e) {
+      console.warn("[notifications] collaborator_left notification failed:", e?.message);
+    }
   }
 
   // Update note with editor info and notify remaining participants
@@ -2319,6 +2353,40 @@ app.post("/api/notes/:id/trash", auth, (req, res) => {
     db.prepare("DELETE FROM note_user_tags WHERE note_id = ? AND user_id = ?").run(id, req.user.id);
     db.prepare("DELETE FROM note_user_positions WHERE note_id = ? AND user_id = ?").run(id, req.user.id);
     broadcastNoteUpdated(id);
+    // Notify the note owner that this collaborator walked away on
+    // their own. Symmetric with the owner-removes-collaborator path
+    // in DELETE /:id/collaborate/:userId — there the owner gets a
+    // "you removed X" toast; here the owner gets a "X left" toast.
+    try {
+      const leftCreatedAt = nowISO();
+      const ownerId = collabNote.user_id;
+      if (ownerId && ownerId !== req.user.id) {
+        const leftRow = insertNotification.run(
+          ownerId,
+          req.user.id,
+          "collaborator_left",
+          id,
+          collabNote.title || "",
+          req.user.name || req.user.email || "",
+          null,
+          null,
+          0,
+          null,
+          leftCreatedAt,
+        );
+        sendEventToUser(ownerId, {
+          type: "note_access_revoked_notification",
+          notificationType: "collaborator_left",
+          notificationId: leftRow.lastInsertRowid,
+          senderName: req.user.name || req.user.email || "",
+          noteId: id,
+          noteTitle: collabNote.title || "",
+          createdAt: leftCreatedAt,
+        });
+      }
+    } catch (e) {
+      console.warn("[notifications] collaborator_left notification failed:", e?.message);
+    }
     const trashedCopy = getNoteById.get(trashedCopyId);
     return res.json({
       ok: true,

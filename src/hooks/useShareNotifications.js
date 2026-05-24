@@ -125,6 +125,9 @@ export function useShareNotifications({ token, userId }) {
     } else if (typeKey === "collaborator_removed") {
       titleKey = "collaboratorRemovedTitle";
       messageKey = "collaboratorRemovedToast";
+    } else if (typeKey === "collaborator_left") {
+      titleKey = "collaboratorLeftTitle";
+      messageKey = "collaboratorLeftToast";
     } else if (typeKey === "note_access_revoked_with_copy") {
       titleKey = "noteAccessRevokedTitle";
       messageKey = "noteAccessRevokedWithCopyToast";
@@ -169,7 +172,8 @@ export function useShareNotifications({ token, userId }) {
             n.type === "note_access_revoked" ||
             n.type === "note_access_revoked_with_copy" ||
             n.type === "collaborator_removed" ||
-            n.type === "collaborator_removed_with_copy"
+            n.type === "collaborator_removed_with_copy" ||
+            n.type === "collaborator_left"
           ) {
             showRevokeToast(payload);
             handled.push(n.id);

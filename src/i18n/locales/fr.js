@@ -676,6 +676,9 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
     "Vous avez retiré {sender} de la note {title}",
   collaboratorRemovedWithCopyToast:
     "Vous avez retiré {sender} de la note {title}, une copie lui a été conservée",
+  collaboratorLeftTitle: "Collaborateur parti",
+  collaboratorLeftToast:
+    "{sender} a quitté la collaboration sur la note {title}",
   untitledNote: "(sans titre)",
   notifications: "Notifications",
   notificationCenterTitle: "Notifications",
