@@ -4372,7 +4372,6 @@ html.dark .gk-notif-center__close:hover { background: rgba(255,255,255,0.08); }
 }
 .gk-notif-center__item {
   position: relative;
-  overflow: hidden;
 }
 .gk-notif-center__item.is-dismissed .gk-notif-card {
   opacity: 0.55;

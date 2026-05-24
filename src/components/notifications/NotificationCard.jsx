@@ -15,7 +15,7 @@
 // children, so title / message remain XSS-safe even when the values
 // originate from the server.
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useEffect } from "react";
 import TI from "../../icons/editor/index.jsx";
 import { t } from "../../i18n";
 
@@ -131,54 +131,60 @@ export default function NotificationCard({
   swipeable = false,
 }) {
   const cardRef = useRef(null);
-  // Touch tracking — refs so event handlers never go stale.
+  // Touch tracking via refs — never triggers React re-renders so the
+  // transform follows the finger without batching lag.
   const startXRef = useRef(null);
   const deltaRef = useRef(0);
-  // Latest onDismiss / id via ref so the single useEffect never needs
-  // to re-register listeners when props update.
+  // Stable refs for dismiss callback and notification id so the single
+  // useEffect never needs to re-register listeners when props update.
   const onDismissRef = useRef(onDismiss);
   const notifIdRef = useRef(notification?.id);
   useEffect(() => { onDismissRef.current = onDismiss; });
   useEffect(() => { notifIdRef.current = notification?.id; });
-
-  const [translate, setTranslate] = useState(0);
-  // animated=true → apply CSS transition (spring-back or exit fling).
-  // animated=false → raw tracking, no transition lag.
-  const [animated, setAnimated] = useState(false);
 
   useEffect(() => {
     if (!swipeable) return undefined;
     const el = cardRef.current;
     if (!el) return undefined;
 
-    const onTouchStart = (e) => {
-      startXRef.current = e.touches[0].clientX;
+    const onTouchStart = () => {
+      startXRef.current = null; // reset until first move
       deltaRef.current = 0;
-      setAnimated(false);
-      setTranslate(0);
+      el.style.transition = "none";
     };
 
     const onTouchMove = (e) => {
-      if (startXRef.current === null) return;
+      // Latch start position on first move so we don't count the
+      // pointerdown offset.
+      if (startXRef.current === null) {
+        startXRef.current = e.touches[0].clientX;
+        return;
+      }
       const dx = e.touches[0].clientX - startXRef.current;
       deltaRef.current = dx;
-      setTranslate(dx);
+      // Direct DOM write — bypasses React rendering for 60 fps tracking.
+      el.style.transform = `translateX(${dx}px)`;
+      el.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 200));
     };
 
     const onTouchEnd = () => {
       if (startXRef.current === null) return;
       startXRef.current = null;
       const dx = deltaRef.current;
-      setAnimated(true);
+      el.style.transition = "transform 0.25s ease, opacity 0.25s ease";
       if (Math.abs(dx) >= SWIPE_DISMISS_THRESHOLD) {
         const dir = dx > 0 ? 1 : -1;
-        setTranslate(dir * SWIPE_EXIT_PX);
+        el.style.transform = `translateX(${dir * SWIPE_EXIT_PX}px)`;
+        el.style.opacity = "0";
         setTimeout(() => {
           onDismissRef.current?.(notifIdRef.current);
-        }, 220);
+        }, 230);
       } else {
-        setTranslate(0);
-        setTimeout(() => setAnimated(false), 300);
+        el.style.transform = "translateX(0)";
+        el.style.opacity = "1";
+        setTimeout(() => {
+          if (el) el.style.transition = "";
+        }, 300);
       }
     };
 
@@ -204,17 +210,10 @@ export default function NotificationCard({
   const time = formatRelativeTime(createdAt);
   const headline = title || fallbackTitle(variant);
 
+  // Static style: only CSS hints. transform/opacity are written
+  // imperatively via the ref in the touch handlers above.
   const swipeStyle = swipeable
-    ? {
-        transform: `translateX(${translate}px)`,
-        opacity: Math.max(0, 1 - Math.abs(translate) / 200),
-        transition: animated
-          ? "transform 0.25s ease, opacity 0.25s ease"
-          : "none",
-        touchAction: "pan-y",
-        userSelect: "none",
-        willChange: "transform",
-      }
+    ? { touchAction: "pan-y", userSelect: "none" }
     : {};
 
   return (
