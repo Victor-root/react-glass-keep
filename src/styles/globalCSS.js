@@ -1418,6 +1418,16 @@ html.dark::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #
 /* Fallback si CSS vars non résolues sur webkit (Safari) */
 html.dark .modal-scroll-themed::-webkit-scrollbar-track { background: var(--sb-track, #3b0764) !important; }
 html.dark .modal-scroll-themed::-webkit-scrollbar-thumb { background: var(--sb-thumb, #7c3aed) !important; border-radius: 10px; }
+/* Reserve the scrollbar gutter on desktop so the inner width stays
+   identical whether the note is short (no scrollbar) or long (scrollbar
+   visible). Without this, a long note shaves ~15 px off the toolbar's
+   usable width and the .rt-sg--style super-group wraps onto an extra
+   ribbon row. On mobile the scrollbar is already hidden via
+   .mobile-hide-scrollbar / scrollbar-width: none so the gutter is 0 px;
+   we still scope to the desktop breakpoint to be explicit. */
+@media (min-width: 641px) {
+  .modal-scroll-themed { scrollbar-gutter: stable; }
+}
 
 /* clamp for text preview */
 .line-clamp-6 {
@@ -2248,7 +2258,15 @@ html.dark .rt-editor-content a { color: #93c5fd; }
      vertical divider. When the viewport is too narrow for all
      super-groups on one ribbon row, a super-group wraps as a whole
      block — it never spills its own items across different rows of
-     the toolbar, matching the reference screenshot. */
+     the toolbar, matching the reference screenshot.
+
+     container-type lets the @container rules further down query the
+     toolbar's own inline-size so we can switch to a tighter layout
+     when the modal is at its max-w-4xl floor (~880 px usable). This
+     is independent of viewport width — the same toolbar can appear
+     in different container widths if the modal layout ever changes. */
+  container-type: inline-size;
+  container-name: rt-toolbar;
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
@@ -3508,6 +3526,26 @@ html.dark .typo-modal-toggle {
 /* Mobile squeeze: the toolbar stays on one or two lines and each row uses
    the horizontal scroll container instead of wrapping aggressively on tiny
    screens. Groups stay grouped visually via the separators. */
+
+/* Desktop micro-compact: when the toolbar's own inline-size shrinks to
+   the ~880 px range (modal at max-w-4xl with the scrollbar gutter
+   reserved), trim a few pixels off each control so all four super-
+   groups still tuck onto two ribbon rows. The savings (~4 px/button,
+   8 px on .rt-btn--wide, 6 px × 6 on .rt-style-btn, 4 px on each
+   .rt-sep) add up to ~100 px of recovered horizontal room — enough
+   margin to absorb the scrollbar gutter without wrapping a group.
+
+   Guarded by min-width: 641 px so the mobile bottom-sheet (which uses
+   its own dedicated .mobile-fmt-sheet-content layout) is never touched. */
+@media (min-width: 641px) {
+  @container rt-toolbar (max-width: 880px) {
+    .rt-toolbar .rt-btn { min-width: 32px; padding: 0 6px; }
+    .rt-toolbar .rt-btn--wide { width: 122px; flex: 0 0 122px; }
+    .rt-toolbar .rt-style-btn { width: 78px; flex: 0 0 78px; }
+    .rt-toolbar .rt-sep { margin: 2px 4px; }
+  }
+}
+
 @media (max-width: 640px) {
   .rt-toolbar {
     flex-wrap: wrap;
