@@ -4676,18 +4676,24 @@ html.dark .gk-notif-center__header {
 }
 .gk-notif-center__title {
   font-size: .95rem;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Whole title (brand wordmark + localised "Notifications") shares
+     the app's violet→indigo gradient so it reads as a single
+     decorated heading. */
+  background: linear-gradient(90deg, #8b5cf6, #6366f1);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -0.01em;
 }
 /* Brand row inside the panel header — small rounded logo + the
-   "GlassKeep" wordmark in the indigo→violet gradient already used on
-   the app header, followed by the localised "Notifications" word in
-   regular weight. Sits inside the existing 10px-padding header so the
-   panel's overall height is unchanged. */
+   gradient title. Sits inside the existing 10 px-padding header so
+   the panel's overall height is unchanged. */
 .gk-notif-center__brand {
   display: flex;
   align-items: center;
@@ -4703,15 +4709,6 @@ html.dark .gk-notif-center__header {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
   user-select: none;
   pointer-events: none;
-}
-.gk-notif-center__brand-name {
-  font-weight: 700;
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  letter-spacing: -0.01em;
-  margin-right: 2px;
 }
 .gk-notif-center__header-actions {
   display: flex;

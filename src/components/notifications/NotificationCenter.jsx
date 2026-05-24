@@ -322,9 +322,7 @@ export default function NotificationCenter({
             draggable="false"
           />
           <h2 className="gk-notif-center__title">
-            <span className="gk-notif-center__brand-name">GlassKeep</span>
-            {" "}
-            {t("notificationCenterTitle")}
+            GlassKeep {t("notificationCenterTitle")}
           </h2>
         </div>
         <div className="gk-notif-center__header-actions">
