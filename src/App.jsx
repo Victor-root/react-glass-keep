@@ -4597,6 +4597,10 @@ export default function App() {
       if (typeof approvePendingUser !== "function") return;
       approvePendingUser(a.pendingUserId)
         .then(() => {
+          // Mirror AdminPanel's post-action confirmation so the two
+          // entry points (panel button + notification action) give
+          // the same feedback.
+          showToast(t("registrationApproved"), "success", undefined, "user-check");
           // Server already broadcasts notification_removed to every
           // admin so the history entries vanish; explicit remove here
           // covers the local toast in the same session.
@@ -4613,7 +4617,10 @@ export default function App() {
     if (a.kind === "reject_pending_user" && a.pendingUserId != null) {
       if (typeof rejectPendingUser !== "function") return;
       rejectPendingUser(a.pendingUserId)
-        .then(() => { removeNotification(notif.id); })
+        .then(() => {
+          showToast(t("registrationRejected"), "info", undefined, "user-x");
+          removeNotification(notif.id);
+        })
         .catch((e) => {
           if (e && /404/.test(String(e.message))) {
             showToast(t("pendingUserAlreadyHandled"), "warning");

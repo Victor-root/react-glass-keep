@@ -4033,22 +4033,44 @@ html.dark .gk-notif-card__action-btn:hover {
 }
 
 /* Multi-action row — used when a notification carries an actions
-   array instead of the single action field. Right-aligned to match
-   the single-action layout, with a small gap so the buttons read as a
-   pair (e.g. Accepter / Refuser on the admin pending-user toast). */
+   array instead of the single action field. Rendered as a dedicated
+   row UNDER the body (not inline next to the message) so the two
+   buttons sit side-by-side at full width instead of stacking
+   vertically when the message takes a few lines. Right-aligned to
+   stay visually anchored to the card's action edge. */
 .gk-notif-card__actions {
-  display: inline-flex;
+  margin-top: 6px;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 8px;
   justify-content: flex-end;
 }
+/* When a card carries the multi-action row, the body grows by a
+   third row (title + message + actions). Default align-items:center
+   on the card would then push the variant icon to the vertical
+   centre, far below the title and far above the action buttons —
+   the screenshot from the pending-user toast showed a noticeable
+   gap between "Nouvelle inscription" and the message line for
+   exactly this reason. Pulling the icon to the top of the card
+   re-anchors it next to the title, the way a single-row card
+   already does naturally because its body height matches the icon
+   height. */
+.gk-notif-card:has(.gk-notif-card__actions) {
+  align-items: flex-start;
+}
+.gk-notif-card:has(.gk-notif-card__actions) .gk-notif-card__icon {
+  margin-top: 1px;
+}
 /* Secondary action — outline-styled so the reject / cancel half of a
-   pair never reads as the primary CTA. */
+   pair never reads as the primary CTA. Padding is shrunk by 1 px
+   each side so the 1-px border doesn't make this button taller /
+   wider than the primary one next to it (otherwise the pair looks
+   off-balance even with identical labels). */
 .gk-notif-card__action-btn--secondary {
   background: transparent;
   border: 1px solid rgba(0, 0, 0, 0.18);
   color: #1d1d1f;
+  padding: 4px 13px;
 }
 .gk-notif-card__action-btn--secondary:hover {
   background: rgba(0, 0, 0, 0.04);

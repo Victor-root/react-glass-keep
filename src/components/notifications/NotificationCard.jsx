@@ -347,29 +347,30 @@ export default function NotificationCard({
             >
               {actionList[0].label}
             </button>
-          ) : actionList.length > 1 ? (
-            <div className="gk-notif-card__actions">
-              {actionList.map((a, i) => {
-                // The "reject" half of an approve/reject pair (or any
-                // explicit secondary action) renders as a neutral
-                // outline button so the primary CTA reads as default.
-                const secondary =
-                  a.kind === "reject_pending_user" ||
-                  a.variant === "secondary";
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    className={`gk-notif-card__action-btn${secondary ? " gk-notif-card__action-btn--secondary" : ""}`}
-                    onClick={() => onAction && onAction(notification, a)}
-                  >
-                    {a.label}
-                  </button>
-                );
-              })}
-            </div>
           ) : null}
         </div>
+        {actionList.length > 1 ? (
+          <div className="gk-notif-card__actions">
+            {actionList.map((a, i) => {
+              // The "reject" half of an approve/reject pair (or any
+              // explicit secondary action) renders as a neutral
+              // outline button so the primary CTA reads as default.
+              const secondary =
+                a.kind === "reject_pending_user" ||
+                a.variant === "secondary";
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  className={`gk-notif-card__action-btn${secondary ? " gk-notif-card__action-btn--secondary" : ""}`}
+                  onClick={() => onAction && onAction(notification, a)}
+                >
+                  {a.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
       {showCountdown ? (
         <div className="gk-notif-card__countdown" aria-hidden="true">
