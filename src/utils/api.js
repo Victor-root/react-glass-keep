@@ -4,6 +4,16 @@ import { t } from "../i18n";
 export const API_BASE = "/api";
 export const AUTH_KEY = "glass-keep-auth";
 
+// One-per-tab id used to identify the origin of a write so SSE
+// broadcasts triggered by THIS tab's mutations can be ignored on the
+// way back (avoids an echo-and-re-PATCH loop on the user-settings
+// sync). Surfaced via getClientId() so the SSE listener can match
+// against incoming events. Format is opaque.
+const CLIENT_ID = `cid_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
+export function getClientId() {
+  return CLIENT_ID;
+}
+
 export const getAuth = () => {
   try {
     return JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
@@ -16,7 +26,7 @@ export const setAuth = (obj) => {
   else localStorage.removeItem(AUTH_KEY);
 };
 export async function api(path, { method = "GET", body, token, timeoutMs } = {}) {
-  const headers = { "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json", "X-Client-Id": CLIENT_ID };
   if (token) headers.Authorization = `Bearer ${token}`;
 
   // Default to 6s — enough for the local-LAN note/sync endpoints. AI

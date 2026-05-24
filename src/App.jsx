@@ -24,7 +24,7 @@ import {
   clearNotesForSession as idbClearNotesForSession,
   purgeQueueForNote as idbPurgeQueueForNote,
 } from "./sync/localDb.js";
-import { api, getAuth, setAuth, AUTH_KEY } from "./utils/api.js";
+import { api, getAuth, setAuth, AUTH_KEY, getClientId } from "./utils/api.js";
 import { localizeServerError } from "./utils/serverErrors.js";
 import { mdForDownload } from "./utils/markdown.jsx";
 import { uid, sanitizeFilename, downloadText, triggerBlobDownload, ensureJSZip, imageExtFromDataURL, fileToCompressedDataURL, setThemeColor } from "./utils/helpers.js";
@@ -915,6 +915,13 @@ export default function App() {
 
   // Load user settings from server on login
   const sidebarSettingsLoadedRef = useRef(false);
+  // Keys whose next state-change effect should NOT trigger a PATCH —
+  // populated by the SSE `user_settings_updated` handler before it
+  // calls the corresponding setters. Each PATCH effect consumes its
+  // own key from the Set; remaining (no-op) keys are wiped at the
+  // start of the next remote apply so they never leak into a future
+  // local change.
+  const remoteSyncedKeysRef = useRef(new Set());
   useEffect(() => {
     if (!token) return;
     sidebarSettingsLoadedRef.current = false;
@@ -1104,6 +1111,10 @@ export default function App() {
       localStorage.setItem("readModeEnabled", String(readModeEnabled));
     } catch (e) {}
     if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("readModeEnabled")) {
+      remoteSyncedKeysRef.current.delete("readModeEnabled");
+      return;
+    }
     if (token) {
       api("/user/settings", {
         method: "PATCH",
@@ -1239,6 +1250,10 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem("pasteMode", pasteMode); } catch (e) {}
     if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("pasteMode")) {
+      remoteSyncedKeysRef.current.delete("pasteMode");
+      return;
+    }
     if (token) {
       api("/user/settings", {
         method: "PATCH",
@@ -1251,6 +1266,10 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem("notificationsPosition", notificationsPosition); } catch (e) {}
     if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("notificationsPosition")) {
+      remoteSyncedKeysRef.current.delete("notificationsPosition");
+      return;
+    }
     if (token) {
       api("/user/settings", {
         method: "PATCH",
@@ -1268,6 +1287,10 @@ export default function App() {
       );
     } catch (e) {}
     if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("notificationsSound")) {
+      remoteSyncedKeysRef.current.delete("notificationsSound");
+      return;
+    }
     if (token) {
       api("/user/settings", {
         method: "PATCH",
@@ -1285,6 +1308,10 @@ export default function App() {
       );
     } catch (e) {}
     if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("notificationsSoundTypes")) {
+      remoteSyncedKeysRef.current.delete("notificationsSoundTypes");
+      return;
+    }
     if (token) {
       api("/user/settings", {
         method: "PATCH",
@@ -1302,6 +1329,10 @@ export default function App() {
       );
     } catch (e) {}
     if (!sidebarSettingsLoadedRef.current) return;
+    if (remoteSyncedKeysRef.current.has("notificationsDuration")) {
+      remoteSyncedKeysRef.current.delete("notificationsDuration");
+      return;
+    }
     if (token) {
       api("/user/settings", {
         method: "PATCH",
@@ -3128,6 +3159,94 @@ export default function App() {
               syncEngineRef.current.notifyServerReachable();
             }
             const msg = JSON.parse(e.data || "{}");
+            // Apply a `user_settings_updated` payload (live cross-tab
+            // / cross-device sync). Validators mirror the initial-load
+            // path so the same set of acceptable values applies; each
+            // applied key is registered in remoteSyncedKeysRef so the
+            // matching PATCH-trigger useEffect knows to skip its
+            // outbound write (no echo back to the server).
+            const applyRemoteUserSettings = (settings) => {
+              if (!settings || typeof settings !== "object") return;
+              const keys = new Set(Object.keys(settings));
+              // Replace (not union) so previously-recorded keys that
+              // didn't actually change state can't leak into a future
+              // local change.
+              remoteSyncedKeysRef.current = new Set();
+              const mark = (k) => remoteSyncedKeysRef.current.add(k);
+
+              if (keys.has("notificationsPosition")) {
+                const v = settings.notificationsPosition;
+                if (
+                  typeof v === "string" &&
+                  [
+                    "top-left",
+                    "top-center",
+                    "top-right",
+                    "bottom-left",
+                    "bottom-center",
+                    "bottom-right",
+                  ].includes(v)
+                ) {
+                  mark("notificationsPosition");
+                  setNotificationsPosition(v);
+                  try { localStorage.setItem("notificationsPosition", v); } catch (_) {}
+                }
+              }
+              if (keys.has("notificationsSound")) {
+                const v = settings.notificationsSound;
+                if (typeof v === "boolean") {
+                  mark("notificationsSound");
+                  setNotificationsSound(v);
+                  try { localStorage.setItem("notificationsSound", v ? "1" : "0"); } catch (_) {}
+                }
+              }
+              if (keys.has("notificationsSoundTypes")) {
+                const v = settings.notificationsSoundTypes;
+                if (v && typeof v === "object" && !Array.isArray(v)) {
+                  const next = {
+                    share: v.share !== false,
+                    access: v.access !== false,
+                    success: v.success !== false,
+                    warning: v.warning !== false,
+                    error: v.error !== false,
+                    info: v.info !== false,
+                  };
+                  mark("notificationsSoundTypes");
+                  setNotificationsSoundTypes(next);
+                  try { localStorage.setItem("notificationsSoundTypes", JSON.stringify(next)); } catch (_) {}
+                }
+              }
+              if (keys.has("notificationsDuration")) {
+                const raw = settings.notificationsDuration;
+                const allowed = [5000, 10000, 20000, 30000];
+                if (raw === null) {
+                  mark("notificationsDuration");
+                  setNotificationsDuration(null);
+                  try { localStorage.setItem("notificationsDuration", "null"); } catch (_) {}
+                } else if (typeof raw === "number" && allowed.includes(raw)) {
+                  mark("notificationsDuration");
+                  setNotificationsDuration(raw);
+                  try { localStorage.setItem("notificationsDuration", String(raw)); } catch (_) {}
+                }
+              }
+              if (keys.has("pasteMode")) {
+                const v = settings.pasteMode;
+                if (v === "rich" || v === "plain") {
+                  mark("pasteMode");
+                  setPasteMode(v);
+                  try { localStorage.setItem("pasteMode", v); } catch (_) {}
+                }
+              }
+              if (keys.has("readModeEnabled")) {
+                const v = settings.readModeEnabled;
+                if (typeof v === "boolean") {
+                  mark("readModeEnabled");
+                  setReadModeEnabled(v);
+                  try { localStorage.setItem("readModeEnabled", String(v)); } catch (_) {}
+                }
+              }
+            };
+
             if (msg && msg.type === "instance_locked") {
               // Another admin (or the CLI) locked the instance. Drop
               // the user straight onto the unlock screen instead of
@@ -3248,6 +3367,18 @@ export default function App() {
                   email: msg.email,
                 });
                 loadPendingUsers?.();
+              }
+            } else if (msg && msg.type === "user_settings_updated" && msg.settings) {
+              // Live sync of user preferences from another session of
+              // the same user. Skip our own echo (originClientId
+              // matches this tab's getClientId()); otherwise mark the
+              // affected keys so each PATCH-trigger useEffect knows
+              // to skip its outbound write, then apply state updates
+              // through the same validators the initial load uses.
+              if (msg.originClientId && msg.originClientId === getClientId()) {
+                // Our own write — server confirmed it, nothing else to do.
+              } else {
+                applyRemoteUserSettings(msg.settings);
               }
             } else if (msg && msg.type === "user_deleted_notification") {
               // Audit notification for OTHER admins: someone got

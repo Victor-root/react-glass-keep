@@ -2874,6 +2874,18 @@ app.patch("/api/user/settings", auth, (req, res) => {
   const current = row ? JSON.parse(row.settings_json) : {};
   const merged = { ...current, ...incoming };
   upsertUserSettings.run(req.user.id, JSON.stringify(merged));
+
+  // Live-sync the change to every connected session of this user.
+  // originClientId lets the originating tab/device ignore its own
+  // echo so the apply-on-receive doesn't trigger another PATCH back.
+  const originClientId =
+    req.headers["x-client-id"] || req.headers["X-Client-Id"] || null;
+  sendEventToUser(req.user.id, {
+    type: "user_settings_updated",
+    settings: incoming,
+    originClientId,
+  });
+
   res.json(merged);
 });
 
