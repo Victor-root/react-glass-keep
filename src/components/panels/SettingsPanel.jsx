@@ -97,17 +97,17 @@ export default function SettingsPanel({
   const breakpointBtnRef = useRef(null);
   const [notifPosMenuOpen, setNotifPosMenuOpen] = useState(false);
   const notifPosBtnRef = useRef(null);
-  // Mobile detection — track viewport width so the notification
-  // position picker can swap to a 2-option (top / bottom) variant
-  // on mobile and hide the desktop 6-option matrix. Desktop layout
-  // stays untouched. Matches the < 640px breakpoint used for the
-  // mobile pill mount in App.jsx.
-  const [notifPosIsMobile, setNotifPosIsMobile] = useState(
+  // Mobile detection — track viewport width so rows that only make
+  // sense on a phone (notification position picker variant, edge-
+  // to-edge landscape toggle, …) can hide / swap their UI on
+  // desktop without a refresh. Matches the < 640px breakpoint used
+  // for the mobile pill mount in App.jsx.
+  const [isMobileViewport, setIsMobileViewport] = useState(
     () => typeof window !== "undefined" && window.innerWidth < 640,
   );
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
-    const onResize = () => setNotifPosIsMobile(window.innerWidth < 640);
+    const onResize = () => setIsMobileViewport(window.innerWidth < 640);
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
@@ -579,29 +579,35 @@ export default function SettingsPanel({
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-3 px-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <RowIcon icon={TI.DeviceMobileRotated} />
-                  <div className="min-w-0">
-                    <div className="font-medium">{t("edgeToEdgeLandscape")}</div>
-                    <div className="text-sm text-gray-500">{t("edgeToEdgeLandscapeDesc")}</div>
+              {/* "Edge-to-edge in landscape" only makes sense on a
+                  phone (status bar / notch / cutout management).
+                  Hidden on desktop so the option doesn't clutter
+                  the UI section there. */}
+              {isMobileViewport && (
+                <div className="flex items-center justify-between gap-3 px-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <RowIcon icon={TI.DeviceMobileRotated} />
+                    <div className="min-w-0">
+                      <div className="font-medium">{t("edgeToEdgeLandscape")}</div>
+                      <div className="text-sm text-gray-500">{t("edgeToEdgeLandscapeDesc")}</div>
+                    </div>
                   </div>
-                </div>
-                <button
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
-                    edgeToEdgeLandscape
-                      ? "bg-indigo-600"
-                      : "bg-gray-300 dark:bg-gray-600"
-                  }`}
-                  onClick={() => setEdgeToEdgeLandscape(!edgeToEdgeLandscape)}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      edgeToEdgeLandscape ? "translate-x-6" : "translate-x-1"
+                  <button
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
+                      edgeToEdgeLandscape
+                        ? "bg-indigo-600"
+                        : "bg-gray-300 dark:bg-gray-600"
                     }`}
-                  />
-                </button>
-              </div>
+                    onClick={() => setEdgeToEdgeLandscape(!edgeToEdgeLandscape)}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        edgeToEdgeLandscape ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              )}
 
               <div className="flex items-center justify-between gap-3 px-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -650,7 +656,7 @@ export default function SettingsPanel({
                       <div className="text-sm text-gray-500">{t("notificationsPositionDesc")}</div>
                     </div>
                   </div>
-                  {notifPosIsMobile ? (
+                  {isMobileViewport ? (
                     // Mobile: 2 options only (top / bottom). The
                     // floating pill is full-width and centred
                     // horizontally on mobile via CSS, so left /
