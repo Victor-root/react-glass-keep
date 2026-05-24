@@ -395,7 +395,24 @@ export function NotificationProvider({ children }) {
       id,
       type: input.type || "generic",
       title: input.title != null ? String(input.title) : null,
-      message: input.message != null ? String(input.message) : "",
+      // Message can be a string (legacy / system text) or a React
+      // element (when the caller built a JSX body via the
+      // useShareNotifications buildHighlightedMessage helper — used
+      // to render a user-provided value as plain text inside a
+      // <strong>{value}</strong> wrapper). Coercing to String() here
+      // would turn a JSX element into "[object Object]", which is
+      // exactly what happened on share/revoke toasts after the
+      // markdown-injection fix. Pass strings through String() to
+      // catch the occasional non-string primitive; pass React
+      // elements / arrays / fragments through unchanged.
+      message:
+        input.message == null
+          ? ""
+          : typeof input.message === "string"
+            ? input.message
+            : typeof input.message === "number" || typeof input.message === "boolean"
+              ? String(input.message)
+              : input.message,
       variant,
       // Semantic icon key (e.g. "trash", "archive", "save"). The
       // card resolves it via its own SEMANTIC_ICONS map; if the key
