@@ -99,11 +99,13 @@ function buildHistoryEntry(n) {
     variant = "warning";
     icon = icon || "user-x";
   } else if (type === "pending_user_registered") {
-    // Admin alert. note_id holds pending_users.id; note_title holds
-    // the registrant's email; sender_name holds the registrant's
-    // display name. Build a multi-action notification so the admin
-    // can approve / reject straight from the panel.
-    const pendingId = n.note_id;
+    // Admin alert. note_id is NULL (FK conflict with notes table);
+    // pending_users.id is stashed in `message` instead. note_title
+    // holds the registrant's email; sender_name holds the
+    // registrant's display name. Build a multi-action notification
+    // so the admin can approve / reject straight from the panel.
+    const rawPid = n.message != null ? Number(n.message) : NaN;
+    const pendingId = Number.isFinite(rawPid) ? rawPid : null;
     const userName = n.sender_name || "";
     const userEmail = n.note_title || "";
     title = t("pendingUserNotifTitle");
@@ -392,9 +394,14 @@ export function useShareNotifications({ token, userId }) {
           ) {
             showRevokeToast(payload);
           } else if (n.type === "pending_user_registered") {
+            // pendingId lives in `message` for this type (see
+            // server's /register handler — note_id is NULL because
+            // it has a FK on notes(id), so we stash the pending id
+            // alongside instead).
+            const rawPid = n.message != null ? Number(n.message) : NaN;
             showPendingUserToast({
               notificationId: n.id,
-              pendingId: n.note_id,
+              pendingId: Number.isFinite(rawPid) ? rawPid : null,
               name: n.sender_name,
               email: n.note_title,
             });

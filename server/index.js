@@ -1284,15 +1284,21 @@ app.post("/api/register", (req, res) => {
         error: null,
       };
       try {
+        // note_id has FK → notes(id); we have NO note here, only a
+        // pending_users id. Store NULL in note_id (FK accepts NULL)
+        // and stash the pendingId in `message` (free for this type,
+        // since the client renders the body from sender_name +
+        // note_title via i18n). Numeric value stringified — the
+        // server query and the client parse both go through Number().
         const row = insertNotification.run(
           a.id,
           a.id,
           "pending_user_registered",
-          info.lastInsertRowid,
+          null,
           email.trim(),
           name?.trim() || "User",
           "info",
-          null,
+          String(info.lastInsertRowid),
           0,
           "user-clock",
           createdAt,
@@ -3113,15 +3119,19 @@ app.get("/api/admin/pending-users", auth, adminOnly, (_req, res) => {
 // whichever admin acts first clears the action surfaces everywhere.
 function cleanupPendingUserNotifications(pendingId) {
   try {
+    // pendingId is stored in the `message` column (note_id is NULL
+    // because of the FK to notes); stringify so the BLOB-affinity
+    // match works the same way both at insert and at query.
+    const key = String(pendingId);
     const rows = db.prepare(`
       SELECT id, recipient_user_id FROM notifications
-      WHERE type = 'pending_user_registered' AND note_id = ?
-    `).all(pendingId);
+      WHERE type = 'pending_user_registered' AND message = ?
+    `).all(key);
     if (rows.length === 0) return;
     db.prepare(`
       DELETE FROM notifications
-      WHERE type = 'pending_user_registered' AND note_id = ?
-    `).run(pendingId);
+      WHERE type = 'pending_user_registered' AND message = ?
+    `).run(key);
     const byRecipient = new Map();
     for (const r of rows) {
       if (!byRecipient.has(r.recipient_user_id))
