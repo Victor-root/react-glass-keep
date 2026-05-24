@@ -4341,6 +4341,11 @@ html.dark .gk-notif-center__close:hover { background: rgba(255,255,255,0.08); }
 
 .gk-notif-center__list {
   overflow-y: auto;
+  /* Trap scroll chaining and pull-to-refresh inside the panel — on
+     Android PWA / Chrome scrolling up from the top would otherwise
+     trigger the browser's reload gesture before the user could see
+     any earlier history entry. */
+  overscroll-behavior: contain;
   padding: 8px 10px;
   display: flex;
   flex-direction: column;

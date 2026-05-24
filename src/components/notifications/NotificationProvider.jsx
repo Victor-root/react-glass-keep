@@ -109,6 +109,20 @@ function reducer(state, action) {
       // selectively without nuking the whole list (which is what
       // CLEAR is for).
       return state.filter((n) => n.id !== action.id);
+    case "REMOVE_BY_SERVER_IDS": {
+      // Cross-device per-item remove. When the user clicks X on a
+      // history entry on one device, the server DELETEs that row and
+      // broadcasts notification_removed; every other device drops
+      // matching rows from its in-memory state via this action so the
+      // history stays identical everywhere.
+      const ids = action.ids;
+      if (!ids || ids.size === 0) return state;
+      return state.filter((n) => {
+        const sid = n.metadata?.serverNotificationId;
+        if (sid == null) return true;
+        return !ids.has(Number(sid));
+      });
+    }
     case "DISMISS_ALL": {
       const ts = Date.now();
       return state.map((n) =>
@@ -186,6 +200,10 @@ export function NotificationProvider({ children }) {
   // Held in a ref so the consumer can swap implementations without
   // re-rendering the whole subtree.
   const onMarkDeliveredRef = useRef(null);
+  // App-provided server-remove POST (markShareNotificationsRemoved).
+  // Called when the user X's a history entry — DELETEs the server row
+  // and broadcasts notification_removed to other devices for sync.
+  const onMarkRemovedRef = useRef(null);
   // Server ids we've already acked on this device — dedupes against
   // the bell's own markDelivered call AND against the dismiss-after-
   // dismissAll path (where the row is dismissed via DISMISS_ALL but
@@ -206,6 +224,10 @@ export function NotificationProvider({ children }) {
 
   const setOnMarkDelivered = useCallback((fn) => {
     onMarkDeliveredRef.current = typeof fn === "function" ? fn : null;
+  }, []);
+
+  const setOnMarkRemoved = useCallback((fn) => {
+    onMarkRemovedRef.current = typeof fn === "function" ? fn : null;
   }, []);
 
   // Public ack helper — dedupes by server id and forwards fresh ones
@@ -269,11 +291,37 @@ export function NotificationProvider({ children }) {
   const remove = useCallback(
     (id) => {
       cancelTimer(id);
-      ackDeliveredById(id);
+      // For server-backed entries, DELETE the row on the server so
+      // every other device drops it from its history too. Falls back
+      // to plain mark-delivered when no remove callback is wired
+      // (standalone provider use, tests).
+      const notif = notificationsRef.current.find((x) => x.id === id);
+      const sid = notif?.metadata?.serverNotificationId;
+      if (sid != null) {
+        const fn = onMarkRemovedRef.current;
+        if (typeof fn === "function") {
+          fn([sid]);
+        } else {
+          ackDeliveredById(id);
+        }
+      }
       dispatch({ type: "REMOVE", id });
     },
     [cancelTimer, ackDeliveredById],
   );
+
+  // Cross-device per-item remove handler. Triggered by the SSE
+  // `notification_removed` event when another device DELETE'd a row.
+  const removeByServerIds = useCallback((ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    const set = new Set();
+    for (const raw of ids) {
+      const n = Number(raw);
+      if (Number.isFinite(n)) set.add(n);
+    }
+    if (set.size === 0) return;
+    dispatch({ type: "REMOVE_BY_SERVER_IDS", ids: set });
+  }, []);
 
   // Cross-device dismissal — clears any active card whose
   // metadata.serverNotificationId is in `ids`. The reducer dispatch
@@ -394,11 +442,13 @@ export function NotificationProvider({ children }) {
     dismiss,
     remove,
     dismissByServerIds,
+    removeByServerIds,
     dismissAll,
     clear,
     clearServerBacked,
     setDefaultDuration,
     setOnMarkDelivered,
+    setOnMarkRemoved,
     markDelivered,
     mergeHistory,
   };
@@ -416,11 +466,13 @@ const NOOP_VALUE = {
   dismiss: () => {},
   remove: () => {},
   dismissByServerIds: () => {},
+  removeByServerIds: () => {},
   dismissAll: () => {},
   clear: () => {},
   clearServerBacked: () => {},
   setDefaultDuration: () => {},
   setOnMarkDelivered: () => {},
+  setOnMarkRemoved: () => {},
   markDelivered: () => {},
   mergeHistory: () => {},
 };

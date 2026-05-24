@@ -136,6 +136,20 @@ export function useShareNotifications({ token, userId }) {
     });
   }, []);
 
+  const markRemoved = useCallback((ids) => {
+    const tk = tokenRef.current;
+    if (!tk) return;
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    api("/notifications/remove", {
+      method: "POST",
+      token: tk,
+      body: { ids },
+    }).catch(() => {
+      // Best-effort: if the DELETE fails the row stays server-side and
+      // /history will return it again next reload. Not data loss.
+    });
+  }, []);
+
   const showShareToast = useCallback((n) => {
     if (!n) return;
     const id = n.id ?? n.notificationId;
@@ -309,7 +323,7 @@ export function useShareNotifications({ token, userId }) {
     };
   }, [token, userId, showShareToast, showRevokeToast, markDelivered]);
 
-  return { showShareToast, showRevokeToast, markDelivered };
+  return { showShareToast, showRevokeToast, markDelivered, markRemoved };
 }
 
 export default useShareNotifications;

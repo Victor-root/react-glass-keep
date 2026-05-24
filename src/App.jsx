@@ -556,11 +556,13 @@ export default function App() {
     notify,
     dismiss: dismissNotification,
     dismissByServerIds: dismissByServerIdsNotif,
+    removeByServerIds: removeByServerIdsNotif,
     clear: clearNotifications,
     clearServerBacked: clearServerBackedNotifications,
     notifications: allNotifications,
     setDefaultDuration: setNotifDefaultDuration,
     setOnMarkDelivered: setNotifOnMarkDelivered,
+    setOnMarkRemoved: setNotifOnMarkRemoved,
   } = useNotifications();
 
   // Cross-device-aware "Clear all" wrapper. The provider's bare
@@ -664,16 +666,20 @@ export default function App() {
     showShareToast: showShareNotificationToast,
     showRevokeToast: showRevokeNotificationToast,
     markDelivered: markShareNotificationsDelivered,
+    markRemoved: markShareNotificationsRemoved,
   } = useShareNotifications({ token, userId: currentUser?.id });
 
-  // Wire the App-level POST helper into the provider so every
+  // Wire the App-level POST helpers into the provider so every
   // dismiss / remove / auto-dismiss path acks the server. Without
-  // this, closing a card with X (or letting it auto-dismiss) would
-  // leave the row pending and /notifications/pending would replay
-  // it at the next reload.
+  // these, closing a card with X (or letting it auto-dismiss) would
+  // leave the row in the DB and /notifications/pending or /history
+  // would replay it at the next reload.
   useEffect(() => {
     setNotifOnMarkDelivered(markShareNotificationsDelivered);
   }, [setNotifOnMarkDelivered, markShareNotificationsDelivered]);
+  useEffect(() => {
+    setNotifOnMarkRemoved(markShareNotificationsRemoved);
+  }, [setNotifOnMarkRemoved, markShareNotificationsRemoved]);
 
   // GitHub release update notification (admin-only, fail-silent).
   const updateInfo = useUpdateCheck({
@@ -3210,6 +3216,12 @@ export default function App() {
               // latest state for every row, including the one whose
               // ADD action ran one microtask ago.
               dismissByServerIdsNotif(msg.ids);
+            } else if (msg && msg.type === "notification_removed" && Array.isArray(msg.ids)) {
+              // Cross-device per-item removal — another tab/device
+              // permanently deleted these notifications. Drop matching
+              // rows from local state so the history panel stays
+              // identical everywhere.
+              removeByServerIdsNotif(msg.ids);
             } else if (msg && msg.type === "pending_user_registered") {
               // Admin notification: a new user is awaiting approval.
               if (currentUserRef.current?.is_admin) {

@@ -2170,20 +2170,56 @@ app.post("/api/notifications/mark-delivered", auth, (req, res) => {
 
 // Cross-device "Clear all" — when the user wipes the notification
 // centre on one device, every other tab / device for the same user
-// should reflect that wipe without waiting for a refresh. We also
-// flip any still-undelivered rows to delivered_at so they don't
-// come back the next time /pending is queried.
+// should reflect that wipe without waiting for a refresh. We DELETE
+// the rows outright (both pending and already-delivered) so the
+// /history endpoint doesn't bring them back at the next reload.
 app.post("/api/notifications/clear", auth, (req, res) => {
-  const now = nowISO();
   try {
     db.prepare(
-      "UPDATE notifications SET delivered_at = ? WHERE recipient_user_id = ? AND delivered_at IS NULL",
-    ).run(now, req.user.id);
+      "DELETE FROM notifications WHERE recipient_user_id = ?",
+    ).run(req.user.id);
   } catch (e) {
-    console.warn("[notifications] clear UPDATE failed:", e?.message);
+    console.warn("[notifications] clear DELETE failed:", e?.message);
   }
   sendEventToUser(req.user.id, { type: "notifications_cleared" });
   res.json({ ok: true });
+});
+
+// Per-item remove — DELETE one or more notifications from this user's
+// row in a single call. Broadcasts `notification_removed { ids }` so
+// every other connected tab / device drops the matching cards from
+// its in-memory state too. Used when the user clicks the X on a
+// single history entry in the notification centre panel.
+app.post("/api/notifications/remove", auth, (req, res) => {
+  const { ids } = req.body || {};
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ error: "ids required" });
+  }
+  const removed = [];
+  const stmt = db.prepare(
+    "DELETE FROM notifications WHERE id = ? AND recipient_user_id = ?",
+  );
+  const tx = db.transaction((rawIds) => {
+    for (const raw of rawIds) {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) continue;
+      const info = stmt.run(n, req.user.id);
+      if (info.changes > 0) removed.push(n);
+    }
+  });
+  try {
+    tx(ids);
+  } catch (e) {
+    console.warn("[notifications] remove failed:", e?.message);
+    return res.status(500).json({ error: "remove failed" });
+  }
+  if (removed.length > 0) {
+    sendEventToUser(req.user.id, {
+      type: "notification_removed",
+      ids: removed,
+    });
+  }
+  res.json({ ok: true, ids: removed });
 });
 
 // Dev/test endpoint: synthesise a notification and push it via SSE
