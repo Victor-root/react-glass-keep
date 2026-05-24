@@ -713,6 +713,8 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   notifDurSeconds: "{n} s",
   notifDurPersistent: "Persistante",
   posTopLeft: "Haut gauche",
+  posTop: "Haut",
+  posBottom: "Bas",
   posTopCenter: "Haut centre",
   posTopRight: "Haut droite",
   posBottomLeft: "Bas gauche",

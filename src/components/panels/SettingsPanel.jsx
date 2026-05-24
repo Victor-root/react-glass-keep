@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { t, getLanguageOverride, setLanguageOverride, SUPPORTED_LANGUAGES, LANGUAGE_NATIVE_LABELS } from "../../i18n";
 import { api } from "../../utils/api.js";
 import { localizeServerError } from "../../utils/serverErrors.js";
@@ -95,6 +95,20 @@ export default function SettingsPanel({
   const breakpointBtnRef = useRef(null);
   const [notifPosMenuOpen, setNotifPosMenuOpen] = useState(false);
   const notifPosBtnRef = useRef(null);
+  // Mobile detection — track viewport width so the notification
+  // position picker can swap to a 2-option (top / bottom) variant
+  // on mobile and hide the desktop 6-option matrix. Desktop layout
+  // stays untouched. Matches the < 640px breakpoint used for the
+  // mobile pill mount in App.jsx.
+  const [notifPosIsMobile, setNotifPosIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 640,
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const onResize = () => setNotifPosIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   const [notifDurMenuOpen, setNotifDurMenuOpen] = useState(false);
   const notifDurBtnRef = useRef(null);
   const [notifSoundTypesOpen, setNotifSoundTypesOpen] = useState(false);
@@ -634,61 +648,112 @@ export default function SettingsPanel({
                       <div className="text-sm text-gray-500">{t("notificationsPositionDesc")}</div>
                     </div>
                   </div>
-                  <button
-                    ref={notifPosBtnRef}
-                    type="button"
-                    onClick={() => setNotifPosMenuOpen((v) => !v)}
-                    className="shrink-0 inline-flex items-center justify-between gap-2 min-w-[9rem] px-3 py-1.5 text-sm rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
-                    aria-haspopup="listbox"
-                    aria-expanded={notifPosMenuOpen}
-                  >
-                    <span>{t(`pos${(notificationsPosition || "top-right").replace(/-/g, " ").replace(/(?:^|\s)\S/g, (m) => m.toUpperCase()).replace(/\s/g, "")}`)}</span>
-                    <TI.ChevronDown
-                      className={`tabler-icon w-4 h-4 transition-transform ${notifPosMenuOpen ? "rotate-180" : ""}`}
-                    />
-                  </button>
-                  <Popover
-                    anchorRef={notifPosBtnRef}
-                    open={notifPosMenuOpen}
-                    onClose={() => setNotifPosMenuOpen(false)}
-                    offset={6}
-                  >
-                    <ul
-                      className="min-w-[11rem] rounded-xl border border-[var(--border-light)] bg-white dark:bg-[#222222] text-gray-800 dark:text-gray-100 shadow-xl py-1.5 overflow-hidden"
-                      role="listbox"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {[
-                        { value: "top-left", label: t("posTopLeft") },
-                        { value: "top-center", label: t("posTopCenter") },
-                        { value: "top-right", label: t("posTopRight") },
-                        { value: "bottom-left", label: t("posBottomLeft") },
-                        { value: "bottom-center", label: t("posBottomCenter") },
-                        { value: "bottom-right", label: t("posBottomRight") },
-                      ].map((opt) => {
-                        const selected = (notificationsPosition || "top-right") === opt.value;
-                        return (
-                          <li key={opt.value} role="option" aria-selected={selected}>
-                            <button
-                              type="button"
-                              className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
-                                selected
-                                  ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
-                                  : "hover:bg-black/5 dark:hover:bg-white/10"
-                              }`}
-                              onClick={() => {
-                                setNotifPosMenuOpen(false);
-                                setNotificationsPosition?.(opt.value);
-                              }}
-                            >
-                              <span>{opt.label}</span>
-                              {selected && <TI.Check className="tabler-icon w-4 h-4 shrink-0" />}
-                            </button>
-                          </li>
+                  {notifPosIsMobile ? (
+                    // Mobile: 2 options only (top / bottom). The
+                    // floating pill is full-width and centred
+                    // horizontally on mobile via CSS, so left /
+                    // center / right are visually identical — only
+                    // the vertical anchor matters. Mobile selections
+                    // map to top-center / bottom-center so the
+                    // existing position value stays in the same
+                    // namespace as desktop.
+                    (() => {
+                      const isBottom = String(notificationsPosition || "top-right").startsWith("bottom");
+                      const mobileValue = isBottom ? "bottom" : "top";
+                      const apply = (v) => {
+                        setNotificationsPosition?.(
+                          v === "bottom" ? "bottom-center" : "top-center",
                         );
-                      })}
-                    </ul>
-                  </Popover>
+                      };
+                      return (
+                        <div
+                          className="shrink-0 inline-flex items-center rounded-lg overflow-hidden border border-[var(--border-light)]"
+                          role="group"
+                          aria-label={t("notificationsPositionTitle")}
+                        >
+                          {[
+                            { value: "top", label: t("posTop") },
+                            { value: "bottom", label: t("posBottom") },
+                          ].map((opt) => {
+                            const selected = mobileValue === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => apply(opt.value)}
+                                aria-pressed={selected}
+                                className={`px-3 py-1.5 text-sm font-semibold transition-colors ${
+                                  selected
+                                    ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white"
+                                    : "bg-transparent text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10"
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <>
+                      <button
+                        ref={notifPosBtnRef}
+                        type="button"
+                        onClick={() => setNotifPosMenuOpen((v) => !v)}
+                        className="shrink-0 inline-flex items-center justify-between gap-2 min-w-[9rem] px-3 py-1.5 text-sm rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
+                        aria-haspopup="listbox"
+                        aria-expanded={notifPosMenuOpen}
+                      >
+                        <span>{t(`pos${(notificationsPosition || "top-right").replace(/-/g, " ").replace(/(?:^|\s)\S/g, (m) => m.toUpperCase()).replace(/\s/g, "")}`)}</span>
+                        <TI.ChevronDown
+                          className={`tabler-icon w-4 h-4 transition-transform ${notifPosMenuOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                      <Popover
+                        anchorRef={notifPosBtnRef}
+                        open={notifPosMenuOpen}
+                        onClose={() => setNotifPosMenuOpen(false)}
+                        offset={6}
+                      >
+                        <ul
+                          className="min-w-[11rem] rounded-xl border border-[var(--border-light)] bg-white dark:bg-[#222222] text-gray-800 dark:text-gray-100 shadow-xl py-1.5 overflow-hidden"
+                          role="listbox"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {[
+                            { value: "top-left", label: t("posTopLeft") },
+                            { value: "top-center", label: t("posTopCenter") },
+                            { value: "top-right", label: t("posTopRight") },
+                            { value: "bottom-left", label: t("posBottomLeft") },
+                            { value: "bottom-center", label: t("posBottomCenter") },
+                            { value: "bottom-right", label: t("posBottomRight") },
+                          ].map((opt) => {
+                            const selected = (notificationsPosition || "top-right") === opt.value;
+                            return (
+                              <li key={opt.value} role="option" aria-selected={selected}>
+                                <button
+                                  type="button"
+                                  className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
+                                    selected
+                                      ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                                      : "hover:bg-black/5 dark:hover:bg-white/10"
+                                  }`}
+                                  onClick={() => {
+                                    setNotifPosMenuOpen(false);
+                                    setNotificationsPosition?.(opt.value);
+                                  }}
+                                >
+                                  <span>{opt.label}</span>
+                                  {selected && <TI.Check className="tabler-icon w-4 h-4 shrink-0" />}
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </Popover>
+                    </>
+                  )}
                 </div>
 
                 {/* Sound row + collapsible per-category sub-list. The
