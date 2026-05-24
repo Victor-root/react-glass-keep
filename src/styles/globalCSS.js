@@ -4280,7 +4280,10 @@ html.dark .gk-notif-card.gk-notif-card--center {
   bottom: calc(var(--safe-bottom, 0px) + 24px);
 }
 .gk-mobile-toast.gk-mobile-toast--anchor-top {
-  top: calc(var(--safe-top, 0px) + 16px);
+  /* Sit BELOW the sticky app header (~72 px on mobile) rather than
+     stacking on top of it. Safe-top accounts for the system status
+     bar / notch above the header. */
+  top: calc(var(--safe-top, 0px) + 88px);
   bottom: auto;
 }
 .gk-mobile-toast.gk-mobile-toast--anchor-bottom {
