@@ -1246,44 +1246,59 @@ app.post("/api/register", (req, res) => {
 
   const hash = bcrypt.hashSync(password, 10);
   const info = insertPendingUser.run(name?.trim() || "User", email.trim(), hash, nowISO());
+  console.log("[notif-debug:register] pending_user inserted", {
+    pendingId: info.lastInsertRowid,
+    name: name?.trim() || "User",
+    email: email.trim(),
+  });
 
   // Persist a notification row per admin AND deliver the live SSE event
   // each with its own row id, so the recipient's client can ack /
-  // remove the right row when the admin acts. Stored values:
-  //   - sender_user_id = recipient's own id (the row has no human
-  //     sender — the schema requires sender_user_id NOT NULL so we
-  //     self-reference; the client reads sender_name, not the FK).
-  //   - note_id    = pending_users.id (target of approve/reject)
-  //   - note_title = registrant email (rendered in the message)
-  //   - sender_name = registrant name (rendered in the message)
+  // remove the right row when the admin acts.
   try {
-    const admins = db.prepare("SELECT id FROM users WHERE is_admin = 1").all();
+    const admins = db.prepare("SELECT id, name, email FROM users WHERE is_admin = 1").all();
+    console.log("[notif-debug:register] admins found:", admins.length, admins.map(a => ({ id: a.id, email: a.email })));
+    if (admins.length === 0) {
+      console.warn("[notif-debug:register] NO ADMINS in DB — nothing to notify");
+    }
     const createdAt = nowISO();
     for (const a of admins) {
-      const row = insertNotification.run(
-        a.id,
-        a.id,
-        "pending_user_registered",
-        info.lastInsertRowid,
-        email.trim(),
-        name?.trim() || "User",
-        "info",
-        null,
-        0,
-        "user-clock",
-        createdAt,
-      );
-      sendEventToUser(a.id, {
-        type: "pending_user_registered",
-        pendingId: info.lastInsertRowid,
-        name: name?.trim() || "User",
-        email: email.trim(),
-        notificationId: row.lastInsertRowid,
-        createdAt,
-      });
+      try {
+        const row = insertNotification.run(
+          a.id,
+          a.id,
+          "pending_user_registered",
+          info.lastInsertRowid,
+          email.trim(),
+          name?.trim() || "User",
+          "info",
+          null,
+          0,
+          "user-clock",
+          createdAt,
+        );
+        console.log("[notif-debug:register] inserted notification row", {
+          adminId: a.id,
+          adminEmail: a.email,
+          notificationId: row.lastInsertRowid,
+        });
+        const sseConnCount = sseClients?.get?.(a.id)?.size ?? 0;
+        console.log("[notif-debug:register] SSE clients for admin", a.id, "=", sseConnCount);
+        sendEventToUser(a.id, {
+          type: "pending_user_registered",
+          pendingId: info.lastInsertRowid,
+          name: name?.trim() || "User",
+          email: email.trim(),
+          notificationId: row.lastInsertRowid,
+          createdAt,
+        });
+        console.log("[notif-debug:register] sendEventToUser called for admin", a.id);
+      } catch (perAdminErr) {
+        console.error("[notif-debug:register] FAILED for admin", a.id, perAdminErr);
+      }
     }
   } catch (e) {
-    console.warn("[notifications] pending_user_registered persist failed:", e?.message);
+    console.error("[notif-debug:register] outer failure", e);
   }
 
   res.status(202).json({ pending: true });
