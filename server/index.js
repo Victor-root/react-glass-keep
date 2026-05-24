@@ -1250,6 +1250,9 @@ app.post("/api/register", (req, res) => {
   // Persist a notification row per admin AND deliver the live SSE event
   // each with its own row id, so the recipient's client can ack /
   // remove the right row when the admin acts. Stored values:
+  //   - sender_user_id = recipient's own id (the row has no human
+  //     sender — the schema requires sender_user_id NOT NULL so we
+  //     self-reference; the client reads sender_name, not the FK).
   //   - note_id    = pending_users.id (target of approve/reject)
   //   - note_title = registrant email (rendered in the message)
   //   - sender_name = registrant name (rendered in the message)
@@ -1259,7 +1262,7 @@ app.post("/api/register", (req, res) => {
     for (const a of admins) {
       const row = insertNotification.run(
         a.id,
-        null,
+        a.id,
         "pending_user_registered",
         info.lastInsertRowid,
         email.trim(),

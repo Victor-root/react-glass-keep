@@ -96,10 +96,19 @@ function shouldUseLong(notif) {
 }
 
 export default function NotificationMobileToast({ onAction }) {
-  const { notifications, remove } = useNotifications();
+  const { notifications, remove, dismiss } = useNotifications();
   const current = notifications.find((n) => !n.dismissed) || null;
   const [visible, setVisible] = useState(false);
   const lastIdRef = useRef(null);
+  // Ref mirror of the latest notifications array — the queue-cycle
+  // effect reads queueSize ONCE per `current` change without having
+  // to list `notifications` in its dependency array (which would
+  // restart the share timer every time a sibling notif gets dismissed
+  // by us, breaking the cycle).
+  const notificationsRef = useRef(notifications);
+  useEffect(() => {
+    notificationsRef.current = notifications;
+  }, [notifications]);
 
   useEffect(() => {
     if (current && current.id !== lastIdRef.current) {
@@ -120,6 +129,35 @@ export default function NotificationMobileToast({ onAction }) {
       lastIdRef.current = null;
     }
   }, [current]);
+
+  // PWA queue cycler. The mobile pill shows one notification at a
+  // time, but the provider's per-notification auto-dismiss timers
+  // fire in parallel — so when four toasts arrive at the same moment
+  // the user only ever sees the first, and all four dismiss together
+  // when the duration elapses. To make every pending notification
+  // visible inside roughly the user-configured window, we slice the
+  // duration across the queue (with a floor of 800 ms per slice so
+  // the user can actually read each one) and proactively dismiss the
+  // current at its slice end. The provider's own timer still fires
+  // at full duration, but the row is already dismissed by then so
+  // its DISMISS becomes a no-op.
+  useEffect(() => {
+    if (!current || hasAndroidBridge()) return undefined;
+    const userDuration = current.duration;
+    if (typeof userDuration !== "number" || userDuration <= 0) return undefined;
+    const queueSize = notificationsRef.current.reduce(
+      (acc, n) => (n.dismissed ? acc : acc + 1),
+      0,
+    );
+    if (queueSize <= 1) return undefined; // Single notif — let the provider's own timer handle it.
+    const share = Math.max(800, Math.floor(userDuration / queueSize));
+    const h = setTimeout(() => {
+      // Soft dismiss — same path the provider's auto-dismiss takes,
+      // so the row lands in the history panel like a normal toast.
+      dismiss(current.id);
+    }, share);
+    return () => clearTimeout(h);
+  }, [current?.id, dismiss]);
 
   if (typeof document === "undefined") return null;
   // Inside the Android wrapper we never render — the OS toast IS the
