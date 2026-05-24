@@ -2087,14 +2087,30 @@ app.post("/api/notifications/mark-delivered", auth, (req, res) => {
     return res.status(400).json({ error: "ids required" });
   }
   const now = nowISO();
+  const actuallyMarked = [];
   const tx = db.transaction((rawIds) => {
     for (const raw of rawIds) {
       const n = Number(raw);
       if (!Number.isFinite(n)) continue;
-      markNotificationDelivered.run(now, n, req.user.id);
+      const result = markNotificationDelivered.run(now, n, req.user.id);
+      // Only broadcast ids the UPDATE actually changed (the row was
+      // still pending). Re-acking an already-delivered row is a no-op
+      // and shouldn't pollute the SSE channel.
+      if (result.changes > 0) actuallyMarked.push(n);
     }
   });
   tx(ids);
+  // Cross-device sync — tell every other tab / device this user
+  // has open that these rows are no longer pending, so any active
+  // card displaying them gets dismissed locally without waiting for
+  // a manual reload. The originating client also receives it but
+  // dismissing an already-dismissed notification is idempotent.
+  if (actuallyMarked.length > 0) {
+    sendEventToUser(req.user.id, {
+      type: "notification_delivered",
+      ids: actuallyMarked,
+    });
+  }
   res.json({ ok: true });
 });
 

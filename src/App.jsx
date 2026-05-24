@@ -611,6 +611,16 @@ export default function App() {
     return "info";
   };
 
+  // Latest-known notifications mirror — the SSE handler reads this
+  // out of a closure that was captured when `[token]` last changed,
+  // so without the ref it would only see the snapshot from that
+  // moment. Used by the `notification_delivered` cross-device sync
+  // case below to find local cards matching the incoming server ids.
+  const notificationsRef = useRef(allNotifications);
+  useEffect(() => {
+    notificationsRef.current = allNotifications;
+  }, [allNotifications]);
+
   // Discrete ding whenever a NEW notification appears. We compare
   // `createdAt` rather than the array's first id, because closing
   // the top card promotes whatever was below it to index 0 —
@@ -3161,6 +3171,24 @@ export default function App() {
               });
               if (msg.notificationId) {
                 markShareNotificationsDelivered([msg.notificationId]);
+              }
+            } else if (msg && msg.type === "notification_delivered" && Array.isArray(msg.ids)) {
+              // Cross-device dismissal — another tab/device (or this
+              // one) just acknowledged these server notification ids.
+              // Dismiss any local card still showing them so the user
+              // sees the same state everywhere. We dismiss (soft
+              // hide, stays in history) rather than remove because
+              // the centre panel should still surface them — only
+              // the floating display needs to clear.
+              const incomingIds = new Set(
+                msg.ids.map((x) => Number(x)).filter((x) => Number.isFinite(x)),
+              );
+              for (const n of notificationsRef.current) {
+                if (n.dismissed) continue;
+                const sid = n.metadata?.serverNotificationId;
+                if (sid != null && incomingIds.has(Number(sid))) {
+                  dismissNotification(n.id);
+                }
               }
             } else if (msg && msg.type === "pending_user_registered") {
               // Admin notification: a new user is awaiting approval.
@@ -6446,10 +6474,18 @@ export default function App() {
         floatingCardsEnabled={floatingCardsEnabled}
         onToggleFloatingCards={toggleFloatingCards}
         notificationBellDesktop={
-          <NotificationBell dark={dark} onAction={handleNotificationAction} />
+          <NotificationBell
+            dark={dark}
+            onAction={handleNotificationAction}
+            markDelivered={markShareNotificationsDelivered}
+          />
         }
         notificationBellMobile={
-          <NotificationBell dark={dark} onAction={handleNotificationAction} />
+          <NotificationBell
+            dark={dark}
+            onAction={handleNotificationAction}
+            markDelivered={markShareNotificationsDelivered}
+          />
         }
       />
       {modal}

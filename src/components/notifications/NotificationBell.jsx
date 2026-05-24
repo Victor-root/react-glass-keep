@@ -19,7 +19,7 @@ import NotificationCenter from "./NotificationCenter.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { t } from "../../i18n";
 
-export default function NotificationBell({ dark, onAction }) {
+export default function NotificationBell({ dark, onAction, markDelivered }) {
   const { notifications, dismissAll } = useNotifications();
   const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
@@ -42,8 +42,23 @@ export default function NotificationBell({ dark, onAction }) {
 
   const handleToggle = () => {
     setOpen((wasOpen) => {
-      // Opening = move everything currently floating into the panel.
-      if (!wasOpen && unread > 0) dismissAll();
+      // Opening = move everything currently floating into the panel,
+      // and acknowledge any still-pending server-side rows. Without
+      // the server ack, a second device reconnecting later would
+      // re-fetch the same notifications from /pending and replay
+      // them, even though the user has already seen the cards here.
+      if (!wasOpen && unread > 0) {
+        if (typeof markDelivered === "function") {
+          const serverIds = [];
+          for (const n of notifications) {
+            if (n.dismissed) continue;
+            const sid = n.metadata?.serverNotificationId;
+            if (sid != null) serverIds.push(sid);
+          }
+          if (serverIds.length > 0) markDelivered(serverIds);
+        }
+        dismissAll();
+      }
       return !wasOpen;
     });
   };
