@@ -53,8 +53,28 @@ function uid() {
 
 function reducer(state, action) {
   switch (action.type) {
-    case "ADD":
-      return [action.notification, ...state].slice(0, MAX_HISTORY);
+    case "ADD": {
+      // Cross-session dedup: this provider sits above App in the tree
+      // (AppRoot.jsx) so its state survives a sign-out / sign-in cycle.
+      // After a reconnect, /notifications/pending replays every still-
+      // undelivered row server-side; without this guard a row whose
+      // session-1 card is still active here would stack a duplicate.
+      // Only ACTIVE entries (dismissed === false) block — a dismissed
+      // entry means the user already closed it, and a replay implies
+      // markDelivered didn't reach the server, so the re-show is
+      // intentional.
+      const incoming = action.notification;
+      const sid = incoming?.metadata?.serverNotificationId;
+      if (sid != null) {
+        const dup = state.some(
+          (n) =>
+            !n.dismissed &&
+            n.metadata?.serverNotificationId === sid,
+        );
+        if (dup) return state;
+      }
+      return [incoming, ...state].slice(0, MAX_HISTORY);
+    }
     case "DISMISS":
       // Soft-hide: mark as dismissed but keep the row in history so
       // the notification center still surfaces it. Used by the

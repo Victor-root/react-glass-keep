@@ -149,7 +149,16 @@ export function useShareNotifications({ token, userId }) {
   }, []);
 
   useEffect(() => {
-    if (!token || !userId) return;
+    if (!token || !userId) {
+      // Logout / auth-expired path. Wipe the in-session dedup set so
+      // the next login's pending replay can re-show notifications that
+      // were already surfaced in the previous session but never acked
+      // server-side (markDelivered POST failure, user never closed
+      // them, etc.). Without this, a returning user would silently
+      // miss their still-undelivered notifications.
+      shownIdsRef.current.clear();
+      return;
+    }
     let cancelled = false;
     (async () => {
       try {
