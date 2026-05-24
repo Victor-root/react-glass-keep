@@ -3825,6 +3825,17 @@ html.dark .gk-notif-card {
 .gk-notif-card__body {
   flex: 1 1 auto;
   min-width: 0;
+  /* Stack the title / message / action vertically inside the body
+     so the action button can be anchored to the bottom of the card
+     instead of crowding the timestamp at the top-right. */
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+.gk-notif-card__action-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
 }
 
 /* Timestamp sits in the card's top-right corner regardless of whether
@@ -3859,8 +3870,6 @@ html.dark .gk-notif-card {
 }
 
 .gk-notif-card__action-btn {
-  flex: 0 0 auto;
-  align-self: center;
   font-size: 12.5px;
   font-weight: 600;
   padding: 5px 14px;

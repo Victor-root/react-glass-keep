@@ -328,13 +328,31 @@ export default function App() {
     } catch (e) {}
     return true;
   });
-  // Per-category sound opt-out. Three buckets cover every notification
-  // currently dispatched: `share` for note_shared, `access` for all
-  // four revoke/collaborator-removed variants, `generic` for the
-  // legacy showToast() shim and any unscoped notify() call. When the
-  // master `notificationsSound` toggle is off, none of these matter.
+  // Per-category sound opt-out. Six buckets so the user can opt out
+  // by semantic group rather than just "everything else":
+  //   - share          → note_shared
+  //   - access         → note_access_revoked / collaborator_removed
+  //                      (both the with-copy and no-copy variants)
+  //   - success        → variant=success toasts (saved, archived,
+  //                      restored, moved to trash, permanently
+  //                      deleted, …) — everything the app reports as
+  //                      "your action worked"
+  //   - warning        → variant=warning (apart from revokes which
+  //                      route to `access` because of their explicit
+  //                      type)
+  //   - error          → variant=error (failures, network errors, …)
+  //   - info           → variant=info that isn't a share notification
+  // When the master `notificationsSound` toggle is off, none of these
+  // matter.
   const [notificationsSoundTypes, setNotificationsSoundTypes] = useState(() => {
-    const DEF = { share: true, access: true, generic: true };
+    const DEF = {
+      share: true,
+      access: true,
+      success: true,
+      warning: true,
+      error: true,
+      info: true,
+    };
     try {
       const stored = localStorage.getItem("notificationsSoundTypes");
       if (stored) {
@@ -566,10 +584,13 @@ export default function App() {
     [notify],
   );
 
-  // Map a notification type to one of the three sound categories the
-  // user can enable/disable independently. Anything we don't
-  // recognise falls into "generic" (the legacy toast bucket).
-  const soundCategoryForType = (typeKey) => {
+  // Map a notification to one of the six sound categories the user
+  // can enable/disable independently. Explicit types (share / revoke)
+  // take precedence; everything else falls back to its `variant`,
+  // which is how the legacy showToast() shim categorises success /
+  // error / warning / info.
+  const soundCategoryFor = (n) => {
+    const typeKey = n?.type;
     if (typeKey === "note_shared") return "share";
     if (
       typeKey === "note_access_revoked" ||
@@ -579,7 +600,11 @@ export default function App() {
     ) {
       return "access";
     }
-    return "generic";
+    const variant = n?.variant;
+    if (variant === "success") return "success";
+    if (variant === "warning") return "warning";
+    if (variant === "error") return "error";
+    return "info";
   };
 
   // Discrete ding whenever a new notification appears, gated by the
@@ -591,16 +616,13 @@ export default function App() {
     const newest = allNotifications[0];
     if (!newest) return;
     if (lastDingedIdRef.current === newest.id) return;
-    // Skip if the "newest" is actually a stale entry being re-dispatched
-    // (dismissed:true means the only state change was a dismiss action,
-    // not a fresh add).
     if (newest.dismissed) {
       lastDingedIdRef.current = newest.id;
       return;
     }
     lastDingedIdRef.current = newest.id;
     if (!notificationsSound) return;
-    const category = soundCategoryForType(newest.type);
+    const category = soundCategoryFor(newest);
     if (notificationsSoundTypes[category] === false) return;
     playNotificationDing();
   }, [allNotifications, notificationsSound, notificationsSoundTypes]);
@@ -962,7 +984,10 @@ export default function App() {
           const next = {
             share: incoming.share !== false,
             access: incoming.access !== false,
-            generic: incoming.generic !== false,
+            success: incoming.success !== false,
+            warning: incoming.warning !== false,
+            error: incoming.error !== false,
+            info: incoming.info !== false,
           };
           setNotificationsSoundTypes(next);
           try {

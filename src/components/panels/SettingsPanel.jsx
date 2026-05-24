@@ -628,7 +628,7 @@ export default function SettingsPanel({
               <div className="space-y-4">
                 <div className="flex items-center justify-between gap-3 px-3 py-3 border border-[var(--border-light)] rounded-lg">
                   <div className="min-w-0 flex-1 flex items-center gap-3">
-                    <RowIcon icon={TI.Bell} />
+                    <RowIcon icon={TI.AppWindow} />
                     <div className="min-w-0">
                       <div className="font-medium">{t("notificationsPositionTitle")}</div>
                       <div className="text-sm text-gray-500">{t("notificationsPositionDesc")}</div>
@@ -694,11 +694,12 @@ export default function SettingsPanel({
                 {/* Sound row + collapsible per-category sub-list. The
                     chevron flips the sub-list open so the user can
                     opt out of specific categories (share, access,
-                    generic) without disabling the master toggle. */}
+                    success, warning, error, info) without disabling
+                    the master toggle. */}
                 <div>
                   <div className="flex items-center justify-between gap-3 px-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <RowIcon icon={TI.Bell} />
+                      <RowIcon icon={TI.Volume} />
                       <div className="min-w-0">
                         <div className="font-medium">{t("notificationsSoundTitle")}</div>
                         <div className="text-sm text-gray-500">{t("notificationsSoundDesc")}</div>
@@ -738,34 +739,59 @@ export default function SettingsPanel({
                     </div>
                   </div>
                   {notifSoundTypesOpen ? (
-                    <div className="mt-2 ml-10 mr-3 flex flex-col gap-1.5 px-3 py-2 rounded-lg border border-[var(--border-light)] bg-black/[0.02] dark:bg-white/[0.03]">
+                    <div className="mt-2 ml-10 mr-3 flex flex-col gap-1 px-3 py-2 rounded-lg border border-[var(--border-light)] bg-black/[0.02] dark:bg-white/[0.03]">
                       {[
-                        { key: "share", label: t("soundTypeShare") },
-                        { key: "access", label: t("soundTypeAccess") },
-                        { key: "generic", label: t("soundTypeGeneric") },
+                        { key: "share",   label: t("soundTypeShare"),   icon: TI.UserShare,         iconClassName: "" },
+                        { key: "access",  label: t("soundTypeAccess"),  icon: TI.UserX,             iconClassName: "" },
+                        { key: "success", label: t("soundTypeSuccess"), icon: TI.CircleCheckFilled,   iconClassName: "tabler-icon--filled", color: "#10b981" },
+                        { key: "warning", label: t("soundTypeWarning"), icon: TI.AlertTriangleFilled, iconClassName: "tabler-icon--filled", color: "#f59e0b" },
+                        { key: "error",   label: t("soundTypeError"),   icon: TI.AlertCircleFilled,   iconClassName: "tabler-icon--filled", color: "#ef4444" },
+                        { key: "info",    label: t("soundTypeInfo"),    icon: TI.InfoCircleFilled,    iconClassName: "tabler-icon--filled", color: "#3b82f6" },
                       ].map((row) => {
                         const enabled = notificationsSoundTypes?.[row.key] !== false;
+                        const Icon = row.icon;
                         return (
-                          <label
+                          <div
                             key={row.key}
-                            className={`flex items-center justify-between gap-3 py-1 text-sm cursor-pointer ${
-                              notificationsSound ? "" : "opacity-60"
+                            className={`flex items-center justify-between gap-3 py-1.5 text-sm ${
+                              notificationsSound ? "" : "opacity-50"
                             }`}
                           >
-                            <span>{row.label}</span>
-                            <input
-                              type="checkbox"
-                              checked={enabled}
+                            <span className="flex items-center gap-2 min-w-0">
+                              <Icon
+                                className={`tabler-icon ${row.iconClassName || ""}`}
+                                style={{
+                                  width: 16,
+                                  height: 16,
+                                  ...(row.color ? { color: row.color } : null),
+                                }}
+                              />
+                              <span>{row.label}</span>
+                            </span>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={enabled}
                               disabled={!notificationsSound}
-                              onChange={(e) =>
+                              onClick={() =>
                                 setNotificationsSoundTypes?.((prev) => ({
                                   ...(prev || {}),
-                                  [row.key]: e.target.checked,
+                                  [row.key]: !enabled,
                                 }))
                               }
-                              className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700"
-                            />
-                          </label>
+                              className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${
+                                enabled
+                                  ? "bg-gradient-to-r from-indigo-500 to-violet-600"
+                                  : "bg-gray-300 dark:bg-gray-600"
+                              } ${notificationsSound ? "" : "cursor-not-allowed"}`}
+                            >
+                              <span
+                                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                                  enabled ? "translate-x-[18px]" : "translate-x-[2px]"
+                                }`}
+                              />
+                            </button>
+                          </div>
                         );
                       })}
                     </div>
@@ -774,7 +800,7 @@ export default function SettingsPanel({
 
                 <div className="flex items-center justify-between gap-3 px-3 py-3 border border-[var(--border-light)] rounded-lg">
                   <div className="min-w-0 flex-1 flex items-center gap-3">
-                    <RowIcon icon={TI.Bell} />
+                    <RowIcon icon={TI.Clock} />
                     <div className="min-w-0">
                       <div className="font-medium">{t("notificationsDurationTitle")}</div>
                       <div className="text-sm text-gray-500">{t("notificationsDurationDesc")}</div>

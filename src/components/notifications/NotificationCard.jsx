@@ -3,19 +3,17 @@
 // white surface — see globalCSS.
 //
 // Layout:
-//   [variant icon]  [title]                     [time]
-//                   [message]               [action btn]
+//   [variant icon]  [title]                      [time]
+//                   [message…]
+//                                                [action]
 //
-// The `title` field is what "presents" the notification (the user
-// renamed the previous "GlassKeep" header into a per-notification
-// title). Every notification should carry one — the fallback below
-// uses the variant name so a malformed dispatch still looks correct
-// instead of dropping the header entirely.
+// The action button is anchored to the bottom-right of the card so
+// it never crowds the timestamp at the top-right.
 //
 // Message content can be a plain string OR contain `**bold**` markers
 // (parsed into <strong> spans). React escapes the surrounding text
-// children, so title / message / sender remain XSS-safe even when the
-// values originate from the server.
+// children, so title / message remain XSS-safe even when the values
+// originate from the server.
 
 import React from "react";
 import TI from "../../icons/editor/index.jsx";
@@ -28,10 +26,6 @@ const VARIANT_CLASS = {
   info: "gk-notif-card--info",
 };
 
-// Filled Tabler icon used as the variant indicator. No coloured chip
-// background — the icon itself carries the variant colour via the
-// `--filled` CSS class which lets fill: currentColor through. Each
-// variant uses the canonical Tabler glyph for its semantic.
 function VariantGlyph({ variant }) {
   const className = "tabler-icon tabler-icon--filled gk-notif-card__icon-glyph";
   if (variant === "success") return <TI.CircleCheckFilled className={className} />;
@@ -40,8 +34,6 @@ function VariantGlyph({ variant }) {
   return <TI.InfoCircleFilled className={className} />;
 }
 
-// Sensible per-variant fallback title for callers that forgot to set
-// one. Keeps the header occupied so the layout never collapses.
 function fallbackTitle(variant) {
   if (variant === "success") return t("notifFallbackSuccess");
   if (variant === "warning") return t("notifFallbackWarning");
@@ -60,11 +52,6 @@ export function formatRelativeTime(ts) {
   return t("relativeDaysAgo", { n: Math.floor(diff / 86_400_000) });
 }
 
-// Tiny `**bold**` parser used by message rendering — lets callers
-// emphasise a single substring (a note title, a username, …) without
-// having to pass a React node through the provider state. Only `**`
-// is recognised; everything else is rendered as plain text so a
-// stray asterisk in user content can't generate unexpected markup.
 function renderMessage(message) {
   if (message == null) return null;
   if (typeof message !== "string") return message;
@@ -123,17 +110,18 @@ export default function NotificationCard({
         {message ? (
           <div className="gk-notif-card__message">{renderMessage(message)}</div>
         ) : null}
+        {action ? (
+          <div className="gk-notif-card__action-row">
+            <button
+              type="button"
+              className="gk-notif-card__action-btn"
+              onClick={() => onAction && onAction(notification)}
+            >
+              {action.label}
+            </button>
+          </div>
+        ) : null}
       </div>
-
-      {action ? (
-        <button
-          type="button"
-          className="gk-notif-card__action-btn"
-          onClick={() => onAction && onAction(notification)}
-        >
-          {action.label}
-        </button>
-      ) : null}
     </div>
   );
 }

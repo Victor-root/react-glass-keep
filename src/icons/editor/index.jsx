@@ -110,6 +110,11 @@ import infoCircleFilledSvg from "./tabler/info-circle-filled.svg?raw";
 import circleCheckFilledSvg from "./tabler/circle-check-filled.svg?raw";
 import alertTriangleFilledSvg from "./tabler/alert-triangle-filled.svg?raw";
 import alertCircleFilledSvg from "./tabler/alert-circle-filled.svg?raw";
+import appWindowSvg        from "./tabler/app-window.svg?raw";
+import volumeSvg           from "./tabler/volume.svg?raw";
+import clockSvg            from "./tabler/clock.svg?raw";
+import userShareSvg        from "./tabler/user-share.svg?raw";
+import userXSvg            from "./tabler/user-x.svg?raw";
 
 // Cache of sanitised markup keyed by the raw SVG string. The transformation
 // only depends on the SVG source, so each icon is processed exactly once.
@@ -242,6 +247,11 @@ export const TI = {
   CircleCheckFilled:    (p) => <TablerIcon svg={circleCheckFilledSvg} {...p} />,
   AlertTriangleFilled:  (p) => <TablerIcon svg={alertTriangleFilledSvg} {...p} />,
   AlertCircleFilled:    (p) => <TablerIcon svg={alertCircleFilledSvg} {...p} />,
+  AppWindow:            (p) => <TablerIcon svg={appWindowSvg} {...p} />,
+  Volume:               (p) => <TablerIcon svg={volumeSvg} {...p} />,
+  Clock:                (p) => <TablerIcon svg={clockSvg} {...p} />,
+  UserShare:            (p) => <TablerIcon svg={userShareSvg} {...p} />,
+  UserX:                (p) => <TablerIcon svg={userXSvg} {...p} />,
 };
 
 export default TI;
