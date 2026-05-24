@@ -3921,11 +3921,9 @@ html.dark .gk-notif-card--error {
        full saturation for the fill so the bar reads as part of the
        card's coloured identity. */
 .gk-notif-card__countdown-clip {
-  /* Stays inside the padding-box so the wrapper can't be obscured
-     by neighbouring cards' shadows or the viewport's own stacking
-     quirks. Bottom corners match the card's INNER border curve
-     (16 px outer − 2.5 px border = 13.5 px) so the strip's
-     silhouette follows the card. */
+  /* Inside the padding-box; bottom corners match the card's INNER
+     border curve (16 px outer − 2.5 px border = 13.5 px) so the
+     strip's silhouette follows the card's bottom curve. */
   position: absolute;
   left: 0;
   right: 0;
@@ -3938,29 +3936,30 @@ html.dark .gk-notif-card--error {
   z-index: 0;
 }
 .gk-notif-card__countdown {
-  /* Track is a vertical gradient: soft accent tint at the top so it
-     blends into the body bg, full accent at the bottom so its colour
-     meets the card's bottom border seamlessly (same colour on both
-     sides of the inner-border line — no visible seam between the
-     strip and the card edge). */
+  /* No track surface — the previous design had a coloured track
+     (16 % accent on the body bg) that visibly stepped from the
+     body's own tint at the top of the strip, which the user read as
+     a "couture". Empty container, just contains the fill. */
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   height: 3.6px;
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--gk-notif-accent, #6366f1) 16%, transparent),
-    var(--gk-notif-accent, #6366f1)
-  );
 }
 .gk-notif-card__countdown-fill {
+  /* Vertical gradient: transparent at the top so the strip fades
+     into the body bg (no top step / seam against the card body),
+     full accent at the bottom so it merges with the card's solid
+     bottom border (same colour on both sides → invisible boundary).
+     transform: scaleX animates left-to-right, so the depleted area
+     simply shows the body+border behind. */
   position: absolute;
   inset: 0;
-  /* Solid accent at full saturation so the fill matches the card's
-     border colour — the transition fill-to-border is then the same
-     colour on both sides, invisible. */
-  background: var(--gk-notif-accent, #6366f1);
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--gk-notif-accent, #6366f1)
+  );
   transform-origin: left center;
   animation-name: gkNotifCountdown;
   animation-timing-function: linear;
@@ -3969,13 +3968,6 @@ html.dark .gk-notif-card--error {
 @keyframes gkNotifCountdown {
   from { transform: scaleX(1); }
   to   { transform: scaleX(0); }
-}
-html.dark .gk-notif-card__countdown {
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--gk-notif-accent, #6366f1) 24%, transparent),
-    var(--gk-notif-accent, #6366f1)
-  );
 }
 
 /* All variants render a filled Tabler glyph in the accent colour,
