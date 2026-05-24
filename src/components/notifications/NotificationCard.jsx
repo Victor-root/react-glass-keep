@@ -107,11 +107,15 @@ export default function NotificationCard({
 
       <div className="gk-notif-card__body">
         <div className="gk-notif-card__title">{headline}</div>
-        {message ? (
-          <div className="gk-notif-card__message">{renderMessage(message)}</div>
-        ) : null}
-        {action ? (
-          <div className="gk-notif-card__action-row">
+        <div className="gk-notif-card__body-end">
+          {message ? (
+            <div className="gk-notif-card__message">{renderMessage(message)}</div>
+          ) : (
+            // Spacer so the action button still right-aligns inside
+            // the flex row when no message is set.
+            <div className="gk-notif-card__message" aria-hidden="true" />
+          )}
+          {action ? (
             <button
               type="button"
               className="gk-notif-card__action-btn"
@@ -119,8 +123,8 @@ export default function NotificationCard({
             >
               {action.label}
             </button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </div>
   );

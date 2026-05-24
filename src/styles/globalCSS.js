@@ -3825,17 +3825,28 @@ html.dark .gk-notif-card {
 .gk-notif-card__body {
   flex: 1 1 auto;
   min-width: 0;
-  /* Stack the title / message / action vertically inside the body
-     so the action button can be anchored to the bottom of the card
-     instead of crowding the timestamp at the top-right. */
   display: flex;
   flex-direction: column;
   align-self: stretch;
 }
-.gk-notif-card__action-row {
+/* Bottom row of the body — message takes the available width and
+   the action button sits flush against the message on the right.
+   When the message wraps to multiple lines the button stays anchored
+   to the bottom edge thanks to align-items: flex-end, so the card
+   only grows as tall as the message needs and never gains an extra
+   row just for the action. */
+.gk-notif-card__body-end {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 6px;
+  align-items: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+.gk-notif-card__body-end .gk-notif-card__message {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.gk-notif-card__body-end .gk-notif-card__action-btn {
+  flex: 0 0 auto;
 }
 
 /* Timestamp sits in the card's top-right corner regardless of whether

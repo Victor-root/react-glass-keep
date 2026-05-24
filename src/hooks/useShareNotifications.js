@@ -171,6 +171,23 @@ export function useShareNotifications({ token, userId }) {
           ) {
             showRevokeToast(payload);
             handled.push(n.id);
+          } else if (n.variant || n.message) {
+            // Generic persisted notification — the row carries its
+            // own variant/message/persistent fields (test-CLI
+            // dispatches, future server-side events). Replay it
+            // verbatim instead of dropping it on the floor.
+            const fn = notifyRef.current;
+            if (typeof fn === "function") {
+              fn({
+                type: n.type || "generic",
+                variant: n.variant || "info",
+                title: n.note_title || null,
+                message: n.message || "",
+                persistent: !!n.persistent,
+                metadata: { serverNotificationId: n.id },
+              });
+            }
+            handled.push(n.id);
           }
         }
         if (handled.length > 0) markDelivered(handled);

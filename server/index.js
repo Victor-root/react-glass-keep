@@ -163,6 +163,9 @@ CREATE TABLE IF NOT EXISTS notifications (
   note_id TEXT,
   note_title TEXT,
   sender_name TEXT NOT NULL,
+  variant TEXT,
+  message TEXT,
+  persistent INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   delivered_at TEXT,
   FOREIGN KEY(recipient_user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -308,7 +311,36 @@ CREATE TABLE IF NOT EXISTS app_settings (
   }
 })();
 
-// Migrate existing note tags into per-user table (one-time)
+// Notifications-table migrations. The original schema only stored
+// the bare share / revoke fields (sender_name, note_title) because
+// the message text could be regenerated client-side from i18n. The
+// new `variant`, `message` and `persistent` columns let arbitrary
+// notification types (test-CLI dispatches, future generic events)
+// survive a logout — the pending-fetch path replays them on next
+// login with the original payload instead of dropping them.
+(function ensureNotificationColumns() {
+  try {
+    const cols = db.prepare(`PRAGMA table_info(notifications)`).all();
+    const names = new Set(cols.map((c) => c.name));
+    const tx = db.transaction(() => {
+      if (!names.has("variant")) {
+        db.exec(`ALTER TABLE notifications ADD COLUMN variant TEXT`);
+      }
+      if (!names.has("message")) {
+        db.exec(`ALTER TABLE notifications ADD COLUMN message TEXT`);
+      }
+      if (!names.has("persistent")) {
+        db.exec(
+          `ALTER TABLE notifications ADD COLUMN persistent INTEGER NOT NULL DEFAULT 0`,
+        );
+      }
+    });
+    tx();
+  } catch {
+    // ignore if the table doesn't exist yet (first boot — CREATE
+    // TABLE above will produce the full schema) or ALTER unsupported.
+  }
+})();
 (function migrateTagsToPerUser() {
   try {
     const count = db.prepare("SELECT COUNT(*) as c FROM note_user_tags").get();
@@ -812,11 +844,13 @@ const updateNoteWithEditor = db.prepare(`
 // Notification statements
 const insertNotification = db.prepare(`
   INSERT INTO notifications
-    (recipient_user_id, sender_user_id, type, note_id, note_title, sender_name, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+    (recipient_user_id, sender_user_id, type, note_id, note_title, sender_name,
+     variant, message, persistent, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const getPendingNotificationsForUser = db.prepare(`
-  SELECT id, sender_user_id, type, note_id, note_title, sender_name, created_at
+  SELECT id, sender_user_id, type, note_id, note_title, sender_name,
+         variant, message, persistent, created_at
   FROM notifications
   WHERE recipient_user_id = ? AND delivered_at IS NULL
   ORDER BY created_at ASC
@@ -1059,6 +1093,9 @@ function broadcastNoteUpdated(noteId) {
 function createShareNotification({ recipientId, senderId, senderName, noteId, noteTitle }) {
   try {
     const createdAt = nowISO();
+    // Share notifications regenerate their text client-side from
+    // sender_name + note_title via i18n, so variant/message stay
+    // null. Persistent so they stick around until manually closed.
     const result = insertNotification.run(
       recipientId,
       senderId,
@@ -1066,6 +1103,9 @@ function createShareNotification({ recipientId, senderId, senderName, noteId, no
       noteId,
       noteTitle || "",
       senderName || "",
+      null,
+      null,
+      1,
       createdAt,
     );
     sendEventToUser(recipientId, {
@@ -1964,6 +2004,9 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
         noteId,
         note.title || "",
         req.user.name || req.user.email || "",
+        null,
+        null,
+        1,
         revokeCreatedAt,
       );
       sendEventToUser(userIdToRemove, {
@@ -1994,6 +2037,9 @@ app.delete("/api/notes/:id/collaborate/:userId", auth, (req, res) => {
         noteId,
         note.title || "",
         removedName,
+        null,
+        null,
+        1,
         revokeCreatedAt,
       );
       sendEventToUser(req.user.id, {
@@ -2075,6 +2121,9 @@ app.post("/api/notifications/test", auth, adminOnly, (req, res) => {
   }
 
   const createdAt = nowISO();
+  // Test notifications fully serialise variant/message/persistent
+  // so an offline recipient sees the exact same payload on next
+  // login that they would have seen live over SSE.
   const result = insertNotification.run(
     recipient.id,
     req.user.id,
@@ -2082,6 +2131,9 @@ app.post("/api/notifications/test", auth, adminOnly, (req, res) => {
     null,
     title || "",
     req.user.name || req.user.email || "test",
+    variant,
+    message,
+    persistent ? 1 : 0,
     createdAt,
   );
 

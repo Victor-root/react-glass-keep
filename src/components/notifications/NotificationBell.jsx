@@ -60,10 +60,20 @@ export default function NotificationBell({ dark, onAction }) {
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <TI.BellFilled
-          className="tabler-icon tabler-icon--filled"
-          style={{ color: iconColor }}
-        />
+        {/* Outline bell at rest, filled bell while the panel is open
+            — gives the header button a "the panel is up" affordance
+            without changing the accent colour. */}
+        {open ? (
+          <TI.BellFilled
+            className="tabler-icon tabler-icon--filled"
+            style={{ color: iconColor }}
+          />
+        ) : (
+          <TI.Bell
+            className="tabler-icon"
+            style={{ color: iconColor }}
+          />
+        )}
         {unread > 0 ? (
           <span className="gk-notif-bell-badge" aria-hidden="true">
             {unread > 9 ? "9+" : unread}
