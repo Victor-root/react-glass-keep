@@ -4140,16 +4140,21 @@ html.dark .gk-notif-bell-badge {
      treatment. Slightly higher opacity than the cards because the
      list is text-heavy and needs more cover to stay legible when
      several rows stack up. */
+  border: 1px solid transparent;
   background:
     linear-gradient(135deg,
-      rgba(250, 247, 255, 0.70) 0%,
-      rgba(245, 249, 255, 0.70) 100%);
+      rgba(250, 247, 255, 0.62) 0%,
+      rgba(245, 249, 255, 0.62) 100%) padding-box,
+    linear-gradient(135deg,
+      rgba(167, 139, 250, 0.32) 0%,
+      rgba(96, 165, 250, 0.32) 100%) border-box;
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
-  border: 1px solid rgba(167, 139, 250, 0.20);
   box-shadow:
+    0 0 4px rgba(129, 140, 248, 0.45),
+    0 0 14px rgba(99, 102, 241, 0.22),
     0 18px 40px -10px rgba(15, 23, 42, 0.22),
-    0 8px 18px -6px rgba(99, 102, 241, 0.14),
+    0 8px 18px -6px rgba(99, 102, 241, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
   display: flex;
   flex-direction: column;
@@ -4158,14 +4163,19 @@ html.dark .gk-notif-bell-badge {
 }
 html.dark .gk-notif-center {
   color: #f5f5f7;
+  border: 1px solid transparent;
   background:
     linear-gradient(135deg,
-      rgba(44, 42, 56, 0.75) 0%,
-      rgba(40, 44, 56, 0.75) 100%);
-  border: 1px solid rgba(167, 139, 250, 0.22);
+      rgba(44, 42, 56, 0.68) 0%,
+      rgba(40, 44, 56, 0.68) 100%) padding-box,
+    linear-gradient(135deg,
+      rgba(167, 139, 250, 0.30) 0%,
+      rgba(96, 165, 250, 0.30) 100%) border-box;
   box-shadow:
+    0 0 4px rgba(167, 139, 250, 0.55),
+    0 0 14px rgba(129, 140, 248, 0.28),
     0 18px 40px -10px rgba(0, 0, 0, 0.65),
-    0 8px 18px -6px rgba(76, 29, 149, 0.25),
+    0 8px 18px -6px rgba(76, 29, 149, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 @keyframes gkNotifCenterIn {
