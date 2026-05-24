@@ -3756,14 +3756,18 @@ html.dark .typo-modal-toggle {
   width: 100%;
   padding: 11px 14px;
   border-radius: 16px;
-  /* Flat translucent surface — gradient dropped. Heavy backdrop
-     blur over a neutral white/dark wash lets the page underneath
-     show through as a soft frosted backdrop without any coloured
-     tint of its own. Opacities matched to the centre panel
-     (0.55 light / 0.62 dark) so a floating card and the open
-     panel read as the same surface treatment. */
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  /* Frosted glass over a very subtle violet → blue tint — just
+     enough to lift the card off a white note background without
+     bringing back the heavy gradient identity. Border carries the
+     same diagonal so the edge stays cohesive with the surface. */
+  border: 1px solid transparent;
+  background:
+    linear-gradient(135deg,
+      rgba(238, 232, 255, 0.58) 0%,
+      rgba(225, 234, 255, 0.58) 100%) padding-box,
+    linear-gradient(135deg,
+      rgba(167, 139, 250, 0.55) 0%,
+      rgba(96, 165, 250, 0.55) 100%) border-box;
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
   box-shadow:
@@ -3775,11 +3779,16 @@ html.dark .typo-modal-toggle {
   animation: gkNotifIn 280ms cubic-bezier(.22,.61,.36,1) both;
 }
 html.dark .gk-notif-card {
-  background: rgba(40, 40, 45, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background:
+    linear-gradient(135deg,
+      rgba(44, 36, 72, 0.65) 0%,
+      rgba(34, 40, 72, 0.65) 100%) padding-box,
+    linear-gradient(135deg,
+      rgba(167, 139, 250, 0.50) 0%,
+      rgba(96, 165, 250, 0.50) 100%) border-box;
   box-shadow:
     0 14px 36px rgba(0, 0, 0, 0.55),
-    0 4px 12px rgba(0, 0, 0, 0.32),
+    0 4px 12px rgba(76, 29, 149, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
   color: #f5f5f7;
 }
@@ -4101,16 +4110,21 @@ html.dark .gk-notif-bell-badge {
   z-index: 75;
   color: #1d1d1f;
   border-radius: 14px;
-  /* Same flat frosted wash as the cards, just a bit more opaque so
-     a stack of rows stays readable when the panel is open over
-     busy content. No gradient — neutral white/dark only. */
-  background: rgba(255, 255, 255, 0.55);
+  /* Same frosted wash as the cards (subtle violet → blue tint over
+     a 50 px blur) so the panel reads as the same surface
+     treatment. Slightly higher opacity than the cards because the
+     list is text-heavy and needs more cover to stay legible when
+     several rows stack up. */
+  background:
+    linear-gradient(135deg,
+      rgba(238, 232, 255, 0.70) 0%,
+      rgba(225, 234, 255, 0.70) 100%);
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(167, 139, 250, 0.28);
   box-shadow:
-    0 18px 40px -10px rgba(15, 23, 42, 0.25),
-    0 8px 18px -6px rgba(15, 23, 42, 0.15),
+    0 18px 40px -10px rgba(15, 23, 42, 0.22),
+    0 8px 18px -6px rgba(99, 102, 241, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
   display: flex;
   flex-direction: column;
@@ -4119,11 +4133,14 @@ html.dark .gk-notif-bell-badge {
 }
 html.dark .gk-notif-center {
   color: #f5f5f7;
-  background: rgba(40, 40, 45, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.10);
+  background:
+    linear-gradient(135deg,
+      rgba(44, 36, 72, 0.75) 0%,
+      rgba(34, 40, 72, 0.75) 100%);
+  border: 1px solid rgba(167, 139, 250, 0.28);
   box-shadow:
     0 18px 40px -10px rgba(0, 0, 0, 0.65),
-    0 8px 18px -6px rgba(0, 0, 0, 0.45),
+    0 8px 18px -6px rgba(76, 29, 149, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 @keyframes gkNotifCenterIn {
