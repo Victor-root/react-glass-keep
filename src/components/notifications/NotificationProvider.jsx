@@ -72,11 +72,16 @@ function reducer(state, action) {
       // a reducer guarantees we see the latest state for every row
       // (including the just-added one) rather than a snapshot from
       // a stale closure.
+      // Persistent rows (duration === null) are skipped: "delivered"
+      // means the server acknowledged receipt, not that the user has
+      // resolved the notification. Persistent cards stay visible
+      // until the user manually closes them or opens the bell.
       const ids = action.ids;
       if (!ids || ids.size === 0) return state;
       const ts = Date.now();
       return state.map((n) => {
         if (n.dismissed) return n;
+        if (n.duration === null) return n;
         const sid = n.metadata?.serverNotificationId;
         if (sid == null) return n;
         if (!ids.has(Number(sid))) return n;
