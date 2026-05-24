@@ -58,6 +58,7 @@ function parseArgs(argv) {
     as: null,
     to: null,
     all: false,
+    colors: false,
     gallery: false,
     port: null,
     host: null,
@@ -77,6 +78,7 @@ function parseArgs(argv) {
     else if (a === "--as") out.as = next();
     else if (a === "--to") out.to = next();
     else if (a === "--all") out.all = true;
+    else if (a === "--colors") out.colors = true;
     else if (a === "--gallery") out.gallery = true;
     else if (a === "--port") out.port = Number(next());
     else if (a === "--host") out.host = next();
@@ -363,6 +365,23 @@ async function main() {
     ];
     for (const s of samples) {
       await sendOne(cfg, token, args, s);
+    }
+    return;
+  }
+
+  // --colors: fire exactly 4 persistent notifications, one per variant.
+  // Useful for checking the LED border + tint rendering for all colours
+  // without flooding the panel with the full gallery.
+  if (args.colors) {
+    const samples = [
+      { variant: "info",    title: "Info",          message: "Notification de type information.",   persistent: true },
+      { variant: "success", title: "Succès",         message: "Opération réalisée avec succès.",     persistent: true },
+      { variant: "warning", title: "Avertissement",  message: "Attention, une action est requise.",  persistent: true },
+      { variant: "error",   title: "Erreur",         message: "Une erreur est survenue.",            persistent: true },
+    ];
+    for (const s of samples) {
+      await sendOne(cfg, token, args, s);
+      await new Promise((r) => setTimeout(r, 120));
     }
     return;
   }
