@@ -4755,26 +4755,27 @@ html.dark .gk-notif-center__header-btn:hover { background: rgba(255,255,255,0.07
 .gk-notif-center__close:hover { opacity: 1; background: rgba(0,0,0,0.06); }
 html.dark .gk-notif-center__close:hover { background: rgba(255,255,255,0.08); }
 
-/* ── Mobile-only header treatment ──────────────────────────────────
+/* ── Panel header treatment (desktop + mobile) ─────────────────────
    Sober, app-native panel header. Same dimensions / padding /
-   layout / behaviour as the base rules; this block only tweaks
-   colours, softens the bottom separator, and wraps the logo in a
-   discreet capsule. NO big gradient, NO accent glow, NO contour. */
+   layout / behaviour as the base rules above; this block tweaks
+   colours, softens the bottom separator, and turns the logo wrap
+   into a transparent passthrough. Same look on desktop and on the
+   mobile sheet. */
 
 /* Very faint lilac wash so the header reads as a GlassKeep surface
    without being branded-loud. Hard 1 px bottom separator is dropped
    in favour of a soft fade below. */
-.gk-notif-center--mobile .gk-notif-center__header {
+.gk-notif-center__header {
   position: relative;
   background: linear-gradient(180deg, rgba(248, 246, 255, 0.96), rgba(249, 246, 255, 0.88));
   border-bottom: none;
 }
-html.dark .gk-notif-center--mobile .gk-notif-center__header {
+html.dark .gk-notif-center__header {
   background: linear-gradient(180deg, rgba(32, 30, 42, 0.96), rgba(28, 28, 38, 0.90));
 }
 
 /* Soft 6 px bottom fade that bleeds into the list — no hard line. */
-.gk-notif-center--mobile .gk-notif-center__header::after {
+.gk-notif-center__header::after {
   content: "";
   position: absolute;
   bottom: -6px;
@@ -4784,29 +4785,28 @@ html.dark .gk-notif-center--mobile .gk-notif-center__header {
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.05), transparent);
   pointer-events: none;
 }
-html.dark .gk-notif-center--mobile .gk-notif-center__header::after {
+html.dark .gk-notif-center__header::after {
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.20), transparent);
 }
 
 /* Title back to a neutral dark colour — no gradient, no stroke. The
-   GlassKeep identity sits in the small logo capsule next to it,
-   not in the type. */
-.gk-notif-center--mobile .gk-notif-center__title {
+   GlassKeep identity sits in the small logo next to it, not in the
+   type. Overrides the earlier base rule via source order. */
+.gk-notif-center__title {
   background: none;
   -webkit-text-fill-color: initial;
   color: #1d1d1f;
   -webkit-text-stroke: 0;
   letter-spacing: 0;
 }
-html.dark .gk-notif-center--mobile .gk-notif-center__title {
+html.dark .gk-notif-center__title {
   color: #f0f0f5;
 }
 
-/* Logo wrap is a transparent passthrough — same 24 px footprint as
-   the previous capsule so the header layout doesn't shift, but no
-   coloured background / ring. The PWA icon itself fills the box,
-   so the logo is the full visible mark. */
-.gk-notif-center--mobile .gk-notif-center__logo-wrap {
+/* Logo wrap is a transparent passthrough — 24 px footprint so the
+   header layout stays put, but no coloured background / ring. The
+   PWA icon itself fills the box. */
+.gk-notif-center__logo-wrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -4815,7 +4815,7 @@ html.dark .gk-notif-center--mobile .gk-notif-center__title {
   height: 24px;
   background: transparent;
 }
-.gk-notif-center--mobile .gk-notif-center__logo {
+.gk-notif-center__logo {
   width: 24px;
   height: 24px;
   border-radius: 6px;
@@ -4824,16 +4824,16 @@ html.dark .gk-notif-center--mobile .gk-notif-center__title {
 
 /* Close button stays simple and discreet — neutral hover, no brand
    tint, default size unchanged. */
-.gk-notif-center--mobile .gk-notif-center__close {
+.gk-notif-center__close {
   background: transparent;
   color: inherit;
   opacity: 0.55;
 }
-.gk-notif-center--mobile .gk-notif-center__close:hover {
+.gk-notif-center__close:hover {
   background: rgba(0, 0, 0, 0.06);
   opacity: 1;
 }
-html.dark .gk-notif-center--mobile .gk-notif-center__close:hover {
+html.dark .gk-notif-center__close:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 
