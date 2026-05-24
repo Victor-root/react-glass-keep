@@ -189,7 +189,7 @@ export default function NotificationCenter({
           notifications.map((n) => (
             <div
               key={n.id}
-              className={`gk-notif-center__item ${n.dismissed ? "is-dismissed" : "is-active"}`}
+              className={`gk-notif-center__item ${n.dismissed ? "is-dismissed" : "is-active"}${isMobile ? " gk-notif-center__item--swipeable" : ""}`}
             >
               <NotificationCard
                 notification={n}

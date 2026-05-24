@@ -131,6 +131,7 @@ export default function NotificationCard({
   swipeable = false,
 }) {
   const cardRef = useRef(null);
+  const swipeBgRef = useRef(null);
   // Tracking via refs — never triggers React re-renders so the
   // transform follows the finger without batching lag.
   const deltaRef = useRef(0);
@@ -145,16 +146,20 @@ export default function NotificationCard({
     if (!swipeable) return undefined;
     const el = cardRef.current;
     if (!el) return undefined;
+    const bg = swipeBgRef.current;
 
     // Pointer events give us a single uniform stream for touch + pen +
     // mouse, plus setPointerCapture so we keep receiving move events
-    // even if the finger drifts outside the card during a fling. This
-    // is what makes the card stick to the finger in real time.
+    // even if the finger drifts outside the card during a fling. The
+    // card writes go directly to the DOM (no React state in the loop)
+    // so the translate3d stays in sync with the finger at 60 fps.
     let startX = 0;
     let startY = 0;
     let active = false;          // a pointer is down on this card
     let locked = false;          // direction confirmed horizontal
     let activeId = null;
+    let endHandler = null;
+    let fallbackTimer = null;
 
     const reset = () => {
       active = false;
@@ -162,10 +167,24 @@ export default function NotificationCard({
       activeId = null;
     };
 
+    const clearTransitionEnd = () => {
+      if (endHandler) {
+        el.removeEventListener("transitionend", endHandler);
+        endHandler = null;
+      }
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+    };
+
     const onPointerDown = (e) => {
       // Restrict to touch/pen — mouse should not trigger swipe gestures
       // on desktop in case the panel ever shows up there.
       if (e.pointerType === "mouse") return;
+      // Cancel any pending dismiss transition listeners — the user is
+      // grabbing the card again.
+      clearTransitionEnd();
       activeId = e.pointerId;
       startX = e.clientX;
       startY = e.clientY;
@@ -173,6 +192,7 @@ export default function NotificationCard({
       locked = false;
       deltaRef.current = 0;
       el.style.transition = "none";
+      if (bg) bg.style.transition = "none";
     };
 
     const onPointerMove = (e) => {
@@ -196,10 +216,14 @@ export default function NotificationCard({
       }
 
       deltaRef.current = dx;
-      // Direct DOM write — bypasses React's render queue so the card
-      // moves in lock-step with the finger.
-      el.style.transform = `translateX(${dx}px)`;
-      el.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 200));
+      // Direct DOM write with translate3d to put the layer on the GPU.
+      el.style.transform = `translate3d(${dx}px, 0, 0)`;
+      el.style.opacity = String(Math.max(0, 1 - Math.abs(dx) / 220));
+      if (bg) {
+        // Reveal the delete background proportionally to swipe progress.
+        const p = Math.min(1, Math.abs(dx) / SWIPE_DISMISS_THRESHOLD);
+        bg.style.opacity = String(p);
+      }
     };
 
     const onPointerEnd = (e) => {
@@ -210,17 +234,37 @@ export default function NotificationCard({
       reset();
       if (!wasLocked) return; // Was a tap or vertical scroll — nothing to animate.
 
-      el.style.transition = "transform 0.25s ease-out, opacity 0.25s ease-out";
       if (Math.abs(dx) >= SWIPE_DISMISS_THRESHOLD) {
+        // Exit animation — slide off the screen edge, then dismiss.
         const dir = dx > 0 ? 1 : -1;
-        el.style.transform = `translateX(${dir * SWIPE_EXIT_PX}px)`;
+        el.style.transition = "transform 0.22s ease-out, opacity 0.22s ease-out";
+        el.style.transform = `translate3d(${dir * SWIPE_EXIT_PX}px, 0, 0)`;
         el.style.opacity = "0";
-        setTimeout(() => {
+        if (bg) {
+          bg.style.transition = "opacity 0.22s ease-out";
+          bg.style.opacity = "1";
+        }
+        const finish = () => {
+          clearTransitionEnd();
           onDismissRef.current?.(notifIdRef.current);
-        }, 230);
+        };
+        endHandler = (ev) => {
+          if (ev.propertyName !== "transform") return;
+          finish();
+        };
+        el.addEventListener("transitionend", endHandler);
+        // Safety net in case transitionend never fires (e.g. element
+        // is removed from the DOM mid-transition).
+        fallbackTimer = setTimeout(finish, 350);
       } else {
-        el.style.transform = "translateX(0)";
+        // Spring back to rest.
+        el.style.transition = "transform 0.2s ease-out, opacity 0.2s ease-out";
+        el.style.transform = "translate3d(0, 0, 0)";
         el.style.opacity = "1";
+        if (bg) {
+          bg.style.transition = "opacity 0.2s ease-out";
+          bg.style.opacity = "0";
+        }
       }
     };
 
@@ -233,6 +277,7 @@ export default function NotificationCard({
       el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerup", onPointerEnd);
       el.removeEventListener("pointercancel", onPointerEnd);
+      clearTransitionEnd();
     };
   }, [swipeable]);
 
@@ -243,22 +288,16 @@ export default function NotificationCard({
   const closeKlass =
     closeSide === "right" ? " gk-notif-card--close-right" : "";
   const modeKlass = mode === "center" ? " gk-notif-card--center" : "";
+  const swipeKlass = swipeable ? " gk-notif-card--swipeable" : "";
   const time = formatRelativeTime(createdAt);
   const headline = title || fallbackTitle(variant);
 
-  // Static style: only CSS hints. transform/opacity are written
-  // imperatively via the ref in the touch handlers above.
-  const swipeStyle = swipeable
-    ? { touchAction: "pan-y", userSelect: "none" }
-    : {};
-
-  return (
+  const card = (
     <div
       ref={cardRef}
       role="status"
       aria-live={variant === "error" ? "assertive" : "polite"}
-      className={`gk-notif-card ${klass}${compact ? " gk-notif-card--compact" : ""}${closeKlass}${modeKlass}`}
-      style={swipeStyle}
+      className={`gk-notif-card ${klass}${compact ? " gk-notif-card--compact" : ""}${closeKlass}${modeKlass}${swipeKlass}`}
     >
       {dismissible !== false && !swipeable ? (
         <button
@@ -298,6 +337,25 @@ export default function NotificationCard({
           ) : null}
         </div>
       </div>
+    </div>
+  );
+
+  if (!swipeable) return card;
+
+  // Swipe mode: wrap the card in a positioning context with a red
+  // "delete" background revealed as the card slides away. Icons on
+  // both sides so the affordance reads regardless of swipe direction.
+  return (
+    <div className="gk-notif-card-swipe-wrap">
+      <div className="gk-notif-card-swipe-bg" ref={swipeBgRef} aria-hidden="true">
+        <span className="gk-notif-card-swipe-bg__icon">
+          <TI.Trash className="tabler-icon" />
+        </span>
+        <span className="gk-notif-card-swipe-bg__icon">
+          <TI.Trash className="tabler-icon" />
+        </span>
+      </div>
+      {card}
     </div>
   );
 }

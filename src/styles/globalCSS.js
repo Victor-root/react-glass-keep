@@ -4376,6 +4376,71 @@ html.dark .gk-notif-center__close:hover { background: rgba(255,255,255,0.08); }
 .gk-notif-center__item.is-dismissed .gk-notif-card {
   opacity: 0.55;
 }
+/* Entry animation: applied on the wrapper when the item is swipeable
+   so the card itself never has a competing CSS animation on transform
+   / opacity (the swipe handler writes those imperatively). */
+.gk-notif-center__item--swipeable {
+  animation: gkNotifIn 220ms cubic-bezier(.22,.61,.36,1) both;
+}
+
+/* ───────── Swipe-to-dismiss wrapper ─────────
+   Visible only on mobile inside the NotificationCenter. The wrapper
+   stacks a red "delete" background underneath the card; as the card
+   is dragged horizontally, the background fades in proportionally and
+   the trash glyph reads as the affordance for the gesture. */
+.gk-notif-card-swipe-wrap {
+  position: relative;
+  border-radius: 16px;
+  isolation: isolate;
+}
+.gk-notif-card-swipe-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  border-radius: 16px;
+  background: linear-gradient(90deg,
+                              rgba(220, 38, 38, 0.92),
+                              rgba(220, 38, 38, 0.78) 50%,
+                              rgba(220, 38, 38, 0.92));
+  color: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+.gk-notif-card-swipe-bg__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.gk-notif-card-swipe-bg .tabler-icon {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  stroke-width: 2px;
+}
+html.dark .gk-notif-card-swipe-bg {
+  background: linear-gradient(90deg,
+                              rgba(185, 28, 28, 0.92),
+                              rgba(185, 28, 28, 0.78) 50%,
+                              rgba(185, 28, 28, 0.92));
+}
+
+/* Swipeable card: cancel the entry animation (it now lives on the
+   wrapper) and prime the layer for transform/opacity writes from the
+   pointer handler. touch-action: pan-y keeps vertical scroll working
+   on the panel list. */
+.gk-notif-card--swipeable {
+  position: relative;
+  z-index: 1;
+  animation: none !important;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform, opacity;
+}
 /* Dismissed-in-history rows keep their X — the user wants per-item
    removal in the panel (it calls REMOVE, not DISMISS, so the row is
    actually deleted). Only "Effacer" wipes the entire list. */
