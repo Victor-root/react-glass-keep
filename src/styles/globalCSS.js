@@ -4313,6 +4313,12 @@ html.dark .gk-notif-card.gk-notif-card--center {
      bar / notch above the header. */
   top: calc(var(--safe-top, 0px) + 88px);
   bottom: auto;
+  /* DEBUG: explicit hot-pink background so we can tell at a glance
+     whether this rule is being applied. If you see a pink card, the
+     CSS is reaching the pill but something else is suppressing the
+     normal background. If you see nothing, the rule isn't matching. */
+  background: hotpink !important;
+  outline: 4px dashed lime !important;
 }
 .gk-mobile-toast.gk-mobile-toast--anchor-bottom {
   bottom: calc(var(--safe-bottom, 0px) + 24px);
