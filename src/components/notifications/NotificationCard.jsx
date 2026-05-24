@@ -373,11 +373,13 @@ export default function NotificationCard({
         ) : null}
       </div>
       {showCountdown ? (
-        <div className="gk-notif-card__countdown" aria-hidden="true">
-          <div
-            className="gk-notif-card__countdown-fill"
-            style={{ animationDuration: `${duration}ms` }}
-          />
+        <div className="gk-notif-card__countdown-clip" aria-hidden="true">
+          <div className="gk-notif-card__countdown">
+            <div
+              className="gk-notif-card__countdown-fill"
+              style={{ animationDuration: `${duration}ms` }}
+            />
+          </div>
         </div>
       ) : null}
     </div>

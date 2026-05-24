@@ -3904,26 +3904,41 @@ html.dark .gk-notif-card--error {
    from the notification's actual duration so it always finishes at
    the exact moment the provider's timer fires.
 
-   Rendered as a thicker, edge-to-edge progress strip flush against
-   the inside of the card's bottom border. Variant accent is reused
-   for both the resting track (low opacity) and the active fill
-   (full saturation), so the bar reads as part of the card's coloured
-   identity instead of a stuck-on widget. Bottom corners follow the
-   card's inner radius (16 px outer − 2.5 px border ≈ 13.5 px) so the
-   strip curves with the silhouette and the fill stays clipped at
-   the corners. */
-.gk-notif-card__countdown {
+   Layered as a thin progress strip flush against the bottom of the
+   card. Two pieces:
+     - The "clip" wrapper anchors a 14-px-tall band at the inside
+       bottom edge of the card and applies overflow:hidden with a
+       border-radius that matches the card's INNER border curve
+       (16 px outer − 2.5 px border = 13.5 px). Children inside —
+       the track and the fill — are clipped to the same circular
+       silhouette as the card itself, so the corners curve cleanly
+       instead of leaving square pixels poking past the card edge.
+       Couldn't put overflow:hidden on the card directly because the
+       close-button pill overhangs the top-left at -6/-6.
+     - The track + fill themselves are a flat full-inside-width
+       3.6-px-tall strip (10 % thinner than the previous 4 px), with
+       the variant accent used at low opacity for the track and
+       full saturation for the fill so the bar reads as part of the
+       card's coloured identity. */
+.gk-notif-card__countdown-clip {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 4px;
-  background: color-mix(in srgb, var(--gk-notif-accent, #6366f1) 16%, transparent);
+  height: 14px;
   border-bottom-left-radius: 13.5px;
   border-bottom-right-radius: 13.5px;
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
+}
+.gk-notif-card__countdown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3.6px;
+  background: color-mix(in srgb, var(--gk-notif-accent, #6366f1) 16%, transparent);
 }
 .gk-notif-card__countdown-fill {
   position: absolute;
