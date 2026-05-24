@@ -94,6 +94,8 @@ import trashSvg           from "./tabler/trash.svg?raw";
 import checkSvg           from "./tabler/check.svg?raw";
 import xSvg               from "./tabler/x.svg?raw";
 import noteSvg            from "./tabler/note.svg?raw";
+import floatCenterSvg     from "./tabler/float-center.svg?raw";
+import clipboardSvg       from "./tabler/clipboard.svg?raw";
 import refreshSvg         from "./tabler/refresh.svg?raw";
 import brandGithubSvg     from "./tabler/brand-github.svg?raw";
 import brandDockerSvg     from "./tabler/brand-docker.svg?raw";
@@ -239,6 +241,8 @@ export const TI = {
   Check:                (p) => <TablerIcon svg={checkSvg} {...p} />,
   X:                    (p) => <TablerIcon svg={xSvg} {...p} />,
   Note:                 (p) => <TablerIcon svg={noteSvg} {...p} />,
+  FloatCenter:          (p) => <TablerIcon svg={floatCenterSvg} {...p} />,
+  Clipboard:            (p) => <TablerIcon svg={clipboardSvg} {...p} />,
   Refresh:              (p) => <TablerIcon svg={refreshSvg} {...p} />,
   BrandGithub:          (p) => <TablerIcon svg={brandGithubSvg} {...p} />,
   BrandDocker:          (p) => <TablerIcon svg={brandDockerSvg} {...p} />,
