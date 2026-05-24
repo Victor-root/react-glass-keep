@@ -4802,10 +4802,10 @@ html.dark .gk-notif-center--mobile .gk-notif-center__title {
   color: #f0f0f5;
 }
 
-/* Soft "capsule" around the logo: pale brand-tinted bg, no harsh
-   ring, no glow. Logo itself is shrunk and held inside so the icon
-   is present but discreet. Total capsule footprint matches the
-   prior bare 22 px logo, so the header height stays put. */
+/* Logo wrap is a transparent passthrough — same 24 px footprint as
+   the previous capsule so the header layout doesn't shift, but no
+   coloured background / ring. The PWA icon itself fills the box,
+   so the logo is the full visible mark. */
 .gk-notif-center--mobile .gk-notif-center__logo-wrap {
   display: inline-flex;
   align-items: center;
@@ -4813,16 +4813,12 @@ html.dark .gk-notif-center--mobile .gk-notif-center__title {
   flex-shrink: 0;
   width: 24px;
   height: 24px;
-  border-radius: 7px;
-  background: rgba(99, 102, 241, 0.10);
-}
-html.dark .gk-notif-center--mobile .gk-notif-center__logo-wrap {
-  background: rgba(139, 92, 246, 0.18);
+  background: transparent;
 }
 .gk-notif-center--mobile .gk-notif-center__logo {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   box-shadow: none;
 }
 
