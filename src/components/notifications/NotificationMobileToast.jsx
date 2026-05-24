@@ -1,19 +1,16 @@
 // Mobile notification dispatcher.
 //
-// Inside the Android wrapper (window.AndroidToast bridge present)
-// every new notification fires a real native Toast.makeText —
-// platform-correct, exactly like the OS handles app toasts. The
-// CSS pill below is the PWA-only fallback for browser sessions
-// where there's no bridge to delegate to.
+// Renders the same in-app CSS pill on every form factor — PWA,
+// browser, AND inside the Android WebView wrapper. The native
+// Toast.makeText bridge (window.AndroidToast) is still shipped by
+// the APK but no longer invoked from here: a native OS toast can't
+// carry our action buttons (e.g. "Mettre à jour maintenant") and
+// it bypasses the variant palette / countdown bar that make the
+// pill recognisable, so we keep one consistent visual across
+// devices.
 //
-// The native toast carries the notification's text content; the
-// action button (e.g. "Ouvrir" on a shared note) stays accessible
-// through the in-app notification centre, since Android's native
-// toast widget is intentionally passive (no inline buttons).
-//
-// Either way, the notification still lands in the provider's
-// history list so the bell + panel work the same on every form
-// factor.
+// The notification still lands in the provider's history list so
+// the bell + panel work the same everywhere.
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -71,10 +68,13 @@ function renderMessage(message) {
   });
 }
 
+// Native Toast.makeText bridge is intentionally disabled — we render
+// the in-app pill on Android too so the visual + actions stay
+// consistent with PWA / browser. Kept as a no-op stub (rather than
+// removing the call sites) so the bridge can be re-enabled by
+// returning the real probe if we ever want to toggle back.
 function hasAndroidBridge() {
-  if (typeof window === "undefined") return false;
-  const b = window.AndroidToast;
-  return !!(b && typeof b.show === "function");
+  return false;
 }
 
 // Build the plain-text payload for the native toast. The OS widget
