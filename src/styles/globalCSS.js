@@ -3697,18 +3697,21 @@ html.dark .typo-modal-toggle {
 }
 .gk-notif-viewport > * { pointer-events: auto; }
 .gk-notif-viewport--top-left {
-  top: calc(var(--safe-top, 0px) + 1rem);
+  /* Sits below the sticky NotesHeader (96 px desktop / 80 px mobile,
+     matching the multi-select-dock offsets). Without this the stack
+     would overlap the header logo + button row. */
+  top: calc(var(--safe-top, 0px) + 96px + 0.5rem);
   left: 12px;
   align-items: flex-start;
 }
 .gk-notif-viewport--top-center {
-  top: calc(var(--safe-top, 0px) + 1rem);
+  top: calc(var(--safe-top, 0px) + 96px + 0.5rem);
   left: 50%;
   transform: translateX(-50%);
   align-items: center;
 }
 .gk-notif-viewport--top-right {
-  top: calc(var(--safe-top, 0px) + 1rem);
+  top: calc(var(--safe-top, 0px) + 96px + 0.5rem);
   right: 12px;
   align-items: flex-end;
 }
@@ -3727,6 +3730,17 @@ html.dark .typo-modal-toggle {
   bottom: calc(var(--safe-bottom, 0px) + 1rem);
   right: 12px;
   align-items: flex-end;
+}
+@media (max-width: 699px) {
+  /* Header drops to ~80 px tall on the narrow-tablet range
+     (mirrors the multi-select-dock's own breakpoint). Pull the
+     top-anchored viewport up to match so a small viewport doesn't
+     keep a desktop-sized gap above the cards. */
+  .gk-notif-viewport--top-left,
+  .gk-notif-viewport--top-center,
+  .gk-notif-viewport--top-right {
+    top: calc(var(--safe-top, 0px) + 80px + 0.5rem);
+  }
 }
 @media (max-width: 639px) {
   /* Mobile: viewport fills the horizontal space regardless of the
@@ -3759,20 +3773,25 @@ html.dark .typo-modal-toggle {
   /* Frosted glass with the faintest violet → blue tint (RGB stops
      are almost-white with a few digits of difference) — just
      enough to lift the card off a pure-white background but not
-     enough to read as "violet glass". Border still carries the
-     accent gradient but at a much lower opacity than the previous
-     pass. */
+     enough to read as "violet glass". The border layer carries a
+     brighter violet→blue gradient (think thin RGB-LED outline)
+     paired with a soft outer halo so the card edge is clearly
+     delineated against any background. */
   border: 1px solid transparent;
   background:
     linear-gradient(135deg,
       rgba(250, 247, 255, 0.58) 0%,
       rgba(245, 249, 255, 0.58) 100%) padding-box,
     linear-gradient(135deg,
-      rgba(167, 139, 250, 0.32) 0%,
-      rgba(96, 165, 250, 0.32) 100%) border-box;
+      rgba(167, 139, 250, 0.85) 0%,
+      rgba(99, 102, 241, 0.85) 50%,
+      rgba(96, 165, 250, 0.85) 100%) border-box;
   backdrop-filter: blur(50px) saturate(200%);
   -webkit-backdrop-filter: blur(50px) saturate(200%);
   box-shadow:
+    /* Soft RGB-LED bleed sitting on top of the regular drop
+       shadows so the violet/blue rim glows slightly outward. */
+    0 0 10px rgba(99, 102, 241, 0.22),
     0 14px 36px rgba(15, 23, 42, 0.18),
     0 4px 12px rgba(15, 23, 42, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
@@ -3786,9 +3805,11 @@ html.dark .gk-notif-card {
       rgba(44, 42, 56, 0.65) 0%,
       rgba(40, 44, 56, 0.65) 100%) padding-box,
     linear-gradient(135deg,
-      rgba(167, 139, 250, 0.30) 0%,
-      rgba(96, 165, 250, 0.30) 100%) border-box;
+      rgba(167, 139, 250, 0.80) 0%,
+      rgba(129, 140, 248, 0.80) 50%,
+      rgba(96, 165, 250, 0.80) 100%) border-box;
   box-shadow:
+    0 0 12px rgba(129, 140, 248, 0.28),
     0 14px 36px rgba(0, 0, 0, 0.55),
     0 4px 12px rgba(76, 29, 149, 0.20),
     inset 0 1px 0 rgba(255, 255, 255, 0.07);
