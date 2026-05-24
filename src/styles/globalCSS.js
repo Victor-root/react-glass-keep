@@ -4543,6 +4543,56 @@ html.dark .gk-notif-bell-dot {
   overflow: hidden;
   animation: gkNotifCenterIn 180ms ease-out both;
 }
+/* Mobile sheet variant — full-screen panel that slides DOWN from the
+   top when opened (transform animates from translateY(-100%) → 0) and
+   slides back UP when closed. Mirrors the editor's mobile-fmt-sheet
+   timing curve so the two surfaces feel like one design system. The
+   keyframe-based fade-in above is suppressed so it doesn't fight the
+   transform transition. */
+.gk-notif-center--mobile {
+  animation: none;
+  transform: translateY(-100%);
+  transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+.gk-notif-center--mobile.is-open {
+  transform: translateY(0);
+}
+/* Grabber lives at the BOTTOM of the panel (the panel pushes from
+   the top, so the bottom is the dismissible edge — mirror of the
+   editor sheet, where the grabber sits at the top of a bottom-anchored
+   sheet). Same Android-style pill via ::after, same touch-target
+   height. Drag UP to close. */
+.gk-notif-center-grabber {
+  flex-shrink: 0;
+  height: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 4px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+html.dark .gk-notif-center-grabber {
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+.gk-notif-center-grabber::after {
+  content: "";
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.gk-notif-center-grabber:active { cursor: grabbing; }
+.gk-notif-center-grabber:active::after {
+  background: rgba(0, 0, 0, 0.45);
+  transform: scaleX(1.15);
+}
+html.dark .gk-notif-center-grabber::after { background: rgba(255, 255, 255, 0.32); }
+html.dark .gk-notif-center-grabber:active::after { background: rgba(255, 255, 255, 0.5); }
 html.dark .gk-notif-center {
   color: #f0f0f5;
   background: rgba(28, 28, 38, 0.96);

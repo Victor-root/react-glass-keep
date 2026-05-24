@@ -8,13 +8,21 @@
 // Mobile (< 640px viewport): full-width sheet pinned under the header
 // so the panel never overflows offscreen on narrow devices.
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNotifications } from "./NotificationProvider.jsx";
 import NotificationCard from "./NotificationCard.jsx";
 import { t } from "../../i18n";
 
 const SHEET_BREAKPOINT_PX = 640;
+// Mobile open/close animation duration. Mirrors the editor's
+// .mobile-fmt-sheet transition curve / timing so the two surfaces
+// feel like they belong to the same design system.
+const MOBILE_ANIM_MS = 320;
+// Px the bottom edge has to travel upward (via the grabber drag)
+// before release closes the panel. Same threshold the editor's
+// formatting sheet uses for swipe-to-close.
+const MOBILE_CLOSE_THRESHOLD_PX = 60;
 
 export default function NotificationCenter({
   open,
@@ -39,6 +47,44 @@ export default function NotificationCenter({
   // after the panel state has already changed to closed.
   const swallowNextClickRef = useRef(false);
   const swallowClearTimerRef = useRef(null);
+
+  // Deferred unmount so the mobile slide-down close animation has time
+  // to play out before the DOM goes away. Two flags so the open class
+  // (which drives the CSS transition) flips one paint AFTER the
+  // wrapper has mounted in its closed state — without that gap, the
+  // first render would already carry .is-open and the transform would
+  // be applied with no transition (the from-state never existed).
+  const [rendering, setRendering] = useState(false);
+  const [animOpen, setAnimOpen] = useState(false);
+  const isMobile =
+    rendering &&
+    typeof window !== "undefined" &&
+    window.innerWidth < SHEET_BREAKPOINT_PX;
+
+  useEffect(() => {
+    const mobileNow =
+      typeof window !== "undefined" && window.innerWidth < SHEET_BREAKPOINT_PX;
+    if (open) {
+      setRendering(true);
+      if (mobileNow) {
+        // requestAnimationFrame, not setState directly: the panel must
+        // first paint at translateY(-100%) (its CSS resting state),
+        // THEN we add .is-open so the transition has a from-frame to
+        // animate from.
+        const r = requestAnimationFrame(() => setAnimOpen(true));
+        return () => cancelAnimationFrame(r);
+      }
+      setAnimOpen(true);
+      return undefined;
+    }
+    setAnimOpen(false);
+    if (mobileNow) {
+      const tm = setTimeout(() => setRendering(false), MOBILE_ANIM_MS);
+      return () => clearTimeout(tm);
+    }
+    setRendering(false);
+    return undefined;
+  }, [open]);
 
   // Permanent click swallower — mounted once, never torn down.
   useEffect(() => {
@@ -92,13 +138,6 @@ export default function NotificationCenter({
     };
   }, [open, onClose, anchor]);
 
-  // Compute isMobile up here so the body-scroll-lock effect below can
-  // depend on it. Same value used to pick the sheet layout further down.
-  const isMobile =
-    open &&
-    typeof window !== "undefined" &&
-    window.innerWidth < SHEET_BREAKPOINT_PX;
-
   // Mobile body-scroll lock — the panel covers the screen, but without
   // an explicit lock on body the underlying notes view can still
   // intercept horizontal swipes started on empty panel area (the
@@ -128,7 +167,69 @@ export default function NotificationCenter({
     };
   }, [isMobile]);
 
-  if (!open || typeof document === "undefined") return null;
+  // Grabber drag-to-close — mirrors the editor's .mobile-fmt-sheet
+  // grabber except the panel is anchored at the TOP, so the drag is
+  // upward (finger moves toward the top of the screen) and the panel
+  // shrinks from the bottom by translating up. Direct DOM mutation
+  // via panel.style.transform keeps the per-frame work off the React
+  // render path; same trick the editor sheet already uses.
+  const dragRef = useRef({ active: false, startY: 0, currentY: 0 });
+  const dragCleanupRef = useRef(null);
+
+  const handleGrabberDown = (e) => {
+    if (e.button != null && e.button !== 0) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    if (dragCleanupRef.current) {
+      clearTimeout(dragCleanupRef.current);
+      dragCleanupRef.current = null;
+    }
+    dragRef.current = {
+      active: true,
+      startY: e.clientY,
+      currentY: 0,
+    };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    // Disable the CSS transition during the drag so transform follows
+    // the finger 1:1; restored on release.
+    panel.style.transition = "none";
+  };
+  const handleGrabberMove = (e) => {
+    if (!dragRef.current.active) return;
+    // Upward drag = positive dy. Anything downward (dy < 0) is
+    // clamped to 0 so the panel doesn't peek out below its safe-area
+    // anchor when the user accidentally goes the wrong way.
+    const dy = Math.max(0, dragRef.current.startY - e.clientY);
+    dragRef.current.currentY = dy;
+    const panel = panelRef.current;
+    if (panel) panel.style.transform = `translateY(-${dy}px)`;
+  };
+  const handleGrabberUp = (e) => {
+    if (!dragRef.current.active) return;
+    const dy = dragRef.current.currentY;
+    dragRef.current.active = false;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+    const panel = panelRef.current;
+    if (!panel) return;
+    panel.style.transition = "";
+    if (dy > MOBILE_CLOSE_THRESHOLD_PX) {
+      // Close: continue the move from the current dragged position
+      // up to fully offscreen in a single smooth motion — no
+      // snap-back to fully-open before collapsing.
+      panel.style.transform = "translateY(-100%)";
+      onClose && onClose();
+      dragCleanupRef.current = setTimeout(() => {
+        dragCleanupRef.current = null;
+        if (panelRef.current) panelRef.current.style.transform = "";
+      }, MOBILE_ANIM_MS);
+    } else {
+      // Snap back: clear the inline transform so the .is-open CSS
+      // rule re-applies and animates the panel back to translateY(0).
+      panel.style.transform = "";
+    }
+  };
+
+  if (!rendering || typeof document === "undefined") return null;
 
   // Desktop: anchor under the bell button. Mobile: full-screen sheet
   // — covers the entire viewport (minus safe-area insets) so the panel
@@ -185,7 +286,13 @@ export default function NotificationCenter({
   const hasAny = notifications.length > 0;
 
   const node = (
-    <div ref={panelRef} className="gk-notif-center" style={style} role="dialog" aria-label={t("notificationCenterTitle")}>
+    <div
+      ref={panelRef}
+      className={`gk-notif-center${isMobile ? " gk-notif-center--mobile" : ""}${isMobile && animOpen ? " is-open" : ""}`}
+      style={style}
+      role="dialog"
+      aria-label={t("notificationCenterTitle")}
+    >
       <header className="gk-notif-center__header">
         <h2 className="gk-notif-center__title">
           {t("notificationCenterTitle")}
@@ -246,6 +353,18 @@ export default function NotificationCenter({
           ))
         )}
       </div>
+      {isMobile ? (
+        <div
+          className="gk-notif-center-grabber"
+          role="button"
+          tabIndex={-1}
+          aria-label={t("close")}
+          onPointerDown={handleGrabberDown}
+          onPointerMove={handleGrabberMove}
+          onPointerUp={handleGrabberUp}
+          onPointerCancel={handleGrabberUp}
+        />
+      ) : null}
     </div>
   );
 
