@@ -292,6 +292,12 @@ CREATE TABLE IF NOT EXISTS app_settings (
       if (!names.has("app_bg_separate")) {
         db.exec(`ALTER TABLE users ADD COLUMN app_bg_separate INTEGER NOT NULL DEFAULT 0`);
       }
+      // Master on/off for the custom app background — lets a user disable
+      // it without losing the uploaded image(s). Defaults to 1 so existing
+      // backgrounds keep showing after the migration.
+      if (!names.has("app_bg_enabled")) {
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_enabled INTEGER NOT NULL DEFAULT 1`);
+      }
     });
     tx();
   } catch {
@@ -1507,6 +1513,11 @@ app.put("/api/user/app-background", auth, (req, res) => {
     params.push(body.separate ? 1 : 0);
   }
 
+  if (Object.prototype.hasOwnProperty.call(body, "enabled")) {
+    updates.push("app_bg_enabled = ?");
+    params.push(body.enabled ? 1 : 0);
+  }
+
   if (updates.length === 0) {
     return res.status(400).json({ error: "No supported field provided." });
   }
@@ -1521,6 +1532,7 @@ app.put("/api/user/app-background", auth, (req, res) => {
     appBackgroundDark: user.app_bg_image_dark || null,
     appBackgroundBlurDark: user.app_bg_blur_dark || 0,
     appBackgroundSeparate: !!user.app_bg_separate,
+    appBackgroundEnabled: !!user.app_bg_enabled,
   });
 });
 
@@ -3000,6 +3012,7 @@ app.get("/api/user/settings", auth, (req, res) => {
     settings.appBackgroundDark = user.app_bg_image_dark || null;
     settings.appBackgroundBlurDark = user.app_bg_blur_dark || 0;
     settings.appBackgroundSeparate = !!user.app_bg_separate;
+    settings.appBackgroundEnabled = !!user.app_bg_enabled;
   }
   res.json(settings);
 });

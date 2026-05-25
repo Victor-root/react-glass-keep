@@ -222,6 +222,7 @@ export default function App() {
   // Per-user app background, with an optional separate dark-mode variant.
   // `light` is the shared slot when `separate` is false.
   const [appBg, setAppBg] = useState({
+    enabled: true,
     separate: false,
     light: { image: null, blur: 0 },
     dark: { image: null, blur: 0 },
@@ -1036,6 +1037,7 @@ export default function App() {
             return Math.max(0, Math.min(20, Number.isFinite(n) ? n : 0));
           };
           setAppBg({
+            enabled: settings?.appBackgroundEnabled !== false,
             separate: !!settings?.appBackgroundSeparate,
             light: {
               image: typeof settings?.appBackground === "string" ? settings.appBackground : null,
@@ -6613,9 +6615,14 @@ export default function App() {
     );
   }
 
-  // Background that actually applies right now: the dark slot in dark mode
-  // when the user split light/dark, otherwise the shared (light) slot.
-  const effAppBg = appBg.separate ? (dark ? appBg.dark : appBg.light) : appBg.light;
+  // Background that actually applies right now: nothing when disabled,
+  // otherwise the dark slot in dark mode when the user split light/dark,
+  // else the shared (light) slot.
+  const effAppBg = !appBg.enabled
+    ? { image: null, blur: 0 }
+    : appBg.separate
+      ? (dark ? appBg.dark : appBg.light)
+      : appBg.light;
 
   return (
     <>

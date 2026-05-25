@@ -545,6 +545,8 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   blurDisabledNoBg: "Importez une image de fond pour activer le flou.",
   separateLightDark: "Séparer les fonds clair / sombre",
   separateLightDarkDesc: "Utiliser un fond différent en mode clair et sombre.",
+  enableAppBackground: "Afficher le fond",
+  enableAppBackgroundDesc: "Activer ou désactiver le fond sans supprimer l'image.",
   loginBackgroundBlurLabel: "Flou de l'arrière-plan",
   loginBackgroundBlurDesc: "Flou appliqué à l'image de fond de la page de connexion.",
   uploadImage: "Importer une image",

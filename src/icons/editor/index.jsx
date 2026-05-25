@@ -129,6 +129,7 @@ import signatureSvg        from "./tabler/signature.svg?raw";
 import photoHexagonSvg     from "./tabler/photo-hexagon.svg?raw";
 import backgroundSvg       from "./tabler/background.svg?raw";
 import dropletFilledSvg    from "./tabler/droplet-filled.svg?raw";
+import sunMoonSplitSvg     from "./tabler/sun-moon-split.svg?raw";
 
 // Cache of sanitised markup keyed by the raw SVG string. The transformation
 // only depends on the SVG source, so each icon is processed exactly once.
@@ -279,6 +280,7 @@ export const TI = {
   PhotoHexagon:         (p) => <TablerIcon svg={photoHexagonSvg} {...p} />,
   Background:           (p) => <TablerIcon svg={backgroundSvg} {...p} />,
   DropletFilled:        (p) => <TablerIcon svg={dropletFilledSvg} {...p} />,
+  SunMoonSplit:         (p) => <TablerIcon svg={sunMoonSplitSvg} {...p} />,
 };
 
 export default TI;

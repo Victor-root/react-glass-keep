@@ -24,6 +24,7 @@ const DANGER_BTN =
 
 function fromResponse(res) {
   return {
+    enabled: res.appBackgroundEnabled !== false,
     separate: !!res.appBackgroundSeparate,
     light: { image: res.appBackground || null, blur: res.appBackgroundBlur || 0 },
     dark: { image: res.appBackgroundDark || null, blur: res.appBackgroundBlurDark || 0 },
@@ -211,6 +212,17 @@ export default function AppBackgroundSection({ token, appBg, setAppBg, showToast
     }
   };
 
+  const toggleEnabled = async () => {
+    setBusy("enabled");
+    try {
+      await put({ enabled: !appBg.enabled });
+    } catch (e) {
+      showToast?.(localizeServerError(e?.message, "saveFailed"), "error");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const editorFor = (variant) => (
     <BackgroundEditor
       key={variant}
@@ -250,10 +262,36 @@ export default function AppBackgroundSection({ token, appBg, setAppBg, showToast
       </div>
       <p className="text-xs text-gray-400 dark:text-gray-500">{t("loginBackgroundRecommend")}</p>
 
+      {/* Master on/off — disables the background without removing the image */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <RowIcon icon={TI.Eye} />
+          <div className="min-w-0">
+            <div className="font-medium">{t("enableAppBackground")}</div>
+            <div className="text-sm text-gray-500">{t("enableAppBackgroundDesc")}</div>
+          </div>
+        </div>
+        <button
+          type="button"
+          disabled={busy === "enabled"}
+          onClick={toggleEnabled}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+            appBg.enabled ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
+          } disabled:opacity-50`}
+          aria-pressed={appBg.enabled}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              appBg.enabled ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
+      </div>
+
       {/* Separate light / dark toggle */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <RowIcon icon={TI.AdjustmentsHorizontal} />
+          <RowIcon icon={TI.SunMoonSplit} />
           <div className="min-w-0">
             <div className="font-medium">{t("separateLightDark")}</div>
             <div className="text-sm text-gray-500">{t("separateLightDarkDesc")}</div>
