@@ -169,8 +169,9 @@ export default function AppBackgroundSection({
           )}
         </div>
 
-        {/* Blur slider */}
-        <div className="pt-1">
+        {/* Blur slider — only meaningful with a background, so it's
+            disabled + greyed when none is set. */}
+        <div className={`pt-1 ${appBackground ? "" : "opacity-50"}`}>
           <div className="flex items-center gap-3 min-w-0 mb-2">
             <RowIcon icon={TI.DropletFilled} />
             <div className="min-w-0 flex-1">
@@ -178,7 +179,7 @@ export default function AppBackgroundSection({
                 <span>{t("loginBackgroundBlurLabel")}</span>
                 <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 tabular-nums">{blur} px</span>
               </div>
-              <div className="text-sm text-gray-500">{t("appBackgroundBlurDesc")}</div>
+              <div className="text-sm text-gray-500">{appBackground ? t("appBackgroundBlurDesc") : t("blurDisabledNoBg")}</div>
             </div>
           </div>
           <div>
@@ -188,10 +189,11 @@ export default function AppBackgroundSection({
               max={MAX_BLUR}
               step={1}
               value={blur}
+              disabled={!appBackground}
               onChange={(e) => setBlur(Number(e.target.value))}
               onPointerUp={commitBlur}
               onKeyUp={commitBlur}
-              className="gk-range w-full"
+              className={`gk-range w-full ${appBackground ? "" : "cursor-not-allowed"}`}
               style={{
                 background: `linear-gradient(to right, #6366f1 0%, #8b5cf6 ${blurPct}%, ${trackColor} ${blurPct}%, ${trackColor} 100%)`,
               }}
