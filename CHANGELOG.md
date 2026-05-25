@@ -1,5 +1,17 @@
 # 📋 Changelog
 
+## 🚀 v2.4.1 — 2026-05-25
+
+Fixes one-click in-app updates on **Synology Container Manager / DSM** (and any host where the Docker socket is owned by `root:root`), plus more accurate self-update diagnostics in the admin panel.
+
+### 🐛 Fixed
+- 🐳 **One-click update on Synology (and any `root:root` docker.sock)** — the container entrypoint discovered the Docker socket's owning group at runtime but **skipped** granting access whenever that group was GID 0 (root). Synology DSM / Container Manager exposes the socket exactly that way — `root:root`, with no `docker` group — so the unprivileged `node` user the server runs as could never open the socket. The capability check reported the failure as "socket not mounted", and the admin panel kept showing **"Update manually"** while suggesting the operator add a socket mount that was *already present*. The entrypoint now adds `node` to the root group when the socket is `root:root`, so one-click updates work after recreating the container once. (Hosts that expose a normal non-zero `docker` group, e.g. most Debian/Ubuntu setups, are unaffected and keep working as before.)
+- 🔎 **Accurate self-update diagnostics** — the backend now distinguishes *socket missing* vs *socket mounted but permission denied* vs *Docker daemon unreachable*, instead of collapsing every Docker failure into a single "socket missing" reason. The admin panel shows the matching remedy for each case (recreate the container, check the daemon, or add the mount line) rather than always telling you to add a mount you may already have
+
+### 🛠️ Upgrade
+
+> **Synology / Docker users:** pull the new image and recreate the container **once** — stop then start the project in Container Manager, or run `docker compose up -d --force-recreate`. After that first recreate, the **"Update now"** button appears and every future update is one-click.
+
 ## 🚀 v2.4.0 — 2026-05-24
 
 Headline change: a **completely rewritten in-app notification system**. Every toast, error, share alert and admin event now flows through a single provider, renders as a premium LED-neon card in the floating viewport, and shows up in a new **Notification Center** panel (bell icon in the header) with full cross-device history sync over SSE. The release also lands actionable admin notifications (approve / refuse pending registrations, deletion confirmations), live cross-session sync of user settings, a mobile Notification Center with swipe-to-dismiss, a collaboration-notification pass (owners get told when collaborators walk away), an editor paste/copy polish pass, a **"Read mode for notes"** opt-out, and a major Android app maturity pass (in-app APK self-updater, first-launch welcome screen, F-Droid-aware build).
