@@ -142,14 +142,38 @@ function writeInitialStatus({ fromVersion, toVersion }) {
 }
 
 // ── Docker capability check ──────────────────────────────────────────────────
-async function dockerSocketAvailable() {
-    if (!safeExists(DOCKER_DEFAULTS.socket)) return false;
+// Probe the Docker socket and classify WHY one-click is unavailable so the
+// admin panel can show an accurate remedy instead of a single catch-all
+// "the socket is missing" message. The distinction matters on platforms
+// like Synology, where the socket IS mounted but owned by root:root — the
+// app user gets EACCES, which used to be reported as "missing".
+async function probeDockerSocket() {
+    if (!safeExists(DOCKER_DEFAULTS.socket)) {
+        return { ok: false, reason: "docker-socket-missing" };
+    }
     try {
         await dockerApi("GET", "/_ping");
-        return true;
-    } catch {
-        return false;
+        return { ok: true, reason: null };
+    } catch (e) {
+        const code = e && e.code;
+        // EACCES/EPERM: socket exists but the app user cannot open it
+        // (the classic Synology root:root case).
+        if (code === "EACCES" || code === "EPERM") {
+            return { ok: false, reason: "docker-socket-permission-denied" };
+        }
+        // ENOENT: the socket vanished between the existence check and the
+        // connect — treat it as missing.
+        if (code === "ENOENT") {
+            return { ok: false, reason: "docker-socket-missing" };
+        }
+        // ECONNREFUSED, timeouts, or a non-2xx /_ping reply: the socket is
+        // reachable but the daemon did not answer cleanly.
+        return { ok: false, reason: "docker-daemon-unreachable" };
     }
+}
+
+async function dockerSocketAvailable() {
+    return (await probeDockerSocket()).ok;
 }
 
 function dockerApi(method, apiPath, body, { stream = false } = {}) {
@@ -196,13 +220,14 @@ function dockerApi(method, apiPath, body, { stream = false } = {}) {
 async function getMode({ verifyDocker = true } = {}) {
     const mode = detectMode();
     if (mode === "docker") {
-        const oneClickAvailable = verifyDocker ? await dockerSocketAvailable() : true;
+        if (!verifyDocker) {
+            return { mode, oneClickAvailable: true, reason: null };
+        }
+        const probe = await probeDockerSocket();
         return {
             mode,
-            oneClickAvailable,
-            reason: oneClickAvailable
-                ? null
-                : "docker-socket-missing",
+            oneClickAvailable: probe.ok,
+            reason: probe.ok ? null : probe.reason,
         };
     }
     if (mode === "native") {
@@ -608,5 +633,6 @@ module.exports = {
         getLockFilePath,
         getDataDir,
         dockerSocketAvailable,
+        probeDockerSocket,
     },
 };

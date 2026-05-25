@@ -1240,6 +1240,12 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
     "Pour activer la mise à jour en un clic sur Docker, ajoutez cette ligne sous le bloc 'volumes:' de votre docker-compose.yml, puis redémarrez le conteneur une seule fois. Vous n'aurez plus jamais à toucher à ce fichier.",
   selfUpdateDockerHintFootnote:
     "Après modification, lancez : docker compose up -d. Le bouton « Mettre à jour maintenant » apparaîtra ensuite ici.",
+  selfUpdateDockerPermIntro:
+    "Le socket Docker est bien monté, mais GlassKeep n'a pas encore la permission de l'utiliser. C'est fréquent sur Synology Container Manager, où le socket appartient à root. Recréez (ou redémarrez) le conteneur une fois — GlassKeep s'accorde l'accès au prochain démarrage et le bouton « Mettre à jour maintenant » apparaîtra ici.",
+  selfUpdateDockerPermFootnote:
+    "Synology : arrêtez le projet dans Container Manager, puis relancez-le. En ligne de commande : docker compose up -d --force-recreate.",
+  selfUpdateDockerDaemonHint:
+    "Le socket Docker est monté mais le démon Docker n'a pas répondu. Vérifiez que Docker tourne sur l'hôte, puis rechargez cette page.",
   audioNote: "Note audio",
   audioNoteDesc: "Mémo vocal au microphone",
   audioRecording: "Enregistrement audio",

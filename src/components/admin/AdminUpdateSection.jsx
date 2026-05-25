@@ -120,6 +120,24 @@ function DockerSocketHint() {
   );
 }
 
+// Shown when the socket IS mounted but the app still can't drive Docker:
+// permission denied (the Synology root:root case) or the daemon not
+// answering. Unlike DockerSocketHint there is no line to copy — the
+// remedy is to recreate/restart the container or fix the daemon — so
+// this is a text-only notice in a distinct (amber) colour.
+function DockerNoticeHint({ intro, footnote }) {
+  return (
+    <div className="rounded-lg border border-amber-300/60 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 mb-3">
+      <p className="text-xs text-amber-900 dark:text-amber-200">{intro}</p>
+      {footnote && (
+        <p className="text-[11px] font-mono text-amber-800/80 dark:text-amber-200/70 mt-2">
+          {footnote}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function AdminUpdateSection({
   updateInfo,
   selfUpdate,
@@ -256,6 +274,25 @@ export default function AdminUpdateSection({
             mode === "docker" &&
             oneClickReason === "docker-socket-missing" && (
               <DockerSocketHint />
+            )}
+
+          {/* Docker + socket mounted but not accessible (Synology root:root):
+              the mount is already there, so tell the admin to recreate the
+              container rather than re-adding a line they already have. */}
+          {!oneClickAvailable &&
+            mode === "docker" &&
+            oneClickReason === "docker-socket-permission-denied" && (
+              <DockerNoticeHint
+                intro={t("selfUpdateDockerPermIntro")}
+                footnote={t("selfUpdateDockerPermFootnote")}
+              />
+            )}
+
+          {/* Docker + socket reachable but the daemon did not answer. */}
+          {!oneClickAvailable &&
+            mode === "docker" &&
+            oneClickReason === "docker-daemon-unreachable" && (
+              <DockerNoticeHint intro={t("selfUpdateDockerDaemonHint")} />
             )}
 
           {/* Manual commands stay around as a fallback for either mode. */}

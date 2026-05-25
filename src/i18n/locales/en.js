@@ -1238,6 +1238,12 @@ loginUnexpectedError: "Unable to sign in. Check your connection and try again.",
     "To enable one-click updates on Docker, add this single line under the 'volumes:' block of your docker-compose.yml, then restart the container once. You will never have to touch this file again.",
   selfUpdateDockerHintFootnote:
     "After saving, run: docker compose up -d. The 'Update now' button will then appear here.",
+  selfUpdateDockerPermIntro:
+    "The Docker socket is mounted, but GlassKeep does not yet have permission to use it. This is common on Synology Container Manager, where the socket is owned by root. Recreate (or restart) the container once — GlassKeep grants itself access on the next start and the 'Update now' button will appear here.",
+  selfUpdateDockerPermFootnote:
+    "Synology: stop the project in Container Manager, then start it again. CLI: docker compose up -d --force-recreate.",
+  selfUpdateDockerDaemonHint:
+    "The Docker socket is mounted but the Docker daemon did not respond. Make sure Docker is running on the host, then reload this page.",
   audioNote: "Audio note",
   audioNoteDesc: "Voice memo from microphone",
   audioRecording: "Audio recording",
