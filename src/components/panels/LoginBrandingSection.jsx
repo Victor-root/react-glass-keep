@@ -59,7 +59,7 @@ function AppNameRow({ value, onSave, showToast }) {
           <div className="text-sm text-gray-500">{t("customAppNameDesc")}</div>
         </div>
       </div>
-      <div className="ml-11 flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="text"
           maxLength={10}
@@ -79,7 +79,7 @@ function AppNameRow({ value, onSave, showToast }) {
           {busy ? t("saving") : savedFlash ? t("saved") : t("save")}
         </button>
       </div>
-      <p className="ml-11 text-xs text-gray-400 dark:text-gray-500">{t("brandingResetHint")}</p>
+      <p className="text-xs text-gray-400 dark:text-gray-500">{t("brandingResetHint")}</p>
     </div>
   );
 }
@@ -166,7 +166,7 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
             <div className="text-sm text-gray-500">{t("customLogoDesc")}</div>
           </div>
         </div>
-        <div className="ml-11 space-y-3">
+        <div className="space-y-3">
           <p className="text-xs text-gray-400 dark:text-gray-500">{t("customLogoRecommend")}</p>
           {/* Light + dark legibility preview */}
           <div className="grid grid-cols-2 gap-3">
@@ -230,7 +230,7 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
             <div className="text-sm text-gray-500">{t("loginBackgroundImageDesc")}</div>
           </div>
         </div>
-        <div className="ml-11 space-y-3">
+        <div className="space-y-3">
           <p className="text-xs text-gray-400 dark:text-gray-500">{t("loginBackgroundRecommend")}</p>
           {/* Preview. With a custom image: the real image + live blur +
               theme scrim + a sample card. Without one: the app's default
@@ -309,7 +309,7 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
             <div className="text-sm text-gray-500">{t("loginBackgroundBlurDesc")}</div>
           </div>
         </div>
-        <div className="ml-11">
+        <div>
           <input
             type="range"
             min={0}

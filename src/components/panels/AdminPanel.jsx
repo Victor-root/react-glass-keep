@@ -55,7 +55,7 @@ function LoginSloganRow({ value, onSave, showToast }) {
           <div className="text-sm text-gray-500">{t("loginSlogan")}</div>
         </div>
       </div>
-      <div className="ml-11 flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="text"
           maxLength={200}

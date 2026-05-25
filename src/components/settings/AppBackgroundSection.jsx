@@ -98,7 +98,7 @@ export default function AppBackgroundSection({
           <div className="text-sm text-gray-500">{t("appBackgroundImageDesc")}</div>
         </div>
       </div>
-      <div className="ml-11 space-y-3">
+      <div className="space-y-3">
         <p className="text-xs text-gray-400 dark:text-gray-500">{t("loginBackgroundRecommend")}</p>
         {/* Preview. With a custom image: the real image + live blur +
             theme scrim + a sample card. Without one: the app's default
@@ -181,7 +181,7 @@ export default function AppBackgroundSection({
               <div className="text-sm text-gray-500">{t("appBackgroundBlurDesc")}</div>
             </div>
           </div>
-          <div className="ml-11">
+          <div>
             <input
               type="range"
               min={0}
