@@ -41,7 +41,9 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
             style={{
               position: "absolute",
               inset: 0,
-              background: dark ? "rgba(17,17,17,0.55)" : "rgba(255,255,255,0.45)",
+              // Light mode shows the image raw (a white wash looked washed
+              // out); dark mode keeps a veil so light text stays legible.
+              background: dark ? "rgba(17,17,17,0.55)" : "transparent",
             }}
           />
         </div>

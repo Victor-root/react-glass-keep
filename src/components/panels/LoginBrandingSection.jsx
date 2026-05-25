@@ -250,7 +250,7 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
                 />
                 <div
                   className="absolute inset-0"
-                  style={{ background: dark ? "rgba(17,17,17,0.55)" : "rgba(255,255,255,0.45)" }}
+                  style={{ background: dark ? "rgba(17,17,17,0.55)" : "transparent" }}
                 />
                 <div className="relative glass-card rounded-lg px-4 py-3 flex items-center gap-2 shadow-lg">
                   <img src={logo || "/pwa-192.png"} alt="" className="h-6 w-6 rounded-md object-contain" draggable="false" />

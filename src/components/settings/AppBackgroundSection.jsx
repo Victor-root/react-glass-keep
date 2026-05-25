@@ -118,7 +118,7 @@ export default function AppBackgroundSection({
               />
               <div
                 className="absolute inset-0"
-                style={{ background: dark ? "rgba(26,26,26,0.6)" : "rgba(240,232,255,0.55)" }}
+                style={{ background: dark ? "rgba(26,26,26,0.6)" : "transparent" }}
               />
               <div className="relative glass-card rounded-lg px-4 py-3 shadow-lg w-32">
                 <div className="h-2 w-3/4 rounded bg-gray-500/40 mb-2" />

@@ -28,7 +28,9 @@ export default function AppBackground({ image, blur = 0, dark }) {
         style={{
           position: "absolute",
           inset: 0,
-          background: dark ? "rgba(26,26,26,0.6)" : "rgba(240,232,255,0.55)",
+          // Light mode shows the image raw (a white wash looked washed
+          // out); dark mode keeps a veil so light UI stays legible.
+          background: dark ? "rgba(26,26,26,0.6)" : "transparent",
         }}
       />
     </div>
