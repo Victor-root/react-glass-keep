@@ -167,6 +167,8 @@ html.gk-custom-bg:not(.dark) .glass-card {
   background-color: rgba(255, 255, 255, 0.92);
 }
 html.gk-custom-bg:not(.dark) header.glass-card {
+  /* A very slight transparency so the wallpaper is just visible through
+     the header; the strong backdrop-blur keeps the controls legible. */
   background:
     linear-gradient(
       90deg,
@@ -174,21 +176,21 @@ html.gk-custom-bg:not(.dark) header.glass-card {
       rgba(168, 85, 247, 0.07) 50%,
       rgba(236, 72, 153, 0.05) 100%
     ),
-    rgba(255, 255, 255, 0.94);
+    rgba(255, 255, 255, 0.88);
 }
 /* When a background is active, the sidebar becomes a frosted panel so the
    wallpaper shows through it (continuous) instead of being cut off by a
    solid block. !important overrides the component's inline color; the
    backdrop-blur keeps the tag text legible over the photo. */
 html.gk-custom-bg .gk-sidebar {
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 html.gk-custom-bg:not(.dark) .gk-sidebar {
-  background-color: rgba(240, 232, 255, 0.78) !important;
+  background-color: rgba(240, 232, 255, 0.64) !important;
 }
 html.gk-custom-bg.dark .gk-sidebar {
-  background-color: rgba(34, 34, 34, 0.72) !important;
+  background-color: rgba(34, 34, 34, 0.6) !important;
 }
 /* The app background fades in on mount so toggling it on (or loading a
    page that has one) isn't an abrupt pop. */

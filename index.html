@@ -37,15 +37,15 @@
           .call(document.head.querySelectorAll(sel), function (l) { return l.outerHTML; })
           .join('');
         var c = JSON.parse(localStorage.getItem('gk:branding') || 'null');
-        if (!c) return;
-        if (c.appName) document.title = c.appName;
-        if (c.logo) {
+        if (c && c.appName) document.title = c.appName;
+        var fav = localStorage.getItem('gk:favicon');
+        if (fav) {
           Array.prototype.forEach.call(document.head.querySelectorAll(sel), function (l) {
             l.parentNode.removeChild(l);
           });
-          var icon = document.createElement('link'); icon.rel = 'icon'; icon.href = c.logo;
+          var icon = document.createElement('link'); icon.rel = 'icon'; icon.href = fav;
           document.head.appendChild(icon);
-          var apple = document.createElement('link'); apple.rel = 'apple-touch-icon'; apple.href = c.logo;
+          var apple = document.createElement('link'); apple.rel = 'apple-touch-icon'; apple.href = fav;
           document.head.appendChild(apple);
         }
       } catch (e) {}

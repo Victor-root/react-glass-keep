@@ -70,6 +70,7 @@ const BrandingContext = createContext({
 // replaces the favicon. We capture the page's original icon links once
 // so clearing the custom logo restores the bundled favicons exactly.
 const ICON_SELECTOR = 'link[rel~="icon"], link[rel="apple-touch-icon"]';
+const FAVICON_KEY = "gk:favicon";
 let originalIconLinksHTML = null;
 
 function applyDocumentTitle(appName) {
@@ -92,23 +93,62 @@ function getOriginalIconLinksHTML() {
   return originalIconLinksHTML;
 }
 
-function applyFavicon(logo) {
+// Browsers force a favicon into a square slot, so a non-square logo gets
+// flattened. We draw the logo "contain"-fitted onto a square transparent
+// canvas first, keeping its aspect ratio in the tab.
+function makeSquareFavicon(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const size = 128;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const scale = Math.min(size / img.width, size / img.height);
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        ctx.clearRect(0, 0, size, size);
+        ctx.drawImage(img, Math.round((size - w) / 2), Math.round((size - h) / 2), w, h);
+        resolve(canvas.toDataURL("image/png"));
+      } catch (e) {
+        reject(e);
+      }
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+function setIconLinks(href) {
+  const head = document.head;
+  head.querySelectorAll(ICON_SELECTOR).forEach((l) => l.remove());
+  const icon = document.createElement("link");
+  icon.rel = "icon";
+  icon.href = href;
+  head.appendChild(icon);
+  const apple = document.createElement("link");
+  apple.rel = "apple-touch-icon";
+  apple.href = href;
+  head.appendChild(apple);
+}
+
+async function applyFavicon(logo) {
   const head = document.head;
   const originals = getOriginalIconLinksHTML();
-  head.querySelectorAll(ICON_SELECTOR).forEach((l) => l.remove());
-  if (logo) {
-    const icon = document.createElement("link");
-    icon.rel = "icon";
-    icon.href = logo;
-    head.appendChild(icon);
-    const apple = document.createElement("link");
-    apple.rel = "apple-touch-icon";
-    apple.href = logo;
-    head.appendChild(apple);
-  } else if (originals) {
-    // Restore the bundled <link rel="icon"> set from index.html.
-    head.insertAdjacentHTML("beforeend", originals);
+  if (!logo) {
+    head.querySelectorAll(ICON_SELECTOR).forEach((l) => l.remove());
+    if (originals) head.insertAdjacentHTML("beforeend", originals);
+    try { localStorage.removeItem(FAVICON_KEY); } catch { /* ignore */ }
+    return;
   }
+  let favicon = logo;
+  try { favicon = await makeSquareFavicon(logo); } catch { /* fall back to raw */ }
+  setIconLinks(favicon);
+  // Cache the square favicon so the index.html boot script can apply it
+  // (already square) on the next load without recomputing.
+  try { localStorage.setItem(FAVICON_KEY, favicon); } catch { /* quota */ }
 }
 
 export function BrandingProvider({ children }) {
