@@ -68,6 +68,7 @@ import { useNotifications } from "./components/notifications/NotificationProvide
 import { playNotificationDing } from "./utils/notificationSound.js";
 import QrScannerModal from "./components/auth/QrScannerModal.jsx";
 import FloatingCardsBackground from "./components/common/FloatingCardsBackground.jsx";
+import AppBackground from "./components/common/AppBackground.jsx";
 import NoteModal from "./components/modal/NoteModal.jsx";
 import SecondaryNoteInstance from "./components/modal/SecondaryNoteInstance.jsx";
 import { parseAudioContent, isAudioContentEmpty, extensionForMime } from "./utils/audioNote.js";
@@ -212,6 +213,14 @@ export default function App() {
       return next;
     });
   }, []);
+
+  // Per-user app background (image data URL + blur). Loaded from
+  // /user/settings on startup; the image lives in a dedicated server
+  // column (not the synced blob) and is written via PUT
+  // /api/user/app-background. Not mirrored to localStorage — the data
+  // URL can be large and it's only a backdrop behind the app.
+  const [appBackground, setAppBackground] = useState(null);
+  const [appBackgroundBlur, setAppBackgroundBlur] = useState(0);
 
   // AI assistant — visibility flag mirrored from the server. The
   // authoritative state lives in user_ai_settings (loaded by
@@ -1012,6 +1021,13 @@ export default function App() {
         if (settings && typeof settings.floatingCardsEnabled === "boolean") {
           setFloatingCardsEnabled(settings.floatingCardsEnabled);
           localStorage.setItem("floatingCardsEnabled", String(settings.floatingCardsEnabled));
+        }
+        // Per-user app background (image lives in a dedicated server
+        // column, surfaced through this settings load). Not cached in
+        // localStorage — the data URL can be large.
+        setAppBackground(typeof settings?.appBackground === "string" ? settings.appBackground : null);
+        if (Number.isFinite(Number(settings?.appBackgroundBlur))) {
+          setAppBackgroundBlur(Math.max(0, Math.min(20, Number(settings.appBackgroundBlur))));
         }
         if (settings?.checklistInsertPosition) {
           setChecklistInsertPosition(settings.checklistInsertPosition);
@@ -6602,7 +6618,9 @@ export default function App() {
           }
         />
       )}
-      {floatingCardsEnabled && <FloatingCardsBackground />}
+      {appBackground
+        ? <AppBackground image={appBackground} blur={appBackgroundBlur} dark={dark} />
+        : floatingCardsEnabled && <FloatingCardsBackground />}
       {/* Tag Sidebar / Drawer */}
       <TagSidebar
         open={sidebarOpen}
@@ -6668,6 +6686,10 @@ export default function App() {
         setAiAssistantEnabled={setAiAssistantEnabled}
         floatingCardsEnabled={floatingCardsEnabled}
         setFloatingCardsEnabled={setFloatingCardsEnabled}
+        appBackground={appBackground}
+        setAppBackground={setAppBackground}
+        appBackgroundBlur={appBackgroundBlur}
+        setAppBackgroundBlur={setAppBackgroundBlur}
         checklistInsertPosition={checklistInsertPosition}
         setChecklistInsertPosition={setChecklistInsertPosition}
         checklistRemoveSectionBehavior={checklistRemoveSectionBehavior}

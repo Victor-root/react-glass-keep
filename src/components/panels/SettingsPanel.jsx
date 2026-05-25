@@ -10,6 +10,7 @@ import { fileToCompressedDataURL } from "../../utils/helpers.js";
 import TypographyModal from "./TypographyModal.jsx";
 import PasskeySettingsSection from "../settings/PasskeySettingsSection.jsx";
 import UserAiSettingsSection from "../settings/UserAiSettingsSection.jsx";
+import AppBackgroundSection from "../settings/AppBackgroundSection.jsx";
 import { RowIcon, SettingsSection, SettingsSubHeading as UISubHeading } from "../common/SettingsAccordion.jsx";
 
 const SectionHeaderIcon = RowIcon;
@@ -43,6 +44,10 @@ export default function SettingsPanel({
   setAiAssistantEnabled,
   floatingCardsEnabled,
   setFloatingCardsEnabled,
+  appBackground,
+  setAppBackground,
+  appBackgroundBlur,
+  setAppBackgroundBlur,
   checklistInsertPosition,
   setChecklistInsertPosition,
   checklistRemoveSectionBehavior,
@@ -631,6 +636,21 @@ export default function SettingsPanel({
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Per-user app background (image + blur) — separated by a
+                  hairline so it reads as its own group within the UI
+                  preferences. */}
+              <div className="pt-2 border-t border-[var(--border-light)]">
+                <AppBackgroundSection
+                  token={token}
+                  appBackground={appBackground}
+                  setAppBackground={setAppBackground}
+                  appBackgroundBlur={appBackgroundBlur}
+                  setAppBackgroundBlur={setAppBackgroundBlur}
+                  showToast={showToast}
+                  dark={dark}
+                />
               </div>
 
             </div>

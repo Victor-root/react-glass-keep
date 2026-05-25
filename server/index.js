@@ -271,6 +271,15 @@ CREATE TABLE IF NOT EXISTS app_settings (
         // tag like "fr" or "en". Stored as TEXT to remain forward-compatible.
         db.exec(`ALTER TABLE users ADD COLUMN language TEXT`);
       }
+      if (!names.has("app_bg_image")) {
+        // Per-user app background image (data URL). NULL = use the default
+        // (floating cards). Stored in its own column so the large data URL
+        // stays out of the synced user_settings blob.
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_image TEXT`);
+      }
+      if (!names.has("app_bg_blur")) {
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_blur INTEGER NOT NULL DEFAULT 0`);
+      }
     });
     tx();
   } catch {
@@ -1435,6 +1444,57 @@ app.put("/api/user/avatar", auth, (req, res) => {
 app.delete("/api/user/avatar", auth, (req, res) => {
   db.prepare("UPDATE users SET avatar_url = NULL WHERE id = ?").run(req.user.id);
   res.json({ ok: true });
+});
+
+// Per-user app background (data URL) + blur. Stored in dedicated user
+// columns so the large data URL stays out of the synced settings blob.
+// The image is tri-state: explicit `null` clears it, a valid data URL
+// sets it, an omitted key leaves it unchanged. Blur is clamped 0-20px.
+app.put("/api/user/app-background", auth, (req, res) => {
+  const body = req.body || {};
+  const updates = [];
+  const params = [];
+
+  if (Object.prototype.hasOwnProperty.call(body, "image")) {
+    const image = body.image;
+    if (image === null) {
+      updates.push("app_bg_image = ?");
+      params.push(null);
+    } else if (typeof image === "string" && image) {
+      if (!/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/]+=*$/.test(image)) {
+        return res.status(400).json({ error: "Background must be a PNG, JPEG or WebP image data URL." });
+      }
+      if (image.length > 4 * 1024 * 1024) {
+        return res.status(413).json({ error: "Background image is too large." });
+      }
+      updates.push("app_bg_image = ?");
+      params.push(image);
+    } else {
+      return res.status(400).json({ error: "image must be a data URL or null." });
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "blur")) {
+    const blur = body.blur;
+    if (typeof blur !== "number" || !Number.isFinite(blur)) {
+      return res.status(400).json({ error: "blur must be a number." });
+    }
+    updates.push("app_bg_blur = ?");
+    params.push(Math.max(0, Math.min(20, Math.round(blur))));
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ error: "No supported field provided." });
+  }
+  params.push(req.user.id);
+  db.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`).run(...params);
+
+  const user = getUserById.get(req.user.id);
+  res.json({
+    ok: true,
+    appBackground: user.app_bg_image || null,
+    appBackgroundBlur: user.app_bg_blur || 0,
+  });
 });
 
 // Get current user profile info (authenticated)
@@ -2902,7 +2962,16 @@ app.post("/api/notes/import", auth, (req, res) => {
 // ---------- User Settings ----------
 app.get("/api/user/settings", auth, (req, res) => {
   const row = getUserSettings.get(req.user.id);
-  res.json(row ? JSON.parse(row.settings_json) : {});
+  const settings = row ? JSON.parse(row.settings_json) : {};
+  // Surface the per-user app background (stored in dedicated user
+  // columns, not the settings blob) through the same load the client
+  // already runs on startup, so it renders without an extra request.
+  const user = getUserById.get(req.user.id);
+  if (user) {
+    settings.appBackground = user.app_bg_image || null;
+    settings.appBackgroundBlur = user.app_bg_blur || 0;
+  }
+  res.json(settings);
 });
 
 app.patch("/api/user/settings", auth, (req, res) => {
