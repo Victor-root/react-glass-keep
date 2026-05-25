@@ -181,7 +181,7 @@ export default function NotesHeader({
             <img
               src={branding.logo}
               alt={appName}
-              className="h-7 w-7 rounded-xl shadow-sm select-none pointer-events-none object-contain"
+              className="h-7 w-7 select-none pointer-events-none object-contain"
               draggable="false"
             />
           ) : (

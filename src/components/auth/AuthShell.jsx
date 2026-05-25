@@ -8,6 +8,10 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
   const { branding } = useBranding();
   const appName = branding.appName || DEFAULT_APP_NAME;
   const logoSrc = branding.logo || "/pwa-192.png";
+  // A custom logo is shown raw (no rounded clip / shadow) so a
+  // transparent PNG doesn't get an ugly box behind it; the bundled
+  // default icon keeps its rounded-tile + shadow look.
+  const isCustomLogo = !!branding.logo;
   const hasCustomBg = !!branding.loginBackground;
   const blur = branding.loginBackgroundBlur || 0;
   // A custom background replaces the decorative floating cards — showing
@@ -144,7 +148,7 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
               <img
                 src={logoSrc}
                 alt={appName}
-                className="h-16 w-16 rounded-2xl shadow-lg mx-auto mb-4 select-none pointer-events-none object-contain"
+                className={`h-16 w-16 mx-auto mb-4 select-none pointer-events-none object-contain${isCustomLogo ? "" : " rounded-2xl shadow-lg"}`}
                 draggable="false"
               />
               <h1 className="text-3xl font-bold">{appName}</h1>
@@ -180,7 +184,7 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
                   <img
                     src={logoSrc}
                     alt={appName}
-                    className="h-14 w-14 rounded-2xl shadow-md mx-auto mb-3 select-none pointer-events-none object-contain"
+                    className={`h-14 w-14 mx-auto mb-3 select-none pointer-events-none object-contain${isCustomLogo ? "" : " rounded-2xl shadow-md"}`}
                     draggable="false"
                   />
                   <h1 className="text-2xl font-bold">{appName}</h1>
@@ -253,7 +257,7 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
         </div>
       </div>
       <p className="text-center text-xs text-gray-400 dark:text-gray-600 z-10 select-none pb-4 pt-2 relative">
-        <span className={hasCustomBg ? "glass-card inline-block rounded-full px-4 py-1.5 shadow-sm" : ""}>
+        <span className={hasCustomBg ? "inline-block rounded-full px-3 py-1 bg-black/20 backdrop-blur-sm" : ""}>
           Open source project &mdash; Originally by{" "}
           <a href="https://github.com/nikunjsingh93" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400 transition-colors">nikunjsingh93</a>
           {" · "}maintained and expanded by{" "}
