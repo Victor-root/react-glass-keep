@@ -89,6 +89,17 @@ html.gk-overlay-locked body {
     -webkit-backdrop-filter: none;
   }
 }
+/* While the window is actively scrolling, drop the note cards'
+   backdrop-blur (toggled by useScrollingClass). Recompositing blur(20px)
+   for every visible card on each frame is the main scroll-jank source on
+   weaker desktop GPUs; the frosted look returns ~160ms after scroll
+   stops. The sticky header keeps its blur (it must mask the content
+   scrolling under it). Touch devices already disable the blur above, so
+   this is a no-op there. */
+html.gk-scrolling .note-card.glass-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 /* Note cards: skip rendering when off-screen, isolate paint */
 .note-card {
   content-visibility: auto;
