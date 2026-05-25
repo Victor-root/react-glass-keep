@@ -10,6 +10,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useBranding } from "../../branding/BrandingContext.jsx";
 import { useNotifications } from "./NotificationProvider.jsx";
 import NotificationCard from "./NotificationCard.jsx";
 import { t } from "../../i18n";
@@ -36,6 +37,7 @@ export default function NotificationCenter({
   onClearAll,
 }) {
   const { notifications, remove, clear } = useNotifications();
+  const { branding } = useBranding();
   const handleClearAll = onClearAll || clear;
   const panelRef = useRef(null);
   // Used by the pointerdown handler below — same pattern as NotesHeader's
@@ -314,13 +316,23 @@ export default function NotificationCenter({
       <header className="gk-notif-center__header">
         <div className="gk-notif-center__brand">
           <span className="gk-notif-center__logo-wrap" aria-hidden="true">
-            <img
-              src="/favicon-32x32.png"
-              srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
-              alt=""
-              className="gk-notif-center__logo"
-              draggable="false"
-            />
+            {branding.logo ? (
+              <img
+                src={branding.logo}
+                alt=""
+                className="gk-notif-center__logo"
+                style={{ objectFit: "contain", borderRadius: 0, boxShadow: "none" }}
+                draggable="false"
+              />
+            ) : (
+              <img
+                src="/favicon-32x32.png"
+                srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
+                alt=""
+                className="gk-notif-center__logo"
+                draggable="false"
+              />
+            )}
           </span>
           <h2 className="gk-notif-center__title">
             {t("notificationCenterTitle")}

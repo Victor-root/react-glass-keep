@@ -278,7 +278,7 @@ export default function SettingsPanel({
         />
       )}
       <div
-        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[28rem] lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
+        className={`fixed top-0 right-0 z-50 h-full w-full lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
         style={{
           backgroundColor: dark ? "#222222" : "#f9f6ff",
           borderLeft: "1px solid var(--border-light)",
@@ -614,25 +614,26 @@ export default function SettingsPanel({
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-3 px-3">
+              <div className={`flex items-center justify-between gap-3 px-3 ${appBackground ? "opacity-50" : ""}`}>
                 <div className="flex items-center gap-3 min-w-0">
                   <RowIcon icon={TI.Sparkles} />
                   <div className="min-w-0">
                     <div className="font-medium">{t("enableAnimationsMobile")}</div>
-                    <div className="text-sm text-gray-500">{t("enableAnimationsMobileDesc")}</div>
+                    <div className="text-sm text-gray-500">{appBackground ? t("animationsDisabledByBg") : t("enableAnimationsMobileDesc")}</div>
                   </div>
                 </div>
                 <button
+                  disabled={!!appBackground}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
-                    floatingCardsEnabled
+                    !appBackground && floatingCardsEnabled
                       ? "bg-indigo-600"
                       : "bg-gray-300 dark:bg-gray-600"
-                  }`}
-                  onClick={() => setFloatingCardsEnabled(!floatingCardsEnabled)}
+                  } ${appBackground ? "cursor-not-allowed" : ""}`}
+                  onClick={() => { if (!appBackground) setFloatingCardsEnabled(!floatingCardsEnabled); }}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      floatingCardsEnabled ? "translate-x-6" : "translate-x-1"
+                      !appBackground && floatingCardsEnabled ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
                 </button>

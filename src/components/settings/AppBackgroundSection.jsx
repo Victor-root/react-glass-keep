@@ -120,10 +120,21 @@ export default function AppBackgroundSection({
                 className="absolute inset-0"
                 style={{ background: dark ? "rgba(26,26,26,0.6)" : "transparent" }}
               />
-              <div className="relative glass-card rounded-lg px-4 py-3 shadow-lg w-32">
-                <div className="h-2 w-3/4 rounded bg-gray-500/40 mb-2" />
-                <div className="h-1.5 w-full rounded bg-gray-500/25 mb-1.5" />
-                <div className="h-1.5 w-2/3 rounded bg-gray-500/25" />
+              {/* A little cluster of sample notes so the preview reads as
+                  "your notes over this wallpaper" rather than one box. */}
+              <div className="relative flex items-start gap-2">
+                {[
+                  { bg: "bg-indigo-100", lines: 3 },
+                  { bg: "bg-rose-100", lines: 1 },
+                  { bg: "bg-amber-100", lines: 2 },
+                ].map((card, i) => (
+                  <div key={i} className={`w-14 rounded-lg ${card.bg} shadow-md p-1.5`}>
+                    <div className="h-1.5 w-3/4 rounded bg-gray-500/50 mb-1.5" />
+                    {Array.from({ length: card.lines }).map((_, j) => (
+                      <div key={j} className="h-1 w-full rounded bg-gray-400/45 mb-1 last:mb-0" />
+                    ))}
+                  </div>
+                ))}
               </div>
             </>
           ) : (

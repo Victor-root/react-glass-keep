@@ -167,8 +167,8 @@ html.gk-custom-bg:not(.dark) .glass-card {
   background-color: rgba(255, 255, 255, 0.92);
 }
 html.gk-custom-bg:not(.dark) header.glass-card {
-  /* A very slight transparency so the wallpaper is just visible through
-     the header; the strong backdrop-blur keeps the controls legible. */
+  /* A slight transparency so the wallpaper shows through the header; the
+     strong backdrop-blur keeps the controls legible. */
   background:
     linear-gradient(
       90deg,
@@ -176,7 +176,7 @@ html.gk-custom-bg:not(.dark) header.glass-card {
       rgba(168, 85, 247, 0.07) 50%,
       rgba(236, 72, 153, 0.05) 100%
     ),
-    rgba(255, 255, 255, 0.88);
+    rgba(255, 255, 255, 0.82);
 }
 /* When a background is active, the sidebar becomes a frosted panel so the
    wallpaper shows through it (continuous) instead of being cut off by a
