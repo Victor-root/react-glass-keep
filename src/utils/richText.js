@@ -216,6 +216,19 @@ export function contentToHTML(content) {
   return richDocToHTML(doc);
 }
 
+/** Like contentToHTML but caps the doc to its first `maxBlocks` top-level
+ *  nodes. Card previews are clipped to a fixed max-height, so rendering a
+ *  whole note (e.g. 10 code blocks) just to hide most of it wastes layout
+ *  + paint on scroll. A handful of blocks always overflows the preview,
+ *  so the visible result is identical while heavy notes stay cheap. */
+export function contentToHTMLPreview(content, maxBlocks = 8) {
+  const doc = contentToRichDoc(content);
+  if (doc && Array.isArray(doc.content) && doc.content.length > maxBlocks) {
+    return richDocToHTML({ ...doc, content: doc.content.slice(0, maxBlocks) });
+  }
+  return richDocToHTML(doc);
+}
+
 /** Render any note content (rich or legacy) to a plain-text preview string. */
 export function contentToPlain(content) {
   if (content == null) return "";

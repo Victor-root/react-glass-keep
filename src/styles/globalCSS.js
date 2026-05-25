@@ -68,8 +68,11 @@ html.gk-overlay-locked body {
 }
 .glass-card {
   background-color: var(--card-bg-light);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* 8px instead of 20px: a smaller blur radius is markedly cheaper for
+     the GPU to recomposite on every scroll frame (the main scroll-jank
+     source on weaker desktops) while still reading as frosted glass. */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border-light);
   box-shadow: 0 4px 24px rgba(139, 92, 246, 0.07);
   /* box-shadow transition removed — the shadow value never changes on
