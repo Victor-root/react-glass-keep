@@ -1,5 +1,16 @@
 # 📋 Changelog
 
+## 🚀 v2.5.0 — 2026-05-25
+
+Adds fully **customisable branding** — each instance can theme its login page, and each user can set their own in-app wallpaper, all from the UI (nothing hard-coded).
+
+### ➕ Added
+- 🎨 **Login page branding (admin)** — from Admin → *Paramètres de la page de connexion*, set a custom **app name** (≤ 10 chars), **logo** and **login background image** with an adjustable **blur**. The name + logo also drive the in-app header, the browser tab title and the favicon (kept square so it isn't flattened). Everything is optional and light/dark-aware; unset values fall back to the defaults, and the content panels stay legible over any image.
+- 🖼️ **Per-user app background** — from Settings → *Préférences d'interface*, each user can set their own image behind the app, with a **blur** slider, an optional **separate light / dark background** (two tabs), and an **on/off switch** that disables it without deleting the image. The header + sidebar turn into frosted panels so the wallpaper shows through, and the custom logo also appears in the Notification Center.
+
+### 🐛 Fixed
+- 📱 **Settings & Admin panels use the full width on mobile/tablet** instead of a narrow right-anchored drawer.
+
 ## 🚀 v2.4.1 — 2026-05-25
 
 Fixes one-click in-app updates on **Synology Container Manager / DSM** (and any host where the Docker socket is owned by `root:root`), plus more accurate self-update diagnostics in the admin panel.
