@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 // Per-user custom app background — a fixed, full-screen image behind the
 // whole app (replaces the decorative floating cards when set). Sits at
@@ -7,6 +7,15 @@ import React from "react";
 // a theme-aware scrim so the glass UI on top stays legible over any
 // image. Rendered only inside the logged-in app, never on the login page.
 export default function AppBackground({ image, blur = 0, dark }) {
+  // While a background is shown, flag <html> so light-mode surfaces turn
+  // near-opaque (see .gk-custom-bg rules) and stay legible over the photo.
+  useEffect(() => {
+    if (!image) return undefined;
+    const el = document.documentElement;
+    el.classList.add("gk-custom-bg");
+    return () => el.classList.remove("gk-custom-bg");
+  }, [image]);
+
   if (!image) return null;
   return (
     <div

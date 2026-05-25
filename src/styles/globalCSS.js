@@ -155,6 +155,28 @@ html.dark header.glass-card {
   border-bottom: 1px solid var(--border-light);
   box-shadow: none;
 }
+/* Custom background image active (login screen or app), LIGHT mode only.
+   The photo is shown raw (vivid), so legibility can't come from the
+   backdrop — instead the text-bearing surfaces become near-opaque so
+   their text reads over any image, and the few texts that float directly
+   on the photo (login logo/title/slogan) get a soft light halo. Dark
+   mode keeps its veil + glass look and is intentionally untouched. */
+html.gk-custom-bg:not(.dark) .glass-card {
+  background-color: rgba(255, 255, 255, 0.92);
+}
+html.gk-custom-bg:not(.dark) header.glass-card {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(99, 102, 241, 0.07) 0%,
+      rgba(168, 85, 247, 0.07) 50%,
+      rgba(236, 72, 153, 0.05) 100%
+    ),
+    rgba(255, 255, 255, 0.94);
+}
+html.gk-custom-bg:not(.dark) .gk-on-image {
+  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.9), 0 0 3px rgba(255, 255, 255, 0.75);
+}
 /* Shim around composer + sections that yields vertical room for the
    floating multi-select dock at the top of the page. The dock itself
    stays position:fixed so it follows scroll, but without this padding

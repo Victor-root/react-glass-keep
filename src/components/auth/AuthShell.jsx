@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Sun, Moon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { t } from "../../i18n";
@@ -13,6 +13,18 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
   // A custom background replaces the decorative floating cards — showing
   // both would clutter the backdrop and fight for attention.
   const showDecoCards = floatingCardsEnabled && !hasCustomBg;
+  // While a custom login background is shown, flag <html> so light-mode
+  // surfaces turn near-opaque (see .gk-custom-bg rules) and the form +
+  // floating text stay legible over the photo.
+  useEffect(() => {
+    if (!hasCustomBg) return undefined;
+    const el = document.documentElement;
+    el.classList.add("gk-custom-bg");
+    return () => el.classList.remove("gk-custom-bg");
+  }, [hasCustomBg]);
+  // Halo class applied to the texts that float directly on the photo
+  // (logo/title/slogan/footer) — only takes visual effect in light mode.
+  const onImg = hasCustomBg ? " gk-on-image" : "";
 
   return (
     <div className="min-h-screen flex flex-col px-4 relative overflow-hidden">
@@ -126,7 +138,7 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
               left-aligned within the wider wrapper (lg:mx-0) so the
               logo lines up over the form card rather than drifting
               into the gap between the two cards. */}
-          <div className="text-center mb-6 w-full max-w-md mx-auto lg:mx-0">
+          <div className={`text-center mb-6 w-full max-w-md mx-auto lg:mx-0${onImg}`}>
             <img
               src={logoSrc}
               alt={appName}
@@ -194,7 +206,7 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
               mx-auto; on lg+ the rows snap to the left of the
               wider wrapper (lg:mx-0) so they sit directly under the
               form card instead of between the two cards. */}
-          <div className="w-full max-w-md mx-auto lg:mx-0">
+          <div className={`w-full max-w-md mx-auto lg:mx-0${onImg}`}>
             <div className="mt-6 text-center">
               <button
                 onClick={onToggleDark}
@@ -222,7 +234,7 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
           </div>
         </div>
       </div>
-      <p className="text-center text-xs text-gray-400 dark:text-gray-600 z-10 select-none pb-4 pt-2 relative">
+      <p className={`text-center text-xs text-gray-400 dark:text-gray-600 z-10 select-none pb-4 pt-2 relative${onImg}`}>
         Open source project &mdash; Originally by{" "}
         <a href="https://github.com/nikunjsingh93" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400 transition-colors">nikunjsingh93</a>
         {" · "}maintained and expanded by{" "}
