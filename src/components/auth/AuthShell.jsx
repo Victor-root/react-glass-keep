@@ -22,9 +22,6 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
     el.classList.add("gk-custom-bg");
     return () => el.classList.remove("gk-custom-bg");
   }, [hasCustomBg]);
-  // Halo class applied to the texts that float directly on the photo
-  // (logo/title/slogan/footer) — only takes visual effect in light mode.
-  const onImg = hasCustomBg ? " gk-on-image" : "";
 
   return (
     <div className="min-h-screen flex flex-col px-4 relative overflow-hidden">
@@ -138,16 +135,22 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
               left-aligned within the wider wrapper (lg:mx-0) so the
               logo lines up over the form card rather than drifting
               into the gap between the two cards. */}
-          <div className={`text-center mb-6 w-full max-w-md mx-auto lg:mx-0${onImg}`}>
-            <img
-              src={logoSrc}
-              alt={appName}
-              className="h-16 w-16 rounded-2xl shadow-lg mx-auto mb-4 select-none pointer-events-none object-contain"
-              draggable="false"
-            />
-            <h1 className="text-3xl font-bold">{appName}</h1>
-            <p className="text-gray-500 dark:text-gray-400">{title}</p>
-          </div>
+          {/* Logo + title above the form card — only when there is NO
+              custom background. With a custom photo this floats on the
+              image (and a transparent logo can be unreadable), so it
+              moves INTO the form card instead (see below). */}
+          {!hasCustomBg && (
+            <div className="text-center mb-6 w-full max-w-md mx-auto lg:mx-0">
+              <img
+                src={logoSrc}
+                alt={appName}
+                className="h-16 w-16 rounded-2xl shadow-lg mx-auto mb-4 select-none pointer-events-none object-contain"
+                draggable="false"
+              />
+              <h1 className="text-3xl font-bold">{appName}</h1>
+              <p className="text-gray-500 dark:text-gray-400">{title}</p>
+            </div>
+          )}
 
           {/* Cards row.
               On mobile: flex column with the form card, a decorative
@@ -169,6 +172,21 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
             }`}
           >
             <div className="glass-card rounded-xl p-6 shadow-lg w-full max-w-md">
+              {/* With a custom background the brand sits inside the card
+                  (on its opaque surface) so a transparent logo + the
+                  name stay legible over any photo. */}
+              {hasCustomBg && (
+                <div className="text-center mb-5">
+                  <img
+                    src={logoSrc}
+                    alt={appName}
+                    className="h-14 w-14 rounded-2xl shadow-md mx-auto mb-3 select-none pointer-events-none object-contain"
+                    draggable="false"
+                  />
+                  <h1 className="text-2xl font-bold">{appName}</h1>
+                  {title && <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">{title}</p>}
+                </div>
+              )}
               {children}
             </div>
             {sidePanel && (
@@ -206,11 +224,11 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
               mx-auto; on lg+ the rows snap to the left of the
               wider wrapper (lg:mx-0) so they sit directly under the
               form card instead of between the two cards. */}
-          <div className={`w-full max-w-md mx-auto lg:mx-0${onImg}`}>
+          <div className="w-full max-w-md mx-auto lg:mx-0">
             <div className="mt-6 text-center">
               <button
                 onClick={onToggleDark}
-                className={`inline-flex items-center gap-2 text-sm ${dark ? "text-gray-300" : "text-gray-700"} hover:underline`}
+                className={`inline-flex items-center gap-2 text-sm ${dark ? "text-gray-300" : "text-gray-700"} hover:underline ${hasCustomBg ? "glass-card rounded-full px-4 py-1.5 shadow-sm" : ""}`}
                 data-tooltip={t("toggleDarkMode")}
               >
                 {dark ? <Moon /> : <Sun />} {t("toggleTheme")}
@@ -234,11 +252,13 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
           </div>
         </div>
       </div>
-      <p className={`text-center text-xs text-gray-400 dark:text-gray-600 z-10 select-none pb-4 pt-2 relative${onImg}`}>
-        Open source project &mdash; Originally by{" "}
-        <a href="https://github.com/nikunjsingh93" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400 transition-colors">nikunjsingh93</a>
-        {" · "}maintained and expanded by{" "}
-        <a href="https://github.com/Victor-root/glasskeep-enhanced" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400 transition-colors">Victor-root</a>
+      <p className="text-center text-xs text-gray-400 dark:text-gray-600 z-10 select-none pb-4 pt-2 relative">
+        <span className={hasCustomBg ? "glass-card inline-block rounded-full px-4 py-1.5 shadow-sm" : ""}>
+          Open source project &mdash; Originally by{" "}
+          <a href="https://github.com/nikunjsingh93" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400 transition-colors">nikunjsingh93</a>
+          {" · "}maintained and expanded by{" "}
+          <a href="https://github.com/Victor-root/glasskeep-enhanced" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400 transition-colors">Victor-root</a>
+        </span>
       </p>
     </div>
   );

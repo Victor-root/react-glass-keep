@@ -73,8 +73,10 @@ html.gk-overlay-locked body {
   border: 1px solid var(--border-light);
   box-shadow: 0 4px 24px rgba(139, 92, 246, 0.07);
   /* box-shadow transition removed — the shadow value never changes on
-     hover so it's dead repaint cost on every frame of the scale anim. */
-  transition: transform 0.2s ease;
+     hover so it's dead repaint cost on every frame of the scale anim.
+     background-color is transitioned so toggling a custom background
+     (which flips these surfaces to near-opaque) fades smoothly. */
+  transition: transform 0.2s ease, background-color 0.3s ease;
   break-inside: avoid;
 }
 /* Touch devices (phones, tablets) drop the backdrop blur entirely:
@@ -174,8 +176,28 @@ html.gk-custom-bg:not(.dark) header.glass-card {
     ),
     rgba(255, 255, 255, 0.94);
 }
-html.gk-custom-bg:not(.dark) .gk-on-image {
-  text-shadow: 0 1px 10px rgba(255, 255, 255, 0.9), 0 0 3px rgba(255, 255, 255, 0.75);
+/* When a background is active, the sidebar becomes a frosted panel so the
+   wallpaper shows through it (continuous) instead of being cut off by a
+   solid block. !important overrides the component's inline color; the
+   backdrop-blur keeps the tag text legible over the photo. */
+html.gk-custom-bg .gk-sidebar {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+html.gk-custom-bg:not(.dark) .gk-sidebar {
+  background-color: rgba(240, 232, 255, 0.78) !important;
+}
+html.gk-custom-bg.dark .gk-sidebar {
+  background-color: rgba(34, 34, 34, 0.72) !important;
+}
+/* The app background fades in on mount so toggling it on (or loading a
+   page that has one) isn't an abrupt pop. */
+.app-custom-bg {
+  animation: gkBgFadeIn 0.35s ease both;
+}
+@keyframes gkBgFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 /* Shim around composer + sections that yields vertical room for the
    floating multi-select dock at the top of the page. The dock itself
