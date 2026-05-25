@@ -1,23 +1,17 @@
 # 📋 Changelog
 
-## 🚀 v2.5.0 — 2026-05-25
+## 🚀 v2.4.5 — 2026-05-25
 
-Adds fully **customisable branding** — each instance can theme its login page, and each user can set their own in-app wallpaper, all from the UI (nothing hard-coded).
+Adds fully **customisable branding** — each instance can theme its login page and each user can set their own in-app wallpaper, all from the UI (nothing hard-coded) — and fixes one-click in-app updates on **Synology Container Manager / DSM**.
 
 ### ➕ Added
 - 🎨 **Login page branding (admin)** — from Admin → *Paramètres de la page de connexion*, set a custom **app name** (≤ 10 chars), **logo** and **login background image** with an adjustable **blur**. The name + logo also drive the in-app header, the browser tab title and the favicon (kept square so it isn't flattened). Everything is optional and light/dark-aware; unset values fall back to the defaults, and the content panels stay legible over any image.
-- 🖼️ **Per-user app background** — from Settings → *Préférences d'interface*, each user can set their own image behind the app, with a **blur** slider, an optional **separate light / dark background** (two tabs), and an **on/off switch** that disables it without deleting the image. The header + sidebar turn into frosted panels so the wallpaper shows through, and the custom logo also appears in the Notification Center.
+- 🖼️ **Per-user app background** — from Settings → *Préférences d'interface*, each user can set their own image behind the app, with a **blur** slider, an optional **separate light / dark background** (two tabs) and an **on/off switch** that disables it without deleting the image. The header + sidebar turn into frosted panels so the wallpaper shows through, and the custom logo also appears in the Notification Center.
 
 ### 🐛 Fixed
+- 🐳 **One-click update on Synology (and any `root:root` docker.sock)** — the container entrypoint discovered the Docker socket's owning group at runtime but **skipped** granting access when that group was GID 0 (root) — exactly how Synology DSM / Container Manager exposes it (`root:root`, no `docker` group). The unprivileged `node` user could never open the socket, so the admin panel kept showing **"Update manually"** and suggested adding a mount that was already present. The entrypoint now adds `node` to the root group when the socket is `root:root`, so one-click updates work after recreating the container once. (Hosts with a normal non-zero `docker` group, e.g. most Debian/Ubuntu setups, are unaffected.)
+- 🔎 **Accurate self-update diagnostics** — the backend now distinguishes *socket missing* vs *mounted but permission denied* vs *daemon unreachable*, and the admin panel shows the matching remedy instead of always telling you to add a mount you may already have.
 - 📱 **Settings & Admin panels use the full width on mobile/tablet** instead of a narrow right-anchored drawer.
-
-## 🚀 v2.4.1 — 2026-05-25
-
-Fixes one-click in-app updates on **Synology Container Manager / DSM** (and any host where the Docker socket is owned by `root:root`), plus more accurate self-update diagnostics in the admin panel.
-
-### 🐛 Fixed
-- 🐳 **One-click update on Synology (and any `root:root` docker.sock)** — the container entrypoint discovered the Docker socket's owning group at runtime but **skipped** granting access whenever that group was GID 0 (root). Synology DSM / Container Manager exposes the socket exactly that way — `root:root`, with no `docker` group — so the unprivileged `node` user the server runs as could never open the socket. The capability check reported the failure as "socket not mounted", and the admin panel kept showing **"Update manually"** while suggesting the operator add a socket mount that was *already present*. The entrypoint now adds `node` to the root group when the socket is `root:root`, so one-click updates work after recreating the container once. (Hosts that expose a normal non-zero `docker` group, e.g. most Debian/Ubuntu setups, are unaffected and keep working as before.)
-- 🔎 **Accurate self-update diagnostics** — the backend now distinguishes *socket missing* vs *socket mounted but permission denied* vs *Docker daemon unreachable*, instead of collapsing every Docker failure into a single "socket missing" reason. The admin panel shows the matching remedy for each case (recreate the container, check the daemon, or add the mount line) rather than always telling you to add a mount you may already have
 
 ### 🛠️ Upgrade
 
