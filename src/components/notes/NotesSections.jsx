@@ -47,12 +47,12 @@ export default function NotesSections({
           <section className="mb-10">
             {listView ? (
               <div className="max-w-2xl mx-auto">
-                <h2 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
+                <h2 className="gk-section-label text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
                   {t("pinned")}
                 </h2>
               </div>
             ) : (
-              <h2 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
+              <h2 className="gk-section-label text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
                 {t("pinned")}
               </h2>
             )}
@@ -131,12 +131,12 @@ export default function NotesSections({
             {pinned.length > 0 &&
               (listView ? (
                 <div className="max-w-2xl mx-auto">
-                  <h2 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
+                  <h2 className="gk-section-label text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
                     {t("others")}
                   </h2>
                 </div>
               ) : (
-                <h2 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
+                <h2 className="gk-section-label text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
                   {t("others")}
                 </h2>
               ))}

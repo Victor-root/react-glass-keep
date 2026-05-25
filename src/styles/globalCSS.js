@@ -192,6 +192,25 @@ html.gk-custom-bg:not(.dark) .gk-sidebar {
 html.gk-custom-bg.dark .gk-sidebar {
   background-color: rgba(34, 34, 34, 0.6) !important;
 }
+/* Note-type creation buttons: their light pastel drop-shadow reads as a
+   white halo over a photo in light mode (dark mode already uses
+   shadow-none). Swap it for a neutral dark shadow so the button sits on
+   the wallpaper cleanly. */
+html.gk-custom-bg:not(.dark) .gk-create-btn {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22) !important;
+}
+/* Section labels ("Pinned" / "Others") float directly on the wallpaper,
+   so in light mode they get a small frosted pill to stay readable over
+   any photo (dark mode reads fine on its veil). */
+html.gk-custom-bg:not(.dark) .gk-section-label {
+  display: inline-block;
+  color: #374151;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 3px 12px;
+  border-radius: 9999px;
+}
 /* The app background fades in on mount so toggling it on (or loading a
    page that has one) isn't an abrupt pop. */
 .app-custom-bg {
