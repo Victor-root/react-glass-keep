@@ -25,6 +25,7 @@
 
 import CodeBlock from "@tiptap/extension-code-block";
 import { t } from "../../../i18n";
+import { attachStickyCopyButton } from "../../../utils/codeCopySticky.js";
 
 export const CodeBlockCopy = CodeBlock.extend({
   addNodeView() {
@@ -74,35 +75,16 @@ export const CodeBlockCopy = CodeBlock.extend({
       });
       wrapper.appendChild(btn);
 
-      // Sticky scroll-follow: when the top of the wrapper scrolls past
-      // the editor's sticky header (or the top of the scroll container),
-      // push the button's offset down so it stays visible at the top
-      // of the *visible portion* of the block. Mirrors what
-      // `useModalState.js` does for view-mode rendering.
-      let scrollEl = null;
-      let stickyHeader = null;
-      const adjustBtnPos = () => {
-        if (!wrapper.isConnected || !scrollEl) return;
-        const headerBottom = stickyHeader
-          ? stickyHeader.getBoundingClientRect().bottom
-          : scrollEl.getBoundingClientRect().top;
-        const wrapperTop = wrapper.getBoundingClientRect().top;
-        const offset = headerBottom - wrapperTop;
-        if (offset > 8) {
-          const maxTop = wrapper.offsetHeight - btn.offsetHeight - 8;
-          btn.style.top = `${Math.min(offset + 8, Math.max(8, maxTop))}px`;
-        } else {
-          btn.style.top = "8px";
-        }
-      };
-      // Lazy-attach after the NodeView is mounted into the document so
-      // closest(".modal-scroll-themed") finds the host scroll container.
+      // Sticky scroll-follow: the copy button tracks the visible top of a
+      // tall code block as it scrolls under the editor's sticky header.
+      // attachStickyCopyButton does this without layout-thrashing (rAF
+      // coalescing + skips off-screen blocks). Lazy-attached after the
+      // NodeView is mounted so closest(".modal-scroll-themed") resolves.
+      let cleanupFollow = () => {};
       const attachScrollFollow = () => {
-        scrollEl = wrapper.closest(".modal-scroll-themed");
+        const scrollEl = wrapper.closest(".modal-scroll-themed");
         if (!scrollEl) return;
-        stickyHeader = scrollEl.querySelector(".sticky");
-        scrollEl.addEventListener("scroll", adjustBtnPos, { passive: true });
-        adjustBtnPos();
+        cleanupFollow = attachStickyCopyButton(scrollEl, wrapper, btn);
       };
       const raf = requestAnimationFrame(attachScrollFollow);
 
@@ -128,9 +110,7 @@ export const CodeBlockCopy = CodeBlock.extend({
         },
         destroy: () => {
           cancelAnimationFrame(raf);
-          if (scrollEl) {
-            scrollEl.removeEventListener("scroll", adjustBtnPos);
-          }
+          cleanupFollow();
           clearTimeout(btn._gkResetTimer);
         },
       };

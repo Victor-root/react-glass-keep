@@ -3,6 +3,7 @@ import { t } from "../i18n";
 import { formatEditedStamp, normalizeImageFilename, downloadDataUrl } from "../utils/helpers.js";
 import { attachPlainTextCodeCopy } from "../utils/plainTextCodeCopy.js";
 import { attachReadModeInlineCopy } from "../components/richtext/extensions/EditExtras.js";
+import { attachStickyCopyButton } from "../utils/codeCopySticky.js";
 
 /**
  * useModalState — Pure UI state and effects for the note modal.
@@ -428,25 +429,11 @@ export default function useModalState({ notes, currentUser, closeModalRef, runFo
         });
         wrapper.appendChild(btn);
 
-        // Keep copy button visible when code block top scrolls past the modal header
-        const scrollEl = wrapper.closest(".modal-scroll-themed");
-        if (scrollEl) {
-          const stickyHeader = scrollEl.querySelector(".sticky");
-          const adjustPos = () => {
-            const headerBottom = stickyHeader
-              ? stickyHeader.getBoundingClientRect().bottom
-              : scrollEl.getBoundingClientRect().top;
-            const wrapperTop = wrapper.getBoundingClientRect().top;
-            const offset = headerBottom - wrapperTop;
-            if (offset > 8) {
-              const maxTop = wrapper.offsetHeight - btn.offsetHeight - 8;
-              btn.style.top = Math.min(offset + 8, maxTop) + "px";
-            } else {
-              btn.style.top = "8px";
-            }
-          };
-          scrollEl.addEventListener("scroll", adjustPos, { passive: true });
-        }
+        // Keep the copy button visible when a tall code block scrolls past
+        // the modal header. attachStickyCopyButton does this without
+        // layout-thrashing (rAF coalescing + skips off-screen blocks), so a
+        // note with many code blocks no longer janks on scroll.
+        attachStickyCopyButton(wrapper.closest(".modal-scroll-themed"), wrapper, btn);
       });
 
       // Inline code: handled by the shared floating overlay (see
