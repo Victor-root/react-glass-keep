@@ -253,22 +253,14 @@ export default function AppBackgroundSection({ token, appBg, setAppBg, showToast
 
   return (
     <div className="flex flex-col gap-3 px-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <RowIcon icon={TI.Background} />
-        <div className="min-w-0">
-          <div className="font-medium">{t("appBackgroundImage")}</div>
-          <div className="text-sm text-gray-500">{t("appBackgroundImageDesc")}</div>
-        </div>
-      </div>
-      <p className="text-xs text-gray-400 dark:text-gray-500">{t("loginBackgroundRecommend")}</p>
-
-      {/* Master on/off — disables the background without removing the image */}
+      {/* Header row carries the on/off switch — turning it off collapses
+          the whole section (the image stays saved server-side). */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <RowIcon icon={TI.Eye} />
+          <RowIcon icon={TI.Background} />
           <div className="min-w-0">
-            <div className="font-medium">{t("enableAppBackground")}</div>
-            <div className="text-sm text-gray-500">{t("enableAppBackgroundDesc")}</div>
+            <div className="font-medium">{t("appBackgroundImage")}</div>
+            <div className="text-sm text-gray-500">{t("appBackgroundImageDesc")}</div>
           </div>
         </div>
         <button
@@ -288,42 +280,48 @@ export default function AppBackgroundSection({ token, appBg, setAppBg, showToast
         </button>
       </div>
 
-      {/* Separate light / dark toggle */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <RowIcon icon={TI.SunMoonSplit} />
-          <div className="min-w-0">
-            <div className="font-medium">{t("separateLightDark")}</div>
-            <div className="text-sm text-gray-500">{t("separateLightDarkDesc")}</div>
-          </div>
-        </div>
-        <button
-          type="button"
-          disabled={busy === "separate"}
-          onClick={toggleSeparate}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-            appBg.separate ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
-          } disabled:opacity-50`}
-          aria-pressed={appBg.separate}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              appBg.separate ? "translate-x-6" : "translate-x-1"
-            }`}
-          />
-        </button>
-      </div>
-
-      {appBg.separate ? (
+      {appBg.enabled && (
         <>
-          <div className="flex gap-1 rounded-lg bg-black/5 dark:bg-white/10 p-1">
-            {tabBtn("light", t("lightMode"))}
-            {tabBtn("dark", t("darkMode"))}
+          <p className="text-xs text-gray-400 dark:text-gray-500">{t("loginBackgroundRecommend")}</p>
+
+          {/* Separate light / dark toggle */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <RowIcon icon={TI.SunMoonSplit} />
+              <div className="min-w-0">
+                <div className="font-medium">{t("separateLightDark")}</div>
+                <div className="text-sm text-gray-500">{t("separateLightDarkDesc")}</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={busy === "separate"}
+              onClick={toggleSeparate}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+                appBg.separate ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
+              } disabled:opacity-50`}
+              aria-pressed={appBg.separate}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  appBg.separate ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
           </div>
-          {editorFor(tab)}
+
+          {appBg.separate ? (
+            <>
+              <div className="flex gap-1 rounded-lg bg-black/5 dark:bg-white/10 p-1">
+                {tabBtn("light", t("lightMode"))}
+                {tabBtn("dark", t("darkMode"))}
+              </div>
+              {editorFor(tab)}
+            </>
+          ) : (
+            editorFor("light")
+          )}
         </>
-      ) : (
-        editorFor("light")
       )}
     </div>
   );
