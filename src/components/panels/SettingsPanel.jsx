@@ -522,7 +522,7 @@ export default function SettingsPanel({
               </div>
 
               {alwaysShowSidebarOnWide && (
-                <div className="flex flex-col gap-2 px-3 sm:pl-14">
+                <div className="flex flex-col gap-2 px-3">
                   <div className="min-w-0">
                     <div className="font-medium">{t("sidebarBreakpoint")}</div>
                     <div className="text-sm text-gray-500">{t("sidebarBreakpointDesc")}</div>
