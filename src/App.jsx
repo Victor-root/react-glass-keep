@@ -219,8 +219,13 @@ export default function App() {
   // column (not the synced blob) and is written via PUT
   // /api/user/app-background. Not mirrored to localStorage — the data
   // URL can be large and it's only a backdrop behind the app.
-  const [appBackground, setAppBackground] = useState(null);
-  const [appBackgroundBlur, setAppBackgroundBlur] = useState(0);
+  // Per-user app background, with an optional separate dark-mode variant.
+  // `light` is the shared slot when `separate` is false.
+  const [appBg, setAppBg] = useState({
+    separate: false,
+    light: { image: null, blur: 0 },
+    dark: { image: null, blur: 0 },
+  });
 
   // AI assistant — visibility flag mirrored from the server. The
   // authoritative state lives in user_ai_settings (loaded by
@@ -1022,12 +1027,25 @@ export default function App() {
           setFloatingCardsEnabled(settings.floatingCardsEnabled);
           localStorage.setItem("floatingCardsEnabled", String(settings.floatingCardsEnabled));
         }
-        // Per-user app background (image lives in a dedicated server
-        // column, surfaced through this settings load). Not cached in
-        // localStorage — the data URL can be large.
-        setAppBackground(typeof settings?.appBackground === "string" ? settings.appBackground : null);
-        if (Number.isFinite(Number(settings?.appBackgroundBlur))) {
-          setAppBackgroundBlur(Math.max(0, Math.min(20, Number(settings.appBackgroundBlur))));
+        // Per-user app background (images live in dedicated server
+        // columns, surfaced through this settings load). Not cached in
+        // localStorage — the data URLs can be large.
+        {
+          const clampBlur = (v) => {
+            const n = Number(v);
+            return Math.max(0, Math.min(20, Number.isFinite(n) ? n : 0));
+          };
+          setAppBg({
+            separate: !!settings?.appBackgroundSeparate,
+            light: {
+              image: typeof settings?.appBackground === "string" ? settings.appBackground : null,
+              blur: clampBlur(settings?.appBackgroundBlur),
+            },
+            dark: {
+              image: typeof settings?.appBackgroundDark === "string" ? settings.appBackgroundDark : null,
+              blur: clampBlur(settings?.appBackgroundBlurDark),
+            },
+          });
         }
         if (settings?.checklistInsertPosition) {
           setChecklistInsertPosition(settings.checklistInsertPosition);
@@ -6595,6 +6613,10 @@ export default function App() {
     );
   }
 
+  // Background that actually applies right now: the dark slot in dark mode
+  // when the user split light/dark, otherwise the shared (light) slot.
+  const effAppBg = appBg.separate ? (dark ? appBg.dark : appBg.light) : appBg.light;
+
   return (
     <>
       <TooltipPortal />
@@ -6618,8 +6640,8 @@ export default function App() {
           }
         />
       )}
-      {appBackground
-        ? <AppBackground image={appBackground} blur={appBackgroundBlur} dark={dark} />
+      {effAppBg.image
+        ? <AppBackground image={effAppBg.image} blur={effAppBg.blur} dark={dark} />
         : floatingCardsEnabled && <FloatingCardsBackground />}
       {/* Tag Sidebar / Drawer */}
       <TagSidebar
@@ -6686,10 +6708,9 @@ export default function App() {
         setAiAssistantEnabled={setAiAssistantEnabled}
         floatingCardsEnabled={floatingCardsEnabled}
         setFloatingCardsEnabled={setFloatingCardsEnabled}
-        appBackground={appBackground}
-        setAppBackground={setAppBackground}
-        appBackgroundBlur={appBackgroundBlur}
-        setAppBackgroundBlur={setAppBackgroundBlur}
+        appBg={appBg}
+        setAppBg={setAppBg}
+        appBackgroundActive={!!effAppBg.image}
         checklistInsertPosition={checklistInsertPosition}
         setChecklistInsertPosition={setChecklistInsertPosition}
         checklistRemoveSectionBehavior={checklistRemoveSectionBehavior}

@@ -44,10 +44,9 @@ export default function SettingsPanel({
   setAiAssistantEnabled,
   floatingCardsEnabled,
   setFloatingCardsEnabled,
-  appBackground,
-  setAppBackground,
-  appBackgroundBlur,
-  setAppBackgroundBlur,
+  appBg,
+  setAppBg,
+  appBackgroundActive,
   checklistInsertPosition,
   setChecklistInsertPosition,
   checklistRemoveSectionBehavior,
@@ -614,41 +613,39 @@ export default function SettingsPanel({
                 </div>
               )}
 
-              <div className={`flex items-center justify-between gap-3 px-3 ${appBackground ? "opacity-50" : ""}`}>
+              <div className={`flex items-center justify-between gap-3 px-3 ${appBackgroundActive ? "opacity-50" : ""}`}>
                 <div className="flex items-center gap-3 min-w-0">
                   <RowIcon icon={TI.Sparkles} />
                   <div className="min-w-0">
                     <div className="font-medium">{t("enableAnimationsMobile")}</div>
-                    <div className="text-sm text-gray-500">{appBackground ? t("animationsDisabledByBg") : t("enableAnimationsMobileDesc")}</div>
+                    <div className="text-sm text-gray-500">{appBackgroundActive ? t("animationsDisabledByBg") : t("enableAnimationsMobileDesc")}</div>
                   </div>
                 </div>
                 <button
-                  disabled={!!appBackground}
+                  disabled={!!appBackgroundActive}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
-                    !appBackground && floatingCardsEnabled
+                    !appBackgroundActive && floatingCardsEnabled
                       ? "bg-indigo-600"
                       : "bg-gray-300 dark:bg-gray-600"
-                  } ${appBackground ? "cursor-not-allowed" : ""}`}
-                  onClick={() => { if (!appBackground) setFloatingCardsEnabled(!floatingCardsEnabled); }}
+                  } ${appBackgroundActive ? "cursor-not-allowed" : ""}`}
+                  onClick={() => { if (!appBackgroundActive) setFloatingCardsEnabled(!floatingCardsEnabled); }}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      !appBackground && floatingCardsEnabled ? "translate-x-6" : "translate-x-1"
+                      !appBackgroundActive && floatingCardsEnabled ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
                 </button>
               </div>
 
-              {/* Per-user app background (image + blur) — separated by a
-                  hairline so it reads as its own group within the UI
-                  preferences. */}
+              {/* Per-user app background (image + blur, optional light/dark
+                  split) — separated by a hairline so it reads as its own
+                  group within the UI preferences. */}
               <div className="pt-2 border-t border-[var(--border-light)]">
                 <AppBackgroundSection
                   token={token}
-                  appBackground={appBackground}
-                  setAppBackground={setAppBackground}
-                  appBackgroundBlur={appBackgroundBlur}
-                  setAppBackgroundBlur={setAppBackgroundBlur}
+                  appBg={appBg}
+                  setAppBg={setAppBg}
                   showToast={showToast}
                   dark={dark}
                 />

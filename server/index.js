@@ -280,6 +280,18 @@ CREATE TABLE IF NOT EXISTS app_settings (
       if (!names.has("app_bg_blur")) {
         db.exec(`ALTER TABLE users ADD COLUMN app_bg_blur INTEGER NOT NULL DEFAULT 0`);
       }
+      // Optional separate dark-mode background. When app_bg_separate is 0
+      // the (light) app_bg_image is shared by both themes; when 1, the
+      // dark columns are used in dark mode.
+      if (!names.has("app_bg_image_dark")) {
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_image_dark TEXT`);
+      }
+      if (!names.has("app_bg_blur_dark")) {
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_blur_dark INTEGER NOT NULL DEFAULT 0`);
+      }
+      if (!names.has("app_bg_separate")) {
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_separate INTEGER NOT NULL DEFAULT 0`);
+      }
     });
     tx();
   } catch {
@@ -1446,19 +1458,26 @@ app.delete("/api/user/avatar", auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// Per-user app background (data URL) + blur. Stored in dedicated user
-// columns so the large data URL stays out of the synced settings blob.
-// The image is tri-state: explicit `null` clears it, a valid data URL
-// sets it, an omitted key leaves it unchanged. Blur is clamped 0-20px.
+// Per-user app background (data URL) + blur, with an optional separate
+// dark-mode variant. Stored in dedicated user columns so the large data
+// URLs stay out of the synced settings blob. Body:
+//   variant?: "light" | "dark"  — which slot to edit (default "light";
+//                                  "light" is also the shared one)
+//   image?:   data URL | null   — null clears, string sets, omitted keeps
+//   blur?:    number (0-20)
+//   separate?: boolean          — toggle the dark/light split
 app.put("/api/user/app-background", auth, (req, res) => {
   const body = req.body || {};
+  const variant = body.variant === "dark" ? "dark" : "light";
+  const imageCol = variant === "dark" ? "app_bg_image_dark" : "app_bg_image";
+  const blurCol = variant === "dark" ? "app_bg_blur_dark" : "app_bg_blur";
   const updates = [];
   const params = [];
 
   if (Object.prototype.hasOwnProperty.call(body, "image")) {
     const image = body.image;
     if (image === null) {
-      updates.push("app_bg_image = ?");
+      updates.push(`${imageCol} = ?`);
       params.push(null);
     } else if (typeof image === "string" && image) {
       if (!/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/]+=*$/.test(image)) {
@@ -1467,7 +1486,7 @@ app.put("/api/user/app-background", auth, (req, res) => {
       if (image.length > 4 * 1024 * 1024) {
         return res.status(413).json({ error: "Background image is too large." });
       }
-      updates.push("app_bg_image = ?");
+      updates.push(`${imageCol} = ?`);
       params.push(image);
     } else {
       return res.status(400).json({ error: "image must be a data URL or null." });
@@ -1479,8 +1498,13 @@ app.put("/api/user/app-background", auth, (req, res) => {
     if (typeof blur !== "number" || !Number.isFinite(blur)) {
       return res.status(400).json({ error: "blur must be a number." });
     }
-    updates.push("app_bg_blur = ?");
+    updates.push(`${blurCol} = ?`);
     params.push(Math.max(0, Math.min(20, Math.round(blur))));
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, "separate")) {
+    updates.push("app_bg_separate = ?");
+    params.push(body.separate ? 1 : 0);
   }
 
   if (updates.length === 0) {
@@ -1494,6 +1518,9 @@ app.put("/api/user/app-background", auth, (req, res) => {
     ok: true,
     appBackground: user.app_bg_image || null,
     appBackgroundBlur: user.app_bg_blur || 0,
+    appBackgroundDark: user.app_bg_image_dark || null,
+    appBackgroundBlurDark: user.app_bg_blur_dark || 0,
+    appBackgroundSeparate: !!user.app_bg_separate,
   });
 });
 
@@ -2970,6 +2997,9 @@ app.get("/api/user/settings", auth, (req, res) => {
   if (user) {
     settings.appBackground = user.app_bg_image || null;
     settings.appBackgroundBlur = user.app_bg_blur || 0;
+    settings.appBackgroundDark = user.app_bg_image_dark || null;
+    settings.appBackgroundBlurDark = user.app_bg_blur_dark || 0;
+    settings.appBackgroundSeparate = !!user.app_bg_separate;
   }
   res.json(settings);
 });
