@@ -276,7 +276,32 @@ function clearBelowSpacer() {
     belowSpacerEl.parentNode.removeChild(belowSpacerEl);
   }
 }
+// While the content is actively scrolling, the cursor stays put on screen
+// and inline `<code>` elements sweep under it — the browser fires a burst
+// of `mouseover`s, each of which would pop + reposition the copy overlay
+// (getClientRects/getBoundingClientRect + DOM writes). On a note with lots
+// of inline code that thrashes layout and janks the scroll. We suppress
+// hover-triggered overlays for a short window after any scroll; a real
+// pointer hover (once scrolling settles) still works.
+let inlineCopyScrollSuppressUntil = 0;
+let inlineCopyScrollHooked = false;
+function hookInlineCopyScrollSuppression() {
+  if (inlineCopyScrollHooked || typeof document === "undefined") return;
+  inlineCopyScrollHooked = true;
+  // Capture so it catches scrolls from any scroll container (the note
+  // modal scrolls an inner element, not the window).
+  document.addEventListener(
+    "scroll",
+    () => { inlineCopyScrollSuppressUntil = performance.now() + 150; },
+    true,
+  );
+}
+
 function showInlineCopyFor(codeEl, { sticky = false } = {}) {
+  hookInlineCopyScrollSuppression();
+  // Hover overlays caused by content scrolling under a stationary cursor
+  // are skipped; explicit taps (sticky) always show.
+  if (!sticky && performance.now() < inlineCopyScrollSuppressUntil) return;
   inlineCopyTarget = codeEl;
   inlineCopySticky = sticky;
   if (inlineCopyHideTimer) {
