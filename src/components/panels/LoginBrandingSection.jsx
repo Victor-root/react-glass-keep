@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { t } from "../../i18n";
 import TI from "../../icons/editor/index.jsx";
 import { RowIcon } from "../common/SettingsAccordion.jsx";
-import { fileToCompressedDataURL } from "../../utils/helpers.js";
+import { fileToCompressedDataURL, makeSquarePngIcon } from "../../utils/helpers.js";
 import { DEFAULT_APP_NAME } from "../../branding/BrandingContext.jsx";
 import DefaultBackdropPreview from "../common/DefaultBackdropPreview.jsx";
 
@@ -127,7 +127,16 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
         showToast?.(t("brandingImageTooLarge"), "error");
         return;
       }
-      const patch = field === "logo" ? { logo: dataUrl } : { loginBackground: dataUrl };
+      let patch;
+      if (field === "logo") {
+        // Also derive a square PNG icon for the PWA manifest (home-screen
+        // icon): the logo centred on a white tile so it works as a
+        // maskable app icon too.
+        const logoPwa = await makeSquarePngIcon(dataUrl, 512, "#ffffff", 0.12);
+        patch = { logo: dataUrl, logoPwa };
+      } else {
+        patch = { loginBackground: dataUrl };
+      }
       const res = await saveField(patch);
       if (res) showToast?.(t(successKey), "success", undefined, "camera");
     } catch {

@@ -185,3 +185,28 @@ export async function fileToCompressedDataURL(file, maxDim = 1600, quality = 0.8
   }
   return canvas.toDataURL("image/jpeg", quality);
 }
+
+/** Square PNG app icon (for the PWA manifest): the source image is
+ *  contain-fitted, centred, on a solid background tile, so it reads well
+ *  as both a regular and a maskable home-screen icon. `pad` is the
+ *  fraction of the canvas left as margin on each side (maskable safe-zone). */
+export async function makeSquarePngIcon(dataUrl, size = 512, bg = "#ffffff", pad = 0.12) {
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = dataUrl;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, size, size);
+  const inner = size * (1 - 2 * pad);
+  const scale = Math.min(inner / img.width, inner / img.height);
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  ctx.drawImage(img, Math.round((size - w) / 2), Math.round((size - h) / 2), w, h);
+  return canvas.toDataURL("image/png");
+}

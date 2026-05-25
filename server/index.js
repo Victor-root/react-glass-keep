@@ -238,7 +238,8 @@ CREATE TABLE IF NOT EXISTS app_settings (
   custom_app_name TEXT NOT NULL DEFAULT '',
   custom_logo TEXT,
   login_bg_image TEXT,
-  login_bg_blur INTEGER NOT NULL DEFAULT 0
+  login_bg_blur INTEGER NOT NULL DEFAULT 0,
+  custom_logo_pwa TEXT
 );
 `);
 
@@ -397,6 +398,11 @@ CREATE TABLE IF NOT EXISTS app_settings (
       }
       if (!names.has("login_bg_blur")) {
         db.exec(`ALTER TABLE app_settings ADD COLUMN login_bg_blur INTEGER NOT NULL DEFAULT 0`);
+      }
+      // Square PNG icon derived from the custom logo, used for the PWA
+      // manifest (home-screen icon). Generated client-side on upload.
+      if (!names.has("custom_logo_pwa")) {
+        db.exec(`ALTER TABLE app_settings ADD COLUMN custom_logo_pwa TEXT`);
       }
     });
     tx();
@@ -3122,6 +3128,9 @@ const upsertAppSettings = db.prepare(
 const getBrandingImagesRow = db.prepare(`SELECT custom_logo, login_bg_image FROM app_settings WHERE id = 1`);
 const setCustomLogoStmt = db.prepare(`UPDATE app_settings SET custom_logo = ? WHERE id = 1`);
 const setLoginBgStmt = db.prepare(`UPDATE app_settings SET login_bg_image = ? WHERE id = 1`);
+// Square PWA icon (PNG data URL) derived from the custom logo.
+const getPwaIconRow = db.prepare(`SELECT custom_logo_pwa FROM app_settings WHERE id = 1`);
+const setPwaIconStmt = db.prepare(`UPDATE app_settings SET custom_logo_pwa = ? WHERE id = 1`);
 
 // Branding upload guards. Images are accepted as base64 data URLs (the
 // same convention as user avatars) — the client rasterises + compresses
@@ -3174,7 +3183,7 @@ app.get("/api/admin/settings", auth, adminOnly, (_req, res) => {
 
 // Update admin settings
 app.patch("/api/admin/settings", auth, adminOnly, (req, res) => {
-  const { allowNewAccounts, loginSlogan, appName, loginBackgroundBlur, logo, loginBackground } = req.body || {};
+  const { allowNewAccounts, loginSlogan, appName, loginBackgroundBlur, logo, logoPwa, loginBackground } = req.body || {};
 
   if (typeof allowNewAccounts === 'boolean') {
     adminSettings.allowNewAccounts = allowNewAccounts;
@@ -3194,6 +3203,8 @@ app.patch("/api/admin/settings", auth, adminOnly, (req, res) => {
   // omitted) leaves the existing value untouched.
   if (logo === null) {
     setCustomLogoStmt.run(null);
+    // Clearing the logo clears its derived PWA icon too.
+    setPwaIconStmt.run(null);
   } else if (typeof logo === 'string' && logo) {
     if (!BRANDING_IMAGE_RE.test(logo)) {
       return res.status(400).json({ error: "Logo must be a PNG, JPEG or WebP image data URL." });
@@ -3202,6 +3213,18 @@ app.patch("/api/admin/settings", auth, adminOnly, (req, res) => {
       return res.status(413).json({ error: "Logo image is too large." });
     }
     setCustomLogoStmt.run(logo);
+  }
+
+  // Square PWA icon derived from the logo (client-generated PNG). Tied to
+  // the logo: sent alongside it, cleared with it (handled above).
+  if (typeof logoPwa === 'string' && logoPwa) {
+    if (!BRANDING_IMAGE_RE.test(logoPwa)) {
+      return res.status(400).json({ error: "PWA icon must be a PNG, JPEG or WebP image data URL." });
+    }
+    if (logoPwa.length > MAX_LOGO_BYTES) {
+      return res.status(413).json({ error: "PWA icon image is too large." });
+    }
+    setPwaIconStmt.run(logoPwa);
   }
 
   if (loginBackground === null) {
@@ -3247,6 +3270,55 @@ app.get("/api/branding", (_req, res) => {
     logo: images.custom_logo || null,
     loginBackground: images.login_bg_image || null,
     loginBackgroundBlur: adminSettings.loginBackgroundBlur || 0,
+  });
+});
+
+// Custom PWA icon (square PNG) for the manifest. 404 when none is set so
+// the manifest falls back to the bundled icons. Public — the OS fetches
+// it when installing the PWA.
+app.get("/api/branding/pwa-icon", (_req, res) => {
+  const dataUrl = getPwaIconRow.get()?.custom_logo_pwa;
+  const m = /^data:image\/png;base64,([A-Za-z0-9+/]+=*)$/.exec(dataUrl || "");
+  if (!m) return res.status(404).end();
+  const buf = Buffer.from(m[1], "base64");
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "no-cache");
+  res.end(buf);
+});
+
+// Dynamic web-app manifest so an installed PWA picks up the instance's
+// custom app name + logo. Registered before the static dist middleware so
+// it shadows the build-time manifest.webmanifest. Note: a PWA already
+// installed on a device won't refresh its name/icon until it's
+// reinstalled — this affects new installs.
+app.get("/manifest.webmanifest", (_req, res) => {
+  const name = adminSettings.appName || "Glass Keep";
+  const hasIcon = !!getPwaIconRow.get()?.custom_logo_pwa;
+  const icons = hasIcon
+    ? [
+        { src: "/api/branding/pwa-icon", sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: "/api/branding/pwa-icon", sizes: "512x512", type: "image/png", purpose: "any" },
+        { src: "/api/branding/pwa-icon", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      ]
+    : [
+        { src: "/pwa-192.png", sizes: "192x192", type: "image/png" },
+        { src: "/pwa-512.png", sizes: "512x512", type: "image/png" },
+        { src: "/pwa-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      ];
+  res.setHeader("Content-Type", "application/manifest+json");
+  res.setHeader("Cache-Control", "no-cache");
+  res.json({
+    name,
+    short_name: name,
+    description: "A lightweight notes app with Markdown, images, and offline support.",
+    theme_color: "#f0e8ff",
+    background_color: "#f0e8ff",
+    display: "standalone",
+    display_override: ["standalone"],
+    scope: "/",
+    start_url: "/",
+    orientation: "portrait-primary",
+    icons,
   });
 });
 
