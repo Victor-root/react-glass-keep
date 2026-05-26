@@ -71,6 +71,14 @@ export default defineConfig({
       // devOptions: { enabled: true } // ← uncomment to test SW in dev (remember to disable later)
     })
   ],
+  build: {
+    // Emit source maps so production traces / Long-Animation-Frame
+    // attribution resolve to real source files+functions instead of
+    // minified names (fE, q…), to pin down a click-handler reflow.
+    // The .map files aren't in the Workbox globPatterns below, so they
+    // are never precached. Safe to turn back off once perf is sorted.
+    sourcemap: true,
+  },
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
