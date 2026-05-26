@@ -324,8 +324,6 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   floatingCardsOff: "Cartes flottantes : désactivées",
   enableAnimationsMobile: "Activer les animations de fond",
   enableAnimationsMobileDesc: "Affiche les animations de cartes flottantes en arrière-plan. Peut ralentir les équipements moins performants.",
-  reduceEffects: "Réduire les effets de transparence",
-  reduceEffectsDesc: "Désactive le flou « verre dépoli » des cartes et des fenêtres. Améliore nettement la fluidité du défilement et réduit l'usage du GPU sur cet appareil.",
   edgeToEdgeLandscape: "Bord à bord en paysage",
   edgeToEdgeLandscapeDesc: "Étend le contenu sous la barre d'état en mode paysage. Désactiver si l'encoche gêne l'affichage.",
   checklistInsertPosition: "Nouveaux éléments",

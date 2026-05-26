@@ -77,77 +77,27 @@ html.gk-overlay-locked body {
 html.gk-overlay-locked .floating-cards-bg .login-deco-card {
   animation-play-state: paused;
 }
+/* Frosted-glass surfaces, FLATTENED for performance. The live
+   backdrop-filter blur is re-rasterised by the GPU on every composite
+   frame — a gridful of glass cards scrolling pegs weak integrated GPUs
+   (and still costs ~30% of a high-end GPU just to scroll) — so it's dropped
+   app-wide and the surfaces are near-opaque instead (legible without it).
+   Touch devices got this treatment all along via @media (pointer: coarse);
+   now every device does. The ONE blur kept is the modal scrim (see
+   .modal-scrim) — the frosted separation behind an open note — which stays
+   cheap because the animated background is frozen while any overlay is open
+   (html.gk-overlay-locked), so it blurs a STATIC backdrop the GPU caches. */
 .glass-card {
-  background-color: var(--card-bg-light);
-  /* 8px instead of 20px: a smaller blur radius is markedly cheaper for
-     the GPU to recomposite on every scroll frame (the main scroll-jank
-     source on weaker desktops) while still reading as frosted glass. */
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background-color: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--border-light);
-  box-shadow: 0 4px 24px rgba(139, 92, 246, 0.07);
-  /* box-shadow transition removed — the shadow value never changes on
-     hover so it's dead repaint cost on every frame of the scale anim.
-     background-color is transitioned so toggling a custom background
-     (which flips these surfaces to near-opaque) fades smoothly. */
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.06);
+  /* background-color is transitioned so toggling a custom background
+     (which flips these surfaces) fades smoothly. */
   transition: transform 0.2s ease, background-color 0.3s ease;
   break-inside: avoid;
 }
-/* Touch devices (phones, tablets) drop the backdrop blur entirely:
-   compositing blur(20px) on every visible note card costs ~5ms each
-   on a mid-range Snapdragon, which is the main reason the list scroll
-   feels soft. Desktop browsers keep the glass aesthetic. */
-@media (hover: none) and (pointer: coarse) {
-  .glass-card {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-}
-/* ============================================================
-   "Réduire les effets de transparence" — per-device perf escape hatch.
-   backdrop-filter (the frosted-glass blur) is re-rasterised by the GPU
-   on EVERY composite frame: a gridful of glass note cards scrolling, or
-   a full-screen modal scrim, pegs weak integrated GPUs (≈50% idle, ≈99%
-   with a note open) and still burns ~30% of a high-end discrete GPU just
-   to scroll. When the user opts in we drop every backdrop-filter
-   app-wide and swap to solid surfaces — exactly the treatment touch
-   devices already get via @media (pointer: coarse) above. Toggled
-   per-device (localStorage gk:reduce-effects), applied by index.html
-   before first paint so there is no flash on reload.
-
-   ONE deliberate exception: the modal scrim (.modal-scrim) KEEPS its blur
-   even in reduce mode — it's the frosted separation behind an open note,
-   the one effect worth keeping. It stays cheap because the animated
-   background cards are frozen while any overlay is open (see
-   html.gk-overlay-locked above), so the scrim blurs a STATIC backdrop
-   that the GPU rasterises once and caches, instead of re-blurring moving
-   cards every frame (that was the ≈99%-GPU "open a note" case).
-   ============================================================ */
-html.gk-reduce-effects .glass-card,
-html.gk-reduce-effects .modal-header-blur,
-html.gk-reduce-effects .gk-sidebar,
-html.gk-reduce-effects .gk-section-label {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-}
-html.gk-reduce-effects .glass-card {
-  background-color: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.06);
-}
-html.gk-reduce-effects.dark .glass-card {
+html.dark .glass-card {
   background-color: rgba(40, 40, 40, 0.92);
-}
-/* (Header opacity + blur are handled unconditionally by the header.glass-card
-   rules above — always opaque, never blurred — so no reduce-effects-specific
-   header override is needed here.) */
-html.gk-reduce-effects .modal-header-blur {
-  background-color: inherit;
-}
-/* Section labels lose their blur over a custom wallpaper, so make them
-   near-opaque to keep their text legible without it. (The sidebar itself is
-   now always a solid opaque panel — see the .gk-sidebar rules below.) */
-html.gk-reduce-effects.gk-custom-bg:not(.dark) .gk-section-label {
-  background: rgba(255, 255, 255, 0.95);
 }
 /* Note cards: skip rendering when off-screen, isolate paint */
 .note-card {
@@ -270,9 +220,8 @@ html.gk-custom-bg:not(.dark) .gk-create-btn {
 html.gk-custom-bg:not(.dark) .gk-section-label {
   display: inline-block;
   color: #374151;
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  /* Near-opaque pill (no blur) so the label reads over any wallpaper. */
+  background: rgba(255, 255, 255, 0.95);
   padding: 3px 12px;
   border-radius: 9999px;
 }
@@ -1564,15 +1513,18 @@ html.dark .modal-scroll-themed::-webkit-scrollbar-thumb { background: var(--sb-t
 }
 
 /* scrim blur */
+/* The one blur kept app-wide: the scrim behind an open note (frosted
+   separation from the page). Cheap because the animated background is
+   frozen while an overlay is open, so the backdrop is static and the GPU
+   rasterises the blur once and caches it. */
 .modal-scrim {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* modal header blur */
+/* Modal sticky header — flat (no blur), matching the rest of the app. */
 .modal-header-blur {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: inherit;
 }
 
 /* Note modal enter / exit animations — only transform+opacity (GPU composited, no layout)

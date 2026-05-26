@@ -44,8 +44,6 @@ export default function SettingsPanel({
   setAiAssistantEnabled,
   floatingCardsEnabled,
   setFloatingCardsEnabled,
-  reduceEffects,
-  setReduceEffects,
   appBg,
   setAppBg,
   appBackgroundActive,
@@ -110,16 +108,6 @@ export default function SettingsPanel({
   // for the mobile pill mount in App.jsx.
   const [isMobileViewport, setIsMobileViewport] = useState(
     () => typeof window !== "undefined" && window.innerWidth < 640,
-  );
-  // The frosted-glass backdrop-filter only runs on fine-pointer devices;
-  // touch devices already drop it via @media (pointer: coarse). So the
-  // "reduce transparency effects" toggle is only meaningful — and only
-  // shown — where the blur actually executes. Pointer type is fixed for
-  // a given device, so a one-time read is enough.
-  const [blurActiveDevice] = useState(
-    () =>
-      typeof window === "undefined" ||
-      !window.matchMedia?.("(pointer: coarse)").matches,
   );
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -649,35 +637,6 @@ export default function SettingsPanel({
                   />
                 </button>
               </div>
-
-              {/* "Reduce transparency effects" — per-device perf toggle.
-                  Only shown on fine-pointer devices, where the glass
-                  backdrop-filter actually runs (touch devices already
-                  drop it). Disables every backdrop-filter app-wide for
-                  smooth scroll / low GPU on weaker machines. */}
-              {blurActiveDevice && (
-                <div className="flex items-center justify-between gap-3 px-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <RowIcon icon={TI.Cpu} />
-                    <div className="min-w-0">
-                      <div className="font-medium">{t("reduceEffects")}</div>
-                      <div className="text-sm text-gray-500">{t("reduceEffectsDesc")}</div>
-                    </div>
-                  </div>
-                  <button
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
-                      reduceEffects ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
-                    }`}
-                    onClick={() => setReduceEffects(!reduceEffects)}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        reduceEffects ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-              )}
 
               {/* Per-user app background (image + blur, optional light/dark
                   split) — separated by a hairline so it reads as its own

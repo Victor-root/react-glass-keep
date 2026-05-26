@@ -36,14 +36,6 @@
         window.__GK_DEFAULT_ICONS__ = Array.prototype.map
           .call(document.head.querySelectorAll(sel), function (l) { return l.outerHTML; })
           .join('');
-        // Per-device "reduce transparency effects" perf setting (ON by
-        // default; the backdrop-filter blur is too GPU-heavy to ship as
-        // the default). Apply the class before first paint so cards and
-        // modals render without the blur immediately — no flash of the
-        // glass effect. Only an explicit opt-out ("false") keeps the blur.
-        if (localStorage.getItem('gk:reduce-effects') !== 'false') {
-          document.documentElement.classList.add('gk-reduce-effects');
-        }
         var c = JSON.parse(localStorage.getItem('gk:branding') || 'null');
         if (c && c.appName) document.title = c.appName;
         var fav = localStorage.getItem('gk:favicon');
