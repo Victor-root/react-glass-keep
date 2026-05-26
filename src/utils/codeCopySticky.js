@@ -16,6 +16,14 @@
 // Returns a cleanup function (no-op if there's no scroll container).
 export function attachStickyCopyButton(scrollEl, wrapper, btn) {
   if (!scrollEl) return () => {};
+  // Only blocks TALLER than the visible area ever need the button to
+  // follow the scroll (you spend time scrolling inside them). A block
+  // that fits on screen never does, so skip all per-scroll work for it.
+  // This is the big win for notes with many code blocks: most fit, so we
+  // no longer attach a scroll listener + per-frame layout reads per block.
+  const viewport = scrollEl.clientHeight || 0;
+  if (viewport && wrapper.offsetHeight <= viewport) return () => {};
+
   const stickyHeader = scrollEl.querySelector(".sticky");
   let visible = false;
   let rafPending = false;
