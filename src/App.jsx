@@ -214,6 +214,30 @@ export default function App() {
     });
   }, []);
 
+  // "Réduire les effets de transparence" — per-device performance escape
+  // hatch. backdrop-filter (the frosted-glass blur on cards, the modal
+  // scrim, the modal header) is re-rasterised by the GPU on EVERY
+  // composite frame: a gridful of glass note cards scrolling — or a
+  // full-screen modal scrim — pegs weak integrated GPUs (≈50% idle, ≈99%
+  // with a note open) and still burns ~30% of a high-end discrete GPU
+  // just to scroll. Opting in drops every backdrop-filter app-wide and
+  // swaps to solid surfaces (see html.gk-reduce-effects in globalCSS) —
+  // the same treatment touch devices already get via @media (pointer:
+  // coarse). GPU power is per-machine, so this is stored per-device in
+  // localStorage and deliberately NOT synced to the server. index.html
+  // applies the class before first paint to avoid a flash on reload.
+  const [reduceEffects, setReduceEffects] = useState(() => {
+    try {
+      return localStorage.getItem("gk:reduce-effects") === "true";
+    } catch (e) {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("gk:reduce-effects", String(reduceEffects)); } catch (e) {}
+    document.documentElement.classList.toggle("gk-reduce-effects", reduceEffects);
+  }, [reduceEffects]);
+
   // Per-user app background (image data URL + blur). Loaded from
   // /user/settings on startup; the image lives in a dedicated server
   // column (not the synced blob) and is written via PUT
@@ -6715,6 +6739,8 @@ export default function App() {
         setAiAssistantEnabled={setAiAssistantEnabled}
         floatingCardsEnabled={floatingCardsEnabled}
         setFloatingCardsEnabled={setFloatingCardsEnabled}
+        reduceEffects={reduceEffects}
+        setReduceEffects={setReduceEffects}
         appBg={appBg}
         setAppBg={setAppBg}
         appBackgroundActive={!!effAppBg.image}

@@ -41,6 +41,12 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // The main app chunk is ~2 MB (single bundle, not code-split) and
+        // grows over time, which exceeds Workbox's default 2 MiB precache
+        // ceiling — without this the chunk silently drops out of the
+        // precache manifest and the PWA can't load offline. Raise it to
+        // 3 MiB so the whole app shell is precached, with headroom.
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         // Activate new SW immediately — critical for mobile PWAs where there
         // is only one "tab". Without this, a stale SW can stay in control
         // indefinitely after long background suspension on Android.

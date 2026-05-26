@@ -92,6 +92,67 @@ html.gk-overlay-locked body {
     -webkit-backdrop-filter: none;
   }
 }
+/* ============================================================
+   "Réduire les effets de transparence" — per-device perf escape hatch.
+   backdrop-filter (the frosted-glass blur) is re-rasterised by the GPU
+   on EVERY composite frame: a gridful of glass note cards scrolling, or
+   a full-screen modal scrim, pegs weak integrated GPUs (≈50% idle, ≈99%
+   with a note open) and still burns ~30% of a high-end discrete GPU just
+   to scroll. When the user opts in we drop every backdrop-filter
+   app-wide and swap to solid surfaces — exactly the treatment touch
+   devices already get via @media (pointer: coarse) above. Toggled
+   per-device (localStorage gk:reduce-effects), applied by index.html
+   before first paint so there is no flash on reload.
+   ============================================================ */
+html.gk-reduce-effects .glass-card,
+html.gk-reduce-effects .modal-scrim,
+html.gk-reduce-effects .modal-header-blur,
+html.gk-reduce-effects .gk-sidebar,
+html.gk-reduce-effects .gk-section-label {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html.gk-reduce-effects .glass-card {
+  background-color: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.06);
+}
+html.gk-reduce-effects.dark .glass-card {
+  background-color: rgba(40, 40, 40, 0.92);
+}
+/* Header keeps its brand gradient but over a near-opaque fill so the
+   controls read without the blur. The combined-class selectors win over
+   the custom-background header rules (which use a 0.64 translucent fill
+   that relies on the blur for legibility). */
+html.gk-reduce-effects header.glass-card,
+html.gk-reduce-effects.gk-custom-bg:not(.dark) header.glass-card {
+  background: linear-gradient(
+    90deg,
+    rgba(99, 102, 241, 0.07) 0%,
+    rgba(168, 85, 247, 0.07) 50%,
+    rgba(236, 72, 153, 0.05) 100%
+  ), rgba(255, 255, 255, 0.92);
+}
+html.gk-reduce-effects.dark header.glass-card,
+html.gk-reduce-effects.gk-custom-bg.dark header.glass-card {
+  background: rgba(40, 40, 40, 0.92);
+}
+html.gk-reduce-effects .modal-scrim {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+html.gk-reduce-effects .modal-header-blur {
+  background-color: inherit;
+}
+/* Sidebar + section-label lose their blur over a custom wallpaper, so
+   make them near-opaque to keep their text legible without it. */
+html.gk-reduce-effects.gk-custom-bg:not(.dark) .gk-sidebar {
+  background-color: rgba(240, 232, 255, 0.95) !important;
+}
+html.gk-reduce-effects.gk-custom-bg.dark .gk-sidebar {
+  background-color: rgba(34, 34, 34, 0.95) !important;
+}
+html.gk-reduce-effects.gk-custom-bg:not(.dark) .gk-section-label {
+  background: rgba(255, 255, 255, 0.95);
+}
 /* Note cards: skip rendering when off-screen, isolate paint */
 .note-card {
   content-visibility: auto;
