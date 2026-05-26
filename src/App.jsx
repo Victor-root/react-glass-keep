@@ -82,6 +82,7 @@ import useImportExport from "./hooks/useImportExport.js";
 import useCollaboration from "./hooks/useCollaboration.js";
 import useFormatting from "./hooks/useFormatting.js";
 import useInstanceLockStatus from "./hooks/useInstanceLockStatus.js";
+import { useStableCallback } from "./hooks/useStableCallback.js";
 import InstanceUnlockScreen from "./components/lock/InstanceUnlockScreen.jsx";
 import LockedBanner from "./components/lock/LockedBanner.jsx";
 
@@ -5965,6 +5966,24 @@ export default function App() {
     ev.currentTarget.classList.remove("dragging");
   };
 
+  // Stable identities for the note-card callbacks. App.jsx recreates these
+  // handlers on every render; handing the raw versions to NoteCard defeats
+  // its React.memo, so the whole notes grid re-renders on every modal open
+  // and every keystroke in the editor — the main-thread cost the LoAF trace
+  // pinned to React render tasks (fn "q") and click handlers (fn "fE").
+  // useStableCallback keeps a stable identity while always invoking the
+  // latest closure, so the memo holds and only the modal subtree re-renders.
+  const sOpenModal = useStableCallback(openModal);
+  const sTogglePin = useStableCallback(togglePin);
+  const sOnDragStart = useStableCallback(onDragStart);
+  const sOnDragOver = useStableCallback(onDragOver);
+  const sOnDragLeave = useStableCallback(onDragLeave);
+  const sOnDrop = useStableCallback(onDrop);
+  const sOnDragEnd = useStableCallback(onDragEnd);
+  const sOnToggleSelect = useStableCallback(onToggleSelect);
+  const sOnCtrlSelect = useStableCallback(onCtrlSelect);
+  const sOnUpdateChecklistItem = useStableCallback(onUpdateChecklistItem);
+
   // Checklist item drag handlers (for modal reordering)
 
   // Local-first helper: persist checklist changes to IndexedDB + sync queue
@@ -6859,13 +6878,13 @@ export default function App() {
         onDirectAudio={handleDirectAudio}
         pinned={pinned}
         others={others}
-        openModal={openModal}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        onDragEnd={onDragEnd}
-        togglePin={togglePin}
+        openModal={sOpenModal}
+        onDragStart={sOnDragStart}
+        onDragOver={sOnDragOver}
+        onDragLeave={sOnDragLeave}
+        onDrop={sOnDrop}
+        onDragEnd={sOnDragEnd}
+        togglePin={sTogglePin}
         addImagesToState={addImagesToState}
         filteredEmptyWithSearch={filteredEmptyWithSearch}
         allEmpty={allEmpty}
@@ -6923,8 +6942,8 @@ export default function App() {
         selectedIds={selectedIds}
         onStartMulti={onStartMulti}
         onExitMulti={onExitMulti}
-        onToggleSelect={onToggleSelect}
-        onCtrlSelect={onCtrlSelect}
+        onToggleSelect={sOnToggleSelect}
+        onCtrlSelect={sOnCtrlSelect}
         onSelectAllPinned={onSelectAllPinned}
         onSelectAllOthers={onSelectAllOthers}
         onBulkDelete={onBulkDelete}
@@ -6958,7 +6977,7 @@ export default function App() {
         fabOpen={fabOpen}
         setFabOpen={setFabOpen}
         // checklist update
-        onUpdateChecklistItem={onUpdateChecklistItem}
+        onUpdateChecklistItem={sOnUpdateChecklistItem}
         // Admin panel
         openAdminPanel={openAdminPanel}
         hasUpdate={!!updateInfo?.updateAvailable && !!currentUser?.is_admin}
