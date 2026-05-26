@@ -66,6 +66,17 @@ html.gk-overlay-locked body {
   overscroll-behavior: none !important;
   overscroll-behavior-y: none !important;
 }
+/* While any full-screen overlay is open, the decorative background cards
+   sit behind its scrim — invisible (occluded, and blurred when the scrim
+   has a backdrop-filter) but still animating. A moving backdrop forces
+   the scrim's blur to re-rasterise every frame (the old ≈99%-GPU "open a
+   note" case, and the Settings-panel stutter). Freeze the cards while an
+   overlay is open so the scrim blurs a STATIC backdrop the GPU caches;
+   they resume on close. The float is a pure transform, so pausing is
+   free and imperceptible behind the overlay. */
+html.gk-overlay-locked .floating-cards-bg .login-deco-card {
+  animation-play-state: paused;
+}
 .glass-card {
   background-color: var(--card-bg-light);
   /* 8px instead of 20px: a smaller blur radius is markedly cheaper for
@@ -103,9 +114,16 @@ html.gk-overlay-locked body {
    devices already get via @media (pointer: coarse) above. Toggled
    per-device (localStorage gk:reduce-effects), applied by index.html
    before first paint so there is no flash on reload.
+
+   ONE deliberate exception: the modal scrim (.modal-scrim) KEEPS its blur
+   even in reduce mode — it's the frosted separation behind an open note,
+   the one effect worth keeping. It stays cheap because the animated
+   background cards are frozen while any overlay is open (see
+   html.gk-overlay-locked above), so the scrim blurs a STATIC backdrop
+   that the GPU rasterises once and caches, instead of re-blurring moving
+   cards every frame (that was the ≈99%-GPU "open a note" case).
    ============================================================ */
 html.gk-reduce-effects .glass-card,
-html.gk-reduce-effects .modal-scrim,
 html.gk-reduce-effects .modal-header-blur,
 html.gk-reduce-effects .gk-sidebar,
 html.gk-reduce-effects .gk-section-label {
@@ -135,9 +153,6 @@ html.gk-reduce-effects.gk-custom-bg:not(.dark) header.glass-card {
 html.gk-reduce-effects.dark header.glass-card,
 html.gk-reduce-effects.gk-custom-bg.dark header.glass-card {
   background: rgba(40, 40, 40, 0.92);
-}
-html.gk-reduce-effects .modal-scrim {
-  background-color: rgba(0, 0, 0, 0.5);
 }
 html.gk-reduce-effects .modal-header-blur {
   background-color: inherit;
