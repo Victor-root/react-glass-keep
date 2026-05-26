@@ -137,34 +137,15 @@ html.gk-reduce-effects .glass-card {
 html.gk-reduce-effects.dark .glass-card {
   background-color: rgba(40, 40, 40, 0.92);
 }
-/* Header keeps its brand gradient but over a near-opaque fill so the
-   controls read without the blur. The combined-class selectors win over
-   the custom-background header rules (which use a 0.64 translucent fill
-   that relies on the blur for legibility). */
-html.gk-reduce-effects header.glass-card,
-html.gk-reduce-effects.gk-custom-bg:not(.dark) header.glass-card {
-  background: linear-gradient(
-    90deg,
-    rgba(99, 102, 241, 0.07) 0%,
-    rgba(168, 85, 247, 0.07) 50%,
-    rgba(236, 72, 153, 0.05) 100%
-  ), rgba(255, 255, 255, 0.92);
-}
-html.gk-reduce-effects.dark header.glass-card,
-html.gk-reduce-effects.gk-custom-bg.dark header.glass-card {
-  background: rgba(40, 40, 40, 0.92);
-}
+/* (Header opacity + blur are handled unconditionally by the header.glass-card
+   rules above — always opaque, never blurred — so no reduce-effects-specific
+   header override is needed here.) */
 html.gk-reduce-effects .modal-header-blur {
   background-color: inherit;
 }
-/* Sidebar + section-label lose their blur over a custom wallpaper, so
-   make them near-opaque to keep their text legible without it. */
-html.gk-reduce-effects.gk-custom-bg:not(.dark) .gk-sidebar {
-  background-color: rgba(240, 232, 255, 0.95) !important;
-}
-html.gk-reduce-effects.gk-custom-bg.dark .gk-sidebar {
-  background-color: rgba(34, 34, 34, 0.95) !important;
-}
+/* Section labels lose their blur over a custom wallpaper, so make them
+   near-opaque to keep their text legible without it. (The sidebar itself is
+   now always a solid opaque panel — see the .gk-sidebar rules below.) */
 html.gk-reduce-effects.gk-custom-bg:not(.dark) .gk-section-label {
   background: rgba(255, 255, 255, 0.95);
 }
@@ -222,17 +203,24 @@ html.gk-reduce-effects.gk-custom-bg:not(.dark) .gk-section-label {
   to   { opacity: 1; }
 }
 header.glass-card {
+  /* Always opaque + no blur. The header spans the top over the animated
+     background; an opaque fill lets the GPU skip compositing what's behind
+     it (occlusion), and no backdrop-filter means no per-frame re-rasterise.
+     The brand gradient is a translucent tint painted over the opaque white
+     base, so the element itself stays fully opaque. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   background: linear-gradient(
     90deg,
     rgba(99, 102, 241, 0.07) 0%,
     rgba(168, 85, 247, 0.07) 50%,
     rgba(236, 72, 153, 0.05) 100%
-  ), var(--card-bg-light);
+  ), #ffffff;
   border-bottom: 1px solid rgba(139, 92, 246, 0.18);
   box-shadow: 0 2px 20px rgba(139, 92, 246, 0.10);
 }
 html.dark header.glass-card {
-  background: var(--card-bg-light);
+  background: rgb(40, 40, 40);
   border-bottom: 1px solid var(--border-light);
   box-shadow: none;
 }
@@ -246,9 +234,9 @@ html.gk-custom-bg:not(.dark) .glass-card {
   background-color: rgba(255, 255, 255, 0.92);
 }
 html.gk-custom-bg:not(.dark) header.glass-card {
-  /* Same transparency as the sidebar (0.64) so both chrome panels let the
-     wallpaper through equally; the strong backdrop-blur keeps the controls
-     legible. */
+  /* Opaque even over a custom wallpaper — the header is a solid chrome bar,
+     not a frosted panel, so it occludes (and never re-blurs) the animated
+     background behind it. */
   background:
     linear-gradient(
       90deg,
@@ -256,21 +244,18 @@ html.gk-custom-bg:not(.dark) header.glass-card {
       rgba(168, 85, 247, 0.07) 50%,
       rgba(236, 72, 153, 0.05) 100%
     ),
-    rgba(255, 255, 255, 0.64);
+    #ffffff;
 }
-/* When a background is active, the sidebar becomes a frosted panel so the
-   wallpaper shows through it (continuous) instead of being cut off by a
-   solid block. !important overrides the component's inline color; the
-   backdrop-blur keeps the tag text legible over the photo. */
-html.gk-custom-bg .gk-sidebar {
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-}
+/* Even over a custom wallpaper the sidebar stays a SOLID, opaque panel with
+   no backdrop blur — like the header, it occludes the animated background
+   instead of re-blurring it every frame (the perf priority on these two
+   large chrome surfaces). !important overrides the component's inline
+   colour. */
 html.gk-custom-bg:not(.dark) .gk-sidebar {
-  background-color: rgba(240, 232, 255, 0.64) !important;
+  background-color: rgb(240, 232, 255) !important;
 }
 html.gk-custom-bg.dark .gk-sidebar {
-  background-color: rgba(34, 34, 34, 0.6) !important;
+  background-color: #222222 !important;
 }
 /* Note-type creation buttons: their light pastel drop-shadow reads as a
    white halo over a photo in light mode (dark mode already uses

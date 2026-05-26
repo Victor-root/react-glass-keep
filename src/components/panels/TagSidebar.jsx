@@ -76,7 +76,7 @@ export default function TagSidebar({
         className={`gk-sidebar fixed top-0 left-0 z-40 h-full ${skipTransition ? "" : "transition-[transform,background-color] duration-200 "}${permanent || open ? "translate-x-0 shadow-2xl" : "-translate-x-full shadow-none"}`}
         style={{
           width: permanent ? `${width}px` : "288px",
-          backgroundColor: dark ? "#222222" : "rgba(240,232,255,0.97)",
+          backgroundColor: dark ? "#222222" : "rgb(240,232,255)",
           borderRight: "1px solid var(--border-light)",
           paddingTop: "var(--safe-top)",
           paddingBottom: "var(--safe-bottom)",
