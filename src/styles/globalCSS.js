@@ -1968,8 +1968,12 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
   position: absolute;
   pointer-events: none;
   background-color: var(--card-bg-light);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* No backdrop-filter here on purpose: these cards animate forever
+     (floatCard), and a moving element with backdrop-filter forces the GPU
+     to re-rasterise the blurred backdrop every frame — ~17 cards × 60fps =
+     a pegged GPU at idle (very visible on integrated graphics). The float
+     is a pure transform (compositor-only, cheap); the translucent fill
+     alone reads fine without the blur. */
   border: 1px solid var(--border-light);
   border-radius: 0.75rem;
   padding: 1rem;
@@ -1981,8 +1985,6 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
 }
 @media (pointer: coarse) {
   .login-deco-card {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
     background-color: rgba(255,255,255,0.55);
   }
   html.dark .login-deco-card {
