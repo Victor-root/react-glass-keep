@@ -171,8 +171,8 @@ body {
   /* Notes canvas — same lavender → blue → pink sweep, nudged very slightly
      more saturated so the white note cards read a touch better against it.
      Stays clearly lighter than the (bordered + shadowed) header/sidebar. */
-  background-color: #ece2ff;
-  background-image: linear-gradient(135deg, #ece2ff 0%, #e2f1fc 50%, #fce2ec 100%);
+  background-color: #eee5ff;
+  background-image: linear-gradient(135deg, #eee5ff 0%, #e5f3fd 50%, #fde5ee 100%);
   background-attachment: fixed;
   color: var(--text-light);
   transition: background-color 0.3s ease, color 0.3s ease;
