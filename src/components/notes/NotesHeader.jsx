@@ -214,7 +214,7 @@ export default function NotesHeader({
           <h1 className={`hidden xl:block text-2xl sm:text-3xl font-bold ${isLandscapeMobile ? "!hidden" : ""}`}>
             {appName}
           </h1>
-          <span className={`hidden xl:inline-block h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1 ${isLandscapeMobile ? "!hidden" : ""}`} />
+          <span className={`hidden xl:inline-block h-6 w-px bg-slate-400/60 dark:bg-gray-600 mx-1 ${isLandscapeMobile ? "!hidden" : ""}`} />
           <span className={`${desktopOnly} text-base font-medium px-3 py-1 rounded-lg bg-indigo-600/10 text-indigo-700 dark:text-indigo-300 border border-indigo-600/20 items-center gap-1.5 max-w-[200px]`}>
             <span className="shrink-0 w-4 h-4 [&>svg]:w-4 [&>svg]:h-4"><SectionIcon /></span>
             <span className="truncate">{sectionLabel}</span>
@@ -235,7 +235,7 @@ export default function NotesHeader({
             <input
               type="text"
               placeholder={aiAssistantEnabled ? t("searchOrAskAi") : t("search")}
-              className={`w-full bg-transparent border border-[var(--border-light)] rounded-lg pl-4 ${aiAssistantEnabled ? "pr-20" : "pr-8"} py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
+              className={`w-full bg-transparent border border-slate-400/50 dark:border-[var(--border-light)] rounded-lg pl-4 ${aiAssistantEnabled ? "pr-20" : "pr-8"} py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
@@ -310,7 +310,7 @@ export default function NotesHeader({
                 ref={mobileSearchRef}
                 type="text"
                 placeholder={aiAssistantEnabled ? t("searchOrAskAi") : t("search")}
-                className={`w-full bg-transparent border border-[var(--border-light)] rounded-lg pl-3 ${aiAssistantEnabled ? "pr-16" : "pr-8"} py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
+                className={`w-full bg-transparent border border-slate-400/50 dark:border-[var(--border-light)] rounded-lg pl-3 ${aiAssistantEnabled ? "pr-16" : "pr-8"} py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => {
@@ -392,7 +392,7 @@ export default function NotesHeader({
             >
               <SettingsIcon />
             </button>
-            <span className={`mx-1 w-px h-5 ${dark ? "bg-gray-600" : "bg-gray-300"}`} />
+            <span className={`mx-1 w-px h-5 ${dark ? "bg-gray-600" : "bg-slate-400/60"}`} />
             {currentUser?.is_admin && (
               <div className="relative flex items-center justify-center">
                 <button
