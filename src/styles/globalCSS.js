@@ -38,15 +38,19 @@ html.dark {
 :root {
   /* GlassKeep — light. Tint stops are semi-opaque so the surface reads as
      glass yet stays legible; sheen/highlight are the shared "glass physics". */
-  --gk-chrome-1: rgba(219, 230, 249, 0.90);  /* cool blue    */
-  --gk-chrome-2: rgba(226, 228, 248, 0.90);  /* pale indigo  */
-  --gk-chrome-3: rgba(232, 228, 248, 0.90);  /* violet touch */
+  --gk-chrome-1: rgba(212, 221, 252, 0.90);  /* light indigo  */
+  --gk-chrome-2: rgba(221, 217, 252, 0.90);  /* indigo→violet */
+  --gk-chrome-3: rgba(231, 215, 252, 0.90);  /* light violet  */
   --gk-chrome-solid: #edf1fa;                /* opaque header base — kills see-through */
   --gk-chrome-border: rgba(120, 134, 196, 0.28);
   --gk-chrome-shadow: rgba(54, 64, 122, 0.10);
   --gk-chrome-sheen: rgba(255, 255, 255, 0.55);
   --gk-chrome-highlight: rgba(255, 255, 255, 0.70);
   --gk-chrome-accent: #4f46e5;
+  /* Vivid brand gradient (mirrors the app's primary buttons) — used for the
+     header/sidebar accent rail and the active sidebar item. Shared light/dark. */
+  --gk-chrome-grad-from: #6366f1;
+  --gk-chrome-grad-to: #7c3aed;
   --gk-chrome-hover: rgba(79, 70, 229, 0.08);
   --gk-chrome-active-bg: rgba(99, 102, 241, 0.16);
   --gk-chrome-active-fg: #3730a3;
@@ -54,9 +58,9 @@ html.dark {
 html.dark {
   /* GlassKeep — dark. Cool slate-blue glass; sheen/highlight are barely
      there (white would blow out against a dark surface). */
-  --gk-chrome-1: rgba(28, 35, 52, 0.90);
-  --gk-chrome-2: rgba(31, 34, 56, 0.90);
-  --gk-chrome-3: rgba(35, 33, 54, 0.90);
+  --gk-chrome-1: rgba(30, 36, 64, 0.90);
+  --gk-chrome-2: rgba(36, 33, 66, 0.90);
+  --gk-chrome-3: rgba(44, 32, 66, 0.90);
   --gk-chrome-solid: #1b2233;
   --gk-chrome-border: rgba(126, 142, 200, 0.20);
   --gk-chrome-shadow: rgba(0, 0, 0, 0.38);
@@ -79,6 +83,8 @@ html.gk-theme-blue {
   --gk-chrome-hover: rgba(37, 99, 235, 0.08);
   --gk-chrome-active-bg: rgba(59, 130, 246, 0.16);
   --gk-chrome-active-fg: #1e4fa8;
+  --gk-chrome-grad-from: #3b82f6;
+  --gk-chrome-grad-to: #6366f1;
 }
 html.dark.gk-theme-blue {
   --gk-chrome-1: rgba(20, 32, 48, 0.90);
@@ -100,6 +106,8 @@ html.gk-theme-mint {
   --gk-chrome-hover: rgba(16, 185, 129, 0.10);
   --gk-chrome-active-bg: rgba(16, 185, 129, 0.16);
   --gk-chrome-active-fg: #0f7556;
+  --gk-chrome-grad-from: #10b981;
+  --gk-chrome-grad-to: #0d9488;
 }
 html.dark.gk-theme-mint {
   --gk-chrome-1: rgba(18, 34, 28, 0.90);
@@ -121,6 +129,8 @@ html.gk-theme-sand {
   --gk-chrome-hover: rgba(201, 150, 63, 0.12);
   --gk-chrome-active-bg: rgba(201, 150, 63, 0.18);
   --gk-chrome-active-fg: #846328;
+  --gk-chrome-grad-from: #f59e0b;
+  --gk-chrome-grad-to: #d97706;
 }
 html.dark.gk-theme-sand {
   --gk-chrome-1: rgba(36, 31, 22, 0.90);
@@ -282,12 +292,14 @@ header.glass-card {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   background:
+    /* vivid brand-gradient rail along the bottom edge (2px) */
+    linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to)) left bottom / 100% 2px no-repeat,
     linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 60%),
     linear-gradient(100deg,
       color-mix(in srgb, var(--gk-chrome-1) 86%, transparent) 0%,
       color-mix(in srgb, var(--gk-chrome-2) 86%, transparent) 52%,
       color-mix(in srgb, var(--gk-chrome-3) 86%, transparent) 100%);
-  border-bottom: 1px solid var(--gk-chrome-border);
+  border-bottom: none;
   box-shadow:
     inset 0 1px 0 var(--gk-chrome-highlight),
     0 1px 2px var(--gk-chrome-shadow),
@@ -300,9 +312,10 @@ header.glass-card {
    --gk-chrome-1, so the shared top-left corner stays seamless. */
 .gk-sidebar {
   background:
+    /* vivid brand-gradient rail along the right edge (3px) */
+    linear-gradient(180deg, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to)) right top / 3px 100% no-repeat,
     linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 22%),
     linear-gradient(180deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 55%, var(--gk-chrome-3) 100%);
-  border-right: 1px solid var(--gk-chrome-border);
   box-shadow:
     inset 0 1px 0 var(--gk-chrome-highlight),
     8px 0 24px -16px var(--gk-chrome-shadow);
@@ -316,10 +329,13 @@ header.glass-card {
   background-color: var(--gk-chrome-hover);
 }
 .gk-side-item--active {
-  background-color: var(--gk-chrome-active-bg);
-  color: var(--gk-chrome-active-fg);
+  /* Vivid brand-gradient pill — the same indigo→violet sweep as the app's
+     primary buttons, with white text. The strongest gradient accent of the
+     chrome, and fully legible (white on a saturated fill). */
+  background: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+  color: #fff;
   font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--gk-chrome-accent);
+  box-shadow: 0 2px 10px -4px color-mix(in srgb, var(--gk-chrome-grad-to) 55%, transparent);
 }
 /* Custom background image active (login screen or app), LIGHT mode only.
    The photo is shown raw (vivid), so legibility can't come from the
@@ -2178,9 +2194,11 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
      without needing a blur. The sidebar fake glass is blur-free anyway. */
   header.glass-card {
     background:
+      linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to)) left bottom / 100% 2px no-repeat,
       linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 60%),
       linear-gradient(100deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 52%, var(--gk-chrome-3) 100%),
       var(--gk-chrome-solid);
+    border-bottom: none;
   }
 }
 @media (max-width: 639px) {
