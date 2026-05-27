@@ -269,19 +269,24 @@ html.dark .glass-card {
   to   { opacity: 1; }
 }
 header.glass-card {
-  /* Static "fake glass" — NO backdrop-filter / blur. A soft top→down light
-     sheen + a gentle blue→indigo→violet tint sit over an OPAQUE base
-     (--gk-chrome-solid), so the header reads as frosted glass yet nothing
-     behind it shows through while scrolling. A 1px rim highlight, a cool
-     hairline border and a soft shadow add depth. Pure paint, no per-frame
-     re-raster. Colours come from the --gk-chrome-* tokens so the header
-     carries the workspace identity (and follows every gk-theme-*). */
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
+  /* Frosted glass — a SMALL real blur, but on the header ONLY: it's a single
+     thin fixed strip (like a macOS/iOS toolbar), not the scrolling grid of
+     cards that used to peg the GPU, so re-blurring it each frame is cheap.
+     A semi-transparent blue→indigo→violet tint + a top light sheen colour the
+     glass; the blur diffuses whatever scrolls behind so it's no longer
+     readable, while the fond stays visible. The tint is derived from the
+     shared --gk-chrome-* tokens (so themes apply) but made more translucent
+     via color-mix — the blur, not opacity, is what hides the content. On
+     touch / weak GPUs the blur is dropped for a solid header (see
+     @media pointer: coarse). */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   background:
     linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 60%),
-    linear-gradient(100deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 52%, var(--gk-chrome-3) 100%),
-    var(--gk-chrome-solid);
+    linear-gradient(100deg,
+      color-mix(in srgb, var(--gk-chrome-1) 86%, transparent) 0%,
+      color-mix(in srgb, var(--gk-chrome-2) 86%, transparent) 52%,
+      color-mix(in srgb, var(--gk-chrome-3) 86%, transparent) 100%);
   border-bottom: 1px solid var(--gk-chrome-border);
   box-shadow:
     inset 0 1px 0 var(--gk-chrome-highlight),
@@ -2167,8 +2172,16 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
   .modal-header-blur {
     background-color: inherit;
   }
-  /* The header/sidebar fake glass is already blur-free (pure paint), so it
-     needs no touch-specific override — the base token rules apply as-is. */
+  /* Touch / weak GPUs: the .glass-card rule above already strips the header
+     blur (!important); pair that with an OPAQUE header background (sheen +
+     full-opacity tint over the solid base) so nothing behind shows through
+     without needing a blur. The sidebar fake glass is blur-free anyway. */
+  header.glass-card {
+    background:
+      linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 60%),
+      linear-gradient(100deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 52%, var(--gk-chrome-3) 100%),
+      var(--gk-chrome-solid);
+  }
 }
 @media (max-width: 639px) {
   /* Keep only left-edge (1-3) and right-edge (13-15) cards on mobile */
