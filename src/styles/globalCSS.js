@@ -292,14 +292,12 @@ header.glass-card {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   background:
-    /* vivid brand-gradient rail along the bottom edge (2px) */
-    linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to)) left bottom / 100% 2px no-repeat,
     linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 60%),
     linear-gradient(100deg,
       color-mix(in srgb, var(--gk-chrome-1) 86%, transparent) 0%,
       color-mix(in srgb, var(--gk-chrome-2) 86%, transparent) 52%,
       color-mix(in srgb, var(--gk-chrome-3) 86%, transparent) 100%);
-  border-bottom: none;
+  border-bottom: 1px solid var(--gk-chrome-border);
   box-shadow:
     inset 0 1px 0 var(--gk-chrome-highlight),
     0 1px 2px var(--gk-chrome-shadow),
@@ -312,10 +310,9 @@ header.glass-card {
    --gk-chrome-1, so the shared top-left corner stays seamless. */
 .gk-sidebar {
   background:
-    /* vivid brand-gradient rail along the right edge (3px) */
-    linear-gradient(180deg, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to)) right top / 3px 100% no-repeat,
     linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 22%),
     linear-gradient(180deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 55%, var(--gk-chrome-3) 100%);
+  border-right: 1px solid var(--gk-chrome-border);
   box-shadow:
     inset 0 1px 0 var(--gk-chrome-highlight),
     8px 0 24px -16px var(--gk-chrome-shadow);
@@ -2194,11 +2191,9 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
      without needing a blur. The sidebar fake glass is blur-free anyway. */
   header.glass-card {
     background:
-      linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to)) left bottom / 100% 2px no-repeat,
       linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 60%),
       linear-gradient(100deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 52%, var(--gk-chrome-3) 100%),
       var(--gk-chrome-solid);
-    border-bottom: none;
   }
 }
 @media (max-width: 639px) {
