@@ -16,6 +16,120 @@ html.dark {
   --text-light: var(--text-dark);
   --border-light: var(--border-dark);
 }
+/* ============================================================
+   CHROME THEME TOKENS — header + sidebar ONLY.
+   A lightweight, STATIC "fake glass" system: NO backdrop-filter,
+   NO blur, NO image. The glass look is faked with cheap paint only —
+   a soft tinted gradient + a top light "sheen" + a 1px rim highlight
+   + a subtle cool border + a soft shadow. It composites as a plain
+   alpha layer, so it never costs the GPU the per-frame re-raster a
+   real blur would: performance stays flat while scrolling.
+
+   These --gk-chrome-* variables are consumed EXCLUSIVELY by the
+   header.glass-card, .gk-sidebar and .gk-side-item* rules below — they
+   intentionally do NOT touch the notes canvas (body), the note cards,
+   the panels, the create buttons or the login page.
+
+   Multi-theme: the DEFAULT (:root / html.dark) is "GlassKeep" — a cool,
+   modern blue / indigo / slate with a faint violet touch. Alternates are
+   just token overrides on html.gk-theme-<name>; the glass recipe is
+   identical, only the hues change. Activate one by adding the class on
+   <html> (a picker can be wired later). Add a theme by copying a block. */
+:root {
+  /* GlassKeep — light. Tint stops are semi-opaque so the surface reads as
+     glass yet stays legible; sheen/highlight are the shared "glass physics". */
+  --gk-chrome-1: rgba(219, 230, 249, 0.90);  /* cool blue    */
+  --gk-chrome-2: rgba(226, 228, 248, 0.90);  /* pale indigo  */
+  --gk-chrome-3: rgba(232, 228, 248, 0.90);  /* violet touch */
+  --gk-chrome-border: rgba(120, 134, 196, 0.28);
+  --gk-chrome-shadow: rgba(54, 64, 122, 0.10);
+  --gk-chrome-sheen: rgba(255, 255, 255, 0.55);
+  --gk-chrome-highlight: rgba(255, 255, 255, 0.70);
+  --gk-chrome-accent: #4f46e5;
+  --gk-chrome-hover: rgba(79, 70, 229, 0.08);
+  --gk-chrome-active-bg: rgba(99, 102, 241, 0.16);
+  --gk-chrome-active-fg: #3730a3;
+}
+html.dark {
+  /* GlassKeep — dark. Cool slate-blue glass; sheen/highlight are barely
+     there (white would blow out against a dark surface). */
+  --gk-chrome-1: rgba(28, 35, 52, 0.90);
+  --gk-chrome-2: rgba(31, 34, 56, 0.90);
+  --gk-chrome-3: rgba(35, 33, 54, 0.90);
+  --gk-chrome-border: rgba(126, 142, 200, 0.20);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.38);
+  --gk-chrome-sheen: rgba(255, 255, 255, 0.05);
+  --gk-chrome-highlight: rgba(255, 255, 255, 0.07);
+  --gk-chrome-accent: #818cf8;
+  --gk-chrome-hover: rgba(129, 140, 248, 0.14);
+  --gk-chrome-active-bg: rgba(99, 102, 241, 0.24);
+  --gk-chrome-active-fg: #c7d2fe;
+}
+/* ----- Alternate themes (ready to use; switch via a class on <html>).
+   Only the hues change — the glass recipe below is identical. ----- */
+html.gk-theme-blue {
+  --gk-chrome-1: rgba(214, 230, 250, 0.90);
+  --gk-chrome-2: rgba(210, 226, 248, 0.90);
+  --gk-chrome-3: rgba(218, 232, 251, 0.90);
+  --gk-chrome-border: rgba(96, 140, 200, 0.30);
+  --gk-chrome-shadow: rgba(30, 70, 130, 0.10);
+  --gk-chrome-accent: #2563eb;
+  --gk-chrome-hover: rgba(37, 99, 235, 0.08);
+  --gk-chrome-active-bg: rgba(59, 130, 246, 0.16);
+  --gk-chrome-active-fg: #1e4fa8;
+}
+html.dark.gk-theme-blue {
+  --gk-chrome-1: rgba(20, 32, 48, 0.90);
+  --gk-chrome-2: rgba(22, 34, 52, 0.90);
+  --gk-chrome-3: rgba(24, 36, 56, 0.90);
+  --gk-chrome-border: rgba(96, 150, 220, 0.20);
+  --gk-chrome-accent: #60a5fa;
+  --gk-chrome-hover: rgba(96, 165, 250, 0.14);
+  --gk-chrome-active-bg: rgba(59, 130, 246, 0.24);
+  --gk-chrome-active-fg: #bcd6f8;
+}
+html.gk-theme-mint {
+  --gk-chrome-1: rgba(214, 240, 228, 0.90);
+  --gk-chrome-2: rgba(210, 238, 224, 0.90);
+  --gk-chrome-3: rgba(220, 240, 230, 0.90);
+  --gk-chrome-border: rgba(70, 160, 130, 0.28);
+  --gk-chrome-shadow: rgba(20, 90, 70, 0.10);
+  --gk-chrome-accent: #10b981;
+  --gk-chrome-hover: rgba(16, 185, 129, 0.10);
+  --gk-chrome-active-bg: rgba(16, 185, 129, 0.16);
+  --gk-chrome-active-fg: #0f7556;
+}
+html.dark.gk-theme-mint {
+  --gk-chrome-1: rgba(18, 34, 28, 0.90);
+  --gk-chrome-2: rgba(20, 36, 30, 0.90);
+  --gk-chrome-3: rgba(22, 38, 32, 0.90);
+  --gk-chrome-border: rgba(64, 170, 134, 0.20);
+  --gk-chrome-accent: #34d399;
+  --gk-chrome-hover: rgba(52, 211, 153, 0.14);
+  --gk-chrome-active-bg: rgba(16, 185, 129, 0.24);
+  --gk-chrome-active-fg: #a6e9cf;
+}
+html.gk-theme-sand {
+  --gk-chrome-1: rgba(244, 236, 222, 0.90);
+  --gk-chrome-2: rgba(242, 233, 216, 0.90);
+  --gk-chrome-3: rgba(244, 234, 220, 0.90);
+  --gk-chrome-border: rgba(180, 150, 90, 0.30);
+  --gk-chrome-shadow: rgba(120, 90, 30, 0.10);
+  --gk-chrome-accent: #c9963f;
+  --gk-chrome-hover: rgba(201, 150, 63, 0.12);
+  --gk-chrome-active-bg: rgba(201, 150, 63, 0.18);
+  --gk-chrome-active-fg: #846328;
+}
+html.dark.gk-theme-sand {
+  --gk-chrome-1: rgba(36, 31, 22, 0.90);
+  --gk-chrome-2: rgba(38, 33, 23, 0.90);
+  --gk-chrome-3: rgba(40, 34, 24, 0.90);
+  --gk-chrome-border: rgba(190, 160, 100, 0.20);
+  --gk-chrome-accent: #d4a85e;
+  --gk-chrome-hover: rgba(204, 160, 90, 0.14);
+  --gk-chrome-active-bg: rgba(201, 150, 63, 0.24);
+  --gk-chrome-active-fg: #e8d3a3;
+}
 button, [role="button"] { cursor: pointer; }
 /* Selection rules:
  *  - Body allows text selection so users can copy titles, error
@@ -153,26 +267,50 @@ html.dark .glass-card {
   to   { opacity: 1; }
 }
 header.glass-card {
-  /* Always opaque + no blur. The header spans the top over the animated
-     background; an opaque fill lets the GPU skip compositing what's behind
-     it (occlusion), and no backdrop-filter means no per-frame re-rasterise.
-     The brand gradient is a translucent tint painted over the opaque white
-     base, so the element itself stays fully opaque. */
+  /* Static "fake glass" — NO backdrop-filter / blur. A soft top→down light
+     sheen sits over a gentle blue→indigo→violet tint; a 1px rim highlight,
+     a cool hairline border and a soft shadow give depth. It's pure paint,
+     composited as a cheap alpha layer, so scrolling under the sticky header
+     stays smooth. All colours come from the --gk-chrome-* theme tokens so the
+     header carries the workspace identity (and follows every gk-theme-*). */
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  background: linear-gradient(
-    90deg,
-    rgba(99, 102, 241, 0.07) 0%,
-    rgba(168, 85, 247, 0.07) 50%,
-    rgba(236, 72, 153, 0.05) 100%
-  ), #ffffff;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.18);
-  box-shadow: 0 2px 20px rgba(139, 92, 246, 0.10);
+  background:
+    linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 60%),
+    linear-gradient(100deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 52%, var(--gk-chrome-3) 100%);
+  border-bottom: 1px solid var(--gk-chrome-border);
+  box-shadow:
+    inset 0 1px 0 var(--gk-chrome-highlight),
+    0 1px 2px var(--gk-chrome-shadow),
+    0 6px 18px -12px var(--gk-chrome-shadow);
 }
-html.dark header.glass-card {
-  background: rgb(40, 40, 40);
-  border-bottom: 1px solid var(--border-light);
-  box-shadow: none;
+/* Sidebar — the same static fake-glass recipe, oriented vertically. The
+   surface + border + depth live here (token-driven, so it follows every
+   theme); TagSidebar.jsx only sets layout (width + safe-area padding).
+   Header tint runs left→right and sidebar top→bottom, both starting on
+   --gk-chrome-1, so the shared top-left corner stays seamless. */
+.gk-sidebar {
+  background:
+    linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 22%),
+    linear-gradient(180deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 55%, var(--gk-chrome-3) 100%);
+  border-right: 1px solid var(--gk-chrome-border);
+  box-shadow:
+    inset 0 1px 0 var(--gk-chrome-highlight),
+    8px 0 24px -16px var(--gk-chrome-shadow);
+}
+/* Sidebar nav entries — hover/active driven by the same chrome tokens so they
+   stay coherent with the glass and follow every theme (light + dark). */
+.gk-side-item {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.gk-side-item:hover {
+  background-color: var(--gk-chrome-hover);
+}
+.gk-side-item--active {
+  background-color: var(--gk-chrome-active-bg);
+  color: var(--gk-chrome-active-fg);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--gk-chrome-accent);
 }
 /* Custom background image active (login screen or app), LIGHT mode only.
    The photo is shown raw (vivid), so legibility can't come from the
@@ -202,10 +340,12 @@ html.gk-custom-bg:not(.dark) header.glass-card {
    large chrome surfaces). !important overrides the component's inline
    colour. */
 html.gk-custom-bg:not(.dark) .gk-sidebar {
-  background-color: rgb(240, 232, 255) !important;
+  /* Over a wallpaper the sidebar stays a solid opaque panel (occludes, never
+     re-blurs); the background shorthand (not -color) also clears the gradient. */
+  background: rgb(240, 232, 255) !important;
 }
 html.gk-custom-bg.dark .gk-sidebar {
-  background-color: #222222 !important;
+  background: #222222 !important;
 }
 /* Note-type creation buttons: their light pastel drop-shadow reads as a
    white halo over a photo in light mode (dark mode already uses
@@ -2023,17 +2163,8 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
   .modal-header-blur {
     background-color: inherit;
   }
-  header.glass-card {
-    background: linear-gradient(
-      90deg,
-      rgba(99, 102, 241, 0.07) 0%,
-      rgba(168, 85, 247, 0.07) 50%,
-      rgba(236, 72, 153, 0.05) 100%
-    ), rgba(255, 255, 255, 0.92);
-  }
-  html.dark header.glass-card {
-    background: rgba(40, 40, 40, 0.92);
-  }
+  /* The header/sidebar fake glass is already blur-free (pure paint), so it
+     needs no touch-specific override — the base token rules apply as-is. */
 }
 @media (max-width: 639px) {
   /* Keep only left-edge (1-3) and right-edge (13-15) cards on mobile */
