@@ -206,6 +206,15 @@ html.gk-overlay-locked body {
 html.gk-overlay-locked .floating-cards-bg .login-deco-card {
   animation-play-state: paused;
 }
+/* Same trick during active scrolling: a moving backdrop behind the sticky
+   blurred header forces the GPU to re-rasterise the blur every frame, which
+   janks the scroll on weak GPUs. FloatingCardsBackground toggles gk-scrolling
+   on <html> while the user scrolls (removed ~180ms after it stops), so the
+   cards freeze for the duration of the scroll and resume the moment it ends —
+   imperceptible, and it hands the whole frame budget back to the scroll. */
+html.gk-scrolling .floating-cards-bg .login-deco-card {
+  animation-play-state: paused;
+}
 /* Frosted-glass surfaces, FLATTENED for performance. The live
    backdrop-filter blur is re-rasterised by the GPU on every composite
    frame — a gridful of glass cards scrolling pegs weak integrated GPUs
