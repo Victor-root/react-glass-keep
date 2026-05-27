@@ -41,6 +41,7 @@ html.dark {
   --gk-chrome-1: rgba(219, 230, 249, 0.90);  /* cool blue    */
   --gk-chrome-2: rgba(226, 228, 248, 0.90);  /* pale indigo  */
   --gk-chrome-3: rgba(232, 228, 248, 0.90);  /* violet touch */
+  --gk-chrome-solid: #edf1fa;                /* opaque header base — kills see-through */
   --gk-chrome-border: rgba(120, 134, 196, 0.28);
   --gk-chrome-shadow: rgba(54, 64, 122, 0.10);
   --gk-chrome-sheen: rgba(255, 255, 255, 0.55);
@@ -56,6 +57,7 @@ html.dark {
   --gk-chrome-1: rgba(28, 35, 52, 0.90);
   --gk-chrome-2: rgba(31, 34, 56, 0.90);
   --gk-chrome-3: rgba(35, 33, 54, 0.90);
+  --gk-chrome-solid: #1b2233;
   --gk-chrome-border: rgba(126, 142, 200, 0.20);
   --gk-chrome-shadow: rgba(0, 0, 0, 0.38);
   --gk-chrome-sheen: rgba(255, 255, 255, 0.05);
@@ -268,16 +270,18 @@ html.dark .glass-card {
 }
 header.glass-card {
   /* Static "fake glass" — NO backdrop-filter / blur. A soft top→down light
-     sheen sits over a gentle blue→indigo→violet tint; a 1px rim highlight,
-     a cool hairline border and a soft shadow give depth. It's pure paint,
-     composited as a cheap alpha layer, so scrolling under the sticky header
-     stays smooth. All colours come from the --gk-chrome-* theme tokens so the
-     header carries the workspace identity (and follows every gk-theme-*). */
+     sheen + a gentle blue→indigo→violet tint sit over an OPAQUE base
+     (--gk-chrome-solid), so the header reads as frosted glass yet nothing
+     behind it shows through while scrolling. A 1px rim highlight, a cool
+     hairline border and a soft shadow add depth. Pure paint, no per-frame
+     re-raster. Colours come from the --gk-chrome-* tokens so the header
+     carries the workspace identity (and follows every gk-theme-*). */
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   background:
     linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 60%),
-    linear-gradient(100deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 52%, var(--gk-chrome-3) 100%);
+    linear-gradient(100deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 52%, var(--gk-chrome-3) 100%),
+    var(--gk-chrome-solid);
   border-bottom: 1px solid var(--gk-chrome-border);
   box-shadow:
     inset 0 1px 0 var(--gk-chrome-highlight),
