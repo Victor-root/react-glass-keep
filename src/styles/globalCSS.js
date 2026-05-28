@@ -4932,7 +4932,8 @@ html.dark .gk-notif-bell-dot {
 .gk-notif-center--mobile {
   animation: none;
   transform: translateY(-100%);
-  transition: transform 0.48s cubic-bezier(0.32, 0.72, 0, 1);
+  /* Match the sync sheet's open/close timing (was 0.48s). */
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
   /* Flat opaque header colour + NO backdrop blur. The sheet slides via
      transform; a live backdrop-filter forced the GPU to re-rasterise the
