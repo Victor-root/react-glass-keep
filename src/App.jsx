@@ -1932,14 +1932,14 @@ export default function App() {
       : (androidDark != null ? androidDark : (mq?.matches ?? false));
     setDark(savedDark);
     document.documentElement.classList.toggle("dark", savedDark);
-    setThemeColor(savedDark ? "#1a1a1a" : "#f0e8ff");
+    setThemeColor(savedDark ? "#1b2233" : "#e7e9fc");
 
     // Apply dark mode from system/bridge without persisting — only toggleDark marks a manual pref
     const applyDark = (isDark) => {
       setDark(isDark);
       document.documentElement.classList.toggle("dark", isDark);
       // Skip if note modal is open — NoteModal effect handles its own color
-      if (!window.__noteModalOpen) setThemeColor(isDark ? "#1a1a1a" : "#f0e8ff");
+      if (!window.__noteModalOpen) setThemeColor(isDark ? "#1b2233" : "#e7e9fc");
     };
     const hasManualPref = () => sessionStorage.getItem("glass-keep-dark-mode-manual") !== null;
 
@@ -1968,7 +1968,7 @@ export default function App() {
     document.documentElement.classList.toggle("dark", next);
     sessionStorage.setItem("glass-keep-dark-mode-manual", String(next));
     // Skip if note modal is open — NoteModal effect handles its own color
-    if (!window.__noteModalOpen) setThemeColor(next ? "#1a1a1a" : "#f0e8ff");
+    if (!window.__noteModalOpen) setThemeColor(next ? "#1b2233" : "#e7e9fc");
   };
 
   // Close sidebar with Escape
