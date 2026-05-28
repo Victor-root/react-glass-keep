@@ -5104,6 +5104,14 @@ html.dark .gk-notif-center__header {
   background: linear-gradient(180deg, rgba(32, 30, 42, 0.96), rgba(28, 28, 38, 0.90));
 }
 
+/* Mobile: the notification sheet header matches the main app header — a flat
+   --gk-statusbar block (same colour as the status bar / header). Two selectors
+   so it beats both the light and html.dark base rules above. */
+.gk-notif-center--mobile .gk-notif-center__header,
+html.dark .gk-notif-center--mobile .gk-notif-center__header {
+  background: var(--gk-statusbar);
+}
+
 /* Soft 6 px bottom fade that bleeds into the list — no hard line. */
 .gk-notif-center__header::after {
   content: "";
