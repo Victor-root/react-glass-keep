@@ -359,6 +359,16 @@ header.glass-card {
 html.gk-custom-bg:not(.dark) .glass-card {
   background-color: rgba(255, 255, 255, 0.92);
 }
+/* The login form card(s) over a custom background: FULLY opaque (white in
+   light, near-black in dark) so the photo never bleeds through behind the
+   form. Scoped to .auth-card so the header / note modal are unaffected, and
+   the higher specificity (.glass-card.auth-card) beats the 0.92 rule above. */
+html.gk-custom-bg:not(.dark) .glass-card.auth-card {
+  background-color: #ffffff;
+}
+html.gk-custom-bg.dark .glass-card.auth-card {
+  background-color: #282828;
+}
 html.gk-custom-bg:not(.dark) header.glass-card {
   /* Opaque even over a custom wallpaper — the header is a solid chrome bar,
      not a frosted panel, so it occludes (and never re-blurs) the animated

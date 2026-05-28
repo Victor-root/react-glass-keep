@@ -130,7 +130,7 @@ export default function QrLoginPanel({ dark, onLoggedIn, onCancel }) {
     // the login form. No modal backdrop, no fixed positioning — the
     // panel is part of normal flow within AuthShell's `sidePanel`
     // column.
-    <div className="glass-card rounded-xl p-6 shadow-lg">
+    <div className="glass-card auth-card rounded-xl p-6 shadow-lg">
       <h3 className="text-center text-base font-semibold mb-3">
         {t("qrLoginTitle")}
       </h3>

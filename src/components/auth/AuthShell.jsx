@@ -175,7 +175,7 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
               sidePanel ? "lg:block lg:relative lg:w-fit lg:items-stretch" : ""
             }`}
           >
-            <div className="glass-card rounded-xl p-6 shadow-lg w-full max-w-md">
+            <div className="glass-card auth-card rounded-xl p-6 shadow-lg w-full max-w-md">
               {/* With a custom background the brand sits inside the card
                   (on its opaque surface) so a transparent logo + the
                   name stay legible over any photo. */}
