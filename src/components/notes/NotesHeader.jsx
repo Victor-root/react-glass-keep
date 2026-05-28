@@ -93,6 +93,27 @@ export default function NotesHeader({
   const swallowNextClickRef = React.useRef(false);
   const swallowClearTimerRef = React.useRef(null);
 
+  // Publish the header's exact rendered height as --gk-header-h so the
+  // sidebar can mask its right-edge line precisely over the header strip
+  // (the top-left header/sidebar corner reads as one surface, to the pixel).
+  // ResizeObserver keeps it correct across breakpoints, font/zoom changes,
+  // and the offline-badge row that adds height on narrow widths.
+  const headerRef = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return undefined;
+    const apply = () => {
+      document.documentElement.style.setProperty(
+        "--gk-header-h",
+        `${Math.round(el.offsetHeight)}px`,
+      );
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   React.useEffect(() => {
     const onClick = (e) => {
       if (!swallowNextClickRef.current) return;
@@ -145,6 +166,7 @@ export default function NotesHeader({
   const showOfflineBadge = !isOnline || syncStatus?.syncState === "offline" || syncStatus?.serverReachable === false;
   return (
       <header
+        ref={headerRef}
         className={`${qrQuickEnabled ? "px-1.5" : "px-2.5"} py-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
         style={{
           // Keep the sticky header tight against the status bar.

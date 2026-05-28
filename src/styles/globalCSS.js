@@ -365,8 +365,22 @@ header.glass-card {
   width: 1px;
   background: var(--gk-chrome-border);
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 84px, #000 108px);
-  mask-image: linear-gradient(to bottom, transparent 0, transparent 84px, #000 108px);
+  /* Transparent up to the header's exact bottom edge (safe-top inset + the
+     measured header height published by NotesHeader), then a short fade so
+     the line reappears cleanly below it — pixel-aligned, no corner stub. */
+  --gk-sidebar-edge-cut: calc(var(--safe-top, 0px) + var(--gk-header-h, 84px));
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent var(--gk-sidebar-edge-cut),
+    #000 calc(var(--gk-sidebar-edge-cut) + 16px)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent var(--gk-sidebar-edge-cut),
+    #000 calc(var(--gk-sidebar-edge-cut) + 16px)
+  );
 }
 /* Installed DESKTOP PWA: drop the sidebar's bright inset top rim-highlight so
    its top edge (the title-bar colour) meets the OS title bar with no 1px line.
