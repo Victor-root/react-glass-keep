@@ -641,7 +641,7 @@ export default function SettingsPanel({
               {/* Workspace colour theme (header + sidebar chrome only) —
                   its own group, separated by a hairline. */}
               <div className="pt-2 border-t border-[var(--border-light)]">
-                <WorkspaceThemeSection />
+                <WorkspaceThemeSection token={token} showToast={showToast} />
               </div>
 
               {/* Per-user app background (image + blur, optional light/dark

@@ -57,6 +57,10 @@ html.dark {
   --gk-chrome-hover: rgba(79, 70, 229, 0.08);
   --gk-chrome-active-bg: rgba(99, 102, 241, 0.16);
   --gk-chrome-active-fg: #3730a3;
+  /* Notes-canvas background (body). Theme-driven so the main area follows the
+     active theme; GlassKeep keeps its exact validated lavender/blue/pink. */
+  --gk-app-bg: #eee5ff;
+  --gk-app-bg-image: linear-gradient(135deg, #eee5ff 0%, #e5f3fd 50%, #fde5ee 100%);
 }
 html.dark {
   /* GlassKeep — dark. Cool slate-blue glass; sheen/highlight are barely
@@ -74,6 +78,8 @@ html.dark {
   --gk-chrome-hover: rgba(129, 140, 248, 0.14);
   --gk-chrome-active-bg: rgba(99, 102, 241, 0.24);
   --gk-chrome-active-fg: #c7d2fe;
+  --gk-app-bg: #1a1a1a;
+  --gk-app-bg-image: none;
 }
 /* ----- Alternate shell themes. Activated by a class on <html>
    (gk-theme-<id>), set from the saved preference (see src/theme/shellTheme.js
@@ -102,6 +108,8 @@ html.gk-theme-emerald {
   --gk-chrome-hover: rgba(16, 185, 129, 0.09);
   --gk-chrome-active-bg: rgba(13, 148, 136, 0.16);
   --gk-chrome-active-fg: #0f5f53;
+  --gk-app-bg: #e8f6ee;
+  --gk-app-bg-image: linear-gradient(135deg, #e8f6ee 0%, #e3f4f1 50%, #eafaf0 100%);
 }
 html.dark.gk-theme-emerald {
   --gk-chrome-1: rgba(20, 40, 34, 0.90);
@@ -115,6 +123,8 @@ html.dark.gk-theme-emerald {
   --gk-chrome-hover: rgba(52, 211, 153, 0.14);
   --gk-chrome-active-bg: rgba(16, 185, 129, 0.24);
   --gk-chrome-active-fg: #a6e9cf;
+  --gk-app-bg: #141a17;
+  --gk-app-bg-image: none;
 }
 
 /* AMBER — warm amber / honey / champagne (kept saturated, never beige). */
@@ -132,6 +142,8 @@ html.gk-theme-amber {
   --gk-chrome-hover: rgba(217, 119, 6, 0.10);
   --gk-chrome-active-bg: rgba(217, 119, 6, 0.16);
   --gk-chrome-active-fg: #8a4d09;
+  --gk-app-bg: #fdf2e2;
+  --gk-app-bg-image: linear-gradient(135deg, #fdf2e2 0%, #faecd6 50%, #fdeede 100%);
 }
 html.dark.gk-theme-amber {
   --gk-chrome-1: rgba(42, 33, 20, 0.90);
@@ -145,6 +157,8 @@ html.dark.gk-theme-amber {
   --gk-chrome-hover: rgba(251, 191, 36, 0.14);
   --gk-chrome-active-bg: rgba(217, 119, 6, 0.26);
   --gk-chrome-active-fg: #f6d8a6;
+  --gk-app-bg: #1b1712;
+  --gk-app-bg-image: none;
 }
 
 /* ROSEWOOD — deep bordeaux / dark raspberry (elegant, not pastel pink). */
@@ -162,6 +176,8 @@ html.gk-theme-rosewood {
   --gk-chrome-hover: rgba(159, 18, 57, 0.09);
   --gk-chrome-active-bg: rgba(159, 18, 57, 0.16);
   --gk-chrome-active-fg: #831843;
+  --gk-app-bg: #fbeaee;
+  --gk-app-bg-image: linear-gradient(135deg, #fbeaee 0%, #f7e3ea 50%, #fceef1 100%);
 }
 html.dark.gk-theme-rosewood {
   --gk-chrome-1: rgba(46, 24, 30, 0.90);
@@ -175,6 +191,8 @@ html.dark.gk-theme-rosewood {
   --gk-chrome-hover: rgba(251, 113, 133, 0.13);
   --gk-chrome-active-bg: rgba(190, 18, 60, 0.26);
   --gk-chrome-active-fg: #f9c9d3;
+  --gk-app-bg: #1b1416;
+  --gk-app-bg-image: none;
 }
 
 /* GRAPHITE — cool slate / graphite neutral, discreet accent (not flat grey). */
@@ -192,6 +210,8 @@ html.gk-theme-graphite {
   --gk-chrome-hover: rgba(71, 85, 105, 0.09);
   --gk-chrome-active-bg: rgba(71, 85, 105, 0.16);
   --gk-chrome-active-fg: #334155;
+  --gk-app-bg: #eef1f5;
+  --gk-app-bg-image: linear-gradient(135deg, #eef1f5 0%, #e9edf2 50%, #f3f5f8 100%);
 }
 html.dark.gk-theme-graphite {
   --gk-chrome-1: rgba(30, 33, 39, 0.90);
@@ -205,6 +225,8 @@ html.dark.gk-theme-graphite {
   --gk-chrome-hover: rgba(148, 163, 184, 0.13);
   --gk-chrome-active-bg: rgba(100, 116, 139, 0.26);
   --gk-chrome-active-fg: #cbd5e1;
+  --gk-app-bg: #161719;
+  --gk-app-bg-image: none;
 }
 button, [role="button"] { cursor: pointer; }
 /* Selection rules:
@@ -232,19 +254,15 @@ button, [role="button"] {
   user-select: none;
 }
 body {
-  /* Notes canvas — same lavender → blue → pink sweep, nudged very slightly
-     more saturated so the white note cards read a touch better against it.
-     Stays clearly lighter than the (bordered + shadowed) header/sidebar. */
-  background-color: #eee5ff;
-  background-image: linear-gradient(135deg, #eee5ff 0%, #e5f3fd 50%, #fde5ee 100%);
+  /* Notes canvas — theme-driven via --gk-app-bg / --gk-app-bg-image so the
+     main area follows the active workspace theme (light + dark cascade from
+     the token blocks). GlassKeep keeps the exact validated lavender → blue →
+     pink sweep. Stays clearly lighter than the bordered/shadowed chrome. */
+  background-color: var(--gk-app-bg);
+  background-image: var(--gk-app-bg-image);
   background-attachment: fixed;
   color: var(--text-light);
   transition: background-color 0.3s ease, color 0.3s ease;
-}
-html.dark body {
-  background-color: #1a1a1a;
-  background-image: none;
-  background-attachment: fixed;
 }
 
 /* Disable browser pull-to-refresh while any overlay (notification

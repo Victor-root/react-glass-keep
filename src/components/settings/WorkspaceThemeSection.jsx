@@ -3,19 +3,33 @@ import { t } from "../../i18n";
 import TI from "../../icons/editor/index.jsx";
 import { RowIcon } from "../common/SettingsAccordion.jsx";
 import { SHELL_THEMES, getStoredShellTheme, setShellTheme } from "../../theme/shellTheme.js";
+import { api } from "../../utils/api.js";
 
 // Workspace (shell) colour-theme picker. Themes recolour ONLY the header +
-// sidebar chrome (via --gk-chrome-* token overrides on <html>); notes, note
-// cards, panels, the notes-area background and the login page are untouched.
-// Selection applies live, is saved to localStorage, and is re-applied at boot
-// (see src/theme/shellTheme.js). GlassKeep is the default fallback.
-export default function WorkspaceThemeSection() {
+// sidebar chrome and the notes-canvas background (via --gk-chrome-* /
+// --gk-app-bg token overrides on <html>); notes, note cards, panels and the
+// login page are untouched. Selection applies live, is saved to the server
+// (source of truth) AND cached in localStorage for instant boot, and is
+// re-applied on load. GlassKeep is the default fallback.
+export default function WorkspaceThemeSection({ token, showToast }) {
   const [selected, setSelected] = useState(() => getStoredShellTheme());
 
-  const choose = (id) => {
+  const choose = async (id) => {
     if (id === selected) return;
+    // Apply + cache locally first so the change is instant and survives a
+    // refresh even if the network write fails.
     setShellTheme(id);
     setSelected(id);
+    // Persist to the user's server profile (primary store, cross-device).
+    try {
+      await api("/user/settings", {
+        method: "PATCH",
+        body: { shellTheme: id },
+        token,
+      });
+    } catch (_) {
+      showToast?.(t("workspaceThemeSaveError"), "error");
+    }
   };
 
   return (

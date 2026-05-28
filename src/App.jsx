@@ -29,6 +29,7 @@ import { api, getAuth, setAuth, AUTH_KEY, getClientId } from "./utils/api.js";
 import { localizeServerError } from "./utils/serverErrors.js";
 import { mdForDownload } from "./utils/markdown.jsx";
 import { uid, sanitizeFilename, downloadText, triggerBlobDownload, ensureJSZip, imageExtFromDataURL, fileToCompressedDataURL, setThemeColor, currentStatusBarColor } from "./utils/helpers.js";
+import { setShellTheme, isValidShellTheme } from "./theme/shellTheme.js";
 import { textToChecklistItems, checklistItemsToText } from "./utils/noteConversion.js";
 import { isRichContent, contentToPlain, serializeRichContent, legacyMarkdownToRichDoc } from "./utils/richText.js";
 import {
@@ -1033,6 +1034,12 @@ export default function App() {
         if (settings && typeof settings.floatingCardsEnabled === "boolean") {
           setFloatingCardsEnabled(settings.floatingCardsEnabled);
           localStorage.setItem("floatingCardsEnabled", String(settings.floatingCardsEnabled));
+        }
+        // Workspace shell theme — server is the source of truth (applied here,
+        // overriding the localStorage cache the boot script already used).
+        // Absent/invalid → keep the local fallback (which defaults to GlassKeep).
+        if (settings && isValidShellTheme(settings.shellTheme)) {
+          setShellTheme(settings.shellTheme);
         }
         // Per-user app background (images live in dedicated server
         // columns, surfaced through this settings load). Not cached in
@@ -3283,6 +3290,13 @@ export default function App() {
               // local change.
               remoteSyncedKeysRef.current = new Set();
               const mark = (k) => remoteSyncedKeysRef.current.add(k);
+
+              // Workspace shell theme — apply live across tabs/devices. No
+              // outbound-PATCH useEffect watches it (the picker writes the
+              // server directly), so no echo-suppression mark is needed.
+              if (keys.has("shellTheme") && isValidShellTheme(settings.shellTheme)) {
+                setShellTheme(settings.shellTheme);
+              }
 
               if (keys.has("notificationsPosition")) {
                 const v = settings.notificationsPosition;
