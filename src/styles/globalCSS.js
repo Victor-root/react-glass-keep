@@ -369,20 +369,21 @@ header.glass-card {
   background: var(--gk-chrome-border);
   pointer-events: none;
   /* Transparent up to the header's exact bottom edge (safe-top inset + the
-     measured header height published by NotesHeader), then a short fade so
-     the line reappears cleanly below it — pixel-aligned, no corner stub. */
+     measured header height published by NotesHeader), then a HARD cut to
+     solid so the line starts crisply right at the corner — no fade that would
+     make it look like it dies before reaching the header/sidebar angle. */
   --gk-sidebar-edge-cut: calc(var(--safe-top, 0px) + var(--gk-header-h, 84px));
   -webkit-mask-image: linear-gradient(
     to bottom,
     transparent 0,
     transparent var(--gk-sidebar-edge-cut),
-    #000 calc(var(--gk-sidebar-edge-cut) + 16px)
+    #000 var(--gk-sidebar-edge-cut)
   );
   mask-image: linear-gradient(
     to bottom,
     transparent 0,
     transparent var(--gk-sidebar-edge-cut),
-    #000 calc(var(--gk-sidebar-edge-cut) + 16px)
+    #000 var(--gk-sidebar-edge-cut)
   );
 }
 /* Installed DESKTOP PWA: drop the sidebar's bright inset top rim-highlight so
