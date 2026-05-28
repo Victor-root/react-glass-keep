@@ -257,7 +257,7 @@ export default function NotesHeader({
             <input
               type="text"
               placeholder={aiAssistantEnabled ? t("searchOrAskAi") : t("search")}
-              className={`w-full bg-transparent border border-transparent rounded-lg pl-4 ${aiAssistantEnabled ? "pr-20" : "pr-8"} py-2 ring-1 ring-slate-400/60 transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
+              className={`w-full bg-transparent border border-transparent rounded-lg pl-4 ${aiAssistantEnabled ? "pr-20" : "pr-8"} py-2 ring-1 ring-slate-400/30 transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
@@ -332,7 +332,7 @@ export default function NotesHeader({
                 ref={mobileSearchRef}
                 type="text"
                 placeholder={aiAssistantEnabled ? t("searchOrAskAi") : t("search")}
-                className={`w-full bg-transparent border border-transparent rounded-lg pl-3 ${aiAssistantEnabled ? "pr-16" : "pr-8"} py-2 text-sm ring-1 ring-slate-400/60 transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
+                className={`w-full bg-transparent border border-transparent rounded-lg pl-3 ${aiAssistantEnabled ? "pr-16" : "pr-8"} py-2 text-sm ring-1 ring-slate-400/30 transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => {
