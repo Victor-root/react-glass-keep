@@ -324,6 +324,19 @@ header.glass-card {
     0 1px 2px var(--gk-chrome-shadow),
     0 6px 18px -12px var(--gk-chrome-shadow);
 }
+/* Installed DESKTOP PWA: the OS title bar sits directly above the header and
+   is painted with theme-color (--gk-statusbar). Drop the header's top border
+   and its bright inset rim-highlight so there's no hard line where the title
+   bar meets the header — they read as one continuous surface (the mobile
+   pointer:coarse block already does this against the status bar). */
+@media (display-mode: standalone) and (pointer: fine) {
+  header.glass-card {
+    border-top: 0;
+    box-shadow:
+      0 1px 2px var(--gk-chrome-shadow),
+      0 6px 18px -12px var(--gk-chrome-shadow);
+  }
+}
 /* Sidebar — the same static fake-glass recipe, oriented vertically. The
    surface + border + depth live here (token-driven, so it follows every
    theme); TagSidebar.jsx only sets layout (width + safe-area padding).
