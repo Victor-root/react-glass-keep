@@ -230,25 +230,22 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [open, setOpen]);
 
-  // Phone-only: lock body scroll while the full-width sheet is open.
+  // Slide the phone sheet in: flip .is-open one frame after mount so the
+  // transform transition has a from-state (translateY(-100%)) to animate from.
+  // No body-scroll lock on purpose — it shifted the page and could get stuck;
+  // the sheet simply overlays the header.
+  const [animIn, setAnimIn] = useState(false);
   useEffect(() => {
-    if (!open) return undefined;
-    if (typeof window === "undefined" || window.innerWidth >= 640) return undefined;
-    const html = document.documentElement;
-    const body = document.body;
-    const prev = { ho: html.style.overflow, bo: body.style.overflow, bt: body.style.touchAction };
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    body.style.touchAction = "pan-y";
-    return () => {
-      html.style.overflow = prev.ho;
-      body.style.overflow = prev.bo;
-      body.style.touchAction = prev.bt;
-    };
+    if (!open) { setAnimIn(false); return undefined; }
+    let r2 = 0;
+    const r1 = requestAnimationFrame(() => { r2 = requestAnimationFrame(() => setAnimIn(true)); });
+    return () => { cancelAnimationFrame(r1); if (r2) cancelAnimationFrame(r2); };
   }, [open]);
 
   // Grabber drag-to-close (phone sheet). The sheet is anchored at the top, so
-  // dragging the grabber UP collapses it — same mechanic as the notif sheet.
+  // dragging the grabber UP collapses it. The drag moves the panel via an
+  // inline transform; the CSS uses a transition (not a keyframe animation) so
+  // nothing holds transform and the panel follows the finger 1:1.
   const dragRef = useRef({ active: false, startY: 0, currentY: 0 });
   const handleGrabberDown = (e) => {
     if (e.button != null && e.button !== 0) return;
@@ -257,7 +254,6 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
     dragRef.current = { active: true, startY: e.clientY, currentY: 0 };
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
     panel.style.transition = "none";
-    panel.style.animation = "none";
   };
   const handleGrabberMove = (e) => {
     if (!dragRef.current.active) return;
@@ -273,13 +269,11 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
     const panel = menuRef.current;
     if (!panel) return;
     if (dy > 60) {
-      // Past the threshold: it's already dragged most of the way up — just
-      // close (the panel unmounts from its current position).
       setOpen(false);
     } else {
-      // Snap back smoothly to the open position (keep animation disabled so
-      // the slide-in keyframe doesn't replay).
-      panel.style.transition = "transform 0.2s ease";
+      // Snap back: restore the CSS transition, clear the inline transform so
+      // .is-open (translateY 0) takes over and animates the panel home.
+      panel.style.transition = "";
       panel.style.transform = "";
     }
   };
@@ -368,7 +362,7 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
         const sheet = (
           <div
             ref={menuRef}
-            className={`gk-sync-sheet fixed top-14 left-1/2 -translate-x-1/2 sm:absolute sm:top-12 sm:left-auto sm:right-0 sm:translate-x-0 w-[calc(100vw-1rem)] max-w-[340px] sm:w-auto sm:min-w-[280px] z-[1100] border rounded-lg shadow-lg overflow-hidden ${
+            className={`gk-sync-sheet ${animIn ? "is-open" : ""} fixed top-14 left-1/2 -translate-x-1/2 sm:absolute sm:top-12 sm:left-auto sm:right-0 sm:translate-x-0 w-[calc(100vw-1rem)] max-w-[340px] sm:w-auto sm:min-w-[280px] z-[1100] border rounded-lg shadow-lg overflow-hidden ${
               dark
                 ? "bg-[var(--gk-statusbar)] sm:bg-[#222] border-gray-700 text-gray-100"
                 : "bg-[var(--gk-statusbar)] sm:bg-[#f9f6ff] border-gray-200 text-gray-800"

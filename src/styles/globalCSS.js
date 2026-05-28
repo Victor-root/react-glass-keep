@@ -4967,19 +4967,20 @@ html.dark .gk-side-panel { background-color: #222222; }
     right: 0 !important;
     width: 100% !important;
     max-width: none !important;
-    /* Tailwind v4's -translate-x-1/2 sets the translate property (separate
-       from transform), so the transform-based slide below doesn't cancel it
-       and the full-width sheet ends up shoved 50% off-screen left. Kill it. */
+    /* Tailwind v4's -translate-x-1/2 sets the translate property (not
+       transform), so kill it or the full-width sheet is shoved off-screen. */
     translate: none !important;
     border-radius: 0 0 1rem 1rem !important;
     border-width: 0 0 1px 0 !important;
-    animation: gkSyncSheetIn 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+    /* Slide via a transition + .is-open class, NOT a keyframe animation: a
+       running animation's fill holds transform and would override the
+       grabber's inline drag transform, so the tirette wouldn't follow the
+       finger. A transition leaves transform free for the drag. */
+    transform: translateY(-100%);
+    transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
     will-change: transform;
   }
-}
-@keyframes gkSyncSheetIn {
-  from { transform: translateY(-100%); }
-  to   { transform: translateY(0); }
+  .gk-sync-sheet.is-open { transform: translateY(0); }
 }
 .gk-sync-sheet__grabber {
   height: 22px;
