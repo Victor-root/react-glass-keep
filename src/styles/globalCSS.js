@@ -2205,9 +2205,15 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
      (!important). Make the header a FLAT block in the exact status-bar colour
      (--gk-statusbar) so the native status bar and the header read as one
      continuous surface — no gradient on mobile. The sidebar keeps its own
-     fake-glass look. */
+     fake-glass look. Also drop the top border + inset top highlight so there's
+     no seam where the header meets the status bar; keep the bottom border +
+     soft shadow to separate the header from the scrolling content. */
   header.glass-card {
     background: var(--gk-statusbar);
+    border-top: 0;
+    box-shadow:
+      0 1px 2px var(--gk-chrome-shadow),
+      0 6px 18px -12px var(--gk-chrome-shadow);
   }
 }
 @media (max-width: 639px) {
