@@ -346,10 +346,27 @@ header.glass-card {
   background:
     linear-gradient(180deg, var(--gk-statusbar) 0%, transparent 64px),
     linear-gradient(180deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 55%, var(--gk-chrome-3) 100%);
-  border-right: 1px solid var(--gk-chrome-border);
   box-shadow:
     inset 0 1px 0 var(--gk-chrome-highlight),
     8px 0 24px -16px var(--gk-chrome-shadow);
+}
+/* Sidebar right edge drawn as a masked pseudo-element instead of a plain
+   border-right: the top ~header-height strip is masked out so the 1px line
+   doesn't cross the header (no "T" intersection at the top-left corner — the
+   sidebar and header tops read as one surface). It fades in below the header
+   and stays solid the rest of the way down. The sidebar is position:fixed, so
+   it's the containing block for this absolute child. */
+.gk-sidebar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--gk-chrome-border);
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 84px, #000 108px);
+  mask-image: linear-gradient(to bottom, transparent 0, transparent 84px, #000 108px);
 }
 /* Installed DESKTOP PWA: drop the sidebar's bright inset top rim-highlight so
    its top edge (the title-bar colour) meets the OS title bar with no 1px line.
