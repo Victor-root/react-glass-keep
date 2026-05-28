@@ -313,7 +313,7 @@ header.glass-card {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   background:
-    linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 60%),
+    linear-gradient(180deg, var(--gk-statusbar) 0%, transparent 100%),
     linear-gradient(100deg,
       color-mix(in srgb, var(--gk-chrome-1) 86%, transparent) 0%,
       color-mix(in srgb, var(--gk-chrome-2) 86%, transparent) 52%,
@@ -344,7 +344,7 @@ header.glass-card {
    --gk-chrome-1, so the shared top-left corner stays seamless. */
 .gk-sidebar {
   background:
-    linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 22%),
+    linear-gradient(180deg, var(--gk-statusbar) 0%, transparent 64px),
     linear-gradient(180deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 55%, var(--gk-chrome-3) 100%);
   border-right: 1px solid var(--gk-chrome-border);
   box-shadow:
