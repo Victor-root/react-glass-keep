@@ -320,8 +320,8 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
             ref={menuRef}
             className={`fixed top-14 left-1/2 -translate-x-1/2 sm:absolute sm:top-12 sm:left-auto sm:right-0 sm:translate-x-0 w-[calc(100vw-1rem)] max-w-[340px] sm:w-auto sm:min-w-[280px] z-[1100] border rounded-lg shadow-lg overflow-hidden ${
               dark
-                ? "bg-[#222] border-gray-700 text-gray-100"
-                : "bg-[#f9f6ff] border-gray-200 text-gray-800"
+                ? "bg-[var(--gk-statusbar)] sm:bg-[#222] border-gray-700 text-gray-100"
+                : "bg-[var(--gk-statusbar)] sm:bg-[#f9f6ff] border-gray-200 text-gray-800"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
