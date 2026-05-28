@@ -336,12 +336,6 @@ header.glass-card {
       0 1px 2px var(--gk-chrome-shadow),
       0 6px 18px -12px var(--gk-chrome-shadow);
   }
-  /* Same for the sidebar: drop its inset top rim-highlight so its top edge
-     (now the title-bar colour) meets the OS title bar with no line. Keep the
-     right-edge depth shadow. */
-  .gk-sidebar {
-    box-shadow: 8px 0 24px -16px var(--gk-chrome-shadow);
-  }
 }
 /* Sidebar — the same static fake-glass recipe, oriented vertically. The
    surface + border + depth live here (token-driven, so it follows every
@@ -356,6 +350,16 @@ header.glass-card {
   box-shadow:
     inset 0 1px 0 var(--gk-chrome-highlight),
     8px 0 24px -16px var(--gk-chrome-shadow);
+}
+/* Installed DESKTOP PWA: drop the sidebar's bright inset top rim-highlight so
+   its top edge (the title-bar colour) meets the OS title bar with no 1px line.
+   MUST live after the .gk-sidebar base rule above — at equal specificity the
+   later rule wins, so placing it inside the earlier standalone block would be
+   silently overridden by the base box-shadow (that was the visible seam). */
+@media (display-mode: standalone) and (pointer: fine) {
+  .gk-sidebar {
+    box-shadow: 8px 0 24px -16px var(--gk-chrome-shadow);
+  }
 }
 /* Sidebar nav entries — hover/active driven by the same chrome tokens so they
    stay coherent with the glass and follow every theme (light + dark). */
