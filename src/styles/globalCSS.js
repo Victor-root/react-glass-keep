@@ -336,6 +336,12 @@ header.glass-card {
       0 1px 2px var(--gk-chrome-shadow),
       0 6px 18px -12px var(--gk-chrome-shadow);
   }
+  /* Same for the sidebar: drop its inset top rim-highlight so its top edge
+     (now the title-bar colour) meets the OS title bar with no line. Keep the
+     right-edge depth shadow. */
+  .gk-sidebar {
+    box-shadow: 8px 0 24px -16px var(--gk-chrome-shadow);
+  }
 }
 /* Sidebar — the same static fake-glass recipe, oriented vertically. The
    surface + border + depth live here (token-driven, so it follows every
