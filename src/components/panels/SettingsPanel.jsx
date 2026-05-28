@@ -277,9 +277,8 @@ export default function SettingsPanel({
         />
       )}
       <div
-        className={`fixed top-0 right-0 z-50 h-full w-full lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
+        className={`gk-side-panel fixed top-0 right-0 z-50 h-full w-full lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
         style={{
-          backgroundColor: dark ? "#222222" : "#f9f6ff",
           borderLeft: "1px solid var(--border-light)",
           paddingTop: "var(--safe-top)",
           paddingBottom: "var(--safe-bottom)",

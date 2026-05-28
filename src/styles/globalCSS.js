@@ -4927,6 +4927,25 @@ html.dark .gk-notif-bell-dot {
   transform: translateY(-100%);
   transition: transform 0.48s cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
+  /* Flat opaque header colour + NO backdrop blur. The sheet slides via
+     transform; a live backdrop-filter forced the GPU to re-rasterise the
+     blur every frame, which made the open animation stutter. Opaque fill +
+     transform-only = smooth, and it matches the header. */
+  background: var(--gk-statusbar);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+html.dark .gk-notif-center--mobile {
+  background: var(--gk-statusbar);
+}
+/* Settings / Admin side panels: light surface on desktop, but the flat
+   header colour (--gk-statusbar) on phones so the whole panel matches the
+   chrome. Background lives here (not inline) so the media query can win. */
+.gk-side-panel { background-color: #f9f6ff; }
+html.dark .gk-side-panel { background-color: #222222; }
+@media (max-width: 639px) {
+  .gk-side-panel,
+  html.dark .gk-side-panel { background: var(--gk-statusbar); }
 }
 .gk-notif-center--mobile.is-open {
   transform: translateY(0);
