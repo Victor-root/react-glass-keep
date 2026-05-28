@@ -78,7 +78,7 @@ export default function TagSidebar({
         }}
         aria-hidden={!(permanent || open)}
       >
-        <div className="p-4 flex items-center justify-between">
+        <div className="px-4 flex items-center justify-between min-h-[var(--gk-header-h,56px)]">
           <h3 className="text-lg font-semibold">{t("tags")}</h3>
           <button
             className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/10"
@@ -88,7 +88,7 @@ export default function TagSidebar({
             <CloseIcon />
           </button>
         </div>
-        <nav className="p-2 overflow-y-auto h-[calc(100%-56px)]">
+        <nav className="p-2 overflow-y-auto h-[calc(100%-var(--gk-header-h,56px))]">
           {/* Multi-tag filter indicator — at the top so it's impossible to miss */}
           {activeTagFilters.length > 1 && (
             <div
