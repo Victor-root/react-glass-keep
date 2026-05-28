@@ -251,6 +251,11 @@ html.dark .glass-card {
   user-select: none;
 }
 .note-card { cursor: pointer; }
+/* Desktop hover only: promote the hovered card to its own compositor layer
+   so the group-hover scale animates as a pure transform instead of
+   re-rasterising its box-shadow every frame. Scoped to :hover so we never
+   keep 200+ promoted layers around — only the one card under the cursor. */
+.note-card-wrapper:hover .note-card { will-change: transform; }
 /* Draw note cards: disable content-visibility which forces paint containment */
 .note-card--draw {
   content-visibility: visible;

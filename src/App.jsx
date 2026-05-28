@@ -5,6 +5,7 @@ import React, {
   useState,
   useLayoutEffect,
   useCallback,
+  useDeferredValue,
 } from "react";
 import { askAI, askNoteAIStream } from "./ai";
 import { t } from "./i18n";
@@ -5980,6 +5981,7 @@ export default function App() {
   const sOnToggleSelect = useStableCallback(onToggleSelect);
   const sOnCtrlSelect = useStableCallback(onCtrlSelect);
   const sOnUpdateChecklistItem = useStableCallback(onUpdateChecklistItem);
+  const sOnEmptyTrash = useStableCallback(onEmptyTrash);
 
   // Checklist item drag handlers (for modal reordering)
 
@@ -6244,8 +6246,13 @@ export default function App() {
   }, [allNotesForTags]);
 
   /** -------- Derived lists (search + tag filter) -------- */
+  // Deferred so fast typing in the search box stays responsive: the input
+  // updates immediately (search) while the expensive grid re-filter/re-render
+  // runs as a non-urgent update. No visual change — results settle a frame
+  // later only under heavy load.
+  const deferredSearch = useDeferredValue(search);
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = deferredSearch.toLowerCase();
     const tag =
       tagFilter === ALL_IMAGES
         ? null
@@ -6296,13 +6303,13 @@ export default function App() {
         images.includes(q)
       );
     });
-  }, [notes, search, tagFilter, activeTagFilters]);
-  const pinned = filtered.filter((n) => n.pinned);
-  const others = filtered.filter((n) => !n.pinned);
+  }, [notes, deferredSearch, tagFilter, activeTagFilters]);
+  const pinned = useMemo(() => filtered.filter((n) => n.pinned), [filtered]);
+  const others = useMemo(() => filtered.filter((n) => !n.pinned), [filtered]);
   const filteredEmptyWithSearch =
     filtered.length === 0 &&
     notes.length > 0 &&
-    !!(search || (tagFilter && tagFilter !== "ARCHIVED" && tagFilter !== "TRASHED") || activeTagFilters.length > 0);
+    !!(deferredSearch || (tagFilter && tagFilter !== "ARCHIVED" && tagFilter !== "TRASHED") || activeTagFilters.length > 0);
   const allEmpty = notes.length === 0;
 
   const formatComposer = (type) =>
@@ -6953,7 +6960,7 @@ export default function App() {
         onBulkDownloadZip={onBulkDownloadZip}
         onSelectAll={onSelectAll}
         onOpenSideBySide={onOpenSideBySide}
-        onEmptyTrash={onEmptyTrash}
+        onEmptyTrash={sOnEmptyTrash}
         // view mode
         listView={listView}
         onToggleViewMode={onToggleViewMode}

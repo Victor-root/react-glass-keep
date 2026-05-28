@@ -3,7 +3,7 @@ import { t } from "../../i18n";
 import Masonry from "react-masonry-css";
 import NoteCard from "./NoteCard.jsx";
 
-export default function NotesSections({
+function NotesSections({
   pinned,
   others,
   dark,
@@ -233,3 +233,11 @@ export default function NotesSections({
       </main>
   );
 }
+
+// Memoized: all props are referentially stable (memoized pinned/others +
+// useStableCallback handlers + value-stable state), so the grid — and
+// react-masonry-css's per-render column redistribution — no longer re-runs
+// when App re-renders for unrelated reasons (a toast auto-dismissing, opening
+// a modal/panel, typing in the composer). It still updates when notes,
+// selection, dark mode, sync status, etc. actually change.
+export default React.memo(NotesSections);
