@@ -2215,6 +2215,11 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
       0 1px 2px var(--gk-chrome-shadow),
       0 6px 18px -12px var(--gk-chrome-shadow);
   }
+  /* Sidebar matches the header on mobile: a flat, FULLY OPAQUE block in the
+     same --gk-statusbar colour (no fake-glass gradient / translucency). */
+  .gk-sidebar {
+    background: var(--gk-statusbar);
+  }
 }
 @media (max-width: 639px) {
   /* Keep only left-edge (1-3) and right-edge (13-15) cards on mobile */
