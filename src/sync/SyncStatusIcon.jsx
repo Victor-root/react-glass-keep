@@ -2,6 +2,7 @@
 // Cloud sync status icon with dropdown menu showing detailed sync state
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { t } from "../i18n";
 
 // ─── SVG Icons ───
@@ -229,6 +230,61 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [open, setOpen]);
 
+  // Phone-only: lock body scroll while the full-width sheet is open.
+  useEffect(() => {
+    if (!open) return undefined;
+    if (typeof window === "undefined" || window.innerWidth >= 640) return undefined;
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = { ho: html.style.overflow, bo: body.style.overflow, bt: body.style.touchAction };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    body.style.touchAction = "pan-y";
+    return () => {
+      html.style.overflow = prev.ho;
+      body.style.overflow = prev.bo;
+      body.style.touchAction = prev.bt;
+    };
+  }, [open]);
+
+  // Grabber drag-to-close (phone sheet). The sheet is anchored at the top, so
+  // dragging the grabber UP collapses it — same mechanic as the notif sheet.
+  const dragRef = useRef({ active: false, startY: 0, currentY: 0 });
+  const handleGrabberDown = (e) => {
+    if (e.button != null && e.button !== 0) return;
+    const panel = menuRef.current;
+    if (!panel) return;
+    dragRef.current = { active: true, startY: e.clientY, currentY: 0 };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    panel.style.transition = "none";
+    panel.style.animation = "none";
+  };
+  const handleGrabberMove = (e) => {
+    if (!dragRef.current.active) return;
+    const dy = Math.max(0, dragRef.current.startY - e.clientY);
+    dragRef.current.currentY = dy;
+    if (menuRef.current) menuRef.current.style.transform = `translateY(-${dy}px)`;
+  };
+  const handleGrabberUp = (e) => {
+    if (!dragRef.current.active) return;
+    const dy = dragRef.current.currentY;
+    dragRef.current.active = false;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+    const panel = menuRef.current;
+    if (!panel) return;
+    if (dy > 60) {
+      // Past the threshold: it's already dragged most of the way up — just
+      // close (the panel unmounts from its current position).
+      setOpen(false);
+    } else {
+      // Snap back smoothly to the open position (keep animation disabled so
+      // the slide-in keyframe doesn't replay).
+      panel.style.transition = "transform 0.2s ease";
+      panel.style.transform = "";
+    }
+  };
+  const isMobileSheet = typeof window !== "undefined" && window.innerWidth < 640;
+
   if (!syncStatus) return null;
 
   const {
@@ -303,28 +359,34 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
         )}
       </button>
 
-      {open && (
-        <>
-          {/* On mobile we used `absolute right-0` relative to the
-              wrapper around the sync icon — that's a ~40 px-wide
-              container, so the 280-340 px popover extended off the
-              left edge of the screen. Switch to fixed positioning
-              centered horizontally on the viewport. The host
-              <header> has a `transform: translateY(0)`, so `fixed`
-              is technically relative to the header rather than the
-              viewport, but the header itself occupies the top of
-              the viewport at full width, so the maths work out
-              the same. On desktop we keep the legacy "anchored to
-              the button" layout. */}
+      {open && (() => {
+        // Phone (<640px): a full-width top SHEET portalled to <body> so it's
+        // positioned relative to the viewport (the header's transform would
+        // otherwise make `fixed` relative to the header + its padding). The
+        // .gk-sync-sheet CSS drives the full-width/slide/safe-top on phones.
+        // Desktop keeps the anchored popover rendered inline (sm: classes).
+        const sheet = (
           <div
             ref={menuRef}
-            className={`fixed top-14 left-1/2 -translate-x-1/2 sm:absolute sm:top-12 sm:left-auto sm:right-0 sm:translate-x-0 w-[calc(100vw-1rem)] max-w-[340px] sm:w-auto sm:min-w-[280px] z-[1100] border rounded-lg shadow-lg overflow-hidden ${
+            className={`gk-sync-sheet fixed top-14 left-1/2 -translate-x-1/2 sm:absolute sm:top-12 sm:left-auto sm:right-0 sm:translate-x-0 w-[calc(100vw-1rem)] max-w-[340px] sm:w-auto sm:min-w-[280px] z-[1100] border rounded-lg shadow-lg overflow-hidden ${
               dark
                 ? "bg-[var(--gk-statusbar)] sm:bg-[#222] border-gray-700 text-gray-100"
                 : "bg-[var(--gk-statusbar)] sm:bg-[#f9f6ff] border-gray-200 text-gray-800"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Phone sheet: small close affordance, below the status bar. */}
+            {isMobileSheet && (
+              <button
+                type="button"
+                aria-label={t("close")}
+                onClick={() => setOpen(false)}
+                className={`absolute right-2 z-10 w-8 h-8 rounded-md flex items-center justify-center ${dark ? "text-gray-400 hover:text-gray-100 hover:bg-white/10" : "text-gray-500 hover:text-gray-800 hover:bg-black/5"}`}
+                style={{ top: "0.5rem" }}
+              >
+                ✕
+              </button>
+            )}
             {/* ── Section 1: Status header ── */}
             <div className={`px-4 py-3 border-b ${dark ? "border-gray-700" : "border-gray-200"}`}>
               <div className="flex items-center gap-2">
@@ -507,9 +569,20 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
                 {t("syncSafeToClose")}
               </div>
             ) : null}
+            {/* Phone sheet: bottom grabber — drag up to dismiss (like the notif sheet). */}
+            {isMobileSheet && (
+              <div
+                className="gk-sync-sheet__grabber"
+                onPointerDown={handleGrabberDown}
+                onPointerMove={handleGrabberMove}
+                onPointerUp={handleGrabberUp}
+                onPointerCancel={handleGrabberUp}
+              />
+            )}
           </div>
-        </>
-      )}
+        );
+        return isMobileSheet ? createPortal(sheet, document.body) : sheet;
+      })()}
     </div>
   );
 }

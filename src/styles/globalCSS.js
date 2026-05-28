@@ -4954,6 +4954,50 @@ html.dark .gk-side-panel { background-color: #222222; }
   .gk-side-panel,
   html.dark .gk-side-panel { background: var(--gk-statusbar); }
 }
+/* Sync status popover → full-width top SHEET on phones, mirroring the
+   notification sheet (slide down from the top + bottom grabber). Driven from
+   CSS so it overrides the desktop popover's Tailwind positioning without
+   touching it; the sheet's own transform-animation also supersedes the
+   centring -translate-x utility. Desktop (>=640px) keeps the anchored popover. */
+@media (max-width: 639px) {
+  .gk-sync-sheet {
+    position: fixed !important;
+    top: var(--safe-top, 0px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 0 0 1rem 1rem !important;
+    border-width: 0 0 1px 0 !important;
+    animation: gkSyncSheetIn 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+    will-change: transform;
+  }
+}
+@keyframes gkSyncSheetIn {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+.gk-sync-sheet__grabber {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.gk-sync-sheet__grabber::after {
+  content: "";
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.gk-sync-sheet__grabber:active { cursor: grabbing; }
+.gk-sync-sheet__grabber:active::after { background: rgba(0, 0, 0, 0.45); transform: scaleX(1.15); }
+html.dark .gk-sync-sheet__grabber::after { background: rgba(255, 255, 255, 0.32); }
+html.dark .gk-sync-sheet__grabber:active::after { background: rgba(255, 255, 255, 0.5); }
 .gk-notif-center--mobile.is-open {
   transform: translateY(0);
 }
