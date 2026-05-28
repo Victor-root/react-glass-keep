@@ -42,6 +42,9 @@ html.dark {
   --gk-chrome-2: rgba(221, 217, 252, 0.90);  /* indigo→violet */
   --gk-chrome-3: rgba(231, 215, 252, 0.90);  /* light violet  */
   --gk-chrome-solid: #edf1fa;                /* opaque header base — kills see-through */
+  /* Flat chrome colour for the Android status bar AND the mobile header (they
+     read as one block). MUST match STATUS_BAR_LIGHT/DARK in src/utils/helpers.js. */
+  --gk-statusbar: #e7e9fc;
   --gk-chrome-border: rgba(120, 134, 196, 0.28);
   --gk-chrome-shadow: rgba(54, 64, 122, 0.10);
   --gk-chrome-sheen: rgba(255, 255, 255, 0.55);
@@ -62,6 +65,7 @@ html.dark {
   --gk-chrome-2: rgba(36, 33, 66, 0.90);
   --gk-chrome-3: rgba(44, 32, 66, 0.90);
   --gk-chrome-solid: #1b2233;
+  --gk-statusbar: #1b2233;
   --gk-chrome-border: rgba(126, 142, 200, 0.20);
   --gk-chrome-shadow: rgba(0, 0, 0, 0.38);
   --gk-chrome-sheen: rgba(255, 255, 255, 0.05);
@@ -2197,15 +2201,13 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
   .modal-header-blur {
     background-color: inherit;
   }
-  /* Touch / weak GPUs: the .glass-card rule above already strips the header
-     blur (!important); pair that with an OPAQUE header background (sheen +
-     full-opacity tint over the solid base) so nothing behind shows through
-     without needing a blur. The sidebar fake glass is blur-free anyway. */
+  /* Touch / mobile: the .glass-card rule above already strips the header blur
+     (!important). Make the header a FLAT block in the exact status-bar colour
+     (--gk-statusbar) so the native status bar and the header read as one
+     continuous surface — no gradient on mobile. The sidebar keeps its own
+     fake-glass look. */
   header.glass-card {
-    background:
-      linear-gradient(180deg, var(--gk-chrome-sheen) 0%, transparent 60%),
-      linear-gradient(100deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 52%, var(--gk-chrome-3) 100%),
-      var(--gk-chrome-solid);
+    background: var(--gk-statusbar);
   }
 }
 @media (max-width: 639px) {
