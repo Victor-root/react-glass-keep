@@ -105,7 +105,7 @@ export default function NotesHeader({
     const apply = () => {
       document.documentElement.style.setProperty(
         "--gk-header-h",
-        `${Math.round(el.offsetHeight)}px`,
+        `${el.getBoundingClientRect().height}px`,
       );
     };
     apply();

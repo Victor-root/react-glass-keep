@@ -78,7 +78,7 @@ export default function TagSidebar({
         }}
         aria-hidden={!(permanent || open)}
       >
-        <div className="px-4 flex items-center justify-between min-h-[var(--gk-header-h,56px)]">
+        <div className="px-4 flex items-center justify-between h-[var(--gk-header-h,56px)] shrink-0">
           <h3 className="text-lg font-semibold">{t("tags")}</h3>
           <button
             className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/10"
