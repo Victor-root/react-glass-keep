@@ -318,6 +318,9 @@ header.glass-card {
       color-mix(in srgb, var(--gk-chrome-1) 86%, transparent) 0%,
       color-mix(in srgb, var(--gk-chrome-2) 86%, transparent) 52%,
       color-mix(in srgb, var(--gk-chrome-3) 86%, transparent) 100%);
+  /* Only a bottom edge: the base .glass-card border is on all four sides, and
+     its left edge showed as a grey 1px liseret against the sidebar. */
+  border: 0;
   border-bottom: 1px solid var(--gk-chrome-border);
   box-shadow:
     inset 0 1px 0 var(--gk-chrome-highlight),
