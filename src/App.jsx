@@ -906,6 +906,10 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState([]); // array of string ids
   const isSelected = (id) => selectedIds.includes(String(id));
   const onStartMulti = () => {
+    // Toggle: a second click on the multi-select button closes the bar
+    // instead of re-running the open logic (which re-added the dock's padding
+    // to the scroll position, so each extra click scrolled the page down).
+    if (multiMode) { onExitMulti(); return; }
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
     setMultiMode(true);
