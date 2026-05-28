@@ -4362,7 +4362,7 @@ export default function App() {
     modalKebabOpen, modalTagFocused, notifCenterOpen, syncDropdownOpen, mobileSearchOpen,
     showColorPop, showComposerFmt, headerMenuOpen, multiMode,
     typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
-    noteAiOpen, changelogOpen,
+    noteAiOpen, changelogOpen, qrScannerOpen,
   ].filter(Boolean).length;
   const prevOverlayCountRef = useRef(0);
 
@@ -4407,6 +4407,7 @@ export default function App() {
       // Tell the count effect to skip (back button already popped the entry)
       popInProgressRef.current = true;
       // Close topmost overlay (highest z-index first)
+      if (qrScannerOpen) { closeQrScanner(); return; }
       if (imgViewOpen) { setImgViewOpen(false); return; }
       if (changelogOpen) { setChangelogOpen(false); return; }
       if (confirmDeleteOpen) { setConfirmDeleteOpen(false); return; }
@@ -4441,7 +4442,7 @@ export default function App() {
       showModalColorPop, showModalFmt, modalMenuOpen, modalKebabOpen, modalTagFocused,
       notifCenterOpen, syncDropdownOpen, mobileSearchOpen, showColorPop, showComposerFmt,
       headerMenuOpen, multiMode, typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
-      noteAiOpen, changelogOpen]);
+      noteAiOpen, changelogOpen, qrScannerOpen]);
 
   const addImagesToState = async (fileList, setter) => {
     const files = Array.from(fileList || []);
