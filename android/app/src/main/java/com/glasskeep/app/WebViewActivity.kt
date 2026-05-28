@@ -505,16 +505,25 @@ class WebViewActivity : AppCompatActivity() {
                     view: WebView,
                     request: WebResourceRequest
                 ): Boolean {
-                    val requestUrl = request.url.toString()
-                    return if (requestUrl.startsWith(url)) {
+                    val target = request.url
+                    // Compare HOSTS, not a string prefix. The app's own pages
+                    // must always stay in the WebView, but a brittle
+                    // requestUrl.startsWith(url) check let some same-server
+                    // navigations slip through to the external browser — SPA
+                    // hash routes (#/notes), reloads (manual / SW auto-update /
+                    // pull-to-refresh), and server redirects don't necessarily
+                    // start with the exact launch URL. That's the intermittent
+                    // "the app reopens in Brave on top of itself" bug.
+                    val appHost = try { Uri.parse(url).host } catch (e: Exception) { null }
+                    val sameHost = appHost != null &&
+                        appHost.equals(target.host, ignoreCase = true)
+                    return if (sameHost) {
                         false
                     } else {
-                        // Link out of the app's own domain (a note's external
-                        // link, a redirect to GitHub, etc.). Hand it to a
-                        // Custom Tab so the user stays in our task stack —
-                        // hitting back returns to the WebView instead of
-                        // dumping them into a separate browser app.
-                        openUrlExternally(request.url)
+                        // Genuinely external link (a note's link, GitHub, …) —
+                        // hand it to a Custom Tab so Back returns to the WebView
+                        // instead of dumping the user into a separate browser app.
+                        openUrlExternally(target)
                         true
                     }
                 }
