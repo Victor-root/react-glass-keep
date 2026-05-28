@@ -214,6 +214,13 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
   useEffect(() => {
     if (!open) return undefined;
     const onPointerDown = (e) => {
+      // Portal-safe + null-safe: the sheet is portalled to <body>, and across
+      // the portal/IIFE re-render menuRef.current can be momentarily null —
+      // in which case the menuRef check below falls through and the sheet
+      // closes the instant you touch its OWN grabber. closest() walks the
+      // target's real DOM ancestry, so a touch anywhere inside the sheet
+      // (grabber included) is correctly treated as "inside".
+      if (e.target?.closest?.(".gk-sync-sheet")) return;
       if (menuRef.current && menuRef.current.contains(e.target)) return;
       if (btnRef.current && btnRef.current.contains(e.target)) return;
       e.preventDefault();
