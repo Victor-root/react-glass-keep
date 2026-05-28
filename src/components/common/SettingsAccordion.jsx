@@ -7,26 +7,26 @@
 import React from "react";
 import TI from "../../icons/editor/index.jsx";
 
-// 32×32 indigo chip wrapping a Tabler icon. Placed in front of OPTION
-// rows so every option icon aligns in a single vertical column.
-// Category-level icons use a violet variant (SectionIcon below) so
-// the two hierarchies read at a glance.
+// 32x32 themed chip (option-row tier: --gk-icon-fg / --gk-icon-bg, derived
+// from the active theme) wrapping a Tabler icon. Placed in front of OPTION
+// rows so every option icon aligns in a single vertical column. Section-level
+// icons use the second tier (SectionIcon below) so the two hierarchies read
+// at a glance.
 export function RowIcon({ icon: Icon }) {
   return (
-    <span className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/15 dark:text-indigo-300">
+    <span className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--gk-icon-bg)] text-[var(--gk-icon-fg)]">
       <Icon className="tabler-icon w-5 h-5" />
     </span>
   );
 }
 
-// Same shape as RowIcon but in violet — used in section headers so
-// the category-level icons are visually distinct from the option-row
-// icons underneath. Violet sits next to indigo in the brand gradient
-// already used everywhere (indigo-500 → violet-600 buttons), so the
-// two chips read as paired but distinct.
+// Same shape as RowIcon but the second icon tier (--gk-icon2-fg /
+// --gk-icon2-bg, derived from the theme's grad-to) — used in section headers
+// so category-level icons stay distinct from the option-row icons underneath.
+// For GlassKeep that resolves to the familiar indigo/violet pairing.
 function SectionIcon({ icon: Icon }) {
   return (
-    <span className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:bg-violet-400/15 dark:text-violet-300">
+    <span className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--gk-icon2-bg)] text-[var(--gk-icon2-fg)]">
       <Icon className="tabler-icon w-5 h-5" />
     </span>
   );
@@ -46,14 +46,14 @@ export function SettingsSection({ icon, title, open, onToggle, children }) {
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="group w-full flex items-center gap-3 pl-3 pr-3 py-2 -mx-1 rounded-xl text-left hover:bg-[#c1cfff66] dark:hover:bg-indigo-500/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 transition-colors"
+        className="group w-full flex items-center gap-3 pl-3 pr-3 py-2 -mx-1 rounded-xl text-left hover:bg-[var(--gk-chrome-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 transition-colors"
       >
         <TI.ChevronDown
           className={`tabler-icon w-5 h-5 shrink-0 transition-all duration-200 ${
             open
-              ? "text-indigo-500 dark:text-indigo-400"
+              ? "text-[var(--gk-icon2-fg)]"
               : "text-gray-400 dark:text-gray-500 -rotate-90"
-          } group-hover:text-indigo-500 dark:group-hover:text-indigo-400`}
+          } group-hover:text-[var(--gk-icon2-fg)]`}
         />
         <SectionIcon icon={icon} />
         <span className="text-md font-semibold flex-1 min-w-0">{title}</span>

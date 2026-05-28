@@ -61,6 +61,21 @@ html.dark {
      active theme; GlassKeep keeps its exact validated lavender/blue/pink. */
   --gk-app-bg: #eee5ff;
   --gk-app-bg-image: linear-gradient(135deg, #eee5ff 0%, #e5f3fd 50%, #fde5ee 100%);
+  /* Derived shell-UI tokens (global scrollbars, side panels, panel section
+     icons). Defined ONCE here and re-derived from each theme's base hue
+     tokens via var()/color-mix, so every theme — and any future one — gets a
+     coherent set for free without re-declaring. Light values. */
+  --gk-scroll-track: color-mix(in srgb, var(--gk-chrome-accent) 16%, transparent);
+  --gk-scroll-thumb: linear-gradient(180deg, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+  --gk-scroll-thumb-hover: linear-gradient(180deg, color-mix(in srgb, var(--gk-chrome-grad-from) 82%, #000), color-mix(in srgb, var(--gk-chrome-grad-to) 82%, #000));
+  --gk-panel-bg: color-mix(in srgb, var(--gk-chrome-accent) 6%, #ffffff);
+  --gk-panel-card: color-mix(in srgb, var(--gk-chrome-accent) 4%, #ffffff);
+  /* Two icon tiers so option-row vs section-header chips stay distinct
+     (GlassKeep: indigo grad-from vs violet grad-to, as before). */
+  --gk-icon-fg: var(--gk-chrome-grad-from);
+  --gk-icon-bg: color-mix(in srgb, var(--gk-chrome-grad-from) 12%, transparent);
+  --gk-icon2-fg: var(--gk-chrome-grad-to);
+  --gk-icon2-bg: color-mix(in srgb, var(--gk-chrome-grad-to) 12%, transparent);
 }
 html.dark {
   /* GlassKeep — dark. Cool slate-blue glass; sheen/highlight are barely
@@ -80,6 +95,19 @@ html.dark {
   --gk-chrome-active-fg: #c7d2fe;
   --gk-app-bg: #1a1a1a;
   --gk-app-bg-image: none;
+  /* Derived shell-UI tokens — dark values (hover brightens instead of
+     darkening; panels tint a dark base instead of white). */
+  --gk-scroll-track: color-mix(in srgb, var(--gk-chrome-accent) 22%, transparent);
+  --gk-scroll-thumb: linear-gradient(180deg, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+  --gk-scroll-thumb-hover: linear-gradient(180deg, color-mix(in srgb, var(--gk-chrome-grad-from) 80%, #fff), color-mix(in srgb, var(--gk-chrome-grad-to) 80%, #fff));
+  --gk-panel-bg: color-mix(in srgb, var(--gk-chrome-accent) 10%, #1f1f1f);
+  --gk-panel-card: color-mix(in srgb, var(--gk-chrome-accent) 8%, #282828);
+  /* Lighten the icon foregrounds on dark so they stay legible while keeping
+     the two-tier (option vs section) hue distinction. */
+  --gk-icon-fg: color-mix(in srgb, var(--gk-chrome-grad-from) 62%, #fff);
+  --gk-icon-bg: color-mix(in srgb, var(--gk-chrome-grad-from) 22%, transparent);
+  --gk-icon2-fg: color-mix(in srgb, var(--gk-chrome-grad-to) 62%, #fff);
+  --gk-icon2-bg: color-mix(in srgb, var(--gk-chrome-grad-to) 22%, transparent);
 }
 /* ----- Alternate shell themes. Activated by a class on <html>
    (gk-theme-<id>), set from the saved preference (see src/theme/shellTheme.js
@@ -161,37 +189,38 @@ html.dark.gk-theme-amber {
   --gk-app-bg-image: none;
 }
 
-/* ROSEWOOD — deep bordeaux / dark raspberry (elegant, not pastel pink). */
+/* ROSEWOOD — vivid ruby / cherry / cranberry (clean and modern, never brick,
+   rust or dried-blood brown; deep but not a harsh pure red). */
 html.gk-theme-rosewood {
-  --gk-chrome-1: rgba(242, 214, 217, 0.90);
-  --gk-chrome-2: rgba(241, 212, 214, 0.90);
-  --gk-chrome-3: rgba(239, 211, 213, 0.90);
-  --gk-chrome-solid: #f3e2e4;
-  --gk-statusbar: #f1d8db;
-  --gk-chrome-border: rgba(150, 60, 75, 0.30);
-  --gk-chrome-shadow: rgba(100, 20, 40, 0.12);
-  --gk-chrome-accent: #9f1239;
-  --gk-chrome-grad-from: #be123c;
-  --gk-chrome-grad-to: #881337;
-  --gk-chrome-hover: rgba(159, 18, 57, 0.09);
-  --gk-chrome-active-bg: rgba(159, 18, 57, 0.16);
-  --gk-chrome-active-fg: #831843;
-  --gk-app-bg: #fbeaee;
-  --gk-app-bg-image: linear-gradient(135deg, #fbeaee 0%, #f7e3ea 50%, #fceef1 100%);
+  --gk-chrome-1: rgba(250, 214, 224, 0.90);
+  --gk-chrome-2: rgba(250, 210, 221, 0.90);
+  --gk-chrome-3: rgba(249, 208, 220, 0.90);
+  --gk-chrome-solid: #f9e1e9;
+  --gk-statusbar: #f7d3df;
+  --gk-chrome-border: rgba(200, 40, 90, 0.30);
+  --gk-chrome-shadow: rgba(150, 20, 60, 0.12);
+  --gk-chrome-accent: #e11d48;
+  --gk-chrome-grad-from: #e11d48;
+  --gk-chrome-grad-to: #a30d3a;
+  --gk-chrome-hover: rgba(225, 29, 72, 0.10);
+  --gk-chrome-active-bg: rgba(225, 29, 72, 0.16);
+  --gk-chrome-active-fg: #a3123f;
+  --gk-app-bg: #fdeaf0;
+  --gk-app-bg-image: linear-gradient(135deg, #fdeaf0 0%, #fbe1ea 50%, #fef0f4 100%);
 }
 html.dark.gk-theme-rosewood {
-  --gk-chrome-1: rgba(46, 24, 30, 0.90);
-  --gk-chrome-2: rgba(48, 24, 31, 0.90);
-  --gk-chrome-3: rgba(50, 25, 33, 0.90);
-  --gk-chrome-solid: #2a161c;
-  --gk-statusbar: #241218;
-  --gk-chrome-border: rgba(190, 90, 110, 0.22);
+  --gk-chrome-1: rgba(48, 22, 30, 0.90);
+  --gk-chrome-2: rgba(52, 22, 32, 0.90);
+  --gk-chrome-3: rgba(56, 22, 34, 0.90);
+  --gk-chrome-solid: #2c161e;
+  --gk-statusbar: #261019;
+  --gk-chrome-border: rgba(244, 63, 94, 0.24);
   --gk-chrome-shadow: rgba(0, 0, 0, 0.40);
   --gk-chrome-accent: #fb7185;
-  --gk-chrome-hover: rgba(251, 113, 133, 0.13);
-  --gk-chrome-active-bg: rgba(190, 18, 60, 0.26);
-  --gk-chrome-active-fg: #f9c9d3;
-  --gk-app-bg: #1b1416;
+  --gk-chrome-hover: rgba(251, 113, 133, 0.14);
+  --gk-chrome-active-bg: rgba(225, 29, 72, 0.28);
+  --gk-chrome-active-fg: #fecdd6;
+  --gk-app-bg: #1a1216;
   --gk-app-bg-image: none;
 }
 
@@ -226,6 +255,41 @@ html.dark.gk-theme-graphite {
   --gk-chrome-active-bg: rgba(100, 116, 139, 0.26);
   --gk-chrome-active-fg: #cbd5e1;
   --gk-app-bg: #161719;
+  --gk-app-bg-image: none;
+}
+
+/* BLUSH — modern soft pink (clean magenta-rose; not fluo, not Barbie, not a
+   washed-out pastel). Clearly pinker/lighter than Rosewood's crimson red. */
+html.gk-theme-blush {
+  --gk-chrome-1: rgba(250, 219, 235, 0.90);
+  --gk-chrome-2: rgba(250, 215, 233, 0.90);
+  --gk-chrome-3: rgba(249, 213, 232, 0.90);
+  --gk-chrome-solid: #f8e2f0;
+  --gk-statusbar: #f7d4ea;
+  --gk-chrome-border: rgba(200, 60, 140, 0.30);
+  --gk-chrome-shadow: rgba(160, 30, 100, 0.11);
+  --gk-chrome-accent: #db2777;
+  --gk-chrome-grad-from: #ec4899;
+  --gk-chrome-grad-to: #be185d;
+  --gk-chrome-hover: rgba(219, 39, 119, 0.10);
+  --gk-chrome-active-bg: rgba(219, 39, 119, 0.16);
+  --gk-chrome-active-fg: #9d174d;
+  --gk-app-bg: #fdeaf4;
+  --gk-app-bg-image: linear-gradient(135deg, #fdeaf4 0%, #fce1ef 50%, #fef0f7 100%);
+}
+html.dark.gk-theme-blush {
+  --gk-chrome-1: rgba(48, 24, 40, 0.90);
+  --gk-chrome-2: rgba(52, 24, 42, 0.90);
+  --gk-chrome-3: rgba(54, 24, 44, 0.90);
+  --gk-chrome-solid: #2c1622;
+  --gk-statusbar: #26101c;
+  --gk-chrome-border: rgba(244, 114, 182, 0.24);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.40);
+  --gk-chrome-accent: #f472b6;
+  --gk-chrome-hover: rgba(244, 114, 182, 0.14);
+  --gk-chrome-active-bg: rgba(219, 39, 119, 0.28);
+  --gk-chrome-active-fg: #fbcfe8;
+  --gk-app-bg: #1b1218;
   --gk-app-bg-image: none;
 }
 button, [role="button"] { cursor: pointer; }
@@ -1795,25 +1859,21 @@ html:not(.dark) .code-copy-btn {
 .masonry-grid-column { padding-left: 0.75rem; background-clip: padding-box; }
 .masonry-grid-column > div { margin-bottom: 0.75rem; }
 
-/* === Scrollbars thématiques (indigo→violet, même thème que les boutons) === */
+/* === Global app scrollbars — themed via tokens (main page, sidebar, the
+   Settings/Admin panels, global lists). Mode-aware tokens carry the light /
+   dark values so no separate dark rules are needed. Note-content scrollbars
+   are intentionally NOT touched: .modal-scroll-themed below is more specific
+   and keeps each open note's own colour. === */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
-::-webkit-scrollbar-track { background: #7547ee3d; }
-::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #7c3aed 100%); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #4f46e5 0%, #6d28d9 100%); }
-/* Descendants of html.dark */
-.dark ::-webkit-scrollbar-track { background: #1e1b4b !important; }
-.dark ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #7c3aed 100%) !important; }
-.dark ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #4f46e5 0%, #6d28d9 100%) !important; }
-/* html element itself (main page scrollbar) */
-html.dark::-webkit-scrollbar-track { background: #1e1b4b !important; }
-html.dark::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #7c3aed 100%) !important; border-radius: 10px; }
-html.dark::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #4f46e5 0%, #6d28d9 100%) !important; }
-/* Firefox fallback (no webkit support) */
+::-webkit-scrollbar-track { background: var(--gk-scroll-track); }
+::-webkit-scrollbar-thumb { background: var(--gk-scroll-thumb); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gk-scroll-thumb-hover); }
+/* Firefox fallback (no ::-webkit-scrollbar): scrollbar-color needs solid
+   colours, so use the theme accent for the thumb + the faint track token.
+   Cannot be scoped away from note content here, same as before. */
 @supports not selector(::-webkit-scrollbar) {
-  * { scrollbar-width: thin; scrollbar-color: #6366f1 #7547ee3d; }
-  .dark * { scrollbar-color: #6366f1 #1e1b4b; }
-  html.dark { scrollbar-color: #6366f1 #1e1b4b; scrollbar-width: thin; }
+  * { scrollbar-width: thin; scrollbar-color: var(--gk-chrome-accent) var(--gk-scroll-track); }
 }
 /* Modal — scrollbar adaptée à la couleur de la note */
 .modal-scroll-themed::-webkit-scrollbar-track { background: var(--sb-track); }
@@ -5097,14 +5157,13 @@ html.dark .gk-notif-bell-dot {
 html.dark .gk-notif-center--mobile {
   background: var(--gk-statusbar);
 }
-/* Settings / Admin side panels: light surface on desktop, but the flat
-   header colour (--gk-statusbar) on phones so the whole panel matches the
-   chrome. Background lives here (not inline) so the media query can win. */
-.gk-side-panel { background-color: #f9f6ff; }
-html.dark .gk-side-panel { background-color: #222222; }
+/* Settings / Admin side panels: a subtly theme-tinted surface on desktop
+   (--gk-panel-bg follows the active theme, light + dark), but the flat header
+   colour (--gk-statusbar) on phones so the whole panel matches the chrome.
+   Background lives here (not inline) so the media query can win. */
+.gk-side-panel { background-color: var(--gk-panel-bg); }
 @media (max-width: 639px) {
-  .gk-side-panel,
-  html.dark .gk-side-panel { background: var(--gk-statusbar); }
+  .gk-side-panel { background: var(--gk-statusbar); }
 }
 /* Sync status popover → full-width top SHEET on phones, mirroring the
    notification sheet (slide down from the top + bottom grabber). Driven from
