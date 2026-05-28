@@ -4967,9 +4967,9 @@ html.dark .gk-side-panel { background-color: #222222; }
     right: 0 !important;
     width: 100% !important;
     max-width: none !important;
-    /* Tailwind v4's -translate-x-1/2 sets the `translate` property (separate
-       from `transform`), so the slide animation below doesn't cancel it and
-       the full-width sheet ends up shoved 50% off-screen left. Neutralise it. */
+    /* Tailwind v4's -translate-x-1/2 sets the translate property (separate
+       from transform), so the transform-based slide below doesn't cancel it
+       and the full-width sheet ends up shoved 50% off-screen left. Kill it. */
     translate: none !important;
     border-radius: 0 0 1rem 1rem !important;
     border-width: 0 0 1px 0 !important;
