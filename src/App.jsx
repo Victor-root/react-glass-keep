@@ -28,7 +28,7 @@ import {
 import { api, getAuth, setAuth, AUTH_KEY, getClientId } from "./utils/api.js";
 import { localizeServerError } from "./utils/serverErrors.js";
 import { mdForDownload } from "./utils/markdown.jsx";
-import { uid, sanitizeFilename, downloadText, triggerBlobDownload, ensureJSZip, imageExtFromDataURL, fileToCompressedDataURL, setThemeColor, STATUS_BAR_LIGHT, STATUS_BAR_DARK } from "./utils/helpers.js";
+import { uid, sanitizeFilename, downloadText, triggerBlobDownload, ensureJSZip, imageExtFromDataURL, fileToCompressedDataURL, setThemeColor, currentStatusBarColor } from "./utils/helpers.js";
 import { textToChecklistItems, checklistItemsToText } from "./utils/noteConversion.js";
 import { isRichContent, contentToPlain, serializeRichContent, legacyMarkdownToRichDoc } from "./utils/richText.js";
 import {
@@ -1937,14 +1937,14 @@ export default function App() {
       : (androidDark != null ? androidDark : (mq?.matches ?? false));
     setDark(savedDark);
     document.documentElement.classList.toggle("dark", savedDark);
-    setThemeColor(savedDark ? STATUS_BAR_DARK : STATUS_BAR_LIGHT);
+    setThemeColor(currentStatusBarColor());
 
     // Apply dark mode from system/bridge without persisting — only toggleDark marks a manual pref
     const applyDark = (isDark) => {
       setDark(isDark);
       document.documentElement.classList.toggle("dark", isDark);
       // Skip if note modal is open — NoteModal effect handles its own color
-      if (!window.__noteModalOpen) setThemeColor(isDark ? STATUS_BAR_DARK : STATUS_BAR_LIGHT);
+      if (!window.__noteModalOpen) setThemeColor(currentStatusBarColor());
     };
     const hasManualPref = () => sessionStorage.getItem("glass-keep-dark-mode-manual") !== null;
 
@@ -1973,7 +1973,7 @@ export default function App() {
     document.documentElement.classList.toggle("dark", next);
     sessionStorage.setItem("glass-keep-dark-mode-manual", String(next));
     // Skip if note modal is open — NoteModal effect handles its own color
-    if (!window.__noteModalOpen) setThemeColor(next ? STATUS_BAR_DARK : STATUS_BAR_LIGHT);
+    if (!window.__noteModalOpen) setThemeColor(currentStatusBarColor());
   };
 
   // Close sidebar with Escape

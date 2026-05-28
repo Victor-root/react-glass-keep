@@ -178,6 +178,8 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   storage: "Stockage",
   tags: "Tags",
   uiPreferences: "Préférences d'interface",
+  workspaceTheme: "Thème de l'interface",
+  workspaceThemeDesc: "Recolore le header et la sidebar. Les notes ne changent pas.",
   youAreOffline: "Vous êtes hors ligne",
   offlineCollabWarning: "Vous êtes hors ligne — les modifications sur cette note partagée risquent d'être écrasées à la reconnexion.",
   colorEmoji: "🎨 Couleur",

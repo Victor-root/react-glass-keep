@@ -11,6 +11,24 @@ export const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)
 export const STATUS_BAR_LIGHT = "#dce1fb";
 export const STATUS_BAR_DARK = "#171f30";
 
+/** Current shell status-bar colour, read from the live --gk-statusbar token so
+ *  it follows the active workspace theme AND dark mode automatically. Falls
+ *  back to the GlassKeep constants if the stylesheet isn't mounted yet (the
+ *  token resolves to empty), so early callers still get a sensible colour. */
+export function currentStatusBarColor() {
+  try {
+    const v = getComputedStyle(document.documentElement)
+      .getPropertyValue("--gk-statusbar")
+      .trim();
+    if (v) return v;
+  } catch (_) {
+    /* getComputedStyle unavailable — fall through */
+  }
+  return document.documentElement.classList.contains("dark")
+    ? STATUS_BAR_DARK
+    : STATUS_BAR_LIGHT;
+}
+
 /** Update PWA status bar color by removing and re-creating the meta tag */
 export function setThemeColor(color) {
   const old = document.querySelector('meta[name="theme-color"]');

@@ -69,6 +69,12 @@ import '@fontsource/dancing-script/700.css';
 import '@fontsource/caveat/400.css';
 import '@fontsource/caveat/700.css';
 import AppRoot from './AppRoot.jsx';
+import { applyStoredShellTheme } from './theme/shellTheme.js';
+
+// Apply the saved workspace (shell) theme class on <html> before React
+// renders, so the chrome tokens are already correct when the global
+// stylesheet mounts — no flash of the default GlassKeep theme.
+applyStoredShellTheme();
 
 // Register the PWA Service Worker (vite-plugin-pwa)
 registerSW({

@@ -75,76 +75,136 @@ html.dark {
   --gk-chrome-active-bg: rgba(99, 102, 241, 0.24);
   --gk-chrome-active-fg: #c7d2fe;
 }
-/* ----- Alternate themes (ready to use; switch via a class on <html>).
-   Only the hues change — the glass recipe below is identical. ----- */
-html.gk-theme-blue {
-  --gk-chrome-1: rgba(214, 230, 250, 0.90);
-  --gk-chrome-2: rgba(210, 226, 248, 0.90);
-  --gk-chrome-3: rgba(218, 232, 251, 0.90);
-  --gk-chrome-border: rgba(96, 140, 200, 0.30);
-  --gk-chrome-shadow: rgba(30, 70, 130, 0.10);
-  --gk-chrome-accent: #2563eb;
-  --gk-chrome-hover: rgba(37, 99, 235, 0.08);
-  --gk-chrome-active-bg: rgba(59, 130, 246, 0.16);
-  --gk-chrome-active-fg: #1e4fa8;
-  --gk-chrome-grad-from: #3b82f6;
-  --gk-chrome-grad-to: #6366f1;
-}
-html.dark.gk-theme-blue {
-  --gk-chrome-1: rgba(20, 32, 48, 0.90);
-  --gk-chrome-2: rgba(22, 34, 52, 0.90);
-  --gk-chrome-3: rgba(24, 36, 56, 0.90);
-  --gk-chrome-border: rgba(96, 150, 220, 0.20);
-  --gk-chrome-accent: #60a5fa;
-  --gk-chrome-hover: rgba(96, 165, 250, 0.14);
-  --gk-chrome-active-bg: rgba(59, 130, 246, 0.24);
-  --gk-chrome-active-fg: #bcd6f8;
-}
-html.gk-theme-mint {
-  --gk-chrome-1: rgba(214, 240, 228, 0.90);
-  --gk-chrome-2: rgba(210, 238, 224, 0.90);
-  --gk-chrome-3: rgba(220, 240, 230, 0.90);
-  --gk-chrome-border: rgba(70, 160, 130, 0.28);
-  --gk-chrome-shadow: rgba(20, 90, 70, 0.10);
-  --gk-chrome-accent: #10b981;
-  --gk-chrome-hover: rgba(16, 185, 129, 0.10);
-  --gk-chrome-active-bg: rgba(16, 185, 129, 0.16);
-  --gk-chrome-active-fg: #0f7556;
+/* ----- Alternate shell themes. Activated by a class on <html>
+   (gk-theme-<id>), set from the saved preference (see src/theme/shellTheme.js
+   + the Settings "Workspace theme" picker). GlassKeep is the DEFAULT and has
+   NO class — it uses the :root / html.dark blocks above, untouched.
+
+   Each theme overrides ONLY the hue-bearing tokens. The white "glass physics"
+   (--gk-chrome-sheen / --gk-chrome-highlight) is deliberately NOT overridden,
+   so the sheen, rim-highlight, contrast and the whole static fake-glass recipe
+   are byte-identical across themes — only the colour shifts. Same paint, same
+   performance profile (still no blur / backdrop-filter). grad-from/to are set
+   in the light block and inherited by the dark block (matching GlassKeep). */
+
+/* EMERALD — calm green / teal / blue-green. */
+html.gk-theme-emerald {
+  --gk-chrome-1: rgba(205, 238, 223, 0.90);
+  --gk-chrome-2: rgba(206, 236, 228, 0.90);
+  --gk-chrome-3: rgba(208, 235, 234, 0.90);
+  --gk-chrome-solid: #e4f3ec;
+  --gk-statusbar: #d2ecdf;
+  --gk-chrome-border: rgba(45, 150, 120, 0.28);
+  --gk-chrome-shadow: rgba(14, 90, 70, 0.10);
+  --gk-chrome-accent: #0d9488;
   --gk-chrome-grad-from: #10b981;
   --gk-chrome-grad-to: #0d9488;
+  --gk-chrome-hover: rgba(16, 185, 129, 0.09);
+  --gk-chrome-active-bg: rgba(13, 148, 136, 0.16);
+  --gk-chrome-active-fg: #0f5f53;
 }
-html.dark.gk-theme-mint {
-  --gk-chrome-1: rgba(18, 34, 28, 0.90);
-  --gk-chrome-2: rgba(20, 36, 30, 0.90);
-  --gk-chrome-3: rgba(22, 38, 32, 0.90);
+html.dark.gk-theme-emerald {
+  --gk-chrome-1: rgba(20, 40, 34, 0.90);
+  --gk-chrome-2: rgba(22, 42, 38, 0.90);
+  --gk-chrome-3: rgba(24, 44, 42, 0.90);
+  --gk-chrome-solid: #14241f;
+  --gk-statusbar: #10211b;
   --gk-chrome-border: rgba(64, 170, 134, 0.20);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.38);
   --gk-chrome-accent: #34d399;
   --gk-chrome-hover: rgba(52, 211, 153, 0.14);
   --gk-chrome-active-bg: rgba(16, 185, 129, 0.24);
   --gk-chrome-active-fg: #a6e9cf;
 }
-html.gk-theme-sand {
-  --gk-chrome-1: rgba(244, 236, 222, 0.90);
-  --gk-chrome-2: rgba(242, 233, 216, 0.90);
-  --gk-chrome-3: rgba(244, 234, 220, 0.90);
-  --gk-chrome-border: rgba(180, 150, 90, 0.30);
-  --gk-chrome-shadow: rgba(120, 90, 30, 0.10);
-  --gk-chrome-accent: #c9963f;
-  --gk-chrome-hover: rgba(201, 150, 63, 0.12);
-  --gk-chrome-active-bg: rgba(201, 150, 63, 0.18);
-  --gk-chrome-active-fg: #846328;
-  --gk-chrome-grad-from: #f59e0b;
-  --gk-chrome-grad-to: #d97706;
+
+/* AMBER — warm amber / honey / champagne (kept saturated, never beige). */
+html.gk-theme-amber {
+  --gk-chrome-1: rgba(250, 232, 206, 0.90);
+  --gk-chrome-2: rgba(250, 228, 204, 0.90);
+  --gk-chrome-3: rgba(250, 224, 205, 0.90);
+  --gk-chrome-solid: #f7ecdd;
+  --gk-statusbar: #f6e3c9;
+  --gk-chrome-border: rgba(190, 140, 60, 0.30);
+  --gk-chrome-shadow: rgba(140, 95, 25, 0.11);
+  --gk-chrome-accent: #d97706;
+  --gk-chrome-grad-from: #d97706;
+  --gk-chrome-grad-to: #b45309;
+  --gk-chrome-hover: rgba(217, 119, 6, 0.10);
+  --gk-chrome-active-bg: rgba(217, 119, 6, 0.16);
+  --gk-chrome-active-fg: #8a4d09;
 }
-html.dark.gk-theme-sand {
-  --gk-chrome-1: rgba(36, 31, 22, 0.90);
-  --gk-chrome-2: rgba(38, 33, 23, 0.90);
-  --gk-chrome-3: rgba(40, 34, 24, 0.90);
-  --gk-chrome-border: rgba(190, 160, 100, 0.20);
-  --gk-chrome-accent: #d4a85e;
-  --gk-chrome-hover: rgba(204, 160, 90, 0.14);
-  --gk-chrome-active-bg: rgba(201, 150, 63, 0.24);
-  --gk-chrome-active-fg: #e8d3a3;
+html.dark.gk-theme-amber {
+  --gk-chrome-1: rgba(42, 33, 20, 0.90);
+  --gk-chrome-2: rgba(44, 34, 20, 0.90);
+  --gk-chrome-3: rgba(46, 34, 21, 0.90);
+  --gk-chrome-solid: #241d12;
+  --gk-statusbar: #20190f;
+  --gk-chrome-border: rgba(200, 150, 70, 0.20);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.38);
+  --gk-chrome-accent: #fbbf24;
+  --gk-chrome-hover: rgba(251, 191, 36, 0.14);
+  --gk-chrome-active-bg: rgba(217, 119, 6, 0.26);
+  --gk-chrome-active-fg: #f6d8a6;
+}
+
+/* ROSEWOOD — deep bordeaux / dark raspberry (elegant, not pastel pink). */
+html.gk-theme-rosewood {
+  --gk-chrome-1: rgba(242, 214, 217, 0.90);
+  --gk-chrome-2: rgba(241, 212, 214, 0.90);
+  --gk-chrome-3: rgba(239, 211, 213, 0.90);
+  --gk-chrome-solid: #f3e2e4;
+  --gk-statusbar: #f1d8db;
+  --gk-chrome-border: rgba(150, 60, 75, 0.30);
+  --gk-chrome-shadow: rgba(100, 20, 40, 0.12);
+  --gk-chrome-accent: #9f1239;
+  --gk-chrome-grad-from: #be123c;
+  --gk-chrome-grad-to: #881337;
+  --gk-chrome-hover: rgba(159, 18, 57, 0.09);
+  --gk-chrome-active-bg: rgba(159, 18, 57, 0.16);
+  --gk-chrome-active-fg: #831843;
+}
+html.dark.gk-theme-rosewood {
+  --gk-chrome-1: rgba(46, 24, 30, 0.90);
+  --gk-chrome-2: rgba(48, 24, 31, 0.90);
+  --gk-chrome-3: rgba(50, 25, 33, 0.90);
+  --gk-chrome-solid: #2a161c;
+  --gk-statusbar: #241218;
+  --gk-chrome-border: rgba(190, 90, 110, 0.22);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.40);
+  --gk-chrome-accent: #fb7185;
+  --gk-chrome-hover: rgba(251, 113, 133, 0.13);
+  --gk-chrome-active-bg: rgba(190, 18, 60, 0.26);
+  --gk-chrome-active-fg: #f9c9d3;
+}
+
+/* GRAPHITE — cool slate / graphite neutral, discreet accent (not flat grey). */
+html.gk-theme-graphite {
+  --gk-chrome-1: rgba(223, 227, 233, 0.90);
+  --gk-chrome-2: rgba(220, 224, 231, 0.90);
+  --gk-chrome-3: rgba(218, 222, 229, 0.90);
+  --gk-chrome-solid: #e8ebef;
+  --gk-statusbar: #dde1e7;
+  --gk-chrome-border: rgba(100, 116, 139, 0.30);
+  --gk-chrome-shadow: rgba(30, 41, 59, 0.10);
+  --gk-chrome-accent: #475569;
+  --gk-chrome-grad-from: #64748b;
+  --gk-chrome-grad-to: #475569;
+  --gk-chrome-hover: rgba(71, 85, 105, 0.09);
+  --gk-chrome-active-bg: rgba(71, 85, 105, 0.16);
+  --gk-chrome-active-fg: #334155;
+}
+html.dark.gk-theme-graphite {
+  --gk-chrome-1: rgba(30, 33, 39, 0.90);
+  --gk-chrome-2: rgba(32, 35, 41, 0.90);
+  --gk-chrome-3: rgba(34, 37, 44, 0.90);
+  --gk-chrome-solid: #1c1e22;
+  --gk-statusbar: #17191d;
+  --gk-chrome-border: rgba(148, 163, 184, 0.20);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.42);
+  --gk-chrome-accent: #94a3b8;
+  --gk-chrome-hover: rgba(148, 163, 184, 0.13);
+  --gk-chrome-active-bg: rgba(100, 116, 139, 0.26);
+  --gk-chrome-active-fg: #cbd5e1;
 }
 button, [role="button"] { cursor: pointer; }
 /* Selection rules:

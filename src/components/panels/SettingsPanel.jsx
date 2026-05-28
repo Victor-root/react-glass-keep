@@ -11,6 +11,7 @@ import TypographyModal from "./TypographyModal.jsx";
 import PasskeySettingsSection from "../settings/PasskeySettingsSection.jsx";
 import UserAiSettingsSection from "../settings/UserAiSettingsSection.jsx";
 import AppBackgroundSection from "../settings/AppBackgroundSection.jsx";
+import WorkspaceThemeSection from "../settings/WorkspaceThemeSection.jsx";
 import { RowIcon, SettingsSection, SettingsSubHeading as UISubHeading } from "../common/SettingsAccordion.jsx";
 
 const SectionHeaderIcon = RowIcon;
@@ -635,6 +636,12 @@ export default function SettingsPanel({
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Workspace colour theme (header + sidebar chrome only) —
+                  its own group, separated by a hairline. */}
+              <div className="pt-2 border-t border-[var(--border-light)]">
+                <WorkspaceThemeSection />
               </div>
 
               {/* Per-user app background (image + blur, optional light/dark
