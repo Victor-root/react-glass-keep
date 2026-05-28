@@ -3,6 +3,13 @@ import { t } from "../i18n";
 /** ---------- Utils ---------- */
 export const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+/** App-chrome status-bar colours — kept in sync with the header (globalCSS
+ *  --gk-chrome-* tokens). Shared so the value can't drift across callers:
+ *  App.jsx sets these on load / dark-toggle, and NoteModal restores them
+ *  when a note closes (it overrides with the open note's colour meanwhile). */
+export const STATUS_BAR_LIGHT = "#e7e9fc";
+export const STATUS_BAR_DARK = "#1b2233";
+
 /** Update PWA status bar color by removing and re-creating the meta tag */
 export function setThemeColor(color) {
   const old = document.querySelector('meta[name="theme-color"]');
