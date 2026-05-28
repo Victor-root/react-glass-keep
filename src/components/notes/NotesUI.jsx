@@ -231,10 +231,35 @@ function NotesUI({
     }
   }, [headerMenuOpen, setHeaderMenuOpen]);
 
+  // Swipe left → right (starting in the left third of the screen) opens the
+  // mobile sidebar. No-op when the sidebar is permanent (desktop) or the
+  // gesture is mostly vertical / too slow. Modals are portaled elsewhere, so
+  // their touches never bubble to this container.
+  const sidebarSwipeRef = useRef(null);
+  const onNotesTouchStart = (e) => {
+    if (sidebarPermanent || e.touches.length !== 1) { sidebarSwipeRef.current = null; return; }
+    const t0 = e.touches[0];
+    sidebarSwipeRef.current = t0.clientX < window.innerWidth * 0.33
+      ? { x: t0.clientX, y: t0.clientY, at: Date.now() }
+      : null;
+  };
+  const onNotesTouchEnd = (e) => {
+    const s = sidebarSwipeRef.current;
+    sidebarSwipeRef.current = null;
+    if (!s) return;
+    const tch = e.changedTouches[0];
+    const dx = tch.clientX - s.x;
+    const dy = tch.clientY - s.y;
+    if (dx > 60 && Math.abs(dy) < 50 && Date.now() - s.at < 500) {
+      openSidebar?.();
+    }
+  };
 
   return (
     <div
       className="min-h-screen overflow-x-clip"
+      onTouchStart={onNotesTouchStart}
+      onTouchEnd={onNotesTouchEnd}
       style={{ marginLeft: sidebarPermanent ? `${sidebarWidth}px` : "0px", position:"relative", zIndex:2 }}
     >
       <NotesHeader

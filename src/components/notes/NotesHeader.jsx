@@ -570,7 +570,7 @@ export default function NotesHeader({
                       onOpenQrScanner?.();
                     }}
                   >
-                    <span className={dark ? "text-teal-400" : "text-teal-600"}><TI.Qrcode /></span>{t("qrScanTitle")}</button>
+                    <span className={dark ? "text-teal-400" : "text-teal-600"}><TI.Qrcode style={{ width: "1.5rem", height: "1.5rem" }} /></span>{t("qrScanTitle")}</button>
                   {currentUser?.is_admin && (
                     <button
                       className={`flex items-start gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
