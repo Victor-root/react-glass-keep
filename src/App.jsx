@@ -3234,6 +3234,25 @@ export default function App() {
           reconnectAttempts = 0;
         };
 
+        // The backend emits NAMED SSE events as proof-of-life: `hello` right
+        // after connect and `ping` every 25s (server/index.js). Named events do
+        // NOT trigger es.onmessage (that only fires for unnamed "message"
+        // events), so we listen for them explicitly. Each is written by the
+        // Node backend itself — a reverse proxy can't fabricate one — so
+        // receiving it proves the backend, not just the proxy, is reachable.
+        // This is what breaks the "stuck offline after resuming from
+        // background" deadlock: on resume the /health fetch can keep timing out
+        // (AbortError) while SSE reconnects fine, leaving serverReachable=false
+        // and the recovery reload gated forever until a manual refresh. The
+        // hello on reconnect (and the 25s ping as a safety net) now confirms
+        // reachability and triggers recovery. notifyServerReachable() is a
+        // no-op once we're already online, so the heartbeat is essentially free.
+        const onBackendAlive = () => {
+          syncEngineRef.current?.notifyServerReachable();
+        };
+        es.addEventListener("hello", onBackendAlive);
+        es.addEventListener("ping", onBackendAlive);
+
         // SSE message handler (server sends generic data: messages)
         es.onmessage = (e) => {
           try {
