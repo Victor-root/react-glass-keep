@@ -548,14 +548,16 @@ export class SyncEngine {
       } else {
         this._consecutiveTimeouts++;
         const tabHidden = typeof document !== "undefined" && document.hidden;
-        // AbortError (timeout). Only tolerate when the tab is in background:
-        // Chrome mobile aggressively throttles background fetches, causing
-        // timeouts even when the network is fine. When the tab is VISIBLE,
-        // the user is looking at the app — a timeout = server is down.
-        const tolerate = tabHidden && this._consecutiveTimeouts < 2;
+        // AbortError (timeout). Tolerate a first timeout even when visible so a
+        // single brief slow response (a 3s blip on the proxy / a momentary
+        // network hiccup) doesn't flash an "offline" badge. Background tabs get
+        // extra tolerance — Chrome aggressively throttles their fetches. Only a
+        // SECOND consecutive timeout (visible) actually marks the server down.
+        const limit = tabHidden ? 3 : 1;
+        const tolerate = this._consecutiveTimeouts <= limit;
         if (tolerate) {
-          console.warn("[SyncEngine] healthCheck timeout #%d — tolerating (background tab)",
-            this._consecutiveTimeouts);
+          console.warn("[SyncEngine] healthCheck timeout #%d — tolerating (tab=%s)",
+            this._consecutiveTimeouts, tabHidden ? "hidden" : "visible");
           // Don't change _serverReachable — keep previous state
         } else {
           console.warn("[SyncEngine] healthCheck timeout #%d — marking offline (tab=%s)",

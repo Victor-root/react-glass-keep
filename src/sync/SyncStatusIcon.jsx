@@ -366,6 +366,15 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
         // otherwise make `fixed` relative to the header + its padding). The
         // .gk-sync-sheet CSS drives the full-width/slide/safe-top on phones.
         // Desktop keeps the anchored popover rendered inline (sm: classes).
+        //
+        // NotesHeader renders TWO SyncStatusIcon (desktop + mobile clusters)
+        // that share syncDropdownOpen. The hidden one used to keep its inline
+        // dropdown hidden via its display:none container — but a portal escapes
+        // to <body> and would show a DUPLICATE sheet. So the hidden instance
+        // (its button has no offsetParent) renders nothing on phones.
+        if (isMobileSheet && btnRef.current && btnRef.current.offsetParent === null) {
+          return null;
+        }
         const sheet = (
           <div
             ref={menuRef}
