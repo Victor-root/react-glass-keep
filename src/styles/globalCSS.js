@@ -2215,6 +2215,13 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
       0 1px 2px var(--gk-chrome-shadow),
       0 6px 18px -12px var(--gk-chrome-shadow);
   }
+  /* In dark, `html.dark .glass-card` above (rgba(40,40,40,.92)) is more
+     specific than `header.glass-card`, so without this the header fell back
+     to that semi-transparent grey (looked black / not matching the sidebar).
+     Re-assert the opaque status-bar colour at matching specificity. */
+  html.dark header.glass-card {
+    background: var(--gk-statusbar);
+  }
   /* Sidebar matches the header on mobile: a flat, FULLY OPAQUE block in the
      same --gk-statusbar colour (no fake-glass gradient / translucency). */
   .gk-sidebar {
