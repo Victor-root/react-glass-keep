@@ -20,7 +20,7 @@ export const SHELL_THEMES = [
   { id: "glasskeep", label: "GlassKeep", swatch: ["#6366f1", "#7c3aed", "#dce1fb"] },
   { id: "emerald", label: "Emerald", swatch: ["#10b981", "#0d9488", "#d2ecdf"] },
   { id: "amber", label: "Amber", swatch: ["#d97706", "#b45309", "#f6e3c9"] },
-  { id: "rosewood", label: "Rosewood", swatch: ["#e11d48", "#a30d3a", "#f7d3df"] },
+  { id: "rosewood", label: "Rosewood", swatch: ["#e11d1d", "#9f1010", "#f7cccc"] },
   { id: "graphite", label: "Graphite", swatch: ["#64748b", "#475569", "#dde1e7"] },
   { id: "blush", label: "Blush", swatch: ["#ec4899", "#be185d", "#f7d4ea"] },
 ];

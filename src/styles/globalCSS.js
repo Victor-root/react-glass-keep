@@ -192,35 +192,35 @@ html.dark.gk-theme-amber {
 /* ROSEWOOD — vivid ruby / cherry / cranberry (clean and modern, never brick,
    rust or dried-blood brown; deep but not a harsh pure red). */
 html.gk-theme-rosewood {
-  --gk-chrome-1: rgba(250, 214, 224, 0.90);
-  --gk-chrome-2: rgba(250, 210, 221, 0.90);
-  --gk-chrome-3: rgba(249, 208, 220, 0.90);
-  --gk-chrome-solid: #f9e1e9;
-  --gk-statusbar: #f7d3df;
-  --gk-chrome-border: rgba(200, 40, 90, 0.30);
-  --gk-chrome-shadow: rgba(150, 20, 60, 0.12);
-  --gk-chrome-accent: #e11d48;
-  --gk-chrome-grad-from: #e11d48;
-  --gk-chrome-grad-to: #a30d3a;
-  --gk-chrome-hover: rgba(225, 29, 72, 0.10);
-  --gk-chrome-active-bg: rgba(225, 29, 72, 0.16);
-  --gk-chrome-active-fg: #a3123f;
-  --gk-app-bg: #fdeaf0;
-  --gk-app-bg-image: linear-gradient(135deg, #fdeaf0 0%, #fbe1ea 50%, #fef0f4 100%);
+  --gk-chrome-1: rgba(250, 210, 210, 0.90);
+  --gk-chrome-2: rgba(250, 205, 205, 0.90);
+  --gk-chrome-3: rgba(249, 202, 202, 0.90);
+  --gk-chrome-solid: #f9dede;
+  --gk-statusbar: #f7cccc;
+  --gk-chrome-border: rgba(200, 40, 40, 0.32);
+  --gk-chrome-shadow: rgba(150, 20, 20, 0.12);
+  --gk-chrome-accent: #d61f1f;
+  --gk-chrome-grad-from: #e11d1d;
+  --gk-chrome-grad-to: #9f1010;
+  --gk-chrome-hover: rgba(214, 31, 31, 0.10);
+  --gk-chrome-active-bg: rgba(214, 31, 31, 0.16);
+  --gk-chrome-active-fg: #9b1212;
+  --gk-app-bg: #fdeaea;
+  --gk-app-bg-image: linear-gradient(135deg, #fdeaea 0%, #fbe0e0 50%, #fef0f0 100%);
 }
 html.dark.gk-theme-rosewood {
-  --gk-chrome-1: rgba(48, 22, 30, 0.90);
-  --gk-chrome-2: rgba(52, 22, 32, 0.90);
-  --gk-chrome-3: rgba(56, 22, 34, 0.90);
-  --gk-chrome-solid: #2c161e;
-  --gk-statusbar: #261019;
-  --gk-chrome-border: rgba(244, 63, 94, 0.24);
+  --gk-chrome-1: rgba(50, 22, 22, 0.90);
+  --gk-chrome-2: rgba(54, 22, 22, 0.90);
+  --gk-chrome-3: rgba(58, 22, 22, 0.90);
+  --gk-chrome-solid: #2c1616;
+  --gk-statusbar: #261010;
+  --gk-chrome-border: rgba(248, 80, 80, 0.24);
   --gk-chrome-shadow: rgba(0, 0, 0, 0.40);
-  --gk-chrome-accent: #fb7185;
-  --gk-chrome-hover: rgba(251, 113, 133, 0.14);
-  --gk-chrome-active-bg: rgba(225, 29, 72, 0.28);
-  --gk-chrome-active-fg: #fecdd6;
-  --gk-app-bg: #1a1216;
+  --gk-chrome-accent: #f87171;
+  --gk-chrome-hover: rgba(248, 113, 113, 0.14);
+  --gk-chrome-active-bg: rgba(220, 38, 38, 0.30);
+  --gk-chrome-active-fg: #fecaca;
+  --gk-app-bg: #1a1212;
   --gk-app-bg-image: none;
 }
 
