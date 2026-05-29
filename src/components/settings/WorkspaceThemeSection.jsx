@@ -77,8 +77,8 @@ export default function WorkspaceThemeSection({ token, showToast }) {
               onClick={() => choose(theme.id)}
               className={`relative flex flex-col overflow-hidden rounded-xl border text-left transition-all active:scale-[0.99] ${
                 isSel
-                  ? "border-indigo-500 ring-2 ring-indigo-500/60"
-                  : "border-[var(--border-light)] hover:border-indigo-400/60"
+                  ? "border-[var(--gk-chrome-accent)] ring-2 ring-[var(--gk-chrome-accent)]"
+                  : "border-[var(--border-light)] hover:border-[var(--gk-accent-soft-border)]"
               }`}
             >
               <span
@@ -93,7 +93,7 @@ export default function WorkspaceThemeSection({ token, showToast }) {
               <span className="flex items-center justify-between gap-1 px-2.5 py-1.5 bg-white dark:bg-gray-800">
                 <span className="text-sm font-medium truncate">{theme.label}</span>
                 {isSel && (
-                  <TI.Check className="tabler-icon w-4 h-4 shrink-0 text-indigo-600 dark:text-indigo-300" />
+                  <TI.Check className="tabler-icon w-4 h-4 shrink-0 text-[var(--gk-chrome-accent)]" />
                 )}
               </span>
             </button>
