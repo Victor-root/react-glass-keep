@@ -21,7 +21,6 @@ Two headline features: fully **customisable branding** (each instance can theme 
 - 🎚️ **Multi-select button toggles correctly** — tapping it again closes the selection bar instead of scrolling the page down.
 - 🌗 **Android status bar colour restored** after closing a note, instead of keeping the note's colour.
 - 🔄 **QR scanner disables pull-to-refresh** (and the device back button closes it) so scanning isn't interrupted.
-- 📱 **Settings & Admin panels use the full width on mobile/tablet** instead of a narrow right-anchored drawer.
 
 ### 🛠️ Upgrade
 
