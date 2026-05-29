@@ -315,6 +315,7 @@ html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):hover {
 html[class*="gk-theme-"] .modal-footer-btn--mode,
 html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode {
   background: linear-gradient(90deg, var(--gk-chrome-grad-from) 0%, var(--gk-chrome-grad-to) 100%) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--gk-chrome-grad-from) 35%, transparent) !important;
 }
 html[class*="gk-theme-"] .modal-footer-btn--mode:hover,
 html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode:hover {
@@ -323,6 +324,7 @@ html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode:hover 
     color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000) 0%,
     color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000) 100%
   ) !important;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--gk-chrome-grad-from) 45%, transparent) !important;
 }
 button, [role="button"] { cursor: pointer; }
 /* Selection rules:
