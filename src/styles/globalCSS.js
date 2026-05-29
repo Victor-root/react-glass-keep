@@ -428,7 +428,7 @@ body {
      matches the theme like the status bar.
 
      LIGHT MODE ONLY (html:not(.dark)): in dark mode --gk-app-bg-image is
-     `none`, so the body background-color IS the visible notes canvas — we must
+     none, so the body background-color IS the visible notes canvas — we must
      not change it there. The dark canvas (#1a1a1a-ish) and the dark chrome are
      both near-black, so the dark nav bar already reads fine without this. */
   html:not(.dark) body {
