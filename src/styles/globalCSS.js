@@ -422,13 +422,16 @@ body {
    and bottom sheets (which carry their own --gk-statusbar bottom). */
 @media (display-mode: standalone) and (pointer: coarse) {
   /* Primary mechanism: Chrome/Brave on Android tint the PWA navigation bar
-     from the document background-color. Force it to the chrome colour here —
-     invisible to the eye because the opaque notes-canvas gradient
-     (background-image, painted on top) still shows, but the system nav bar
-     samples this solid colour and finally matches the theme like the status
-     bar. Scoped to the installed PWA only (standalone), so the in-browser and
-     native-app experiences are untouched. */
-  body {
+     from the document background-color. Force it to the chrome colour — it's
+     invisible because the opaque notes-canvas gradient (background-image) still
+     paints on top, but the system nav bar samples this solid colour and finally
+     matches the theme like the status bar.
+
+     LIGHT MODE ONLY (html:not(.dark)): in dark mode --gk-app-bg-image is
+     `none`, so the body background-color IS the visible notes canvas — we must
+     not change it there. The dark canvas (#1a1a1a-ish) and the dark chrome are
+     both near-black, so the dark nav bar already reads fine without this. */
+  html:not(.dark) body {
     background-color: var(--gk-statusbar);
   }
   /* Secondary: when the PWA IS edge-to-edge under the nav bar, also paint the
