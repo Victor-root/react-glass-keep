@@ -530,7 +530,7 @@ export default function SettingsPanel({
                     aria-haspopup="listbox"
                     aria-expanded={breakpointMenuOpen}
                   >
-                    <span className="truncate text-left">
+                    <span className="truncate text-left min-w-0">
                       {t(
                         (SIDEBAR_BREAKPOINT_PRESETS.find((p) => p.value === sidebarBreakpoint) || {}).labelKey
                       ) || `≥ ${sidebarBreakpoint} px`}
