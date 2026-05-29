@@ -70,7 +70,6 @@ import { useNotifications } from "./components/notifications/NotificationProvide
 import { playNotificationDing } from "./utils/notificationSound.js";
 import QrScannerModal from "./components/auth/QrScannerModal.jsx";
 import FloatingCardsBackground from "./components/common/FloatingCardsBackground.jsx";
-import AppBackground from "./components/common/AppBackground.jsx";
 import NoteModal from "./components/modal/NoteModal.jsx";
 import SecondaryNoteInstance from "./components/modal/SecondaryNoteInstance.jsx";
 import { parseAudioContent, isAudioContentEmpty, extensionForMime } from "./utils/audioNote.js";
@@ -216,20 +215,6 @@ export default function App() {
       return next;
     });
   }, []);
-
-  // Per-user app background (image data URL + blur). Loaded from
-  // /user/settings on startup; the image lives in a dedicated server
-  // column (not the synced blob) and is written via PUT
-  // /api/user/app-background. Not mirrored to localStorage — the data
-  // URL can be large and it's only a backdrop behind the app.
-  // Per-user app background, with an optional separate dark-mode variant.
-  // `light` is the shared slot when `separate` is false.
-  const [appBg, setAppBg] = useState({
-    enabled: true,
-    separate: false,
-    light: { image: null, blur: 0 },
-    dark: { image: null, blur: 0 },
-  });
 
   // AI assistant — visibility flag mirrored from the server. The
   // authoritative state lives in user_ai_settings (loaded by
@@ -1040,27 +1025,6 @@ export default function App() {
         // Absent/invalid → keep the local fallback (which defaults to GlassKeep).
         if (settings && isValidShellTheme(settings.shellTheme)) {
           setShellTheme(settings.shellTheme);
-        }
-        // Per-user app background (images live in dedicated server
-        // columns, surfaced through this settings load). Not cached in
-        // localStorage — the data URLs can be large.
-        {
-          const clampBlur = (v) => {
-            const n = Number(v);
-            return Math.max(0, Math.min(20, Number.isFinite(n) ? n : 0));
-          };
-          setAppBg({
-            enabled: settings?.appBackgroundEnabled !== false,
-            separate: !!settings?.appBackgroundSeparate,
-            light: {
-              image: typeof settings?.appBackground === "string" ? settings.appBackground : null,
-              blur: clampBlur(settings?.appBackgroundBlur),
-            },
-            dark: {
-              image: typeof settings?.appBackgroundDark === "string" ? settings.appBackgroundDark : null,
-              blur: clampBlur(settings?.appBackgroundBlurDark),
-            },
-          });
         }
         if (settings?.checklistInsertPosition) {
           setChecklistInsertPosition(settings.checklistInsertPosition);
@@ -6679,15 +6643,6 @@ export default function App() {
     );
   }
 
-  // Background that actually applies right now: nothing when disabled,
-  // otherwise the dark slot in dark mode when the user split light/dark,
-  // else the shared (light) slot.
-  const effAppBg = !appBg.enabled
-    ? { image: null, blur: 0 }
-    : appBg.separate
-      ? (dark ? appBg.dark : appBg.light)
-      : appBg.light;
-
   return (
     <>
       <TooltipPortal />
@@ -6711,9 +6666,7 @@ export default function App() {
           }
         />
       )}
-      {effAppBg.image
-        ? <AppBackground image={effAppBg.image} blur={effAppBg.blur} dark={dark} />
-        : floatingCardsEnabled && <FloatingCardsBackground />}
+      {floatingCardsEnabled && <FloatingCardsBackground />}
       {/* Tag Sidebar / Drawer */}
       <TagSidebar
         open={sidebarOpen}
@@ -6779,9 +6732,6 @@ export default function App() {
         setAiAssistantEnabled={setAiAssistantEnabled}
         floatingCardsEnabled={floatingCardsEnabled}
         setFloatingCardsEnabled={setFloatingCardsEnabled}
-        appBg={appBg}
-        setAppBg={setAppBg}
-        appBackgroundActive={!!effAppBg.image}
         checklistInsertPosition={checklistInsertPosition}
         setChecklistInsertPosition={setChecklistInsertPosition}
         checklistRemoveSectionBehavior={checklistRemoveSectionBehavior}

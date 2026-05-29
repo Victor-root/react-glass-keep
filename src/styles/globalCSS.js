@@ -618,15 +618,6 @@ html.gk-custom-bg:not(.dark) .gk-section-label {
   padding: 3px 12px;
   border-radius: 9999px;
 }
-/* The app background fades in on mount so toggling it on (or loading a
-   page that has one) isn't an abrupt pop. */
-.app-custom-bg {
-  animation: gkBgFadeIn 0.35s ease both;
-}
-@keyframes gkBgFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 /* Shim around composer + sections that yields vertical room for the
    floating multi-select dock at the top of the page. The dock itself
    stays position:fixed so it follows scroll, but without this padding

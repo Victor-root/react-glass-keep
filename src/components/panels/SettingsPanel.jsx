@@ -10,7 +10,6 @@ import { fileToCompressedDataURL } from "../../utils/helpers.js";
 import TypographyModal from "./TypographyModal.jsx";
 import PasskeySettingsSection from "../settings/PasskeySettingsSection.jsx";
 import UserAiSettingsSection from "../settings/UserAiSettingsSection.jsx";
-import AppBackgroundSection from "../settings/AppBackgroundSection.jsx";
 import WorkspaceThemeSection from "../settings/WorkspaceThemeSection.jsx";
 import { RowIcon, SettingsSection, SettingsSubHeading as UISubHeading } from "../common/SettingsAccordion.jsx";
 
@@ -45,9 +44,6 @@ export default function SettingsPanel({
   setAiAssistantEnabled,
   floatingCardsEnabled,
   setFloatingCardsEnabled,
-  appBg,
-  setAppBg,
-  appBackgroundActive,
   checklistInsertPosition,
   setChecklistInsertPosition,
   checklistRemoveSectionBehavior,
@@ -613,26 +609,23 @@ export default function SettingsPanel({
                 </div>
               )}
 
-              <div className={`flex items-center justify-between gap-3 px-3 ${appBackgroundActive ? "opacity-50" : ""}`}>
+              <div className="flex items-center justify-between gap-3 px-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <RowIcon icon={TI.Sparkles} />
                   <div className="min-w-0">
                     <div className="font-medium">{t("enableAnimationsMobile")}</div>
-                    <div className="text-sm text-gray-500">{appBackgroundActive ? t("animationsDisabledByBg") : t("enableAnimationsMobileDesc")}</div>
+                    <div className="text-sm text-gray-500">{t("enableAnimationsMobileDesc")}</div>
                   </div>
                 </div>
                 <button
-                  disabled={!!appBackgroundActive}
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
-                    !appBackgroundActive && floatingCardsEnabled
-                      ? "bg-indigo-600"
-                      : "bg-gray-300 dark:bg-gray-600"
-                  } ${appBackgroundActive ? "cursor-not-allowed" : ""}`}
-                  onClick={() => { if (!appBackgroundActive) setFloatingCardsEnabled(!floatingCardsEnabled); }}
+                    floatingCardsEnabled ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
+                  }`}
+                  onClick={() => setFloatingCardsEnabled(!floatingCardsEnabled)}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      !appBackgroundActive && floatingCardsEnabled ? "translate-x-6" : "translate-x-1"
+                      floatingCardsEnabled ? "translate-x-6" : "translate-x-1"
                     }`}
                   />
                 </button>
@@ -642,19 +635,6 @@ export default function SettingsPanel({
                   its own group, separated by a hairline. */}
               <div className="pt-2 border-t border-[var(--border-light)]">
                 <WorkspaceThemeSection token={token} showToast={showToast} />
-              </div>
-
-              {/* Per-user app background (image + blur, optional light/dark
-                  split) — separated by a hairline so it reads as its own
-                  group within the UI preferences. */}
-              <div className="pt-2 border-t border-[var(--border-light)]">
-                <AppBackgroundSection
-                  token={token}
-                  appBg={appBg}
-                  setAppBg={setAppBg}
-                  showToast={showToast}
-                  dark={dark}
-                />
               </div>
 
             </div>

@@ -53,7 +53,7 @@ export default function WorkspaceThemeSection({ token, showToast }) {
   return (
     <div className="space-y-3 px-3">
       <div className="flex items-center gap-3 min-w-0">
-        <RowIcon icon={TI.DropletFilled} />
+        <RowIcon icon={TI.Paint} />
         <div className="min-w-0">
           <div className="font-medium">{t("workspaceTheme")}</div>
           <div className="text-sm text-gray-500">{t("workspaceThemeDesc")}</div>

@@ -1470,78 +1470,6 @@ app.delete("/api/user/avatar", auth, (req, res) => {
   res.json({ ok: true });
 });
 
-// Per-user app background (data URL) + blur, with an optional separate
-// dark-mode variant. Stored in dedicated user columns so the large data
-// URLs stay out of the synced settings blob. Body:
-//   variant?: "light" | "dark"  — which slot to edit (default "light";
-//                                  "light" is also the shared one)
-//   image?:   data URL | null   — null clears, string sets, omitted keeps
-//   blur?:    number (0-20)
-//   separate?: boolean          — toggle the dark/light split
-app.put("/api/user/app-background", auth, (req, res) => {
-  const body = req.body || {};
-  const variant = body.variant === "dark" ? "dark" : "light";
-  const imageCol = variant === "dark" ? "app_bg_image_dark" : "app_bg_image";
-  const blurCol = variant === "dark" ? "app_bg_blur_dark" : "app_bg_blur";
-  const updates = [];
-  const params = [];
-
-  if (Object.prototype.hasOwnProperty.call(body, "image")) {
-    const image = body.image;
-    if (image === null) {
-      updates.push(`${imageCol} = ?`);
-      params.push(null);
-    } else if (typeof image === "string" && image) {
-      if (!/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/]+=*$/.test(image)) {
-        return res.status(400).json({ error: "Background must be a PNG, JPEG or WebP image data URL." });
-      }
-      if (image.length > 4 * 1024 * 1024) {
-        return res.status(413).json({ error: "Background image is too large." });
-      }
-      updates.push(`${imageCol} = ?`);
-      params.push(image);
-    } else {
-      return res.status(400).json({ error: "image must be a data URL or null." });
-    }
-  }
-
-  if (Object.prototype.hasOwnProperty.call(body, "blur")) {
-    const blur = body.blur;
-    if (typeof blur !== "number" || !Number.isFinite(blur)) {
-      return res.status(400).json({ error: "blur must be a number." });
-    }
-    updates.push(`${blurCol} = ?`);
-    params.push(Math.max(0, Math.min(20, Math.round(blur))));
-  }
-
-  if (Object.prototype.hasOwnProperty.call(body, "separate")) {
-    updates.push("app_bg_separate = ?");
-    params.push(body.separate ? 1 : 0);
-  }
-
-  if (Object.prototype.hasOwnProperty.call(body, "enabled")) {
-    updates.push("app_bg_enabled = ?");
-    params.push(body.enabled ? 1 : 0);
-  }
-
-  if (updates.length === 0) {
-    return res.status(400).json({ error: "No supported field provided." });
-  }
-  params.push(req.user.id);
-  db.prepare(`UPDATE users SET ${updates.join(", ")} WHERE id = ?`).run(...params);
-
-  const user = getUserById.get(req.user.id);
-  res.json({
-    ok: true,
-    appBackground: user.app_bg_image || null,
-    appBackgroundBlur: user.app_bg_blur || 0,
-    appBackgroundDark: user.app_bg_image_dark || null,
-    appBackgroundBlurDark: user.app_bg_blur_dark || 0,
-    appBackgroundSeparate: !!user.app_bg_separate,
-    appBackgroundEnabled: !!user.app_bg_enabled,
-  });
-});
-
 // Get current user profile info (authenticated)
 app.get("/api/user/profile", auth, (req, res) => {
   const user = getUserById.get(req.user.id);
@@ -3008,18 +2936,6 @@ app.post("/api/notes/import", auth, (req, res) => {
 app.get("/api/user/settings", auth, (req, res) => {
   const row = getUserSettings.get(req.user.id);
   const settings = row ? JSON.parse(row.settings_json) : {};
-  // Surface the per-user app background (stored in dedicated user
-  // columns, not the settings blob) through the same load the client
-  // already runs on startup, so it renders without an extra request.
-  const user = getUserById.get(req.user.id);
-  if (user) {
-    settings.appBackground = user.app_bg_image || null;
-    settings.appBackgroundBlur = user.app_bg_blur || 0;
-    settings.appBackgroundDark = user.app_bg_image_dark || null;
-    settings.appBackgroundBlurDark = user.app_bg_blur_dark || 0;
-    settings.appBackgroundSeparate = !!user.app_bg_separate;
-    settings.appBackgroundEnabled = !!user.app_bg_enabled;
-  }
   res.json(settings);
 });
 
