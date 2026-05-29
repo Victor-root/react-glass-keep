@@ -370,7 +370,7 @@ html[class*="gk-theme-"] :is(input, textarea, select):focus {
    isn't clipped at the section's bottom edge. Closing removes .is-open with
    no delay, restoring the clip immediately for a clean collapse. */
 .gk-acc-body { overflow: hidden; transition: overflow 0s; }
-.gk-acc-body.is-open { overflow: visible; transition: overflow 0s 300ms; }
+.gk-acc-body.is-open { overflow-x: clip; overflow-y: visible; transition: overflow 0s 300ms; }
 button, [role="button"] { cursor: pointer; }
 /* Selection rules:
  *  - Body allows text selection so users can copy titles, error
