@@ -43,6 +43,26 @@ export function getStoredShellTheme() {
   return isValidShellTheme(saved) ? saved : DEFAULT_SHELL_THEME;
 }
 
+// Event fired on <document> whenever the active shell theme changes, so UI
+// that mirrors the current theme (the Settings picker's checkmark) can stay in
+// sync no matter who triggered the change — including the server settings load
+// applying a different theme after the picker has already mounted (the
+// cross-device case where localStorage was empty at boot).
+export const SHELL_THEME_EVENT = "gk:shelltheme";
+
+// The theme actually applied right now, read from the live <html> class — the
+// single source of truth, independent of localStorage (which may lag on a
+// fresh device until the server value lands).
+export function getActiveShellTheme() {
+  const root = document.documentElement;
+  for (const t of SHELL_THEMES) {
+    if (t.id !== DEFAULT_SHELL_THEME && root.classList.contains(`gk-theme-${t.id}`)) {
+      return t.id;
+    }
+  }
+  return DEFAULT_SHELL_THEME;
+}
+
 // Toggle the single gk-theme-* class on <html>. GlassKeep => no class.
 // Does NOT persist and does NOT touch the theme-color meta — callers that
 // need those use setShellTheme(). Safe to call before the global stylesheet
@@ -52,6 +72,13 @@ export function applyShellThemeClass(id) {
   const root = document.documentElement;
   for (const t of SHELL_THEMES) {
     root.classList.toggle(`gk-theme-${t.id}`, t.id !== DEFAULT_SHELL_THEME && t.id === theme);
+  }
+  // Notify in-app listeners. Guarded for the boot call (before React mounts
+  // there are simply no listeners, so this is a harmless no-op).
+  try {
+    document.dispatchEvent(new CustomEvent(SHELL_THEME_EVENT, { detail: theme }));
+  } catch (_) {
+    /* CustomEvent unavailable (very old engines) — listeners just won't fire */
   }
   return theme;
 }
