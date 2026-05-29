@@ -368,7 +368,7 @@ export default function SettingsPanel({
               </div>
               <button
                 className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
-                  profileShowOnLogin ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
+                  profileShowOnLogin ? "bg-[var(--gk-switch-on)]" : "bg-gray-300 dark:bg-gray-600"
                 }`}
                 onClick={handleShowOnLoginToggle}
               >
@@ -499,7 +499,7 @@ export default function SettingsPanel({
                 <button
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
                     alwaysShowSidebarOnWide
-                      ? "bg-indigo-600"
+                      ? "bg-[var(--gk-switch-on)]"
                       : "bg-gray-300 dark:bg-gray-600"
                   }`}
                   onClick={() =>
@@ -595,7 +595,7 @@ export default function SettingsPanel({
                   <button
                     className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
                       edgeToEdgeLandscape
-                        ? "bg-indigo-600"
+                        ? "bg-[var(--gk-switch-on)]"
                         : "bg-gray-300 dark:bg-gray-600"
                     }`}
                     onClick={() => setEdgeToEdgeLandscape(!edgeToEdgeLandscape)}
@@ -619,7 +619,7 @@ export default function SettingsPanel({
                 </div>
                 <button
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
-                    floatingCardsEnabled ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
+                    floatingCardsEnabled ? "bg-[var(--gk-switch-on)]" : "bg-gray-300 dark:bg-gray-600"
                   }`}
                   onClick={() => setFloatingCardsEnabled(!floatingCardsEnabled)}
                 >
@@ -798,7 +798,7 @@ export default function SettingsPanel({
                       <button
                         className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
                           notificationsSound
-                            ? "bg-indigo-600"
+                            ? "bg-[var(--gk-switch-on)]"
                             : "bg-gray-300 dark:bg-gray-600"
                         }`}
                         onClick={() => setNotificationsSound?.(!notificationsSound)}
@@ -965,7 +965,7 @@ export default function SettingsPanel({
                 <button
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
                     readModeEnabled
-                      ? "bg-indigo-600"
+                      ? "bg-[var(--gk-switch-on)]"
                       : "bg-gray-300 dark:bg-gray-600"
                   }`}
                   onClick={() => setReadModeEnabled(!readModeEnabled)}

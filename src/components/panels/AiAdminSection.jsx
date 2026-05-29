@@ -257,7 +257,7 @@ export default function AiAdminSection({ token, showToast }) {
           disabled={loading || saving}
           onClick={onToggleEnabled}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-            enabled ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
+            enabled ? "bg-[var(--gk-switch-on)]" : "bg-gray-300 dark:bg-gray-600"
           } disabled:opacity-50`}
           aria-pressed={enabled}
         >
@@ -281,7 +281,7 @@ export default function AiAdminSection({ token, showToast }) {
           onClick={onToggleShare}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
             allowServerAiForUsers && enabled
-              ? "bg-indigo-600"
+              ? "bg-[var(--gk-switch-on)]"
               : "bg-gray-300 dark:bg-gray-600"
           } disabled:opacity-50`}
           aria-pressed={allowServerAiForUsers}
@@ -469,7 +469,7 @@ export default function AiAdminSection({ token, showToast }) {
         <button
           type="submit"
           disabled={loading || saving}
-          className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none disabled:opacity-50 disabled:pointer-events-none"
+          className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none"
         >
           {saving ? t("saving") : t("save")}
         </button>

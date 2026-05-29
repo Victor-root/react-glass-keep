@@ -76,6 +76,12 @@ html.dark {
   --gk-icon-bg: color-mix(in srgb, var(--gk-chrome-grad-from) 12%, transparent);
   --gk-icon2-fg: var(--gk-chrome-grad-to);
   --gk-icon2-bg: color-mix(in srgb, var(--gk-chrome-grad-to) 12%, transparent);
+  /* Toggle "on" colour. GlassKeep keeps indigo-600; themes override below. */
+  --gk-switch-on: #4f46e5;
+  /* Soft accent chip (faint fill + border) — e.g. the header page badge.
+     Re-resolves per theme/mode via the cascaded --gk-chrome-accent. */
+  --gk-accent-soft-bg: color-mix(in srgb, var(--gk-chrome-accent) 12%, transparent);
+  --gk-accent-soft-border: color-mix(in srgb, var(--gk-chrome-accent) 24%, transparent);
 }
 html.dark {
   /* GlassKeep — dark. Cool slate-blue glass; sheen/highlight are barely
@@ -306,6 +312,9 @@ html.dark.gk-theme-blush {
    own per-type colour gradients. */
 html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn) {
   background-image: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+  /* Retint the colored glow (shadow-indigo-*) to the theme; respects
+     dark:shadow-none automatically (that sets --tw-shadow to none). */
+  --tw-shadow-color: color-mix(in srgb, var(--gk-chrome-grad-from) 40%, transparent);
 }
 html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):hover {
   background-image: linear-gradient(
@@ -330,6 +339,16 @@ html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode:hover 
     color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000) 100%
   ) !important;
   box-shadow: 0 8px 18px color-mix(in srgb, var(--gk-chrome-grad-from) 45%, transparent) !important;
+}
+/* Toggle switches in the Settings / Admin panels: "on" colour follows the
+   theme (GlassKeep keeps indigo-600 from :root). */
+html[class*="gk-theme-"] { --gk-switch-on: var(--gk-chrome-grad-from); }
+/* Text-field focus ring follows the theme. Scoped to form fields so it only
+   recolours the "box" that appears around a text zone on click/focus; the
+   ring geometry (ring-2) still comes from the element's own utilities.
+   GlassKeep (no theme class) keeps the indigo ring. */
+html[class*="gk-theme-"] :is(input, textarea, select):focus {
+  --tw-ring-color: var(--gk-chrome-accent);
 }
 button, [role="button"] { cursor: pointer; }
 /* Selection rules:
@@ -2525,33 +2544,33 @@ html.dark .login-deco-card {
   margin-top: -6px;
   border-radius: 9999px;
   background: #ffffff;
-  border: 2px solid #6366f1;
-  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.45);
+  border: 2px solid rgb(var(--rt-accent));
+  box-shadow: 0 1px 4px rgba(var(--rt-accent), 0.45);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .gk-range::-moz-range-thumb {
   width: 20px;
   height: 20px;
-  border: 2px solid #6366f1;
+  border: 2px solid rgb(var(--rt-accent));
   border-radius: 9999px;
   background: #ffffff;
-  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.45);
+  box-shadow: 0 1px 4px rgba(var(--rt-accent), 0.45);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .gk-range:hover::-webkit-slider-thumb { transform: scale(1.12); }
 .gk-range:hover::-moz-range-thumb { transform: scale(1.12); }
 .gk-range:focus-visible::-webkit-slider-thumb,
-.gk-range:active::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25); }
+.gk-range:active::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(var(--rt-accent), 0.25); }
 .gk-range:focus-visible::-moz-range-thumb,
-.gk-range:active::-moz-range-thumb { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25); }
+.gk-range:active::-moz-range-thumb { box-shadow: 0 0 0 4px rgba(var(--rt-accent), 0.25); }
 html.dark .gk-range::-webkit-slider-thumb {
   background: #e5e7eb;
-  border-color: #818cf8;
+  border-color: color-mix(in srgb, rgb(var(--rt-accent)) 65%, #fff);
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 html.dark .gk-range::-moz-range-thumb {
   background: #e5e7eb;
-  border-color: #818cf8;
+  border-color: color-mix(in srgb, rgb(var(--rt-accent)) 65%, #fff);
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
 

@@ -261,7 +261,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
           disabled={loading || saving || !adminAiEnabled}
           onClick={onToggleEnabled}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-            effectiveEnabled ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
+            effectiveEnabled ? "bg-[var(--gk-switch-on)]" : "bg-gray-300 dark:bg-gray-600"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
           aria-pressed={effectiveEnabled}
         >

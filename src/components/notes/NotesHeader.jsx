@@ -219,7 +219,7 @@ export default function NotesHeader({
           {/* Mobile: stacked name + badge */}
           <div className={`flex flex-col ${mobileOnly} leading-tight relative`}>
             <h1 className="text-lg font-bold">{appName}</h1>
-            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1 max-w-[160px]">
+            <span className="text-xs font-medium text-[var(--gk-chrome-accent)] flex items-center gap-1 max-w-[160px]">
               <span className="shrink-0 w-3 h-3 [&>svg]:w-3 [&>svg]:h-3"><SectionIcon /></span>
               <span className="truncate">{sectionLabel}</span>
             </span>
@@ -237,7 +237,7 @@ export default function NotesHeader({
             {appName}
           </h1>
           <span className={`hidden xl:inline-block h-6 w-px bg-slate-400/60 dark:bg-gray-600 mx-1 ${isLandscapeMobile ? "!hidden" : ""}`} />
-          <span className={`${desktopOnly} text-base font-medium px-3 py-1 rounded-lg bg-indigo-600/10 text-indigo-700 dark:text-indigo-300 border border-indigo-600/20 items-center gap-1.5 max-w-[200px]`}>
+          <span className={`${desktopOnly} text-base font-medium px-3 py-1 rounded-lg bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] border border-[var(--gk-accent-soft-border)] items-center gap-1.5 max-w-[200px]`}>
             <span className="shrink-0 w-4 h-4 [&>svg]:w-4 [&>svg]:h-4"><SectionIcon /></span>
             <span className="truncate">{sectionLabel}</span>
           </span>
