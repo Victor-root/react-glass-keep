@@ -421,6 +421,19 @@ body {
    installed PWA. pointer-events:none + a low z-index keep it clear of the FAB
    and bottom sheets (which carry their own --gk-statusbar bottom). */
 @media (display-mode: standalone) and (pointer: coarse) {
+  /* Primary mechanism: Chrome/Brave on Android tint the PWA navigation bar
+     from the document background-color. Force it to the chrome colour here —
+     invisible to the eye because the opaque notes-canvas gradient
+     (background-image, painted on top) still shows, but the system nav bar
+     samples this solid colour and finally matches the theme like the status
+     bar. Scoped to the installed PWA only (standalone), so the in-browser and
+     native-app experiences are untouched. */
+  body {
+    background-color: var(--gk-statusbar);
+  }
+  /* Secondary: when the PWA IS edge-to-edge under the nav bar, also paint the
+     safe-area strip so the colour reaches behind the bar. Zero-height (no-op)
+     when there's no inset or inside the native WebView (env() = 0 there). */
   body::after {
     content: "";
     position: fixed;
