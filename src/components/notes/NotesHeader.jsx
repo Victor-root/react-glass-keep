@@ -545,7 +545,7 @@ export default function NotesHeader({
                     than ~95vw so it can't overflow on tiny phones. */}
                 <div
                   ref={headerMenuRef}
-                  className={`absolute top-0 sm:top-12 right-0 w-max max-w-[95vw] sm:min-w-[220px] sm:max-w-[360px] max-h-[50vh] sm:max-h-[80vh] overflow-y-auto z-[1100] border border-[var(--border-light)] rounded-lg shadow-lg ${dark ? "text-gray-100" : "bg-white text-gray-800"}`}
+                  className={`absolute top-0 sm:top-12 right-0 w-max max-w-[95vw] sm:min-w-[220px] sm:max-w-[360px] max-h-[72vh] sm:max-h-[80vh] overflow-y-auto z-[1100] border border-[var(--border-light)] rounded-lg shadow-lg ${dark ? "text-gray-100" : "bg-white text-gray-800"}`}
                   style={{ backgroundColor: dark ? "#222222" : undefined }}
                   onClick={(e) => e.stopPropagation()}
                 >
