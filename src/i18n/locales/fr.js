@@ -154,7 +154,7 @@ loginUnexpectedError: "Impossible de se connecter. Vérifiez votre réseau et r�
   sidebarBreakpoint: "Taille d'écran minimale",
   sidebarBreakpointDesc: "Largeur d'écran minimale à partir de laquelle la barre latérale reste affichée. Augmenter la valeur si la barre prend trop de place à l'écran.",
   sidebarBreakpoint1024: "Tablette (≥ 1024 px)",
-  sidebarBreakpoint1280: "Standard (≥ 1280 px)",
+  sidebarBreakpoint1280: "Standard (≥ 1280 px) — recommandé",
   sidebarBreakpoint1366: "Laptop 14″ (≥ 1366 px)",
   sidebarBreakpoint1440: "Laptop 15″ (≥ 1440 px)",
   sidebarBreakpoint1600: "Grand écran (≥ 1600 px)",
