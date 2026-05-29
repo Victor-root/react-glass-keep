@@ -292,6 +292,21 @@ html.dark.gk-theme-blush {
   --gk-app-bg: #1b1218;
   --gk-app-bg-image: none;
 }
+/* Primary gradient buttons (.btn-gradient): follow the active theme's
+   gradient. Scoped to any gk-theme-* class so GlassKeep — which has NO theme
+   class — keeps its exact Tailwind indigo->violet untouched. Only the gradient
+   colour changes; every other utility (shadow, scale, radius, hover scale)
+   stays. The :hover variant just darkens the same themed gradient. */
+html[class*="gk-theme-"] .btn-gradient {
+  background-image: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+}
+html[class*="gk-theme-"] .btn-gradient:hover {
+  background-image: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
+    color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
+  );
+}
 button, [role="button"] { cursor: pointer; }
 /* Selection rules:
  *  - Body allows text selection so users can copy titles, error
