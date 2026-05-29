@@ -133,6 +133,7 @@ html.gk-theme-emerald {
   --gk-chrome-accent: #0d9488;
   --gk-chrome-grad-from: #10b981;
   --gk-chrome-grad-to: #0d9488;
+  --rt-accent: 16, 185, 129;
   --gk-chrome-hover: rgba(16, 185, 129, 0.09);
   --gk-chrome-active-bg: rgba(13, 148, 136, 0.16);
   --gk-chrome-active-fg: #0f5f53;
@@ -167,6 +168,7 @@ html.gk-theme-amber {
   --gk-chrome-accent: #d97706;
   --gk-chrome-grad-from: #d97706;
   --gk-chrome-grad-to: #b45309;
+  --rt-accent: 217, 119, 6;
   --gk-chrome-hover: rgba(217, 119, 6, 0.10);
   --gk-chrome-active-bg: rgba(217, 119, 6, 0.16);
   --gk-chrome-active-fg: #8a4d09;
@@ -202,6 +204,7 @@ html.gk-theme-rosewood {
   --gk-chrome-accent: #d61f1f;
   --gk-chrome-grad-from: #e11d1d;
   --gk-chrome-grad-to: #9f1010;
+  --rt-accent: 225, 29, 29;
   --gk-chrome-hover: rgba(214, 31, 31, 0.10);
   --gk-chrome-active-bg: rgba(214, 31, 31, 0.16);
   --gk-chrome-active-fg: #9b1212;
@@ -236,6 +239,7 @@ html.gk-theme-graphite {
   --gk-chrome-accent: #475569;
   --gk-chrome-grad-from: #64748b;
   --gk-chrome-grad-to: #475569;
+  --rt-accent: 100, 116, 139;
   --gk-chrome-hover: rgba(71, 85, 105, 0.09);
   --gk-chrome-active-bg: rgba(71, 85, 105, 0.16);
   --gk-chrome-active-fg: #334155;
@@ -271,6 +275,7 @@ html.gk-theme-blush {
   --gk-chrome-accent: #db2777;
   --gk-chrome-grad-from: #ec4899;
   --gk-chrome-grad-to: #be185d;
+  --rt-accent: 219, 39, 119;
   --gk-chrome-hover: rgba(219, 39, 119, 0.10);
   --gk-chrome-active-bg: rgba(219, 39, 119, 0.16);
   --gk-chrome-active-fg: #9d174d;
@@ -2596,7 +2601,9 @@ html.dark {
   --rt-divider-strong: rgba(255, 255, 255, 0.18);
   --rt-btn-hover: rgba(255, 255, 255, 0.08);
   --rt-btn-active-bg: rgba(var(--rt-accent), 0.26);
-  --rt-btn-active-text: rgb(165, 180, 252);
+  /* Lightened theme accent so the active label stays legible on the dark
+     toolbar; follows --rt-accent for every theme (GlassKeep ~= indigo-300). */
+  --rt-btn-active-text: color-mix(in srgb, rgb(var(--rt-accent)) 60%, #fff);
   --rt-hl-1: #b45309;
   --rt-hl-2: #c2410c;
   --rt-hl-3: #b91c1c;
