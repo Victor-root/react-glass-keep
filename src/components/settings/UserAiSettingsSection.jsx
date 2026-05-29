@@ -13,7 +13,7 @@ import { localizeServerError } from "../../utils/serverErrors.js";
 import TI from "../../icons/editor/index.jsx";
 
 const FIELD_INPUT_CLASSES =
-  "w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400 text-sm";
+  "w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400 text-sm";
 
 function PrivacyWarning({ tone = "amber" }) {
   const palette =
@@ -287,7 +287,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
                 disabled={loading || saving || !serverAiAvailable}
                 className={`text-left rounded-lg border px-3 py-2 transition-colors disabled:opacity-50 ${
                   mode === "server"
-                    ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
+                    ? "border-[var(--gk-chrome-accent)] bg-[var(--gk-accent-soft-bg)]"
                     : "border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10"
                 }`}
                 aria-pressed={mode === "server"}
@@ -308,7 +308,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
                 disabled={loading || saving}
                 className={`text-left rounded-lg border px-3 py-2 transition-colors disabled:opacity-50 ${
                   mode === "custom"
-                    ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
+                    ? "border-[var(--gk-chrome-accent)] bg-[var(--gk-accent-soft-bg)]"
                     : "border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10"
                 }`}
                 aria-pressed={mode === "custom"}

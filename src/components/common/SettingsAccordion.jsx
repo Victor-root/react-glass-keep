@@ -65,14 +65,11 @@ export function SettingsSection({ icon, title, open, onToggle, children }) {
         aria-hidden={!open}
         inert={!open}
       >
-        <div className="overflow-hidden">
-          {/* pb-2 leaves room for a focus-ring on the last interactive
-              element inside the section — without it, overflow:hidden
-              above clips the bottom of the ring (visible on the
-              "Slogan de connexion" input which is the last row of its
-              section). 8 px is enough for a ring-2 shadow + a hair of
-              breathing room and doesn't change perceived section
-              spacing. */}
+        {/* gk-acc-body clips during the open/close animation (so the grid
+            collapse hides content), then switches to overflow:visible once
+            open — see globalCSS — so button hover glows / focus rings on the
+            last row aren't clipped at the section's bottom edge. */}
+        <div className={`gk-acc-body${open ? " is-open" : ""}`}>
           <div className="pt-4 pb-2">{children}</div>
         </div>
       </div>

@@ -59,7 +59,7 @@ function LoginSloganRow({ value, onSave, showToast }) {
         <input
           type="text"
           maxLength={200}
-          className="flex-1 px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400 text-sm"
+          className="flex-1 px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400 text-sm"
           placeholder={t("loginSloganPlaceholder")}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -552,7 +552,7 @@ export default function AdminPanel({
               title={
                 <span className="flex items-center gap-2">
                   <span>{t("allUsers")}</span>
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 rounded-full">
+                  <span className="px-2 py-0.5 text-xs font-semibold bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] rounded-full">
                     {allUsers.length}
                   </span>
                 </span>
@@ -667,7 +667,7 @@ export default function AdminPanel({
                 onChange={(e) =>
                   setNewUserForm((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400"
+                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400"
               />
               <input
                 type="text"
@@ -676,7 +676,7 @@ export default function AdminPanel({
                 onChange={(e) =>
                   setNewUserForm((prev) => ({ ...prev, email: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400"
+                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400"
               />
               <input
                 type="password"
@@ -685,7 +685,7 @@ export default function AdminPanel({
                 onChange={(e) =>
                   setNewUserForm((prev) => ({ ...prev, password: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400"
+                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400"
               />
               <p className="text-xs text-gray-400 dark:text-gray-500">
                 {t("temporaryPasswordHint")}
@@ -782,7 +782,7 @@ export default function AdminPanel({
                   onChange={(e) =>
                     setEditUserForm((prev) => ({ ...prev, name: e.target.value }))
                   }
-                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)]"
                   required
                 />
               </div>
@@ -794,7 +794,7 @@ export default function AdminPanel({
                   onChange={(e) =>
                     setEditUserForm((prev) => ({ ...prev, email: e.target.value }))
                   }
-                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)]"
                   required
                 />
               </div>
@@ -806,7 +806,7 @@ export default function AdminPanel({
                   onChange={(e) =>
                     setEditUserForm((prev) => ({ ...prev, password: e.target.value }))
                   }
-                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)]"
                   placeholder={t("leaveEmptyKeepCurrentPassword")}
                 />
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
@@ -862,7 +862,7 @@ export default function AdminPanel({
             {restartPhase === "waiting" ? (
               <>
                 <div className="flex justify-center mb-4">
-                  <TI.Refresh className="tabler-icon w-10 h-10 text-indigo-500 animate-spin" />
+                  <TI.Refresh className="tabler-icon w-10 h-10 text-[var(--gk-chrome-accent)] animate-spin" />
                 </div>
                 <h3 className="text-lg font-semibold mb-1">{t("restartServerInProgress")}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{t("restartServerWaiting")}</p>
@@ -890,7 +890,7 @@ export default function AdminPanel({
             {shutdownPhase === "waiting" ? (
               <>
                 <div className="flex justify-center mb-4">
-                  <TI.Power className="tabler-icon w-10 h-10 text-indigo-500 animate-spin" />
+                  <TI.Power className="tabler-icon w-10 h-10 text-[var(--gk-chrome-accent)] animate-spin" />
                 </div>
                 <h3 className="text-lg font-semibold mb-1">{t("shutdownServerInProgress")}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{t("shutdownServerWaiting")}</p>

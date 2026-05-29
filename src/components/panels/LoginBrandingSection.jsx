@@ -63,7 +63,7 @@ function AppNameRow({ value, onSave, showToast }) {
         <input
           type="text"
           maxLength={10}
-          className="flex-1 px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400 text-sm"
+          className="flex-1 px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400 text-sm"
           placeholder={DEFAULT_APP_NAME}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -313,7 +313,7 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
           <div className="min-w-0 flex-1">
             <div className="font-medium flex items-center justify-between gap-2">
               <span>{t("loginBackgroundBlurLabel")}</span>
-              <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 tabular-nums">{blur} px</span>
+              <span className="text-sm font-semibold text-[var(--gk-chrome-accent)] tabular-nums">{blur} px</span>
             </div>
             <div className="text-sm text-gray-500">{t("loginBackgroundBlurDesc")}</div>
           </div>
@@ -330,7 +330,7 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
             onKeyUp={commitBlur}
             className="gk-range w-full"
             style={{
-              background: `linear-gradient(to right, #6366f1 0%, #8b5cf6 ${blurPct}%, ${trackColor} ${blurPct}%, ${trackColor} 100%)`,
+              background: `linear-gradient(to right, var(--gk-chrome-grad-from) 0%, var(--gk-chrome-grad-to) ${blurPct}%, ${trackColor} ${blurPct}%, ${trackColor} 100%)`,
             }}
             aria-label={t("loginBackgroundBlurLabel")}
           />

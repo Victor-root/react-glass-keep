@@ -82,6 +82,10 @@ html.dark {
      Re-resolves per theme/mode via the cascaded --gk-chrome-accent. */
   --gk-accent-soft-bg: color-mix(in srgb, var(--gk-chrome-accent) 12%, transparent);
   --gk-accent-soft-border: color-mix(in srgb, var(--gk-chrome-accent) 24%, transparent);
+  /* Primary-button coloured glow — kept subtle at rest, a touch stronger on
+     hover. GlassKeep default is indigo; themes override below. */
+  --gk-btn-glow: rgba(99, 102, 241, 0.20);
+  --gk-btn-glow-hover: rgba(99, 102, 241, 0.32);
 }
 html.dark {
   /* GlassKeep — dark. Cool slate-blue glass; sheen/highlight are barely
@@ -310,11 +314,15 @@ html.dark.gk-theme-blush {
    stays. The :hover variant just darkens the same themed gradient.
    The 4 note-creation buttons (.gk-create-btn) are excluded: they keep their
    own per-type colour gradients. */
+/* Retint + soften the coloured glow for ALL primary gradient buttons
+   (GlassKeep included): drive --tw-shadow-color from the glow tokens so the
+   resting halo is subtle and the hover halo only slightly stronger. The
+   injected stylesheet loads after Tailwind, so this wins over shadow-indigo-*
+   at equal specificity; dark:shadow-none still wins (it zeroes --tw-shadow). */
+.btn-gradient:not(.gk-create-btn) { --tw-shadow-color: var(--gk-btn-glow); }
+.btn-gradient:not(.gk-create-btn):hover { --tw-shadow-color: var(--gk-btn-glow-hover); }
 html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn) {
   background-image: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
-  /* Retint the colored glow (shadow-indigo-*) to the theme; respects
-     dark:shadow-none automatically (that sets --tw-shadow to none). */
-  --tw-shadow-color: color-mix(in srgb, var(--gk-chrome-grad-from) 40%, transparent);
 }
 html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):hover {
   background-image: linear-gradient(
@@ -341,8 +349,13 @@ html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode:hover 
   box-shadow: 0 8px 18px color-mix(in srgb, var(--gk-chrome-grad-from) 45%, transparent) !important;
 }
 /* Toggle switches in the Settings / Admin panels: "on" colour follows the
-   theme (GlassKeep keeps indigo-600 from :root). */
-html[class*="gk-theme-"] { --gk-switch-on: var(--gk-chrome-grad-from); }
+   theme (GlassKeep keeps indigo-600 from :root). Also retint the button glow
+   tokens to the theme accent (same subtle rest / stronger hover balance). */
+html[class*="gk-theme-"] {
+  --gk-switch-on: var(--gk-chrome-grad-from);
+  --gk-btn-glow: color-mix(in srgb, var(--gk-chrome-grad-from) 22%, transparent);
+  --gk-btn-glow-hover: color-mix(in srgb, var(--gk-chrome-grad-from) 34%, transparent);
+}
 /* Text-field focus ring follows the theme. Scoped to form fields so it only
    recolours the "box" that appears around a text zone on click/focus; the
    ring geometry (ring-2) still comes from the element's own utilities.
@@ -350,6 +363,14 @@ html[class*="gk-theme-"] { --gk-switch-on: var(--gk-chrome-grad-from); }
 html[class*="gk-theme-"] :is(input, textarea, select):focus {
   --tw-ring-color: var(--gk-chrome-accent);
 }
+/* Settings/Admin accordion body. Clipped while collapsed AND during the
+   open/close transition so the grid-rows animation hides content cleanly;
+   once open it switches to visible (after the 300ms expand, via a discrete
+   transition-delay) so a button's hover glow or a focus ring on the last row
+   isn't clipped at the section's bottom edge. Closing removes .is-open with
+   no delay, restoring the clip immediately for a clean collapse. */
+.gk-acc-body { overflow: hidden; transition: overflow 0s; }
+.gk-acc-body.is-open { overflow: visible; transition: overflow 0s 300ms; }
 button, [role="button"] { cursor: pointer; }
 /* Selection rules:
  *  - Body allows text selection so users can copy titles, error

@@ -92,18 +92,18 @@ function DockerSocketHint() {
     }
   };
   return (
-    <div className="rounded-lg border border-indigo-300/60 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 p-3 mb-3">
-      <p className="text-xs text-indigo-900 dark:text-indigo-200 mb-2">
+    <div className="rounded-lg border border-[var(--gk-accent-soft-border)] bg-[var(--gk-accent-soft-bg)] p-3 mb-3">
+      <p className="text-xs text-[var(--gk-chrome-accent)] mb-2">
         {t("selfUpdateDockerHintIntro")}
       </p>
       <div className="flex items-center gap-2">
-        <code className="flex-1 text-xs font-mono text-indigo-900 dark:text-indigo-100 bg-white dark:bg-black/40 border border-indigo-200 dark:border-indigo-500/30 rounded-md px-2 py-1.5 whitespace-nowrap overflow-x-auto">
+        <code className="flex-1 text-xs font-mono text-[var(--gk-chrome-accent)] bg-white dark:bg-black/40 border border-[var(--gk-accent-soft-border)] rounded-md px-2 py-1.5 whitespace-nowrap overflow-x-auto">
           {DOCKER_SOCKET_MOUNT_HINT}
         </code>
         <button
           type="button"
           onClick={onCopy}
-          className="shrink-0 inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-white dark:bg-white/10 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-white/15"
+          className="shrink-0 inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-white dark:bg-white/10 border border-[var(--gk-accent-soft-border)] hover:bg-[var(--gk-accent-soft-bg)] dark:hover:bg-white/15"
         >
           {copied ? (
             <TI.Check className="tabler-icon w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" />
@@ -113,7 +113,7 @@ function DockerSocketHint() {
           {copied ? t("copied") : t("copy")}
         </button>
       </div>
-      <p className="text-[11px] text-indigo-800/80 dark:text-indigo-200/70 mt-2">
+      <p className="text-[11px] text-[var(--gk-chrome-accent)] opacity-80 mt-2">
         {t("selfUpdateDockerHintFootnote")}
       </p>
     </div>
@@ -202,7 +202,7 @@ export default function AdminUpdateSection({
           className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
             updateAvailable
               ? "text-emerald-600 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-400/15"
-              : "text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-400/15"
+              : "text-[var(--gk-chrome-accent)] bg-[var(--gk-accent-soft-bg)]"
           }`}
         >
           <TI.Refresh className="tabler-icon w-6 h-6" />

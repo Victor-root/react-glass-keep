@@ -327,7 +327,7 @@ export default function SettingsPanel({
                 <div className="font-medium truncate">{currentUser?.name || currentUser?.email}</div>
                 <div className="flex gap-2 mt-1">
                   <button
-                    className="text-xs text-indigo-600 hover:underline"
+                    className="text-xs text-[var(--gk-chrome-accent)] hover:underline"
                     onClick={() => avatarFileRef.current?.click()}
                   >{currentUser?.avatar_url ? t("changePhoto") : t("uploadPhoto")}</button>
                   {currentUser?.avatar_url && (
@@ -340,7 +340,7 @@ export default function SettingsPanel({
                 {window.AndroidTheme && (
                   <div className="mt-1">
                     <button
-                      className="text-xs text-indigo-600 hover:underline"
+                      className="text-xs text-[var(--gk-chrome-accent)] hover:underline"
                       onClick={() => window.AndroidTheme.changeServer()}
                     >{t("changeServer")}</button>
                   </div>
@@ -411,7 +411,7 @@ export default function SettingsPanel({
                   openQrScanner?.();
                 }
               }}
-              className={`mt-5 cursor-pointer w-full flex items-start gap-3 px-3 py-3 border border-[var(--border-light)] rounded-lg ${dark ? "hover:bg-white/10" : "hover:bg-gray-50"} transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              className={`mt-5 cursor-pointer w-full flex items-start gap-3 px-3 py-3 border border-[var(--border-light)] rounded-lg ${dark ? "hover:bg-white/10" : "hover:bg-gray-50"} transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)]`}
             >
               <RowIcon icon={TI.Qrcode} />
               <div className="min-w-0 flex-1">
@@ -560,7 +560,7 @@ export default function SettingsPanel({
                               type="button"
                               className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
                                 selected
-                                  ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                                  ? "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] font-semibold"
                                   : "hover:bg-black/5 dark:hover:bg-white/10"
                               }`}
                               onClick={() => {
@@ -693,7 +693,7 @@ export default function SettingsPanel({
                                 aria-pressed={selected}
                                 className={`px-3 py-1.5 text-sm font-semibold transition-colors ${
                                   selected
-                                    ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white"
+                                    ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white btn-gradient"
                                     : "bg-transparent text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10"
                                 }`}
                               >
@@ -745,7 +745,7 @@ export default function SettingsPanel({
                                   type="button"
                                   className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
                                     selected
-                                      ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                                      ? "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] font-semibold"
                                       : "hover:bg-black/5 dark:hover:bg-white/10"
                                   }`}
                                   onClick={() => {
@@ -787,7 +787,7 @@ export default function SettingsPanel({
                         onClick={() => setNotifSoundTypesOpen((v) => !v)}
                         className={`shrink-0 p-1.5 rounded-md transition-colors ${
                           notifSoundTypesOpen
-                            ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
+                            ? "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)]"
                             : "text-gray-500 hover:bg-black/5 dark:hover:bg-white/10"
                         }`}
                       >
@@ -855,7 +855,7 @@ export default function SettingsPanel({
                               }
                               className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${
                                 enabled
-                                  ? "bg-gradient-to-r from-indigo-500 to-violet-600"
+                                  ? "bg-gradient-to-r from-indigo-500 to-violet-600 btn-gradient"
                                   : "bg-gray-300 dark:bg-gray-600"
                               } ${notificationsSound ? "" : "cursor-not-allowed"}`}
                             >
@@ -922,7 +922,7 @@ export default function SettingsPanel({
                               type="button"
                               className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
                                 selected
-                                  ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                                  ? "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] font-semibold"
                                   : "hover:bg-black/5 dark:hover:bg-white/10"
                               }`}
                               onClick={() => {
@@ -1197,7 +1197,7 @@ export default function SettingsPanel({
                       href="https://support.google.com/accounts/answer/3024190?hl=en-AM&utm"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-300 dark:hover:text-indigo-200 underline underline-offset-2"
+                      className="text-[var(--gk-chrome-accent)] hover:brightness-90 dark:hover:brightness-110 underline underline-offset-2"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {t("howToExportGoogleKeep")}
@@ -1320,7 +1320,7 @@ export default function SettingsPanel({
                        the "Check for updates" button entirely — keeping
                        both side-by-side made the section feel redundant
                        (the card is itself the answer to the check). */
-                    <div className="px-3 py-3 border border-indigo-300/60 dark:border-indigo-500/40 rounded-lg bg-indigo-50/60 dark:bg-indigo-900/20">
+                    <div className="px-3 py-3 border border-[var(--gk-accent-soft-border)] rounded-lg bg-[var(--gk-accent-soft-bg)]">
                       <div className="flex items-start gap-3">
                         <RowIcon icon={TI.Sparkles} />
                         <div className="min-w-0 flex-1">
@@ -1440,7 +1440,7 @@ export default function SettingsPanel({
                             type="button"
                             className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
                               selected
-                                ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                                ? "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] font-semibold"
                                 : "hover:bg-black/5 dark:hover:bg-white/10"
                             }`}
                             onClick={() => {
@@ -1496,7 +1496,7 @@ export default function SettingsPanel({
                 type="checkbox"
                 checked={overridePositions}
                 onChange={(e) => setOverridePositions(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                className="w-4 h-4 rounded border-gray-300 text-[var(--gk-chrome-accent)] focus:ring-[var(--gk-chrome-accent)]"
               />
               <span className="text-sm">{t("resetNoteOrderOverridePositions")}</span>
             </label>
