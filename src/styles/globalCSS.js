@@ -5233,7 +5233,14 @@ html.dark .gk-notif-center--mobile {
    (--gk-panel-bg follows the active theme, light + dark), but the flat header
    colour (--gk-statusbar) on phones so the whole panel matches the chrome.
    Background lives here (not inline) so the media query can win. */
-.gk-side-panel { background-color: var(--gk-panel-bg); }
+.gk-side-panel {
+  background-color: var(--gk-panel-bg);
+  /* Hard guard against any horizontal overflow leaking out of the panel
+     (e.g. a long label). overflow-x:clip + the default overflow-y:visible is
+     a valid combo that, unlike overflow-x:hidden, does NOT promote the Y axis
+     to a scroll container — so it can't spawn a second vertical scrollbar. */
+  overflow-x: clip;
+}
 @media (max-width: 639px) {
   .gk-side-panel { background: var(--gk-statusbar); }
 }
