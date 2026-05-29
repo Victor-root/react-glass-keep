@@ -437,6 +437,32 @@ body {
   }
 }
 
+/* Backdrop-filter shader warm-up. On touch devices the header / modal-scrim
+   blurs are disabled (see the pointer:coarse block), so the create-note FAB
+   scrim is usually the FIRST backdrop-filter painted in a session — and the
+   browser pays a one-off cost (GL program compile + layer setup) the first
+   time, which showed up as a lag before the + menu opened on a cold start.
+   This 2px, ~invisible, always-mounted element keeps a backdrop-filter live
+   from load, so that one-off cost is paid at startup (imperceptible) and the
+   first FAB open reuses the warmed pipeline. Mobile only; pointer-events:none
+   so it never intercepts taps. */
+.gk-backdrop-warm {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+  height: 2px;
+  z-index: 0;
+  opacity: 0.01;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+@media (pointer: fine) {
+  /* Desktop already warms the blur via the header glass; don't add a layer. */
+  .gk-backdrop-warm { display: none; }
+}
+
 /* Disable browser pull-to-refresh while any overlay (notification
    center, sync popover, modals, sidebar, …) is open. The class is
    toggled by App.jsx from a single effect — every panel benefits

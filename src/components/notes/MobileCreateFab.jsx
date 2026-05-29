@@ -51,8 +51,12 @@ export default function MobileCreateFab({
 
   return (
     <>
+      {/* Keeps the backdrop-filter pipeline warm from page load so the first
+          open of this menu doesn't pay the one-off blur-shader compile cost
+          (the cold-start lag). See .gk-backdrop-warm in globalCSS. */}
+      <div aria-hidden="true" className="gk-backdrop-warm" />
       <div
-        className={`fixed inset-0 z-30 transition-opacity duration-200 ease-out bg-black/30 ${
+        className={`fixed inset-0 z-30 transition-opacity duration-200 ease-out bg-black/30 backdrop-blur-[2px] ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       />
