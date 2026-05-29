@@ -295,7 +295,7 @@ export default function SettingsPanel({
           </button>
         </div>
 
-        <div className="p-4 pb-12 overflow-y-auto h-[calc(100%-64px)]">
+        <div className="p-4 pb-12 overflow-y-auto overflow-x-hidden h-[calc(100%-64px)]">
           {/* Profile Section — header (icon + "Profil" title) intentionally
               omitted; the avatar block is self-explanatory. */}
           <div className="mb-8">
