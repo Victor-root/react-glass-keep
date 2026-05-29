@@ -407,36 +407,22 @@ body {
   color: var(--text-light);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
-/* Mobile PWA bottom system-bar tint. Chrome on Android colours the gesture /
-   navigation bar from the pixels rendered behind it (the safe-area-inset-bottom
-   strip), not from a meta tag — so the status bar follows theme-color but the
-   nav bar otherwise samples the notes-canvas gradient and never matches the
-   theme. Paint that strip with the chrome colour (--gk-statusbar) so the nav
-   bar reads as part of the chrome, exactly like the native app's navbar.
+/* Mobile PWA bottom system-bar tint — best effort. When an installed PWA is
+   edge-to-edge under the Android navigation bar (gesture nav / newer Android),
+   safe-area-inset-bottom > 0 and the browser samples the pixels behind the bar
+   to colour it. Paint that strip with the chrome colour so, where the platform
+   allows it, the nav bar matches the theme like the status bar.
+
+   NOTE: on devices that letterbox the PWA between the bars (e.g. 3-button nav
+   on older Android), safe-area-inset-bottom is 0 — the page never reaches the
+   nav-bar region, so the bar stays the browser default and there is no web hook
+   to recolour it (the native app uses the Android navigationBarColor API).
 
    Uses env(safe-area-inset-bottom) directly (NOT --safe-bottom): inside the
-   native Android WebView that env() resolves to 0 (the known Android-15
-   WebView bug), so the strip has zero height there and the native navbar
-   handling is left completely untouched — this only ever paints in a real
-   installed PWA. pointer-events:none + a low z-index keep it clear of the FAB
-   and bottom sheets (which carry their own --gk-statusbar bottom). */
+   native Android WebView that env() resolves to 0, so the strip has zero height
+   there and the native navbar handling is left untouched. pointer-events:none
+   + low z-index keep it clear of the FAB and bottom sheets. */
 @media (display-mode: standalone) and (pointer: coarse) {
-  /* Primary mechanism: Chrome/Brave on Android tint the PWA navigation bar
-     from the document background-color. Force it to the chrome colour — it's
-     invisible because the opaque notes-canvas gradient (background-image) still
-     paints on top, but the system nav bar samples this solid colour and finally
-     matches the theme like the status bar.
-
-     LIGHT MODE ONLY (html:not(.dark)): in dark mode --gk-app-bg-image is
-     none, so the body background-color IS the visible notes canvas — we must
-     not change it there. The dark canvas (#1a1a1a-ish) and the dark chrome are
-     both near-black, so the dark nav bar already reads fine without this. */
-  html:not(.dark) body {
-    background-color: var(--gk-statusbar);
-  }
-  /* Secondary: when the PWA IS edge-to-edge under the nav bar, also paint the
-     safe-area strip so the colour reaches behind the bar. Zero-height (no-op)
-     when there's no inset or inside the native WebView (env() = 0 there). */
   body::after {
     content: "";
     position: fixed;
