@@ -53,6 +53,7 @@ import RegisterView from "./components/auth/RegisterView.jsx";
 import SecretLoginView from "./components/auth/SecretLoginView.jsx";
 import ChangePasswordModal from "./components/auth/ChangePasswordModal.jsx";
 import TagSidebar from "./components/panels/TagSidebar.jsx";
+import NavbarDebug from "./components/common/NavbarDebug.jsx";
 import SettingsPanel from "./components/panels/SettingsPanel.jsx";
 import AdminPanel from "./components/panels/AdminPanel.jsx";
 import { useUpdateCheck } from "./hooks/useUpdateCheck.js";
@@ -6646,6 +6647,7 @@ export default function App() {
   return (
     <>
       <TooltipPortal />
+      <NavbarDebug />
       {/* Server is at-rest-locked under the user's feet. Render a
           non-intrusive banner instead of yanking them off their
           local cache; they can keep reading and queueing edits, and
