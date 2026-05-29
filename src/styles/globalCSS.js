@@ -407,6 +407,33 @@ body {
   color: var(--text-light);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
+/* Mobile PWA bottom system-bar tint. Chrome on Android colours the gesture /
+   navigation bar from the pixels rendered behind it (the safe-area-inset-bottom
+   strip), not from a meta tag — so the status bar follows theme-color but the
+   nav bar otherwise samples the notes-canvas gradient and never matches the
+   theme. Paint that strip with the chrome colour (--gk-statusbar) so the nav
+   bar reads as part of the chrome, exactly like the native app's navbar.
+
+   Uses env(safe-area-inset-bottom) directly (NOT --safe-bottom): inside the
+   native Android WebView that env() resolves to 0 (the known Android-15
+   WebView bug), so the strip has zero height there and the native navbar
+   handling is left completely untouched — this only ever paints in a real
+   installed PWA. pointer-events:none + a low z-index keep it clear of the FAB
+   and bottom sheets (which carry their own --gk-statusbar bottom). */
+@media (display-mode: standalone) and (pointer: coarse) {
+  body::after {
+    content: "";
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: env(safe-area-inset-bottom);
+    background: var(--gk-statusbar);
+    z-index: 1;
+    pointer-events: none;
+    transition: background-color 0.3s ease;
+  }
+}
 
 /* Disable browser pull-to-refresh while any overlay (notification
    center, sync popover, modals, sidebar, …) is open. The class is
