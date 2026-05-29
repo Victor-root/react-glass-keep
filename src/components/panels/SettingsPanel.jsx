@@ -274,7 +274,7 @@ export default function SettingsPanel({
         />
       )}
       <div
-        className={`gk-side-panel fixed top-0 right-0 z-50 h-full w-full lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
+        className={`gk-side-panel fixed top-0 right-0 z-50 h-full w-full max-w-full overflow-x-hidden lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
         style={{
           borderLeft: "1px solid var(--border-light)",
           paddingTop: "var(--safe-top)",
@@ -526,11 +526,11 @@ export default function SettingsPanel({
                     ref={breakpointBtnRef}
                     type="button"
                     onClick={() => setBreakpointMenuOpen((v) => !v)}
-                    className="w-full inline-flex items-center justify-between gap-2 pl-3 pr-1.5 py-1.5 text-sm rounded-lg font-semibold border border-[var(--border-light)] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-[0.99] transition-all duration-200"
+                    className="w-full min-w-0 flex items-center justify-between gap-2 pl-3 pr-1.5 py-1.5 text-sm rounded-lg font-semibold border border-[var(--border-light)] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-[0.99] transition-all duration-200"
                     aria-haspopup="listbox"
                     aria-expanded={breakpointMenuOpen}
                   >
-                    <span className="truncate text-left min-w-0">
+                    <span className="truncate text-left flex-1 min-w-0">
                       {t(
                         (SIDEBAR_BREAKPOINT_PRESETS.find((p) => p.value === sidebarBreakpoint) || {}).labelKey
                       ) || `≥ ${sidebarBreakpoint} px`}
