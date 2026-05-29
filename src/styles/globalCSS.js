@@ -296,16 +296,33 @@ html.dark.gk-theme-blush {
    gradient. Scoped to any gk-theme-* class so GlassKeep — which has NO theme
    class — keeps its exact Tailwind indigo->violet untouched. Only the gradient
    colour changes; every other utility (shadow, scale, radius, hover scale)
-   stays. The :hover variant just darkens the same themed gradient. */
-html[class*="gk-theme-"] .btn-gradient {
+   stays. The :hover variant just darkens the same themed gradient.
+   The 4 note-creation buttons (.gk-create-btn) are excluded: they keep their
+   own per-type colour gradients. */
+html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn) {
   background-image: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
 }
-html[class*="gk-theme-"] .btn-gradient:hover {
+html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):hover {
   background-image: linear-gradient(
     to right,
     color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
     color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
   );
+}
+/* The note's read/edit toggle paints its gradient via .modal-footer-btn--mode
+   with !important, so it needs its own themed override (same scoping rule:
+   GlassKeep keeps the base indigo->violet). Only the gradient changes. */
+html[class*="gk-theme-"] .modal-footer-btn--mode,
+html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode {
+  background: linear-gradient(90deg, var(--gk-chrome-grad-from) 0%, var(--gk-chrome-grad-to) 100%) !important;
+}
+html[class*="gk-theme-"] .modal-footer-btn--mode:hover,
+html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode:hover {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000) 0%,
+    color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000) 100%
+  ) !important;
 }
 button, [role="button"] { cursor: pointer; }
 /* Selection rules:
