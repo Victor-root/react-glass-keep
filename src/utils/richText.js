@@ -94,12 +94,21 @@ const SANITIZE_CONFIG = {
     "sub", "sup",
     "mark",
     "span", "div",
+    // Task-list (checkbox list) rendering: TaskItem emits a
+    // <li data-type="taskItem"><label><input type=checkbox><span/></label>
+    // <div>…</div></li> structure. label + input are needed for read mode.
+    "label", "input",
   ],
   ALLOWED_ATTR: [
     "href", "title", "class", "target", "rel", "start", "style",
     "data-color", "data-text-align",
     "data-indent",
     "data-underline-style", "data-underline-color",
+    // Task lists only. `data-type` distinguishes taskList/taskItem nodes,
+    // `data-checked` carries the checkbox state, and the input needs
+    // type/checked/disabled. No event handlers, no broad data-* opening.
+    "data-type", "data-checked",
+    "type", "checked", "disabled",
   ],
   // `style` is allowed above so Tiptap's color/alignment/font rendering
   // survives sanitization. Keep this narrow — no tags with scripting or
@@ -139,6 +148,7 @@ export function richDocToPlain(doc) {
         node.type === "paragraph" ||
         node.type === "heading" ||
         node.type === "listItem" ||
+        node.type === "taskItem" ||
         node.type === "blockquote" ||
         node.type === "codeBlock"
       ) {

@@ -994,6 +994,78 @@ html.dark .multi-select-dock__menu {
 .note-content--dense li ul, .note-content--dense li ol { margin: 0.1rem 0 0; padding-left: 1rem; }
 
 /* --------------------------------------------------------------------
+   Task lists (checkbox lists) inside rich-text notes.
+
+   Toggled from the toolbar's checklist button. The schema renders, in
+   both the editor (NodeView) and read mode (generateHTML):
+
+       ul[data-type=taskList]
+         li[data-type=taskItem][data-checked]
+           label > input[type=checkbox] + span
+           div > p   (the item text)
+
+   We strip the inherited disc/decimal marker + list indent and lay each
+   item out as [checkbox][content]. The native checkbox is kept (its
+   helper span is hidden) and tinted with the active theme accent.
+   -------------------------------------------------------------------- */
+.note-content ul[data-type="taskList"] {
+  list-style: none;
+  margin: 0.15rem 0;
+  padding-left: 0;
+}
+.note-content ul[data-type="taskList"] li[data-type="taskItem"] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.1rem 0;
+  padding: 0;
+}
+.note-content ul[data-type="taskList"] li[data-type="taskItem"] > label {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  margin: 0.18em 0 0;
+  user-select: none;
+}
+.note-content ul[data-type="taskList"] li[data-type="taskItem"] > label > span {
+  display: none;
+}
+.note-content ul[data-type="taskList"] li[data-type="taskItem"] > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.note-content ul[data-type="taskList"] li[data-type="taskItem"] > div > p {
+  margin: 0;
+}
+.note-content ul[data-type="taskList"] input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: rgb(var(--rt-accent));
+  /* Display-only outside the editor: read mode + card previews have no
+     save path, so a toggle there would not persist. The editor rule
+     below re-enables interaction. */
+  pointer-events: none;
+  cursor: default;
+}
+.rt-editor-content ul[data-type="taskList"] input[type="checkbox"] {
+  pointer-events: auto;
+  cursor: pointer;
+}
+/* Nested checklists keep a modest indent. */
+.note-content ul[data-type="taskList"] ul[data-type="taskList"] {
+  margin-top: 0.15rem;
+  padding-left: 1.25rem;
+}
+/* Optional "strike through checked items" reading preference (per device),
+   gated by the gk-strike-checked class on html. Purely visual — the checked
+   state itself lives in the note's Tiptap JSON, this only restyles it. */
+html.gk-strike-checked .note-content ul[data-type="taskList"] li[data-type="taskItem"][data-checked="true"] > div {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* --------------------------------------------------------------------
    Continuous numbering for ordered lists.
 
    Problem: when the user types an ordered list, a code block (or any
@@ -3381,6 +3453,29 @@ html.dark .rt-icon-swatch-bar { border-color: rgba(255, 255, 255, 0.12); }
   margin-bottom: 4px;
 }
 .rt-pop-label--spaced { margin-top: 8px; }
+
+/* Task-list options popover — one labelled checkbox row. */
+.rt-pop--task { min-width: 232px; }
+.rt-pop-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.rt-pop-check:hover { background: var(--rt-btn-hover); }
+.rt-pop-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: rgb(var(--rt-accent));
+  cursor: pointer;
+}
+.rt-pop-check span { flex: 1 1 auto; }
 
 .rt-pop--blocks, .rt-pop--font, .rt-pop--fontsize, .rt-pop--more {
   min-width: 180px;

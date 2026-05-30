@@ -4,6 +4,11 @@ import LinkPopover from "./LinkPopover.jsx";
 import RichIcons from "./RichIcons.jsx";
 import { Popover } from "./Popover.jsx";
 import BlockStyleButtons from "./BlockStyleButtons.jsx";
+import {
+  getActiveTaskStrike,
+  setTaskStrike,
+  TASK_STRIKE_EVENT,
+} from "../../theme/taskListStrike.js";
 
 // Design principles:
 //  • Compact icon buttons (tighter than v1) — one clean grid, grouped by
@@ -356,6 +361,40 @@ function FontFamilyPopover({ editor, anchorRef, open, onClose }) {
   );
 }
 
+// Per-device "strike through checked items" preference for task lists.
+// Mirrors the live <html> class so every open toolbar (e.g. split mode)
+// stays in sync no matter which one flipped it.
+function useTaskStrike() {
+  const [on, setOn] = useState(() => getActiveTaskStrike());
+  useEffect(() => {
+    const sync = () => setOn(getActiveTaskStrike());
+    document.addEventListener(TASK_STRIKE_EVENT, sync);
+    return () => document.removeEventListener(TASK_STRIKE_EVENT, sync);
+  }, []);
+  return [on, setTaskStrike];
+}
+
+// Chevron popover attached to the task-list button. Holds the single
+// "Strike through checked items" display option. The preference is a
+// per-device reading setting (see theme/taskListStrike.js) — it never
+// touches the note content or adds a Strike mark.
+function TaskListPopover({ anchorRef, open, onClose }) {
+  const [strike, update] = useTaskStrike();
+  return (
+    <Popover open={open} onClose={onClose} anchorRef={anchorRef} className="rt-pop--task">
+      <div className="rt-pop-label">{t("fmtTaskListOptions")}</div>
+      <label className="rt-pop-check">
+        <input
+          type="checkbox"
+          checked={strike}
+          onChange={(e) => update(e.target.checked)}
+        />
+        <span>{t("fmtTaskListStrikeChecked")}</span>
+      </label>
+    </Popover>
+  );
+}
+
 // (No "More" menu — every tool from the spec stays visible in the main bar
 // in a Word-style dense layout.)
 
@@ -368,6 +407,7 @@ export default function RichTextToolbar({ editor, compact = false, mode = "simpl
   const colorBtnRef = useRef(null);
   const hlBtnRef = useRef(null);
   const underlineBtnRef = useRef(null);
+  const taskListBtnRef = useRef(null);
   const linkBtnRef = useRef(null);
 
   const closeMenu = useCallback(() => setOpenMenu(null), []);
@@ -557,6 +597,22 @@ export default function RichTextToolbar({ editor, compact = false, mode = "simpl
             <ToolbarButton active={isActive("orderedList")} title={t("fmtOrderedList")} onClick={() => chain().toggleOrderedList().run()}>
               <RichIcons.OrderedList />
             </ToolbarButton>
+            <div className="rt-splitbtn">
+              <ToolbarButton active={isActive("taskList")} title={t("fmtTaskList")} onClick={() => chain().toggleTaskList().run()}>
+                <RichIcons.TaskList />
+              </ToolbarButton>
+              <button
+                ref={taskListBtnRef}
+                type="button"
+                className={`rt-btn rt-btn--chevron${openMenu === "taskList" ? " is-active" : ""}`}
+                data-tooltip={t("fmtTaskListOptions")}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => toggleMenu("taskList")}
+              >
+                <RichIcons.Chevron />
+              </button>
+              <TaskListPopover anchorRef={taskListBtnRef} open={openMenu === "taskList"} onClose={closeMenu} />
+            </div>
 
             <span className="rt-sep" aria-hidden="true" />
 
@@ -718,9 +774,9 @@ export default function RichTextToolbar({ editor, compact = false, mode = "simpl
             <RichIcons.Chevron />
           </button>
           <HighlightPopover editor={editor} anchorRef={hlBtnRef} open={openMenu === "highlight"} onClose={closeMenu} />
-          <ToolbarButton active={isActive("subscript")} title={t("fmtSubscript")} onClick={() => chain().toggleSubscript().run()}>
-            <RichIcons.Subscript />
-          </ToolbarButton>
+          {/* Subscript button intentionally removed from the toolbar UI.
+              Subscript remains supported in the schema + sanitizer so notes
+              that already contain subscript content keep rendering it. */}
           <ToolbarButton active={isActive("superscript")} title={t("fmtSuperscript")} onClick={() => chain().toggleSuperscript().run()}>
             <RichIcons.Superscript />
           </ToolbarButton>
@@ -738,6 +794,22 @@ export default function RichTextToolbar({ editor, compact = false, mode = "simpl
           <ToolbarButton active={isActive("orderedList")} title={t("fmtOrderedList")} onClick={() => chain().toggleOrderedList().run()}>
             <RichIcons.OrderedList />
           </ToolbarButton>
+          <div className="rt-splitbtn">
+            <ToolbarButton active={isActive("taskList")} title={t("fmtTaskList")} onClick={() => chain().toggleTaskList().run()}>
+              <RichIcons.TaskList />
+            </ToolbarButton>
+            <button
+              ref={taskListBtnRef}
+              type="button"
+              className={`rt-btn rt-btn--chevron${openMenu === "taskList" ? " is-active" : ""}`}
+              data-tooltip={t("fmtTaskListOptions")}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => toggleMenu("taskList")}
+            >
+              <RichIcons.Chevron />
+            </button>
+            <TaskListPopover anchorRef={taskListBtnRef} open={openMenu === "taskList"} onClose={closeMenu} />
+          </div>
           <ToolbarButton title={t("fmtOutdent")} disabled={!canOutdent} onClick={doOutdent}>
             <RichIcons.Outdent />
           </ToolbarButton>

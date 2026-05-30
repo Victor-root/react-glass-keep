@@ -70,11 +70,16 @@ import '@fontsource/caveat/400.css';
 import '@fontsource/caveat/700.css';
 import AppRoot from './AppRoot.jsx';
 import { applyStoredShellTheme } from './theme/shellTheme.js';
+import { applyStoredTaskStrike } from './theme/taskListStrike.js';
 
 // Apply the saved workspace (shell) theme class on <html> before React
 // renders, so the chrome tokens are already correct when the global
 // stylesheet mounts — no flash of the default GlassKeep theme.
 applyStoredShellTheme();
+
+// Apply the saved "strike through checked items" preference (task lists)
+// before first paint so checked items render correctly straight away.
+applyStoredTaskStrike();
 
 // Register the PWA Service Worker (vite-plugin-pwa)
 registerSW({
