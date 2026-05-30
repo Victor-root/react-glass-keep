@@ -335,10 +335,9 @@ function showInlineCopyFor(codeEl, { sticky = false } = {}) {
   // rides the scroll container natively — its position:absolute
   // coords are relative to the scrolled content, not the viewport.
   requestAnimationFrame(positionInlineCopyForCurrent);
-  // Desktop hover: arm the auto-hide so the button stays visible for a
-  // few seconds without requiring the cursor to stay on the inline
-  // code. Sticky (mobile tap) is dismissed by an explicit outside tap.
-  if (!sticky) scheduleInlineCopyHide();
+  // The hide timer is NOT started here — it fires only when the cursor
+  // leaves the inline code (mouseout) or the button (mouseleave).
+  // Sticky (mobile tap) is dismissed by an explicit outside tap.
 }
 function scheduleInlineCopyHide() {
   if (inlineCopySticky) return;
