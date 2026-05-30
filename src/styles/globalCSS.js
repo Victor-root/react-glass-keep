@@ -3715,19 +3715,32 @@ html.dark .rt-swatch.is-current {
 }
 html.dark .rt-pop-clear { box-shadow: none; }
 html.dark .rt-pop-clear:hover { box-shadow: none; }
-/* Themed gradient — only the background colour follows the active workspace
-   theme (GlassKeep keeps the original indigo→violet since it has no class).
-   Every other style — shape, padding, shadow weight, ::after shimmer, hover
-   scale, transition — is inherited unchanged. */
-html[class*="gk-theme-"] .rt-pop-clear {
+/* Themed gradient + halo — both the background AND the coloured glow
+   follow the active workspace theme (GlassKeep keeps the original
+   indigo→violet + indigo-300 halo since it has no class). Every other
+   style — shape, padding, ::after shimmer, hover scale, transition — is
+   inherited unchanged. Excludes the --danger variant (flat red, no fill).
+   The halo keeps the original 0.4 / 0.5 intensity; only its hue changes,
+   and dark mode keeps no halo (:not(.dark)). */
+html[class*="gk-theme-"] .rt-pop-clear:not(.rt-pop-clear--danger) {
   background: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
 }
-html[class*="gk-theme-"] .rt-pop-clear:hover {
+html[class*="gk-theme-"] .rt-pop-clear:not(.rt-pop-clear--danger):hover {
   background: linear-gradient(
     to right,
     color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
     color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
   );
+}
+html[class*="gk-theme-"]:not(.dark) .rt-pop-clear:not(.rt-pop-clear--danger) {
+  box-shadow:
+    0 4px 6px -1px color-mix(in srgb, var(--gk-chrome-grad-from) 40%, transparent),
+    0 2px 4px -2px color-mix(in srgb, var(--gk-chrome-grad-from) 40%, transparent);
+}
+html[class*="gk-theme-"]:not(.dark) .rt-pop-clear:not(.rt-pop-clear--danger):hover {
+  box-shadow:
+    0 10px 15px -3px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent),
+    0 4px 6px -4px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent);
 }
 .rt-pop-clear--danger {
   /* Danger variant overrides the gradient — it's a "remove" action,
@@ -3860,9 +3873,10 @@ html.dark .rt-pop-clear--danger { color: #f87171; border-color: rgba(248, 113, 1
 }
 html.dark .rt-link-btn--primary { box-shadow: none; }
 html.dark .rt-link-btn--primary:hover:not(:disabled) { box-shadow: none; }
-/* Themed gradient — same scoping rule as .rt-pop-clear above: GlassKeep
-   keeps indigo→violet; every other theme swaps in its own gradient stops.
-   Only the background colour changes; the rest of the button is untouched. */
+/* Themed gradient + halo — same scoping rule as .rt-pop-clear above:
+   GlassKeep keeps indigo→violet + its indigo-300 halo; every other theme
+   swaps in its own gradient stops AND glow hue. Only the colours change;
+   the rest of the button is untouched, and dark mode keeps no halo. */
 html[class*="gk-theme-"] .rt-link-btn--primary {
   background: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
 }
@@ -3872,6 +3886,16 @@ html[class*="gk-theme-"] .rt-link-btn--primary:hover:not(:disabled) {
     color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
     color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
   );
+}
+html[class*="gk-theme-"]:not(.dark) .rt-link-btn--primary {
+  box-shadow:
+    0 4px 6px -1px color-mix(in srgb, var(--gk-chrome-grad-from) 40%, transparent),
+    0 2px 4px -2px color-mix(in srgb, var(--gk-chrome-grad-from) 40%, transparent);
+}
+html[class*="gk-theme-"]:not(.dark) .rt-link-btn--primary:hover:not(:disabled) {
+  box-shadow:
+    0 10px 15px -3px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent),
+    0 4px 6px -4px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent);
 }
 .rt-link-btn--danger {
   color: #dc2626;
