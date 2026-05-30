@@ -3079,6 +3079,17 @@ html.dark .rt-toolbar {
   flex-wrap: nowrap;
 }
 
+/* Advanced toolbar — Paragraph / list super-group. Pin the last button of
+   each row (Increase indent on top, Decrease indent on bottom) to the
+   right edge of the group so the two indent controls form a clean,
+   vertically-aligned right-hand column. The narrower row gets the slack
+   on its left, so both buttons share the same right edge regardless of
+   their exact widths. Scoped to this group only — the simple toolbar has
+   no indent buttons and is untouched. */
+.rt-sg[data-sg="paragraph"] .rt-sg-row > .rt-btn:last-child {
+  margin-left: auto;
+}
+
 .rt-btn {
   position: relative;
   min-width: 34px;

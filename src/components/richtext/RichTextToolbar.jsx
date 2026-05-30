@@ -774,9 +774,9 @@ export default function RichTextToolbar({ editor, compact = false, mode = "simpl
             <RichIcons.Chevron />
           </button>
           <HighlightPopover editor={editor} anchorRef={hlBtnRef} open={openMenu === "highlight"} onClose={closeMenu} />
-          {/* Subscript button intentionally removed from the toolbar UI.
-              Subscript remains supported in the schema + sanitizer so notes
-              that already contain subscript content keep rendering it. */}
+          <ToolbarButton active={isActive("subscript")} title={t("fmtSubscript")} onClick={() => chain().toggleSubscript().run()}>
+            <RichIcons.Subscript />
+          </ToolbarButton>
           <ToolbarButton active={isActive("superscript")} title={t("fmtSuperscript")} onClick={() => chain().toggleSuperscript().run()}>
             <RichIcons.Superscript />
           </ToolbarButton>
@@ -810,9 +810,6 @@ export default function RichTextToolbar({ editor, compact = false, mode = "simpl
             </button>
             <TaskListPopover anchorRef={taskListBtnRef} open={openMenu === "taskList"} onClose={closeMenu} />
           </div>
-          <ToolbarButton title={t("fmtOutdent")} disabled={!canOutdent} onClick={doOutdent}>
-            <RichIcons.Outdent />
-          </ToolbarButton>
           <ToolbarButton title={t("fmtIndent")} disabled={!canIndent} onClick={doIndent}>
             <RichIcons.Indent />
           </ToolbarButton>
@@ -829,6 +826,9 @@ export default function RichTextToolbar({ editor, compact = false, mode = "simpl
           </ToolbarButton>
           <ToolbarButton active={isAlignJustify} title={t("fmtAlignJustify")} onClick={() => chain().setTextAlign("justify").run()}>
             <RichIcons.AlignJustify />
+          </ToolbarButton>
+          <ToolbarButton title={t("fmtOutdent")} disabled={!canOutdent} onClick={doOutdent}>
+            <RichIcons.Outdent />
           </ToolbarButton>
         </div>
       </div>
