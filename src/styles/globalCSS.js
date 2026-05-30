@@ -3079,15 +3079,22 @@ html.dark .rt-toolbar {
   flex-wrap: nowrap;
 }
 
-/* Advanced toolbar — Paragraph / list super-group. Pin the last button of
-   each row (Increase indent on top, Decrease indent on bottom) to the
-   right edge of the group so the two indent controls form a clean,
-   vertically-aligned right-hand column. The narrower row gets the slack
-   on its left, so both buttons share the same right edge regardless of
-   their exact widths. Scoped to this group only — the simple toolbar has
+/* Advanced toolbar — Paragraph / list super-group. Both rows push their
+   last button to the right with margin-left: auto. The top row's last
+   button (Increase indent) is then shifted back inward by exactly half a
+   button width, so it sits centred horizontally above the gap between
+   the bottom row's last two buttons (Justify and Decrease indent),
+   echoing how the font group's Tx button reads as "between" the bottom
+   row's X₂ / X². Scoped to this group only — the simple toolbar has
    no indent buttons and is untouched. */
 .rt-sg[data-sg="paragraph"] .rt-sg-row > .rt-btn:last-child {
   margin-left: auto;
+}
+.rt-sg[data-sg="paragraph"] > .rt-sg-row:first-child > .rt-btn:last-child {
+  /* 17px ≈ .rt-btn's 34px min-width / 2 — one half-button slot back from
+     the right edge, which centres Increase indent on the Justify/
+     Decrease-indent join below it. */
+  margin-right: 17px;
 }
 
 .rt-btn {
