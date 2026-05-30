@@ -624,7 +624,8 @@ header.glass-card {
 .gk-sidebar {
   background:
     linear-gradient(180deg, var(--gk-statusbar) 0%, transparent 64px),
-    linear-gradient(180deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 55%, var(--gk-chrome-3) 100%);
+    linear-gradient(180deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 55%, var(--gk-chrome-3) 100%),
+    var(--gk-chrome-solid);
   box-shadow:
     inset 0 1px 0 var(--gk-chrome-highlight),
     8px 0 24px -16px var(--gk-chrome-shadow);
