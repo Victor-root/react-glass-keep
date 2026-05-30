@@ -996,71 +996,95 @@ html.dark .multi-select-dock__menu {
 /* --------------------------------------------------------------------
    Task lists (checkbox lists) inside rich-text notes.
 
-   Toggled from the toolbar's checklist button. The schema renders, in
-   both the editor (NodeView) and read mode (generateHTML):
+   Edit-mode reality check: TaskItem ships an addNodeView() that builds
+   the live <li> by hand and only sets dataset.checked. The
+   data-type="taskItem" attribute that TaskItem.renderHTML() injects is
+   therefore ONLY present in the static HTML used by read mode /
+   previews — never inside the editor. We anchor every selector on the
+   <ul data-type="taskList"> (which IS marked in both modes) so the
+   layout works identically in edit and read mode. Strike-on-check is
+   then keyed off the per-item [data-checked="true"] which the NodeView
+   sets via dataset, and which generateHTML emits as data-checked="true"
+   in the static output. Same selector, both modes — no fragile data-type
+   matching on the <li>.
 
+   DOM shape (both modes):
        ul[data-type=taskList]
-         li[data-type=taskItem][data-checked]
-           label > input[type=checkbox] + span
-           div > p   (the item text)
-
-   We strip the inherited disc/decimal marker + list indent and lay each
-   item out as [checkbox][content]. The native checkbox is kept (its
-   helper span is hidden) and tinted with the active theme accent.
+         > li[data-checked]
+             > label > input[type=checkbox] (+ helper span)
+             > div  > p   (the editable item text)
    -------------------------------------------------------------------- */
+.rt-editor-content ul[data-type="taskList"],
 .note-content ul[data-type="taskList"] {
   list-style: none;
   margin: 0.15rem 0;
   padding-left: 0;
 }
-.note-content ul[data-type="taskList"] li[data-type="taskItem"] {
+.rt-editor-content ul[data-type="taskList"] > li,
+.note-content ul[data-type="taskList"] > li {
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
   margin: 0.1rem 0;
   padding: 0;
+  /* Kill the inherited bullet marker that would otherwise leak in from
+     the generic .note-content ul rule. */
+  list-style: none;
 }
-.note-content ul[data-type="taskList"] li[data-type="taskItem"] > label {
+.rt-editor-content ul[data-type="taskList"] > li::marker,
+.note-content ul[data-type="taskList"] > li::marker {
+  content: "";
+}
+.rt-editor-content ul[data-type="taskList"] > li > label,
+.note-content ul[data-type="taskList"] > li > label {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   margin: 0.18em 0 0;
   user-select: none;
 }
-.note-content ul[data-type="taskList"] li[data-type="taskItem"] > label > span {
+/* Tiptap's NodeView appends an empty <span> next to the input as a
+   styling hook. We don't use it — keep it out of the layout. */
+.rt-editor-content ul[data-type="taskList"] > li > label > span,
+.note-content ul[data-type="taskList"] > li > label > span {
   display: none;
 }
-.note-content ul[data-type="taskList"] li[data-type="taskItem"] > div {
+.rt-editor-content ul[data-type="taskList"] > li > div,
+.note-content ul[data-type="taskList"] > li > div {
   flex: 1 1 auto;
   min-width: 0;
 }
-.note-content ul[data-type="taskList"] li[data-type="taskItem"] > div > p {
+.rt-editor-content ul[data-type="taskList"] > li > div > p,
+.note-content ul[data-type="taskList"] > li > div > p {
   margin: 0;
 }
+.rt-editor-content ul[data-type="taskList"] input[type="checkbox"],
 .note-content ul[data-type="taskList"] input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
   margin: 0;
   accent-color: rgb(var(--rt-accent));
-  /* Display-only outside the editor: read mode + card previews have no
-     save path, so a toggle there would not persist. The editor rule
-     below re-enables interaction. */
+}
+/* Read mode + card previews have no save path, so a checkbox toggle there
+   would not persist — make them display-only. The editor's NodeView keeps
+   them interactive on its own. */
+.note-content:not(.rt-editor-content) ul[data-type="taskList"] input[type="checkbox"] {
   pointer-events: none;
   cursor: default;
 }
-.rt-editor-content ul[data-type="taskList"] input[type="checkbox"] {
-  pointer-events: auto;
-  cursor: pointer;
-}
 /* Nested checklists keep a modest indent. */
+.rt-editor-content ul[data-type="taskList"] ul[data-type="taskList"],
 .note-content ul[data-type="taskList"] ul[data-type="taskList"] {
   margin-top: 0.15rem;
   padding-left: 1.25rem;
 }
-/* Optional "strike through checked items" reading preference (per device),
-   gated by the gk-strike-checked class on html. Purely visual — the checked
-   state itself lives in the note's Tiptap JSON, this only restyles it. */
-html.gk-strike-checked .note-content ul[data-type="taskList"] li[data-type="taskItem"][data-checked="true"] > div {
+/* "Strike through checked items" reading preference (per device), gated by
+   the gk-strike-checked class on <html>. Purely visual — the checked state
+   itself lives in the note's Tiptap JSON, this only restyles the content
+   wrapper. The selector matches BOTH modes because dataset.checked (edit)
+   and renderHTML's data-checked (read) both produce data-checked="true". */
+html.gk-strike-checked .rt-editor-content ul[data-type="taskList"] > li[data-checked="true"] > div,
+html.gk-strike-checked .note-content ul[data-type="taskList"] > li[data-checked="true"] > div {
   text-decoration: line-through;
   opacity: 0.6;
 }
