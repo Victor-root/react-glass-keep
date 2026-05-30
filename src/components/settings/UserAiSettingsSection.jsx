@@ -496,7 +496,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
               <button
                 type="submit"
                 disabled={loading || saving}
-                className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none disabled:opacity-50 disabled:pointer-events-none"
+                className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 hover:shadow-lg hover:shadow-indigo-300/50 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {saving ? t("saving") : t("save")}
               </button>

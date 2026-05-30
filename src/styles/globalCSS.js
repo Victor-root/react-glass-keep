@@ -321,6 +321,20 @@ html.dark.gk-theme-blush {
    at equal specificity; dark:shadow-none still wins (it zeroes --tw-shadow). */
 .btn-gradient:not(.gk-create-btn):not(.gk-update-btn) { --tw-shadow-color: var(--gk-btn-glow); }
 .btn-gradient:not(.gk-create-btn):not(.gk-update-btn):hover { --tw-shadow-color: var(--gk-btn-glow-hover); }
+/* Halo on HOVER ONLY — for every primary gradient button, in both light and
+   dark mode. At rest there is no glow; on hover the button gets a shadow-lg
+   sized halo whose colour is the --tw-shadow-color each button already
+   resolves (the themed glow above for primary buttons, the button's own
+   colour for create / update buttons). This overrides the per-button
+   Tailwind shadow utilities by source order (globalCSS loads after Tailwind);
+   it also beats dark:hover:shadow-none, because Tailwind v4 wraps dark:
+   variants in :where(), which contributes zero specificity. */
+.btn-gradient { box-shadow: none; }
+.btn-gradient:hover:not(:disabled) {
+  box-shadow:
+    0 10px 15px -3px var(--tw-shadow-color, transparent),
+    0 4px 6px -4px var(--tw-shadow-color, transparent);
+}
 html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):not(.gk-update-btn) {
   background-image: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
 }
@@ -337,7 +351,8 @@ html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):not(.gk-update-btn):h
 html[class*="gk-theme-"] .modal-footer-btn--mode,
 html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode {
   background: linear-gradient(90deg, var(--gk-chrome-grad-from) 0%, var(--gk-chrome-grad-to) 100%) !important;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--gk-chrome-grad-from) 35%, transparent) !important;
+  /* Halo on hover only. */
+  box-shadow: none !important;
 }
 html[class*="gk-theme-"] .modal-footer-btn--mode:hover,
 html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode:hover {
@@ -1350,7 +1365,8 @@ html.dark .note-ai-panel-icon {
 .modal-icon-btn--mode {
   background: linear-gradient(90deg, #6366f1 0%, #7c3aed 100%) !important;
   color: #fff !important;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35) !important;
+  /* Halo on hover only. */
+  box-shadow: none !important;
 }
 .modal-icon-btn--mode:hover {
   background: linear-gradient(90deg, #4f46e5 0%, #6d28d9 100%) !important;
@@ -1366,7 +1382,8 @@ html.dark .modal-icon-btn--mode {
 .modal-icon-btn--save-active {
   color: #fff !important;
   background: linear-gradient(90deg, #10b981 0%, #059669 100%) !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+  /* Halo on hover only. */
+  box-shadow: none !important;
 }
 .modal-icon-btn--save-active:hover {
   background: linear-gradient(90deg, #059669 0%, #047857 100%) !important;
@@ -1842,7 +1859,8 @@ html.dark .modal-footer-btn--image:hover, html.dark .modal-footer-labeled-btn.mo
 .modal-footer-btn--mode, .modal-footer-labeled-btn.modal-footer-btn--mode {
   background: linear-gradient(90deg, #6366f1 0%, #7c3aed 100%) !important;
   color: #fff !important;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35) !important;
+  /* Halo on hover only. */
+  box-shadow: none !important;
 }
 .modal-footer-btn--mode:hover, .modal-footer-labeled-btn.modal-footer-btn--mode:hover {
   background: linear-gradient(90deg, #4f46e5 0%, #6d28d9 100%) !important;
@@ -1857,7 +1875,8 @@ html.dark .modal-footer-btn--mode, html.dark .modal-footer-labeled-btn.modal-foo
 .modal-footer-btn--save-active {
   color: #fff !important;
   background: linear-gradient(90deg, #10b981 0%, #059669 100%) !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+  /* Halo on hover only. */
+  box-shadow: none !important;
 }
 .modal-footer-btn--save-active:hover {
   background: linear-gradient(90deg, #059669 0%, #047857 100%) !important;
@@ -3606,13 +3625,11 @@ html.dark .rt-icon-swatch-bar { border-color: rgba(255, 255, 255, 0.12); }
   letter-spacing: 0.05em;
   padding: 2px 6px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.14);
-  color: rgb(99, 102, 241);
+  /* Follow the active theme accent (same vocabulary as the is-current rows).
+     The tokens already resolve light vs dark, so no separate dark rule. */
+  background: var(--rt-btn-active-bg);
+  color: var(--rt-btn-active-text);
   line-height: 1;
-}
-html.dark .rt-size-default-badge {
-  background: rgba(129, 140, 248, 0.22);
-  color: rgb(165, 180, 252);
 }
 .rt-size-row--is-default {
   font-weight: 700;
@@ -3677,9 +3694,8 @@ html.dark .rt-swatch.is-current {
   font-size: 0.8rem;
   cursor: pointer;
   font-weight: 600;
-  box-shadow:
-    0 4px 6px -1px rgba(165, 180, 252, 0.4),
-    0 2px 4px -2px rgba(165, 180, 252, 0.4);
+  /* No resting halo — the coloured glow appears on :hover only (see below). */
+  box-shadow: none;
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 .rt-pop-clear::after {
@@ -3713,15 +3729,12 @@ html.dark .rt-swatch.is-current {
 .rt-pop-clear:active {
   transform: scale(0.98);
 }
-html.dark .rt-pop-clear { box-shadow: none; }
-html.dark .rt-pop-clear:hover { box-shadow: none; }
-/* Themed gradient + halo — both the background AND the coloured glow
+/* Themed gradient + halo — both the background AND the coloured hover glow
    follow the active workspace theme (GlassKeep keeps the original
    indigo→violet + indigo-300 halo since it has no class). Every other
    style — shape, padding, ::after shimmer, hover scale, transition — is
    inherited unchanged. Excludes the --danger variant (flat red, no fill).
-   The halo keeps the original 0.4 / 0.5 intensity; only its hue changes,
-   and dark mode keeps no halo (:not(.dark)). */
+   The halo is hover-only and shows in BOTH light and dark mode. */
 html[class*="gk-theme-"] .rt-pop-clear:not(.rt-pop-clear--danger) {
   background: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
 }
@@ -3731,13 +3744,6 @@ html[class*="gk-theme-"] .rt-pop-clear:not(.rt-pop-clear--danger):hover {
     color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
     color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
   );
-}
-html[class*="gk-theme-"]:not(.dark) .rt-pop-clear:not(.rt-pop-clear--danger) {
-  box-shadow:
-    0 4px 6px -1px color-mix(in srgb, var(--gk-chrome-grad-from) 40%, transparent),
-    0 2px 4px -2px color-mix(in srgb, var(--gk-chrome-grad-from) 40%, transparent);
-}
-html[class*="gk-theme-"]:not(.dark) .rt-pop-clear:not(.rt-pop-clear--danger):hover {
   box-shadow:
     0 10px 15px -3px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent),
     0 4px 6px -4px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent);
@@ -3832,9 +3838,8 @@ html.dark .rt-pop-clear--danger { color: #f87171; border-color: rgba(248, 113, 1
   color: #fff;
   border-color: transparent;
   font-weight: 600;
-  box-shadow:
-    0 4px 6px -1px rgba(165, 180, 252, 0.4),
-    0 2px 4px -2px rgba(165, 180, 252, 0.4);
+  /* No resting halo — the coloured glow appears on :hover only (see below). */
+  box-shadow: none;
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 .rt-link-btn--primary::after {
@@ -3871,12 +3876,11 @@ html.dark .rt-pop-clear--danger { color: #f87171; border-color: rgba(248, 113, 1
   cursor: not-allowed;
   box-shadow: none;
 }
-html.dark .rt-link-btn--primary { box-shadow: none; }
-html.dark .rt-link-btn--primary:hover:not(:disabled) { box-shadow: none; }
 /* Themed gradient + halo — same scoping rule as .rt-pop-clear above:
    GlassKeep keeps indigo→violet + its indigo-300 halo; every other theme
    swaps in its own gradient stops AND glow hue. Only the colours change;
-   the rest of the button is untouched, and dark mode keeps no halo. */
+   the rest of the button is untouched. The halo is hover-only and shows
+   in BOTH light and dark mode. */
 html[class*="gk-theme-"] .rt-link-btn--primary {
   background: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
 }
@@ -3886,13 +3890,6 @@ html[class*="gk-theme-"] .rt-link-btn--primary:hover:not(:disabled) {
     color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
     color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
   );
-}
-html[class*="gk-theme-"]:not(.dark) .rt-link-btn--primary {
-  box-shadow:
-    0 4px 6px -1px color-mix(in srgb, var(--gk-chrome-grad-from) 40%, transparent),
-    0 2px 4px -2px color-mix(in srgb, var(--gk-chrome-grad-from) 40%, transparent);
-}
-html[class*="gk-theme-"]:not(.dark) .rt-link-btn--primary:hover:not(:disabled) {
   box-shadow:
     0 10px 15px -3px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent),
     0 4px 6px -4px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent);
