@@ -3715,6 +3715,20 @@ html.dark .rt-swatch.is-current {
 }
 html.dark .rt-pop-clear { box-shadow: none; }
 html.dark .rt-pop-clear:hover { box-shadow: none; }
+/* Themed gradient — only the background colour follows the active workspace
+   theme (GlassKeep keeps the original indigo→violet since it has no class).
+   Every other style — shape, padding, shadow weight, ::after shimmer, hover
+   scale, transition — is inherited unchanged. */
+html[class*="gk-theme-"] .rt-pop-clear {
+  background: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+}
+html[class*="gk-theme-"] .rt-pop-clear:hover {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
+    color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
+  );
+}
 .rt-pop-clear--danger {
   /* Danger variant overrides the gradient — it's a "remove" action,
      not a primary CTA, so it reads as a flat red link button. */
@@ -3846,6 +3860,19 @@ html.dark .rt-pop-clear--danger { color: #f87171; border-color: rgba(248, 113, 1
 }
 html.dark .rt-link-btn--primary { box-shadow: none; }
 html.dark .rt-link-btn--primary:hover:not(:disabled) { box-shadow: none; }
+/* Themed gradient — same scoping rule as .rt-pop-clear above: GlassKeep
+   keeps indigo→violet; every other theme swaps in its own gradient stops.
+   Only the background colour changes; the rest of the button is untouched. */
+html[class*="gk-theme-"] .rt-link-btn--primary {
+  background: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+}
+html[class*="gk-theme-"] .rt-link-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
+    color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
+  );
+}
 .rt-link-btn--danger {
   color: #dc2626;
   border-color: rgba(220, 38, 38, 0.28);
