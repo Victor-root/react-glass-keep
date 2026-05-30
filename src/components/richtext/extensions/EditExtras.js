@@ -126,7 +126,7 @@ function hideTooltip() {
 // the user hovers another inline `<code>` or re-enters the button),
 // giving the user enough time to reach and click it without having to
 // keep the cursor on the underlying inline code.
-const INLINE_COPY_VISIBLE_MS = 900;
+const INLINE_COPY_VISIBLE_MS = 500;
 let inlineCopyEl = null;
 let inlineCopyTarget = null;
 let inlineCopyHideTimer = null;
