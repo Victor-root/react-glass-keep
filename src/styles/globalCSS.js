@@ -2770,6 +2770,8 @@ html.dark .gk-range::-moz-range-thumb {
   --rt-btn-hover: rgba(0, 0, 0, 0.055);
   --rt-btn-active-bg: rgba(var(--rt-accent), 0.14);
   --rt-btn-active-text: rgb(var(--rt-accent));
+  /* Checklist toolbar icon — dark gray, clearly not black at icon size. */
+  --rt-task-icon: #4b5563;
   --rt-pop-bg: #ffffff;
   --rt-pop-border: rgba(0, 0, 0, 0.1);
   --rt-pop-shadow: 0 12px 32px -6px rgba(17, 24, 39, 0.28), 0 2px 8px rgba(17, 24, 39, 0.1);
@@ -2796,6 +2798,9 @@ html.dark {
   /* Lightened theme accent so the active label stays legible on the dark
      toolbar; follows --rt-accent for every theme (GlassKeep ~= indigo-300). */
   --rt-btn-active-text: color-mix(in srgb, rgb(var(--rt-accent)) 60%, #fff);
+  /* Light gray on the dark toolbar — the dark-gray light-mode value would
+     be invisible here; keeps the checklist icon neutral but legible. */
+  --rt-task-icon: #cbd5e1;
   --rt-hl-1: #b45309;
   --rt-hl-2: #c2410c;
   --rt-hl-3: #b91c1c;
@@ -3095,6 +3100,10 @@ html.dark .rt-toolbar {
      the right edge, which centres Increase indent on the Justify/
      Decrease-indent join below it. */
   margin-right: 17px;
+}
+.rt-sg[data-sg="paragraph"] > .rt-sg-row:last-child > .rt-btn:last-child {
+  /* Nudge Decrease indent very slightly left of the group's right edge. */
+  margin-right: 6px;
 }
 
 .rt-btn {

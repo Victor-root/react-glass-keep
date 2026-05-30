@@ -114,7 +114,10 @@ const Underline = ({ style = "simple", color }) => {
 // --- List family (kept colour-accented per earlier design decision) ---
 const LIST_BULLET_COLOR  = "#6366f1";
 const LIST_ORDERED_COLOR = "#0ea5e9";
-const LIST_TASK_COLOR    = "#14b8a6";
+// Neutral dark-gray, kept distinct from the colourful list icons AND from
+// pure black (a small stroke icon in near-black just reads as black). Driven
+// by a CSS variable so it stays legible in dark mode (see --rt-task-icon).
+const LIST_TASK_COLOR    = "var(--rt-task-icon)";
 const LIST_OUTDENT_COLOR = "#f59e0b";
 const LIST_INDENT_COLOR  = "#10b981";
 
