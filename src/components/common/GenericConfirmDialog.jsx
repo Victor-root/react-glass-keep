@@ -24,6 +24,13 @@ export default function GenericConfirmDialog({ open, dark, config, onClose }) {
   if (!open) return null;
 
   const variantClass = VARIANT_CLASSES[resolveVariant(config)] || VARIANT_CLASSES.default;
+  // Variants other than "default" (danger = restart/shutdown/delete, success
+  // = self-update confirmation) keep their fixed semantic colour and must not
+  // pick up the workspace theme. The gk-fixed-btn marker opts them out of the
+  // .btn-gradient theming rules (CSS keeps the hover-only halo behaviour for
+  // every variant).
+  const variant = resolveVariant(config);
+  const fixedClass = variant === "default" ? "" : " gk-fixed-btn";
 
   // Default z-50 is fine for confirmations triggered from regular
   // UI, but if the caller is already inside a higher-stacked modal
@@ -64,7 +71,7 @@ export default function GenericConfirmDialog({ open, dark, config, onClose }) {
             {config.cancelText || t("cancel")}
           </button>
           <button
-            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] btn-gradient ${variantClass}`}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] btn-gradient${fixedClass} ${variantClass}`}
             onClick={async () => {
               onClose();
               if (config.onConfirm) {

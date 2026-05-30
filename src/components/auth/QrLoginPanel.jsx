@@ -152,7 +152,7 @@ export default function QrLoginPanel({ dark, onLoggedIn, onCancel }) {
           <button
             type="button"
             onClick={generate}
-            className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 btn-gradient"
+            className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 hover:scale-[1.03] active:scale-[0.98] btn-gradient"
           >
             {t("qrLoginRegenerate")}
           </button>

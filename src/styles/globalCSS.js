@@ -319,8 +319,8 @@ html.dark.gk-theme-blush {
    resting halo is subtle and the hover halo only slightly stronger. The
    injected stylesheet loads after Tailwind, so this wins over shadow-indigo-*
    at equal specificity; dark:shadow-none still wins (it zeroes --tw-shadow). */
-.btn-gradient:not(.gk-create-btn):not(.gk-update-btn) { --tw-shadow-color: var(--gk-btn-glow); }
-.btn-gradient:not(.gk-create-btn):not(.gk-update-btn):hover { --tw-shadow-color: var(--gk-btn-glow-hover); }
+.btn-gradient:not(.gk-create-btn):not(.gk-update-btn):not(.gk-fixed-btn) { --tw-shadow-color: var(--gk-btn-glow); }
+.btn-gradient:not(.gk-create-btn):not(.gk-update-btn):not(.gk-fixed-btn):hover { --tw-shadow-color: var(--gk-btn-glow-hover); }
 /* Halo on HOVER ONLY — for every primary gradient button, in both light and
    dark mode. At rest there is no glow; on hover the button gets a shadow-lg
    sized halo whose colour is the --tw-shadow-color each button already
@@ -335,10 +335,10 @@ html.dark.gk-theme-blush {
     0 10px 15px -3px var(--tw-shadow-color, transparent),
     0 4px 6px -4px var(--tw-shadow-color, transparent);
 }
-html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):not(.gk-update-btn) {
+html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):not(.gk-update-btn):not(.gk-fixed-btn) {
   background-image: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
 }
-html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):not(.gk-update-btn):hover {
+html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):not(.gk-update-btn):not(.gk-fixed-btn):hover {
   background-image: linear-gradient(
     to right,
     color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
@@ -1742,6 +1742,7 @@ html.dark .modal-footer-btn--fmt.is-active {
   transition:
     background 0.14s ease,
     color      0.14s ease,
+    box-shadow 0.18s ease,
     transform  0.18s cubic-bezier(0.34, 1.5, 0.64, 1);
 }
 
@@ -1764,6 +1765,7 @@ html.dark .modal-footer-btn--fmt.is-active {
   transition:
     background 0.14s ease,
     color      0.14s ease,
+    box-shadow 0.18s ease,
     transform  0.18s cubic-bezier(0.34, 1.5, 0.64, 1);
 }
 .modal-footer-labeled-btn span {

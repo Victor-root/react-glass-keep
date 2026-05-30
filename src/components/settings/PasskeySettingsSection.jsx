@@ -546,7 +546,7 @@ function PasskeyConfirmDialog({ prompt, onClose }) {
           </button>
           <button
             type="button"
-            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] btn-gradient ${confirmClass}`}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] btn-gradient${prompt.danger ? " gk-fixed-btn" : ""} ${confirmClass}`}
             onClick={() => {
               onClose();
               if (prompt.onConfirm) prompt.onConfirm();
