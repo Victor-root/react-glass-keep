@@ -319,12 +319,12 @@ html.dark.gk-theme-blush {
    resting halo is subtle and the hover halo only slightly stronger. The
    injected stylesheet loads after Tailwind, so this wins over shadow-indigo-*
    at equal specificity; dark:shadow-none still wins (it zeroes --tw-shadow). */
-.btn-gradient:not(.gk-create-btn) { --tw-shadow-color: var(--gk-btn-glow); }
-.btn-gradient:not(.gk-create-btn):hover { --tw-shadow-color: var(--gk-btn-glow-hover); }
-html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn) {
+.btn-gradient:not(.gk-create-btn):not(.gk-update-btn) { --tw-shadow-color: var(--gk-btn-glow); }
+.btn-gradient:not(.gk-create-btn):not(.gk-update-btn):hover { --tw-shadow-color: var(--gk-btn-glow-hover); }
+html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):not(.gk-update-btn) {
   background-image: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
 }
-html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):hover {
+html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):not(.gk-update-btn):hover {
   background-image: linear-gradient(
     to right,
     color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),

@@ -240,7 +240,7 @@ export default function AdminUpdateSection({
                 type="button"
                 onClick={onClickUpdateNow}
                 disabled={!canOneClick}
-                className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:from-emerald-600 hover:to-green-700 shadow-md shadow-emerald-300/40 dark:shadow-none hover:shadow-lg hover:shadow-emerald-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+                className="gk-update-btn inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:from-emerald-600 hover:to-green-700 shadow-md shadow-emerald-300/40 dark:shadow-none hover:shadow-lg hover:shadow-emerald-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none"
               >
                 <TI.Download className="tabler-icon w-4 h-4" />
                 {isUpdateRunning
@@ -252,7 +252,7 @@ export default function AdminUpdateSection({
               type="button"
               onClick={() => setShowManualCommands((v) => !v)}
               aria-expanded={showManualCommands}
-              className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-gray-900 to-black text-white hover:from-black hover:to-gray-950 shadow-md shadow-gray-900/40 dark:shadow-none hover:shadow-lg hover:shadow-gray-900/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98]"
+              className="gk-update-btn inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-gray-900 to-black text-white hover:from-black hover:to-gray-950 shadow-md shadow-gray-900/40 dark:shadow-none hover:shadow-lg hover:shadow-gray-900/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
             >
               <TI.Terminal2 className="tabler-icon w-4 h-4" />
               {t("selfUpdateManualButton")}
