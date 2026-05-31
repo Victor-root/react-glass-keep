@@ -20,6 +20,7 @@ Two headline features: fully **customisable branding** (each instance can theme 
 - 📶 **No more "stuck offline"** — an SSE hello/ping is now treated as proof the server is reachable, clearing a false offline state.
 - 🎚️ **Multi-select button toggles correctly** — tapping it again closes the selection bar instead of scrolling the page down.
 - 🌗 **Android status bar colour restored** after closing a note, instead of keeping the note's colour.
+- 📱 **Header stays flush with the status bar when flinging to the top** — the native WebView overscroll bounce no longer creates a brief gap between the header and the status bar.
 - 🔄 **QR scanner disables pull-to-refresh** (and the device back button closes it) so scanning isn't interrupted.
 
 ### 🛠️ Upgrade
