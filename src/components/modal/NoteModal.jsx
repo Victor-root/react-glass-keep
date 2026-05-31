@@ -438,8 +438,7 @@ export default function NoteModal({
       return;
     }
     window.__noteModalOpen = true;
-    const color = (!mColor || mColor === "default") ? pageColor : toHex(modalBgFor(mColor, dark));
-    setThemeColor(color);
+    setThemeColor(toHex(modalBgFor(mColor, dark)));
   }, [open, mColor, dark]);
 
   /* Intercept Ctrl+Z/Y at the modal level for title-only undo.
