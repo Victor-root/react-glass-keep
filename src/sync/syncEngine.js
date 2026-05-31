@@ -565,7 +565,15 @@ export class SyncEngine {
         // extra tolerance — Chrome aggressively throttles their fetches. Only a
         // SECOND consecutive timeout (visible) actually marks the server down.
         const limit = tabHidden ? 3 : 1;
-        const tolerate = this._consecutiveTimeouts <= limit;
+        // If SSE is still connected, the server has proven itself reachable via
+        // a live event channel — fetch timeouts are then a fetch-path issue
+        // (proxy slow lane, stale TCP socket from before suspension, mobile
+        // network restoring) rather than a real outage. Keep tolerating so the
+        // sync icon doesn't flap between online/offline in a loop while fetches
+        // sort themselves out. The non-abort branch above still resets
+        // _sseConnected on hard network errors, so a truly dead server is
+        // caught there, not here.
+        const tolerate = this._consecutiveTimeouts <= limit || this._sseConnected;
         if (tolerate) {
           console.warn("[SyncEngine] healthCheck timeout #%d — tolerating (tab=%s)",
             this._consecutiveTimeouts, tabHidden ? "hidden" : "visible");
