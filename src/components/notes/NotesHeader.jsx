@@ -10,7 +10,6 @@ import { useBranding, DEFAULT_APP_NAME } from "../../branding/BrandingContext.js
 export default function NotesHeader({
   dark,
   headerVisible,
-  headerAtTop,
   windowWidth,
   sidebarPermanent,
   mobileSearchOpen,
@@ -177,7 +176,7 @@ export default function NotesHeader({
           // WebView bug where env() returns 0 even in edge-to-edge).
           top: "var(--safe-top)",
           transform: !headerVisible && (windowWidth < 700 || isLandscapeMobile) ? "translateY(-100%)" : "translateY(0)",
-          transition: headerAtTop ? "none" : "transform 0.3s ease",
+          transition: "transform 0.3s ease",
         }}
       >
         {/* Tighter gap on mobile when the QR quick-access button is
