@@ -383,7 +383,7 @@ export default function NotesHeader({
             {notificationBellDesktop}
             <button
               onClick={() => onToggleViewMode?.()}
-              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-blue-400 hover:text-blue-300 hover:bg-blue-500/15 focus:ring-blue-500" : "text-blue-600 hover:text-blue-700 hover:bg-blue-100 focus:ring-blue-400"}`}
+              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${dark ? "text-blue-400 hover:text-blue-300 focus:ring-blue-500" : "text-blue-600 hover:text-blue-700 focus:ring-blue-400"}`}
               data-tooltip={listView ? t("gridView") : t("listView")}
               aria-label={listView ? t("gridView") : t("listView")}
             >
@@ -391,7 +391,7 @@ export default function NotesHeader({
             </button>
             <button
               onClick={() => toggleDark?.()}
-              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/15 focus:ring-amber-500" : "text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400"}`}
+              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${dark ? "text-amber-400 hover:text-amber-300 focus:ring-amber-500" : "text-indigo-500 hover:text-indigo-700 focus:ring-indigo-400"}`}
               data-tooltip={dark ? t("lightMode") : t("darkMode")}
               aria-label={dark ? t("lightMode") : t("darkMode")}
             >
@@ -400,7 +400,7 @@ export default function NotesHeader({
             <SyncStatusIcon dark={dark} syncStatus={syncStatus} onSyncNow={handleSyncNow} syncDropdownOpen={syncDropdownOpen} setSyncDropdownOpen={setSyncDropdownOpen} instanceLocked={instanceLocked} />
             <button
               onClick={() => onStartMulti?.()}
-              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-violet-400 hover:text-violet-300 hover:bg-violet-500/15 focus:ring-violet-500" : "text-violet-600 hover:text-violet-700 hover:bg-violet-100 focus:ring-violet-400"}`}
+              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${dark ? "text-violet-400 hover:text-violet-300 focus:ring-violet-500" : "text-violet-600 hover:text-violet-700 focus:ring-violet-400"}`}
               data-tooltip={t("multiSelect")}
               aria-label={t("multiSelect")}
             >
@@ -408,7 +408,7 @@ export default function NotesHeader({
             </button>
             <button
               onClick={() => openSettingsPanel?.()}
-              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-gray-400 hover:text-gray-200 hover:bg-gray-700 focus:ring-gray-500" : "text-gray-500 hover:text-gray-700 hover:bg-gray-200 focus:ring-gray-400"}`}
+              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${dark ? "text-gray-400 hover:text-gray-200 focus:ring-gray-500" : "text-gray-500 hover:text-gray-700 focus:ring-gray-400"}`}
               data-tooltip={t("settings")}
               aria-label={t("settings")}
             >
@@ -419,7 +419,7 @@ export default function NotesHeader({
               <div className="relative flex items-center justify-center">
                 <button
                   onClick={() => openAdminPanel?.()}
-                  className={`relative p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-red-400 hover:text-red-300 hover:bg-red-500/15 focus:ring-red-500" : "text-red-600 hover:text-red-700 hover:bg-red-100 focus:ring-red-400"}`}
+                  className={`relative p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${dark ? "text-red-400 hover:text-red-300 focus:ring-red-500" : "text-red-600 hover:text-red-700 focus:ring-red-400"}`}
                   data-tooltip={t("adminPanel")}
                   aria-label={t("adminPanel")}
                 >

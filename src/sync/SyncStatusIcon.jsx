@@ -82,7 +82,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudPending,
         color: dark ? "text-gray-400" : "text-gray-500",
-        hoverBg: dark ? "hover:bg-gray-500/15" : "hover:bg-gray-200",
+        hoverBg: "",
         label: t("syncServerChecking"),
         animate: true,
       };
@@ -90,7 +90,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudCheck,
         color: dark ? "text-emerald-400" : "text-emerald-600",
-        hoverBg: dark ? "hover:bg-emerald-500/15" : "hover:bg-emerald-100",
+        hoverBg: "",
         label: t("syncStatusSynced"),
         animate: false,
       };
@@ -98,7 +98,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudPending,
         color: dark ? "text-amber-400" : "text-amber-600",
-        hoverBg: dark ? "hover:bg-amber-500/15" : "hover:bg-amber-100",
+        hoverBg: "",
         label: t("syncStatusPending"),
         animate: false,
       };
@@ -106,7 +106,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudSync,
         color: dark ? "text-blue-400" : "text-blue-600",
-        hoverBg: dark ? "hover:bg-blue-500/15" : "hover:bg-blue-100",
+        hoverBg: "",
         label: t("syncStatusSyncing"),
         animate: true,
       };
@@ -114,7 +114,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudOff,
         color: dark ? "text-gray-400" : "text-gray-500",
-        hoverBg: dark ? "hover:bg-gray-500/15" : "hover:bg-gray-200",
+        hoverBg: "",
         label: t("syncStatusOffline"),
         animate: false,
       };
@@ -122,7 +122,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudError,
         color: dark ? "text-red-400" : "text-red-600",
-        hoverBg: dark ? "hover:bg-red-500/15" : "hover:bg-red-100",
+        hoverBg: "",
         label: t("syncStatusError"),
         animate: false,
       };
@@ -130,7 +130,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudPending,
         color: dark ? "text-gray-400" : "text-gray-500",
-        hoverBg: dark ? "hover:bg-gray-500/15" : "hover:bg-gray-200",
+        hoverBg: "",
         label: "...",
         animate: false,
       };
@@ -294,7 +294,7 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
   } = syncStatus;
 
   const config = getStatusConfig(syncState, dark);
-  const { Icon, color, hoverBg, label, animate } = config;
+  const { Icon, color, label, animate } = config;
 
   const retryItems = (items || []).filter((i) => i.status === "retry");
   const failedItems = (items || []).filter((i) => i.status === "failed");
@@ -337,7 +337,7 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
       <button
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}
-        className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${color} ${hoverBg} ${animate ? "animate-pulse" : ""}`}
+        className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${color} ${animate ? "animate-pulse" : ""}`}
         data-tooltip={label}
         aria-label={label}
         aria-haspopup="menu"

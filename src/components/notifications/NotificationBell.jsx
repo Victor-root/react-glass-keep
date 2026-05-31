@@ -64,9 +64,7 @@ export default function NotificationBell({
   // focus stay subtle so the button still sits inside the utility row.
   const baseClass =
     "relative inline-flex items-center justify-center w-9 h-9 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors";
-  const themeClass = dark
-    ? "hover:bg-white/10 focus:ring-indigo-400"
-    : "hover:bg-indigo-100 focus:ring-indigo-400";
+  const themeClass = "gk-header-icon-btn focus:ring-indigo-400";
   const iconColor = dark ? "#9c9ddb" : "#6366f1";
 
   const handleToggle = () => {

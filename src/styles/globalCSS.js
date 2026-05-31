@@ -5949,4 +5949,9 @@ html.dark .gk-notif-card-swipe-bg {
 .gk-tag-chip-remove {
   color: color-mix(in srgb, var(--gk-chrome-accent) 65%, transparent);
 }
+
+/* Header icon buttons hover circle */
+.gk-header-icon-btn:hover {
+  background-color: color-mix(in srgb, var(--gk-chrome-accent) 15%, transparent);
+}
 `;
