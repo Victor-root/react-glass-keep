@@ -1,6 +1,6 @@
 # 📋 Changelog
 
-## 🚀 v2.4.5 — 2026-05-29
+## 🚀 v2.4.5 — 2026-05-31
 
 Two headline features: fully **customisable branding** (each instance can theme its login page from the UI, nothing hard-coded) and **interface colour themes** — pick a workspace theme and the whole app chrome (header, sidebar, notes background, scrollbars, panels, icons, buttons and editor highlights) recolours coherently in light **and** dark mode, while your notes stay exactly as they are. The release also lands a big **desktop performance pass**, a **seamless desktop-PWA title bar**, a round of **mobile chrome polish**, and fixes one-click in-app updates on **Synology Container Manager / DSM**.
 
@@ -9,7 +9,7 @@ Two headline features: fully **customisable branding** (each instance can theme 
 - 🏷️ **Login page branding (admin)** — from Admin → *Login page settings*, set a custom **app name** (≤ 10 chars), **logo** and **login background image** with an adjustable **blur**. The name + logo also drive the in-app header, the browser tab title and the favicon (kept square so it isn't flattened). Everything is optional and light/dark-aware; unset values fall back to the defaults, and the content panels stay legible over any image.
 - 📲 **Installable PWA adapts to your branding** — the PWA install name and icon now use the instance's custom app name and logo instead of the bundled defaults.
 - ⚡ **Desktop performance pass** — the header and sidebar now use a static, **blur-free "fake-glass"** recipe (token-driven, no per-frame GPU re-raster), the floating background cards pause while you scroll and while an overlay is open, note-card callbacks are stabilised so the masonry grid no longer re-renders on unrelated state changes, and note previews/images are lighter. Scrolling, opening and closing notes feel noticeably smoother on laptops, with the glass aesthetic preserved.
-- ♿ **"Reduce transparency effects"** — a flattened, no-`backdrop-filter` rendering path (on by default) for weaker GPUs, keeping only the modal scrim blur.
+- 🪟 **"Reduce transparency effects"** — a flattened, no-`backdrop-filter` rendering path (on by default) for weaker GPUs, keeping only the modal scrim blur.
 - 🖥️ **Seamless desktop PWA title bar** — the installed desktop app's header and sidebar blend into the Windows title bar with no visible seam line, and the sidebar's edge no longer crosses the header.
 - 📱 **Mobile chrome polish** — the header sits flush with the status bar in a single flat colour, the sidebar and the Settings/Admin/sync panels match the chrome, the **sync status opens as a full-width top sheet** (like the notifications), and a **Scan QR** entry was added to the header kebab menu.
 
