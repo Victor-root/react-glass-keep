@@ -170,21 +170,27 @@ function NotesUI({
 
   // Header auto-hide on scroll (mobile only)
   const [headerVisible, setHeaderVisible] = useState(true);
+  const [headerAtTop, setHeaderAtTop] = useState(true);
   const lastScrollYRef = useRef(0);
   useEffect(() => {
     if (windowWidth >= 700 && !isLandscapeMobile) {
       setHeaderVisible(true);
+      setHeaderAtTop(true);
       return;
     }
     const onScroll = () => {
       const y = window.scrollY;
       const delta = y - lastScrollYRef.current;
       if (y < 10) {
+        setHeaderAtTop(true);
         setHeaderVisible(true);
-      } else if (delta > 4) {
-        setHeaderVisible(false);
-      } else if (delta < -4) {
-        setHeaderVisible(true);
+      } else {
+        setHeaderAtTop(false);
+        if (delta > 4) {
+          setHeaderVisible(false);
+        } else if (delta < -4) {
+          setHeaderVisible(true);
+        }
       }
       lastScrollYRef.current = y;
     };
@@ -240,6 +246,7 @@ function NotesUI({
       <NotesHeader
         dark={dark}
         headerVisible={headerVisible}
+        headerAtTop={headerAtTop}
         windowWidth={windowWidth}
         isLandscapeMobile={isLandscapeMobile}
         sidebarPermanent={sidebarPermanent}
