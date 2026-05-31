@@ -478,17 +478,6 @@ body {
   .gk-backdrop-warm { display: none; }
 }
 
-/* Globally suppress the WebView's internal overscroll behavior at the
-   top edge of the document. Without this, a fling that reaches scrollY=0
-   triggers a brief overscroll bounce which momentarily translates the
-   sticky header down a few pixels before snapping it back against the
-   status bar — visible as a gap between the status bar and the header.
-   The native Android SwipeRefreshLayout uses View.canScrollVertically(-1)
-   to detect pull-to-refresh and is unaffected by this CSS property, so
-   the user's intentional pull-down gesture still works. */
-html, body {
-  overscroll-behavior-y: none;
-}
 /* Disable browser pull-to-refresh while any overlay (notification
    center, sync popover, modals, sidebar, …) is open. The class is
    toggled by App.jsx from a single effect — every panel benefits

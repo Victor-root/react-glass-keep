@@ -494,6 +494,17 @@ class WebViewActivity : AppCompatActivity() {
                 setSupportMultipleWindows(false)
             }
 
+            // Disable the native WebView overscroll bounce. Without this,
+            // flinging to the top of the page triggers an Android-level glow
+            // / stretch animation that briefly shifts the WebView's content
+            // down by a few pixels before snapping back. The sticky header
+            // moves with the content and leaves a visible gap against the
+            // status bar. CSS overscroll-behavior-y:none is not enough because
+            // the bounce happens at the native View layer.
+            // Pull-to-refresh is handled by SwipeRefreshLayout (a sibling view),
+            // so disabling WebView's own overscroll doesn't affect it.
+            overScrollMode = android.view.View.OVER_SCROLL_NEVER
+
             // Cookies
             CookieManager.getInstance().apply {
                 setAcceptCookie(true)
