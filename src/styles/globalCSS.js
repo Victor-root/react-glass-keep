@@ -5896,4 +5896,57 @@ html.dark .gk-notif-card-swipe-bg {
 /* Dismissed-in-history rows keep their X — the user wants per-item
    removal in the panel (it calls REMOVE, not DISMISS, so the row is
    actually deleted). Only "Effacer" wipes the entire list. */
+
+/* ── Admin user-edit icon button (themed square icon button) ── */
+.gk-admin-edit-btn {
+  background-color: var(--gk-icon-bg);
+  color: var(--gk-icon-fg);
+}
+.gk-admin-edit-btn:hover {
+  background-color: color-mix(in srgb, var(--gk-chrome-grad-from) 22%, transparent);
+}
+
+/* ── Tags popover — elements that follow the active theme ── */
+
+/* Count badge on the Tags toolbar button */
+.gk-tag-count-badge {
+  background: linear-gradient(135deg, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+  color: #fff;
+}
+
+/* Popover container border tint */
+.gk-tag-popover {
+  border-color: color-mix(in srgb, var(--gk-chrome-accent) 22%, transparent);
+}
+
+/* Search input focus ring */
+.gk-tag-search-wrap:focus-within {
+  border-color: var(--gk-chrome-accent);
+}
+
+/* Tag list item hover background */
+.gk-tag-popover button:hover {
+  background-color: color-mix(in srgb, var(--gk-chrome-grad-from) 8%, transparent);
+}
+
+/* Checkbox — checked fill and border */
+.gk-tag-cb.gk-tag-cb--on {
+  background-color: var(--gk-chrome-grad-from);
+  border-color: var(--gk-chrome-grad-from);
+}
+
+/* Checkbox — unchecked hover border */
+.gk-tag-popover button:hover .gk-tag-cb:not(.gk-tag-cb--on) {
+  border-color: var(--gk-chrome-accent);
+}
+
+/* Applied tag chips */
+.gk-tag-chip {
+  background-color: color-mix(in srgb, var(--gk-chrome-accent) 12%, transparent);
+  color: var(--gk-icon-fg);
+  border-color: color-mix(in srgb, var(--gk-chrome-accent) 24%, transparent);
+}
+.gk-tag-chip-remove {
+  color: color-mix(in srgb, var(--gk-chrome-accent) 65%, transparent);
+}
 `;

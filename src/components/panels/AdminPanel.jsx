@@ -588,7 +588,7 @@ export default function AdminPanel({
                     <div className="flex flex-shrink-0 gap-2">
                       <button
                         onClick={() => openEditUserModal(user)}
-                        className="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
+                        className="w-9 h-9 flex items-center justify-center rounded-lg gk-admin-edit-btn transition-colors"
                         data-tooltip={t("edit")}
                         aria-label={t("edit")}
                       >
