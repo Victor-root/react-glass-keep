@@ -87,6 +87,17 @@ export class SyncEngine {
     await this._emitStatus();
   }
 
+  /**
+   * Call when the tab/app transitions from hidden → visible.
+   * Resets the consecutive-timeout counter so background AbortErrors (caused
+   * by Chrome throttling fetches in hidden tabs) don't immediately trigger an
+   * "offline" mark on the first post-resume health check, which uses the tighter
+   * visible-tab threshold (limit=1 vs limit=3 for hidden tabs).
+   */
+  notifyVisible() {
+    this._consecutiveTimeouts = 0;
+  }
+
   async notifyServerReachable() {
     if (this._destroyed) return;
     this._sseConnected = true;

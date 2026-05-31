@@ -3652,6 +3652,12 @@ export default function App() {
       // auto-triggers processQueue on recovery. Also restarts the
       // health timer chain if it was broken by tab suspension.
       if (engine) {
+        // Background AbortErrors accumulated in _consecutiveTimeouts under the
+        // hidden-tab tolerance (limit=3). If we don't reset here, the first
+        // post-resume check uses the visible-tab limit (1), immediately exceeds
+        // it, and marks the server offline even though it's reachable.
+        engine.notifyVisible();
+
         // force=true on every attempt: the retry gap (1.5s) is shorter than
         // the 3s throttle in healthCheck(), so unforced retries silently
         // return the cached "offline" value and waste a slot in the loop.
