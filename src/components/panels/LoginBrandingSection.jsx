@@ -103,6 +103,11 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
     setBlur(persistedBlur);
   }, [persistedBlur]);
 
+  // Scale blur for the preview thumbnail (h-36 = 144px) so it matches
+  // the visual weight of the same value on the full-height login page.
+  const PREVIEW_H = 144;
+  const previewBlur = blur > 0 ? +(blur * (PREVIEW_H / (typeof window !== "undefined" ? window.innerHeight : 800))).toFixed(2) : 0;
+
   // Slider rail: indigo→violet fill up to the current value, neutral
   // track after it (theme-aware).
   const blurPct = (blur / MAX_BLUR) * 100;
@@ -250,11 +255,11 @@ export default function LoginBrandingSection({ dark, adminSettings, updateAdminS
                 <div
                   className="absolute"
                   style={{
-                    inset: blur > 0 ? `-${blur * 2}px` : 0,
+                    inset: previewBlur > 0 ? `-${previewBlur * 2}px` : 0,
                     backgroundImage: `url(${background})`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
-                    filter: blur > 0 ? `blur(${blur}px)` : "none",
+                    filter: previewBlur > 0 ? `blur(${previewBlur}px)` : "none",
                   }}
                 />
                 <div
