@@ -1,7 +1,7 @@
 {
   "name": "glasskeep-enhanced",
   "private": true,
-  "version": "2.4.0",
+  "version": "2.4.5",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -59,6 +59,7 @@
     "@tiptap/extension-font-family": "^3.22.4",
     "@tiptap/extension-highlight": "^3.22.4",
     "@tiptap/extension-link": "^3.22.4",
+    "@tiptap/extension-list": "^3.22.4",
     "@tiptap/extension-placeholder": "^3.22.4",
     "@tiptap/extension-subscript": "^3.22.4",
     "@tiptap/extension-superscript": "^3.22.4",

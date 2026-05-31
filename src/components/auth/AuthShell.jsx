@@ -1,13 +1,68 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Sun, Moon } from "../../icons/index.jsx";
 import TI from "../../icons/editor/index.jsx";
 import { t } from "../../i18n";
+import { useBranding, DEFAULT_APP_NAME } from "../../branding/BrandingContext.jsx";
 
 export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnabled = true, loginSlogan, children, sidePanel }) {
+  const { branding } = useBranding();
+  const appName = branding.appName || DEFAULT_APP_NAME;
+  const logoSrc = branding.logo || "/pwa-192.png";
+  // A custom logo is shown raw (no rounded clip / shadow) so a
+  // transparent PNG doesn't get an ugly box behind it; the bundled
+  // default icon keeps its rounded-tile + shadow look.
+  const isCustomLogo = !!branding.logo;
+  const hasCustomBg = !!branding.loginBackground;
+  const blur = branding.loginBackgroundBlur || 0;
+  // A custom background replaces the decorative floating cards — showing
+  // both would clutter the backdrop and fight for attention.
+  const showDecoCards = floatingCardsEnabled && !hasCustomBg;
+  // While a custom login background is shown, flag <html> so light-mode
+  // surfaces turn near-opaque (see .gk-custom-bg rules) and the form +
+  // floating text stay legible over the photo.
+  useEffect(() => {
+    if (!hasCustomBg) return undefined;
+    const el = document.documentElement;
+    el.classList.add("gk-custom-bg");
+    return () => el.classList.remove("gk-custom-bg");
+  }, [hasCustomBg]);
+
   return (
     <div className="min-h-screen flex flex-col px-4 relative overflow-hidden">
+      {/* Admin-configured login background. Fixed + behind everything
+          (z-0). The image sits in an overscanned inner layer so the
+          blur's faded edges fall outside the viewport, and a
+          theme-aware scrim on top keeps the form + text legible over
+          any image. Login-only: AuthShell is never used inside the app. */}
+      {hasCustomBg && (
+        <div
+          aria-hidden="true"
+          className="login-custom-bg"
+          style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: blur > 0 ? `-${blur * 2}px` : 0,
+              backgroundImage: `url(${branding.loginBackground})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              filter: blur > 0 ? `blur(${blur}px)` : "none",
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              // Light mode shows the image raw (a white wash looked washed
+              // out); dark mode keeps a veil so light text stays legible.
+              background: dark ? "rgba(17,17,17,0.55)" : "transparent",
+            }}
+          />
+        </div>
+      )}
       {/* Decorative floating note cards */}
-      {floatingCardsEnabled && <div aria-hidden="true">
+      {showDecoCards && <div aria-hidden="true">
         <div className="login-deco-card" style={{"--rot":"-12deg","--dur":"7s","--delay":"0s",top:"8%",left:"6%",borderTop:"3px solid rgba(99,102,241,0.7)"}}>
           <div className="deco-title" style={{background:"rgba(99,102,241,0.5)"}}/>
           <div className="deco-line" style={{width:"90%"}}/>
@@ -84,16 +139,22 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
               left-aligned within the wider wrapper (lg:mx-0) so the
               logo lines up over the form card rather than drifting
               into the gap between the two cards. */}
-          <div className="text-center mb-6 w-full max-w-md mx-auto lg:mx-0">
-            <img
-              src="/pwa-192.png"
-              alt="Glass Keep"
-              className="h-16 w-16 rounded-2xl shadow-lg mx-auto mb-4 select-none pointer-events-none"
-              draggable="false"
-            />
-            <h1 className="text-3xl font-bold">Glass Keep</h1>
-            <p className="text-gray-500 dark:text-gray-400">{title}</p>
-          </div>
+          {/* Logo + title above the form card — only when there is NO
+              custom background. With a custom photo this floats on the
+              image (and a transparent logo can be unreadable), so it
+              moves INTO the form card instead (see below). */}
+          {!hasCustomBg && (
+            <div className="text-center mb-6 w-full max-w-md mx-auto lg:mx-0">
+              <img
+                src={logoSrc}
+                alt={appName}
+                className={`h-16 w-16 mx-auto mb-4 select-none pointer-events-none object-contain${isCustomLogo ? "" : " rounded-2xl shadow-lg"}`}
+                draggable="false"
+              />
+              <h1 className="text-3xl font-bold">{appName}</h1>
+              <p className="text-gray-500 dark:text-gray-400">{title}</p>
+            </div>
+          )}
 
           {/* Cards row.
               On mobile: flex column with the form card, a decorative
@@ -114,7 +175,22 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
               sidePanel ? "lg:block lg:relative lg:w-fit lg:items-stretch" : ""
             }`}
           >
-            <div className="glass-card rounded-xl p-6 shadow-lg w-full max-w-md">
+            <div className="glass-card auth-card rounded-xl p-6 shadow-lg w-full max-w-md">
+              {/* With a custom background the brand sits inside the card
+                  (on its opaque surface) so a transparent logo + the
+                  name stay legible over any photo. */}
+              {hasCustomBg && (
+                <div className="text-center mb-5">
+                  <img
+                    src={logoSrc}
+                    alt={appName}
+                    className={`h-14 w-14 mx-auto mb-3 select-none pointer-events-none object-contain${isCustomLogo ? "" : " rounded-2xl shadow-md"}`}
+                    draggable="false"
+                  />
+                  <h1 className="text-2xl font-bold">{appName}</h1>
+                  {title && <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">{title}</p>}
+                </div>
+              )}
               {children}
             </div>
             {sidePanel && (
@@ -156,7 +232,7 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
             <div className="mt-6 text-center">
               <button
                 onClick={onToggleDark}
-                className={`inline-flex items-center gap-2 text-sm ${dark ? "text-gray-300" : "text-gray-700"} hover:underline`}
+                className={`inline-flex items-center gap-2 text-sm ${dark ? "text-gray-300" : "text-gray-700"} hover:underline ${hasCustomBg ? "glass-card rounded-full px-4 py-1.5 shadow-sm" : ""}`}
                 data-tooltip={t("toggleDarkMode")}
               >
                 {dark ? <Moon /> : <Sun />} {t("toggleTheme")}
@@ -181,10 +257,12 @@ export default function AuthShell({ title, dark, onToggleDark, floatingCardsEnab
         </div>
       </div>
       <p className="text-center text-xs text-gray-400 dark:text-gray-600 z-10 select-none pb-4 pt-2 relative">
-        Open source project &mdash; Originally by{" "}
-        <a href="https://github.com/nikunjsingh93" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400 transition-colors">nikunjsingh93</a>
-        {" · "}maintained and expanded by{" "}
-        <a href="https://github.com/Victor-root/glasskeep-enhanced" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400 transition-colors">Victor-root</a>
+        <span className={hasCustomBg ? "inline-block rounded-full px-3 py-1 bg-black/20 backdrop-blur-sm" : ""}>
+          Open source project &mdash; Originally by{" "}
+          <a href="https://github.com/nikunjsingh93" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400 transition-colors">nikunjsingh93</a>
+          {" · "}maintained and expanded by{" "}
+          <a href="https://github.com/Victor-root/glasskeep-enhanced" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400 transition-colors">Victor-root</a>
+        </span>
       </p>
     </div>
   );

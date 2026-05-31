@@ -55,7 +55,7 @@ import { renderSafeMarkdown, linkifyContactsHTML } from "../../utils/markdown.js
 import RichTextEditor from "../richtext/RichTextEditor.jsx";
 import { contentToHTML, serializeRichContent, isRichContent } from "../../utils/richText.js";
 import { modalBgFor, scrollColorsFor, solid, bgFor, toHex, audioAccentColor } from "../../utils/colors.js";
-import { setThemeColor } from "../../utils/helpers.js";
+import { setThemeColor, currentStatusBarColor } from "../../utils/helpers.js";
 import AudioNoteEditor from "../audio/AudioNoteEditor.jsx";
 import StorageGauge from "../audio/StorageGauge.jsx";
 import { parseAudioContent, totalClipsBytes } from "../../utils/audioNote.js";
@@ -431,15 +431,14 @@ export default function NoteModal({
      that caused a flash on Android WebView. The default is set explicitly
      when `open` becomes false. */
   React.useEffect(() => {
-    const pageColor = dark ? "#1a1a1a" : "#f0e8ff";
+    const pageColor = currentStatusBarColor();
     if (!open) {
       window.__noteModalOpen = false;
       setThemeColor(pageColor);
       return;
     }
     window.__noteModalOpen = true;
-    const color = (!mColor || mColor === "default") ? pageColor : toHex(modalBgFor(mColor, dark));
-    setThemeColor(color);
+    setThemeColor(toHex(modalBgFor(mColor, dark)));
   }, [open, mColor, dark]);
 
   /* Intercept Ctrl+Z/Y at the modal level for title-only undo.

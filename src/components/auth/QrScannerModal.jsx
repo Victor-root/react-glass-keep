@@ -386,7 +386,7 @@ function ConfirmCard({ info, onApprove, onReject }) {
         <button
           type="button"
           onClick={onApprove}
-          className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 btn-gradient"
+          className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 hover:scale-[1.03] active:scale-[0.98] btn-gradient"
         >
           {t("qrScanApprove")}
         </button>
@@ -434,7 +434,7 @@ function PhaseCard({ kind, title, body, primary, spinner }) {
         <button
           type="button"
           onClick={primary.onClick}
-          className="mt-4 px-4 py-1.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 btn-gradient"
+          className="mt-4 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 hover:scale-[1.03] active:scale-[0.98] btn-gradient"
         >
           {primary.label}
         </button>

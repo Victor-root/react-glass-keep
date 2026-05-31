@@ -3,6 +3,32 @@ import { t } from "../i18n";
 /** ---------- Utils ---------- */
 export const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+/** App-chrome status-bar colours. Shared so the value can't drift across
+ *  callers: App.jsx sets these on load / dark-toggle, and NoteModal restores
+ *  them when a note closes (it overrides with the open note's colour meanwhile).
+ *  MUST match the --gk-statusbar CSS variable in globalCSS (which also paints
+ *  the flat mobile header), light and dark respectively. */
+export const STATUS_BAR_LIGHT = "#dce1fb";
+export const STATUS_BAR_DARK = "#171f30";
+
+/** Current shell status-bar colour, read from the live --gk-statusbar token so
+ *  it follows the active workspace theme AND dark mode automatically. Falls
+ *  back to the GlassKeep constants if the stylesheet isn't mounted yet (the
+ *  token resolves to empty), so early callers still get a sensible colour. */
+export function currentStatusBarColor() {
+  try {
+    const v = getComputedStyle(document.documentElement)
+      .getPropertyValue("--gk-statusbar")
+      .trim();
+    if (v) return v;
+  } catch (_) {
+    /* getComputedStyle unavailable — fall through */
+  }
+  return document.documentElement.classList.contains("dark")
+    ? STATUS_BAR_DARK
+    : STATUS_BAR_LIGHT;
+}
+
 /** Update PWA status bar color by removing and re-creating the meta tag */
 export function setThemeColor(color) {
   const old = document.querySelector('meta[name="theme-color"]');
@@ -184,4 +210,29 @@ export async function fileToCompressedDataURL(file, maxDim = 1600, quality = 0.8
     if (hasRealAlpha) return canvas.toDataURL("image/png");
   }
   return canvas.toDataURL("image/jpeg", quality);
+}
+
+/** Square PNG app icon (for the PWA manifest): the source image is
+ *  contain-fitted, centred, on a solid background tile, so it reads well
+ *  as both a regular and a maskable home-screen icon. `pad` is the
+ *  fraction of the canvas left as margin on each side (maskable safe-zone). */
+export async function makeSquarePngIcon(dataUrl, size = 512, bg = "#ffffff", pad = 0.12) {
+  const img = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = dataUrl;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, size, size);
+  const inner = size * (1 - 2 * pad);
+  const scale = Math.min(inner / img.width, inner / img.height);
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  ctx.drawImage(img, Math.round((size - w) / 2), Math.round((size - h) / 2), w, h);
+  return canvas.toDataURL("image/png");
 }

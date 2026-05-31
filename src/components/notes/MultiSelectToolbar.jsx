@@ -477,11 +477,11 @@ export default function MultiSelectToolbar({
       // count != 2 or trash) it stays in place but greys out via opacity
       // — the user keeps it on screen as an available outcome.
       const ctaFull =
-        "h-9 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-bold whitespace-nowrap shrink-0 text-white bg-gradient-to-r from-indigo-600 to-violet-700 ring-1 ring-violet-500/30 shadow-md shadow-violet-500/40 transition-all duration-200";
+        "h-9 px-3.5 inline-flex items-center justify-center gap-1.5 rounded-lg text-sm font-bold whitespace-nowrap shrink-0 text-white bg-gradient-to-r from-indigo-600 to-violet-700 ring-1 ring-violet-500/30 transition-all duration-200 btn-gradient";
       const ctaCompact =
-        "h-9 w-9 inline-flex items-center justify-center rounded-lg text-sm font-bold shrink-0 text-white bg-gradient-to-r from-indigo-600 to-violet-700 ring-1 ring-violet-500/30 shadow-md shadow-violet-500/40 transition-all duration-200";
+        "h-9 w-9 inline-flex items-center justify-center rounded-lg text-sm font-bold shrink-0 text-white bg-gradient-to-r from-indigo-600 to-violet-700 ring-1 ring-violet-500/30 transition-all duration-200 btn-gradient";
       const ctaActive =
-        " hover:from-indigo-700 hover:to-violet-800 hover:shadow-lg hover:shadow-violet-500/50 hover:scale-[1.02] active:scale-[0.98]";
+        " hover:from-indigo-700 hover:to-violet-800 hover:scale-[1.03] active:scale-[0.98]";
       const ctaDisabled = " opacity-40 cursor-not-allowed grayscale-[0.2]";
       const ctaBase = compact ? ctaCompact : ctaFull;
       return (

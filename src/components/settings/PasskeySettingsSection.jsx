@@ -416,7 +416,7 @@ export default function PasskeySettingsSection({
 
 function Badge({ color, children }) {
   const klass = {
-    indigo: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-200",
+    indigo: "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)]",
     amber:  "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
     gray:   "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200",
   }[color] || "bg-gray-100 text-gray-700";
@@ -490,7 +490,7 @@ function PasskeyTextDialog({ prompt, onClose }) {
             if (e.key === "Enter") { e.preventDefault(); submit(); }
             else if (e.key === "Escape") { e.preventDefault(); onClose(); }
           }}
-          className="w-full px-3 py-2 rounded-lg border border-[var(--border-light)] bg-white dark:bg-[#1f1f1f] focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+          className="w-full px-3 py-2 rounded-lg border border-[var(--border-light)] bg-white dark:bg-[#1f1f1f] focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)]"
         />
         <div className="mt-5 flex justify-end gap-3">
           <button
@@ -520,8 +520,8 @@ function PasskeyConfirmDialog({ prompt, onClose }) {
   if (!prompt) return null;
 
   const confirmClass = prompt.danger
-    ? "bg-red-600 text-white hover:bg-red-700 shadow-md shadow-red-300/40 dark:shadow-none"
-    : "bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none";
+    ? "bg-red-600 text-white hover:bg-red-700 hover:shadow-lg hover:shadow-red-300/50"
+    : "bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 hover:shadow-lg hover:shadow-indigo-300/50";
 
   return (
     <div
@@ -546,7 +546,7 @@ function PasskeyConfirmDialog({ prompt, onClose }) {
           </button>
           <button
             type="button"
-            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] btn-gradient ${confirmClass}`}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 hover:scale-[1.03] active:scale-[0.98] btn-gradient${prompt.danger ? " gk-fixed-btn" : ""} ${confirmClass}`}
             onClick={() => {
               onClose();
               if (prompt.onConfirm) prompt.onConfirm();

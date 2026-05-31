@@ -3,7 +3,7 @@ import { t } from "../../i18n";
 import Masonry from "react-masonry-css";
 import NoteCard from "./NoteCard.jsx";
 
-export default function NotesSections({
+function NotesSections({
   pinned,
   others,
   dark,
@@ -47,12 +47,12 @@ export default function NotesSections({
           <section className="mb-10">
             {listView ? (
               <div className="max-w-2xl mx-auto">
-                <h2 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
+                <h2 className="gk-section-label text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
                   {t("pinned")}
                 </h2>
               </div>
             ) : (
-              <h2 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
+              <h2 className="gk-section-label text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
                 {t("pinned")}
               </h2>
             )}
@@ -131,12 +131,12 @@ export default function NotesSections({
             {pinned.length > 0 &&
               (listView ? (
                 <div className="max-w-2xl mx-auto">
-                  <h2 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
+                  <h2 className="gk-section-label text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
                     {t("others")}
                   </h2>
                 </div>
               ) : (
-                <h2 className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
+                <h2 className="gk-section-label text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-3 ml-1">
                   {t("others")}
                 </h2>
               ))}
@@ -233,3 +233,11 @@ export default function NotesSections({
       </main>
   );
 }
+
+// Memoized: all props are referentially stable (memoized pinned/others +
+// useStableCallback handlers + value-stable state), so the grid — and
+// react-masonry-css's per-render column redistribution — no longer re-runs
+// when App re-renders for unrelated reasons (a toast auto-dismissing, opening
+// a modal/panel, typing in the composer). It still updates when notes,
+// selection, dark mode, sync status, etc. actually change.
+export default React.memo(NotesSections);

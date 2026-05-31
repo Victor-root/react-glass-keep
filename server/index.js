@@ -234,7 +234,12 @@ CREATE INDEX IF NOT EXISTS idx_logos_user ON logos(user_id);
 CREATE TABLE IF NOT EXISTS app_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   allow_new_accounts INTEGER NOT NULL DEFAULT 0,
-  login_slogan TEXT NOT NULL DEFAULT ''
+  login_slogan TEXT NOT NULL DEFAULT '',
+  custom_app_name TEXT NOT NULL DEFAULT '',
+  custom_logo TEXT,
+  login_bg_image TEXT,
+  login_bg_blur INTEGER NOT NULL DEFAULT 0,
+  custom_logo_pwa TEXT
 );
 `);
 
@@ -266,6 +271,33 @@ CREATE TABLE IF NOT EXISTS app_settings (
         // NULL = automatic (detect from browser). Otherwise an explicit
         // tag like "fr" or "en". Stored as TEXT to remain forward-compatible.
         db.exec(`ALTER TABLE users ADD COLUMN language TEXT`);
+      }
+      if (!names.has("app_bg_image")) {
+        // Per-user app background image (data URL). NULL = use the default
+        // (floating cards). Stored in its own column so the large data URL
+        // stays out of the synced user_settings blob.
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_image TEXT`);
+      }
+      if (!names.has("app_bg_blur")) {
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_blur INTEGER NOT NULL DEFAULT 0`);
+      }
+      // Optional separate dark-mode background. When app_bg_separate is 0
+      // the (light) app_bg_image is shared by both themes; when 1, the
+      // dark columns are used in dark mode.
+      if (!names.has("app_bg_image_dark")) {
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_image_dark TEXT`);
+      }
+      if (!names.has("app_bg_blur_dark")) {
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_blur_dark INTEGER NOT NULL DEFAULT 0`);
+      }
+      if (!names.has("app_bg_separate")) {
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_separate INTEGER NOT NULL DEFAULT 0`);
+      }
+      // Master on/off for the custom app background — lets a user disable
+      // it without losing the uploaded image(s). Defaults to 1 so existing
+      // backgrounds keep showing after the migration.
+      if (!names.has("app_bg_enabled")) {
+        db.exec(`ALTER TABLE users ADD COLUMN app_bg_enabled INTEGER NOT NULL DEFAULT 1`);
       }
     });
     tx();
@@ -337,6 +369,40 @@ CREATE TABLE IF NOT EXISTS app_settings (
       }
       if (!names.has("icon")) {
         db.exec(`ALTER TABLE notifications ADD COLUMN icon TEXT`);
+      }
+    });
+    tx();
+  } catch {
+    // ignore if the table doesn't exist yet (first boot — CREATE
+    // TABLE above will produce the full schema) or ALTER unsupported.
+  }
+})();
+// app_settings-table migrations. The original schema only had
+// allow_new_accounts + login_slogan; the custom-branding feature adds
+// the optional login-page branding columns (custom app name, logo,
+// background image, background blur). All default to empty/NULL so an
+// instance that never configures branding behaves exactly as before.
+(function ensureAppSettingsColumns() {
+  try {
+    const cols = db.prepare(`PRAGMA table_info(app_settings)`).all();
+    const names = new Set(cols.map((c) => c.name));
+    const tx = db.transaction(() => {
+      if (!names.has("custom_app_name")) {
+        db.exec(`ALTER TABLE app_settings ADD COLUMN custom_app_name TEXT NOT NULL DEFAULT ''`);
+      }
+      if (!names.has("custom_logo")) {
+        db.exec(`ALTER TABLE app_settings ADD COLUMN custom_logo TEXT`);
+      }
+      if (!names.has("login_bg_image")) {
+        db.exec(`ALTER TABLE app_settings ADD COLUMN login_bg_image TEXT`);
+      }
+      if (!names.has("login_bg_blur")) {
+        db.exec(`ALTER TABLE app_settings ADD COLUMN login_bg_blur INTEGER NOT NULL DEFAULT 0`);
+      }
+      // Square PNG icon derived from the custom logo, used for the PWA
+      // manifest (home-screen icon). Generated client-side on upload.
+      if (!names.has("custom_logo_pwa")) {
+        db.exec(`ALTER TABLE app_settings ADD COLUMN custom_logo_pwa TEXT`);
       }
     });
     tx();
@@ -2869,7 +2935,8 @@ app.post("/api/notes/import", auth, (req, res) => {
 // ---------- User Settings ----------
 app.get("/api/user/settings", auth, (req, res) => {
   const row = getUserSettings.get(req.user.id);
-  res.json(row ? JSON.parse(row.settings_json) : {});
+  const settings = row ? JSON.parse(row.settings_json) : {};
+  res.json(settings);
 });
 
 app.patch("/api/user/settings", auth, (req, res) => {
@@ -2966,11 +3033,31 @@ app.delete("/api/logos/:id", auth, (req, res) => {
 // on every login page hit, allowNewAccounts on every signup attempt)
 // don't hit SQLite repeatedly. The mirror is updated on every PATCH so
 // it stays in sync.
-const getAppSettingsRow = db.prepare(`SELECT allow_new_accounts, login_slogan FROM app_settings WHERE id = 1`);
+const getAppSettingsRow = db.prepare(`SELECT allow_new_accounts, login_slogan, custom_app_name, login_bg_blur FROM app_settings WHERE id = 1`);
 const upsertAppSettings = db.prepare(
-  `INSERT INTO app_settings (id, allow_new_accounts, login_slogan) VALUES (1, ?, ?)
-   ON CONFLICT(id) DO UPDATE SET allow_new_accounts=excluded.allow_new_accounts, login_slogan=excluded.login_slogan`,
+  `INSERT INTO app_settings (id, allow_new_accounts, login_slogan, custom_app_name, login_bg_blur) VALUES (1, ?, ?, ?, ?)
+   ON CONFLICT(id) DO UPDATE SET allow_new_accounts=excluded.allow_new_accounts, login_slogan=excluded.login_slogan, custom_app_name=excluded.custom_app_name, login_bg_blur=excluded.login_bg_blur`,
 );
+// Branding images live in their own read/write statements so the
+// (potentially multi-MB) data URLs never get held in the in-memory
+// mirror — which is broadcast to admins on every settings change.
+const getBrandingImagesRow = db.prepare(`SELECT custom_logo, login_bg_image FROM app_settings WHERE id = 1`);
+const setCustomLogoStmt = db.prepare(`UPDATE app_settings SET custom_logo = ? WHERE id = 1`);
+const setLoginBgStmt = db.prepare(`UPDATE app_settings SET login_bg_image = ? WHERE id = 1`);
+// Square PWA icon (PNG data URL) derived from the custom logo.
+const getPwaIconRow = db.prepare(`SELECT custom_logo_pwa FROM app_settings WHERE id = 1`);
+const setPwaIconStmt = db.prepare(`UPDATE app_settings SET custom_logo_pwa = ? WHERE id = 1`);
+
+// Branding upload guards. Images are accepted as base64 data URLs (the
+// same convention as user avatars) — the client rasterises + compresses
+// before upload, so these caps are a server-side safety net rather than
+// the primary limit. Only raster formats are allowed; SVG is rejected to
+// avoid the script-injection surface that inline SVG carries.
+const BRANDING_IMAGE_RE = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/]+=*$/;
+const MAX_LOGO_BYTES = 2 * 1024 * 1024; // ~2 MB data URL (≈1.5 MB decoded)
+const MAX_LOGIN_BG_BYTES = 4 * 1024 * 1024; // ~4 MB data URL (≈3 MB decoded)
+const MAX_APP_NAME_LEN = 10;
+const MAX_LOGIN_BLUR = 20; // px
 
 let adminSettings = (function loadAdminSettings() {
   const row = getAppSettingsRow.get();
@@ -2978,6 +3065,8 @@ let adminSettings = (function loadAdminSettings() {
     return {
       allowNewAccounts: !!row.allow_new_accounts,
       loginSlogan: row.login_slogan || "",
+      appName: row.custom_app_name || "",
+      loginBackgroundBlur: row.login_bg_blur || 0,
     };
   }
   // Fresh install — seed the row from the env var default so subsequent
@@ -2985,19 +3074,32 @@ let adminSettings = (function loadAdminSettings() {
   const seed = {
     allowNewAccounts: process.env.ALLOW_REGISTRATION === "true",
     loginSlogan: "",
+    appName: "",
+    loginBackgroundBlur: 0,
   };
-  upsertAppSettings.run(seed.allowNewAccounts ? 1 : 0, seed.loginSlogan);
+  upsertAppSettings.run(seed.allowNewAccounts ? 1 : 0, seed.loginSlogan, seed.appName, seed.loginBackgroundBlur);
   return seed;
 })();
 
+// Merge the scalar mirror with the on-disk image columns into the full
+// settings shape returned to admins / the public branding endpoint.
+function brandingSettingsPayload() {
+  const images = getBrandingImagesRow.get() || {};
+  return {
+    ...adminSettings,
+    logo: images.custom_logo || null,
+    loginBackground: images.login_bg_image || null,
+  };
+}
+
 // Get admin settings
 app.get("/api/admin/settings", auth, adminOnly, (_req, res) => {
-  res.json(adminSettings);
+  res.json(brandingSettingsPayload());
 });
 
 // Update admin settings
 app.patch("/api/admin/settings", auth, adminOnly, (req, res) => {
-  const { allowNewAccounts, loginSlogan } = req.body || {};
+  const { allowNewAccounts, loginSlogan, appName, loginBackgroundBlur, logo, logoPwa, loginBackground } = req.body || {};
 
   if (typeof allowNewAccounts === 'boolean') {
     adminSettings.allowNewAccounts = allowNewAccounts;
@@ -3005,15 +3107,135 @@ app.patch("/api/admin/settings", auth, adminOnly, (req, res) => {
   if (typeof loginSlogan === 'string') {
     adminSettings.loginSlogan = loginSlogan.slice(0, 200);
   }
+  if (typeof appName === 'string') {
+    adminSettings.appName = appName.trim().slice(0, MAX_APP_NAME_LEN);
+  }
+  if (typeof loginBackgroundBlur === 'number' && Number.isFinite(loginBackgroundBlur)) {
+    adminSettings.loginBackgroundBlur = Math.max(0, Math.min(MAX_LOGIN_BLUR, Math.round(loginBackgroundBlur)));
+  }
 
-  upsertAppSettings.run(adminSettings.allowNewAccounts ? 1 : 0, adminSettings.loginSlogan);
-  // Live-sync to every other admin so their AdminPanel toggles /
-  // slogan reflect the change without a reload.
+  // Image fields use a tri-state contract: an explicit `null` clears the
+  // stored image, a valid data URL replaces it, and `undefined` (the key
+  // omitted) leaves the existing value untouched.
+  if (logo === null) {
+    setCustomLogoStmt.run(null);
+    // Clearing the logo clears its derived PWA icon too.
+    setPwaIconStmt.run(null);
+  } else if (typeof logo === 'string' && logo) {
+    if (!BRANDING_IMAGE_RE.test(logo)) {
+      return res.status(400).json({ error: "Logo must be a PNG, JPEG or WebP image data URL." });
+    }
+    if (logo.length > MAX_LOGO_BYTES) {
+      return res.status(413).json({ error: "Logo image is too large." });
+    }
+    setCustomLogoStmt.run(logo);
+  }
+
+  // Square PWA icon derived from the logo (client-generated PNG). Tied to
+  // the logo: sent alongside it, cleared with it (handled above).
+  if (typeof logoPwa === 'string' && logoPwa) {
+    if (!BRANDING_IMAGE_RE.test(logoPwa)) {
+      return res.status(400).json({ error: "PWA icon must be a PNG, JPEG or WebP image data URL." });
+    }
+    if (logoPwa.length > MAX_LOGO_BYTES) {
+      return res.status(413).json({ error: "PWA icon image is too large." });
+    }
+    setPwaIconStmt.run(logoPwa);
+  }
+
+  if (loginBackground === null) {
+    setLoginBgStmt.run(null);
+  } else if (typeof loginBackground === 'string' && loginBackground) {
+    if (!BRANDING_IMAGE_RE.test(loginBackground)) {
+      return res.status(400).json({ error: "Background must be a PNG, JPEG or WebP image data URL." });
+    }
+    if (loginBackground.length > MAX_LOGIN_BG_BYTES) {
+      return res.status(413).json({ error: "Background image is too large." });
+    }
+    setLoginBgStmt.run(loginBackground);
+  }
+
+  upsertAppSettings.run(
+    adminSettings.allowNewAccounts ? 1 : 0,
+    adminSettings.loginSlogan,
+    adminSettings.appName,
+    adminSettings.loginBackgroundBlur,
+  );
+  // Live-sync the scalar settings to every other admin so their
+  // AdminPanel toggles / slogan / app name / blur reflect the change
+  // without a reload. The image data URLs are deliberately NOT broadcast
+  // (they can be megabytes) — admins re-pull them via GET /admin/settings
+  // and the live app reads them from GET /api/branding.
   broadcastToAdmins({
     type: "admin_settings_updated",
     settings: { ...adminSettings },
   });
-  res.json(adminSettings);
+  res.json(brandingSettingsPayload());
+});
+
+// Public branding for the login page + app shell. Unauthenticated on
+// purpose: the login screen needs it before any token exists. Returns
+// empty/null when nothing is configured so the client falls back to the
+// bundled defaults. Express adds a content-based ETag automatically, so
+// repeat loads get a cheap 304 while the (possibly large) background
+// data URL is unchanged.
+app.get("/api/branding", (_req, res) => {
+  const images = getBrandingImagesRow.get() || {};
+  res.json({
+    appName: adminSettings.appName || "",
+    logo: images.custom_logo || null,
+    loginBackground: images.login_bg_image || null,
+    loginBackgroundBlur: adminSettings.loginBackgroundBlur || 0,
+  });
+});
+
+// Custom PWA icon (square PNG) for the manifest. 404 when none is set so
+// the manifest falls back to the bundled icons. Public — the OS fetches
+// it when installing the PWA.
+app.get("/api/branding/pwa-icon", (_req, res) => {
+  const dataUrl = getPwaIconRow.get()?.custom_logo_pwa;
+  const m = /^data:image\/png;base64,([A-Za-z0-9+/]+=*)$/.exec(dataUrl || "");
+  if (!m) return res.status(404).end();
+  const buf = Buffer.from(m[1], "base64");
+  res.setHeader("Content-Type", "image/png");
+  res.setHeader("Cache-Control", "no-cache");
+  res.end(buf);
+});
+
+// Dynamic web-app manifest so an installed PWA picks up the instance's
+// custom app name + logo. Registered before the static dist middleware so
+// it shadows the build-time manifest.webmanifest. Note: a PWA already
+// installed on a device won't refresh its name/icon until it's
+// reinstalled — this affects new installs.
+app.get("/manifest.webmanifest", (_req, res) => {
+  const name = adminSettings.appName || "Glass Keep";
+  const hasIcon = !!getPwaIconRow.get()?.custom_logo_pwa;
+  const icons = hasIcon
+    ? [
+        { src: "/api/branding/pwa-icon", sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: "/api/branding/pwa-icon", sizes: "512x512", type: "image/png", purpose: "any" },
+        { src: "/api/branding/pwa-icon", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      ]
+    : [
+        { src: "/pwa-192.png", sizes: "192x192", type: "image/png" },
+        { src: "/pwa-512.png", sizes: "512x512", type: "image/png" },
+        { src: "/pwa-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      ];
+  res.setHeader("Content-Type", "application/manifest+json");
+  res.setHeader("Cache-Control", "no-cache");
+  res.json({
+    name,
+    short_name: name,
+    description: "A lightweight notes app with Markdown, images, and offline support.",
+    theme_color: "#f0e8ff",
+    background_color: "#f0e8ff",
+    display: "standalone",
+    display_override: ["standalone"],
+    scope: "/",
+    start_url: "/",
+    orientation: "portrait-primary",
+    icons,
+  });
 });
 
 // Check if new account creation is allowed (public endpoint)

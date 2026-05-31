@@ -16,6 +16,376 @@ html.dark {
   --text-light: var(--text-dark);
   --border-light: var(--border-dark);
 }
+/* ============================================================
+   CHROME THEME TOKENS — header + sidebar ONLY.
+   A lightweight, STATIC "fake glass" system: NO backdrop-filter,
+   NO blur, NO image. The glass look is faked with cheap paint only —
+   a soft tinted gradient + a top light "sheen" + a 1px rim highlight
+   + a subtle cool border + a soft shadow. It composites as a plain
+   alpha layer, so it never costs the GPU the per-frame re-raster a
+   real blur would: performance stays flat while scrolling.
+
+   These --gk-chrome-* variables are consumed EXCLUSIVELY by the
+   header.glass-card, .gk-sidebar and .gk-side-item* rules below — they
+   intentionally do NOT touch the notes canvas (body), the note cards,
+   the panels, the create buttons or the login page.
+
+   Multi-theme: the DEFAULT (:root / html.dark) is "GlassKeep" — a cool,
+   modern blue / indigo / slate with a faint violet touch. Alternates are
+   just token overrides on html.gk-theme-<name>; the glass recipe is
+   identical, only the hues change. Activate one by adding the class on
+   <html> (a picker can be wired later). Add a theme by copying a block. */
+:root {
+  /* GlassKeep — light. Tint stops are semi-opaque so the surface reads as
+     glass yet stays legible; sheen/highlight are the shared "glass physics". */
+  --gk-chrome-1: rgba(212, 221, 252, 0.90);  /* light indigo  */
+  --gk-chrome-2: rgba(221, 217, 252, 0.90);  /* indigo→violet */
+  --gk-chrome-3: rgba(231, 215, 252, 0.90);  /* light violet  */
+  --gk-chrome-solid: #edf1fa;                /* opaque header base — kills see-through */
+  /* Flat chrome colour for the Android status bar AND the mobile header (they
+     read as one block). MUST match STATUS_BAR_LIGHT/DARK in src/utils/helpers.js. */
+  --gk-statusbar: #dce1fb;
+  --gk-chrome-border: rgba(120, 134, 196, 0.28);
+  --gk-chrome-shadow: rgba(54, 64, 122, 0.10);
+  --gk-chrome-sheen: rgba(255, 255, 255, 0.55);
+  --gk-chrome-highlight: rgba(255, 255, 255, 0.70);
+  --gk-chrome-accent: #4f46e5;
+  /* Vivid brand gradient (mirrors the app's primary buttons) — used for the
+     header/sidebar accent rail and the active sidebar item. Shared light/dark. */
+  --gk-chrome-grad-from: #6366f1;
+  --gk-chrome-grad-to: #7c3aed;
+  --gk-chrome-hover: rgba(79, 70, 229, 0.08);
+  --gk-chrome-active-bg: rgba(99, 102, 241, 0.16);
+  --gk-chrome-active-fg: #3730a3;
+  /* Notes-canvas background (body). Theme-driven so the main area follows the
+     active theme; GlassKeep keeps its exact validated lavender/blue/pink. */
+  --gk-app-bg: #eee5ff;
+  --gk-app-bg-image: linear-gradient(135deg, #eee5ff 0%, #e5f3fd 50%, #fde5ee 100%);
+  /* Derived shell-UI tokens (global scrollbars, side panels, panel section
+     icons). Defined ONCE here and re-derived from each theme's base hue
+     tokens via var()/color-mix, so every theme — and any future one — gets a
+     coherent set for free without re-declaring. Light values. */
+  --gk-scroll-track: color-mix(in srgb, var(--gk-chrome-accent) 16%, transparent);
+  --gk-scroll-thumb: linear-gradient(180deg, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+  --gk-scroll-thumb-hover: linear-gradient(180deg, color-mix(in srgb, var(--gk-chrome-grad-from) 82%, #000), color-mix(in srgb, var(--gk-chrome-grad-to) 82%, #000));
+  --gk-panel-bg: color-mix(in srgb, var(--gk-chrome-accent) 6%, #ffffff);
+  --gk-panel-card: color-mix(in srgb, var(--gk-chrome-accent) 4%, #ffffff);
+  /* Two icon tiers so option-row vs section-header chips stay distinct
+     (GlassKeep: indigo grad-from vs violet grad-to, as before). */
+  --gk-icon-fg: var(--gk-chrome-grad-from);
+  --gk-icon-bg: color-mix(in srgb, var(--gk-chrome-grad-from) 12%, transparent);
+  --gk-icon2-fg: var(--gk-chrome-grad-to);
+  --gk-icon2-bg: color-mix(in srgb, var(--gk-chrome-grad-to) 12%, transparent);
+  /* Toggle "on" colour. GlassKeep keeps indigo-600; themes override below. */
+  --gk-switch-on: #4f46e5;
+  /* Soft accent chip (faint fill + border) — e.g. the header page badge.
+     Re-resolves per theme/mode via the cascaded --gk-chrome-accent. */
+  --gk-accent-soft-bg: color-mix(in srgb, var(--gk-chrome-accent) 12%, transparent);
+  --gk-accent-soft-border: color-mix(in srgb, var(--gk-chrome-accent) 24%, transparent);
+  /* Primary-button coloured glow — kept subtle at rest, a touch stronger on
+     hover. GlassKeep default is indigo; themes override below. */
+  --gk-btn-glow: rgba(99, 102, 241, 0.20);
+  --gk-btn-glow-hover: rgba(99, 102, 241, 0.32);
+}
+html.dark {
+  /* GlassKeep — dark. Cool slate-blue glass; sheen/highlight are barely
+     there (white would blow out against a dark surface). */
+  --gk-chrome-1: rgba(30, 36, 64, 0.90);
+  --gk-chrome-2: rgba(36, 33, 66, 0.90);
+  --gk-chrome-3: rgba(44, 32, 66, 0.90);
+  --gk-chrome-solid: #1b2233;
+  --gk-statusbar: #171f30;
+  --gk-chrome-border: rgba(126, 142, 200, 0.20);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.38);
+  --gk-chrome-sheen: rgba(255, 255, 255, 0.05);
+  --gk-chrome-highlight: rgba(255, 255, 255, 0.07);
+  --gk-chrome-accent: #818cf8;
+  --gk-chrome-hover: rgba(129, 140, 248, 0.14);
+  --gk-chrome-active-bg: rgba(99, 102, 241, 0.24);
+  --gk-chrome-active-fg: #c7d2fe;
+  --gk-app-bg: #1a1a1a;
+  --gk-app-bg-image: none;
+  /* Derived shell-UI tokens — dark values (hover brightens instead of
+     darkening; panels tint a dark base instead of white). */
+  --gk-scroll-track: color-mix(in srgb, var(--gk-chrome-accent) 22%, transparent);
+  --gk-scroll-thumb: linear-gradient(180deg, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+  --gk-scroll-thumb-hover: linear-gradient(180deg, color-mix(in srgb, var(--gk-chrome-grad-from) 80%, #fff), color-mix(in srgb, var(--gk-chrome-grad-to) 80%, #fff));
+  --gk-panel-bg: color-mix(in srgb, var(--gk-chrome-accent) 10%, #1f1f1f);
+  --gk-panel-card: color-mix(in srgb, var(--gk-chrome-accent) 8%, #282828);
+  /* Lighten the icon foregrounds on dark so they stay legible while keeping
+     the two-tier (option vs section) hue distinction. */
+  --gk-icon-fg: color-mix(in srgb, var(--gk-chrome-grad-from) 62%, #fff);
+  --gk-icon-bg: color-mix(in srgb, var(--gk-chrome-grad-from) 22%, transparent);
+  --gk-icon2-fg: color-mix(in srgb, var(--gk-chrome-grad-to) 62%, #fff);
+  --gk-icon2-bg: color-mix(in srgb, var(--gk-chrome-grad-to) 22%, transparent);
+}
+/* ----- Alternate shell themes. Activated by a class on <html>
+   (gk-theme-<id>), set from the saved preference (see src/theme/shellTheme.js
+   + the Settings "Workspace theme" picker). GlassKeep is the DEFAULT and has
+   NO class — it uses the :root / html.dark blocks above, untouched.
+
+   Each theme overrides ONLY the hue-bearing tokens. The white "glass physics"
+   (--gk-chrome-sheen / --gk-chrome-highlight) is deliberately NOT overridden,
+   so the sheen, rim-highlight, contrast and the whole static fake-glass recipe
+   are byte-identical across themes — only the colour shifts. Same paint, same
+   performance profile (still no blur / backdrop-filter). grad-from/to are set
+   in the light block and inherited by the dark block (matching GlassKeep). */
+
+/* EMERALD — calm green / teal / blue-green. */
+html.gk-theme-emerald {
+  --gk-chrome-1: rgba(205, 238, 223, 0.90);
+  --gk-chrome-2: rgba(206, 236, 228, 0.90);
+  --gk-chrome-3: rgba(208, 235, 234, 0.90);
+  --gk-chrome-solid: #e4f3ec;
+  --gk-statusbar: #d2ecdf;
+  --gk-chrome-border: rgba(45, 150, 120, 0.28);
+  --gk-chrome-shadow: rgba(14, 90, 70, 0.10);
+  --gk-chrome-accent: #0d9488;
+  --gk-chrome-grad-from: #10b981;
+  --gk-chrome-grad-to: #0d9488;
+  --rt-accent: 16, 185, 129;
+  --gk-chrome-hover: rgba(16, 185, 129, 0.09);
+  --gk-chrome-active-bg: rgba(13, 148, 136, 0.16);
+  --gk-chrome-active-fg: #0f5f53;
+  --gk-app-bg: #e8f6ee;
+  --gk-app-bg-image: linear-gradient(135deg, #e8f6ee 0%, #e3f4f1 50%, #eafaf0 100%);
+}
+html.dark.gk-theme-emerald {
+  --gk-chrome-1: rgba(20, 40, 34, 0.90);
+  --gk-chrome-2: rgba(22, 42, 38, 0.90);
+  --gk-chrome-3: rgba(24, 44, 42, 0.90);
+  --gk-chrome-solid: #14241f;
+  --gk-statusbar: #10211b;
+  --gk-chrome-border: rgba(64, 170, 134, 0.20);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.38);
+  --gk-chrome-accent: #34d399;
+  --gk-chrome-hover: rgba(52, 211, 153, 0.14);
+  --gk-chrome-active-bg: rgba(16, 185, 129, 0.24);
+  --gk-chrome-active-fg: #a6e9cf;
+  --gk-app-bg: #141a17;
+  --gk-app-bg-image: none;
+}
+
+/* AMBER — warm amber / honey / champagne (kept saturated, never beige). */
+html.gk-theme-amber {
+  --gk-chrome-1: rgba(250, 232, 206, 0.90);
+  --gk-chrome-2: rgba(250, 228, 204, 0.90);
+  --gk-chrome-3: rgba(250, 224, 205, 0.90);
+  --gk-chrome-solid: #f7ecdd;
+  --gk-statusbar: #f6e3c9;
+  --gk-chrome-border: rgba(190, 140, 60, 0.30);
+  --gk-chrome-shadow: rgba(140, 95, 25, 0.11);
+  --gk-chrome-accent: #d97706;
+  --gk-chrome-grad-from: #d97706;
+  --gk-chrome-grad-to: #b45309;
+  --rt-accent: 217, 119, 6;
+  --gk-chrome-hover: rgba(217, 119, 6, 0.10);
+  --gk-chrome-active-bg: rgba(217, 119, 6, 0.16);
+  --gk-chrome-active-fg: #8a4d09;
+  --gk-app-bg: #fdf2e2;
+  --gk-app-bg-image: linear-gradient(135deg, #fdf2e2 0%, #faecd6 50%, #fdeede 100%);
+}
+html.dark.gk-theme-amber {
+  --gk-chrome-1: rgba(42, 33, 20, 0.90);
+  --gk-chrome-2: rgba(44, 34, 20, 0.90);
+  --gk-chrome-3: rgba(46, 34, 21, 0.90);
+  --gk-chrome-solid: #241d12;
+  --gk-statusbar: #20190f;
+  --gk-chrome-border: rgba(200, 150, 70, 0.20);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.38);
+  --gk-chrome-accent: #fbbf24;
+  --gk-chrome-hover: rgba(251, 191, 36, 0.14);
+  --gk-chrome-active-bg: rgba(217, 119, 6, 0.26);
+  --gk-chrome-active-fg: #f6d8a6;
+  --gk-app-bg: #1b1712;
+  --gk-app-bg-image: none;
+}
+
+/* ROSEWOOD — vivid ruby / cherry / cranberry (clean and modern, never brick,
+   rust or dried-blood brown; deep but not a harsh pure red). */
+html.gk-theme-rosewood {
+  --gk-chrome-1: rgba(250, 210, 210, 0.90);
+  --gk-chrome-2: rgba(250, 205, 205, 0.90);
+  --gk-chrome-3: rgba(249, 202, 202, 0.90);
+  --gk-chrome-solid: #f9dede;
+  --gk-statusbar: #f7cccc;
+  --gk-chrome-border: rgba(200, 40, 40, 0.32);
+  --gk-chrome-shadow: rgba(150, 20, 20, 0.12);
+  --gk-chrome-accent: #d61f1f;
+  --gk-chrome-grad-from: #e11d1d;
+  --gk-chrome-grad-to: #9f1010;
+  --rt-accent: 225, 29, 29;
+  --gk-chrome-hover: rgba(214, 31, 31, 0.10);
+  --gk-chrome-active-bg: rgba(214, 31, 31, 0.16);
+  --gk-chrome-active-fg: #9b1212;
+  --gk-app-bg: #fdeaea;
+  --gk-app-bg-image: linear-gradient(135deg, #fdeaea 0%, #fbe0e0 50%, #fef0f0 100%);
+}
+html.dark.gk-theme-rosewood {
+  --gk-chrome-1: rgba(50, 22, 22, 0.90);
+  --gk-chrome-2: rgba(54, 22, 22, 0.90);
+  --gk-chrome-3: rgba(58, 22, 22, 0.90);
+  --gk-chrome-solid: #2c1616;
+  --gk-statusbar: #261010;
+  --gk-chrome-border: rgba(248, 80, 80, 0.24);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.40);
+  --gk-chrome-accent: #f87171;
+  --gk-chrome-hover: rgba(248, 113, 113, 0.14);
+  --gk-chrome-active-bg: rgba(220, 38, 38, 0.30);
+  --gk-chrome-active-fg: #fecaca;
+  --gk-app-bg: #1a1212;
+  --gk-app-bg-image: none;
+}
+
+/* GRAPHITE — cool slate / graphite neutral, discreet accent (not flat grey). */
+html.gk-theme-graphite {
+  --gk-chrome-1: rgba(223, 227, 233, 0.90);
+  --gk-chrome-2: rgba(220, 224, 231, 0.90);
+  --gk-chrome-3: rgba(218, 222, 229, 0.90);
+  --gk-chrome-solid: #e8ebef;
+  --gk-statusbar: #dde1e7;
+  --gk-chrome-border: rgba(100, 116, 139, 0.30);
+  --gk-chrome-shadow: rgba(30, 41, 59, 0.10);
+  --gk-chrome-accent: #475569;
+  --gk-chrome-grad-from: #64748b;
+  --gk-chrome-grad-to: #475569;
+  --rt-accent: 100, 116, 139;
+  --gk-chrome-hover: rgba(71, 85, 105, 0.09);
+  --gk-chrome-active-bg: rgba(71, 85, 105, 0.16);
+  --gk-chrome-active-fg: #334155;
+  --gk-app-bg: #eef1f5;
+  --gk-app-bg-image: linear-gradient(135deg, #eef1f5 0%, #e9edf2 50%, #f3f5f8 100%);
+}
+html.dark.gk-theme-graphite {
+  --gk-chrome-1: rgba(30, 33, 39, 0.90);
+  --gk-chrome-2: rgba(32, 35, 41, 0.90);
+  --gk-chrome-3: rgba(34, 37, 44, 0.90);
+  --gk-chrome-solid: #1c1e22;
+  --gk-statusbar: #17191d;
+  --gk-chrome-border: rgba(148, 163, 184, 0.20);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.42);
+  --gk-chrome-accent: #94a3b8;
+  --gk-chrome-hover: rgba(148, 163, 184, 0.13);
+  --gk-chrome-active-bg: rgba(100, 116, 139, 0.26);
+  --gk-chrome-active-fg: #cbd5e1;
+  --gk-app-bg: #161719;
+  --gk-app-bg-image: none;
+}
+
+/* BLUSH — modern soft pink (clean magenta-rose; not fluo, not Barbie, not a
+   washed-out pastel). Clearly pinker/lighter than Rosewood's crimson red. */
+html.gk-theme-blush {
+  --gk-chrome-1: rgba(250, 219, 235, 0.90);
+  --gk-chrome-2: rgba(250, 215, 233, 0.90);
+  --gk-chrome-3: rgba(249, 213, 232, 0.90);
+  --gk-chrome-solid: #f8e2f0;
+  --gk-statusbar: #f7d4ea;
+  --gk-chrome-border: rgba(200, 60, 140, 0.30);
+  --gk-chrome-shadow: rgba(160, 30, 100, 0.11);
+  --gk-chrome-accent: #db2777;
+  --gk-chrome-grad-from: #ec4899;
+  --gk-chrome-grad-to: #be185d;
+  --rt-accent: 219, 39, 119;
+  --gk-chrome-hover: rgba(219, 39, 119, 0.10);
+  --gk-chrome-active-bg: rgba(219, 39, 119, 0.16);
+  --gk-chrome-active-fg: #9d174d;
+  --gk-app-bg: #fdeaf4;
+  --gk-app-bg-image: linear-gradient(135deg, #fdeaf4 0%, #fce1ef 50%, #fef0f7 100%);
+}
+html.dark.gk-theme-blush {
+  --gk-chrome-1: rgba(48, 24, 40, 0.90);
+  --gk-chrome-2: rgba(52, 24, 42, 0.90);
+  --gk-chrome-3: rgba(54, 24, 44, 0.90);
+  --gk-chrome-solid: #2c1622;
+  --gk-statusbar: #26101c;
+  --gk-chrome-border: rgba(244, 114, 182, 0.24);
+  --gk-chrome-shadow: rgba(0, 0, 0, 0.40);
+  --gk-chrome-accent: #f472b6;
+  --gk-chrome-hover: rgba(244, 114, 182, 0.14);
+  --gk-chrome-active-bg: rgba(219, 39, 119, 0.28);
+  --gk-chrome-active-fg: #fbcfe8;
+  --gk-app-bg: #1b1218;
+  --gk-app-bg-image: none;
+}
+/* Primary gradient buttons (.btn-gradient): follow the active theme's
+   gradient. Scoped to any gk-theme-* class so GlassKeep — which has NO theme
+   class — keeps its exact Tailwind indigo->violet untouched. Only the gradient
+   colour changes; every other utility (shadow, scale, radius, hover scale)
+   stays. The :hover variant just darkens the same themed gradient.
+   The 4 note-creation buttons (.gk-create-btn) are excluded: they keep their
+   own per-type colour gradients. */
+/* Retint + soften the coloured glow for ALL primary gradient buttons
+   (GlassKeep included): drive --tw-shadow-color from the glow tokens so the
+   resting halo is subtle and the hover halo only slightly stronger. The
+   injected stylesheet loads after Tailwind, so this wins over shadow-indigo-*
+   at equal specificity; dark:shadow-none still wins (it zeroes --tw-shadow). */
+.btn-gradient:not(.gk-create-btn):not(.gk-update-btn):not(.gk-fixed-btn) { --tw-shadow-color: var(--gk-btn-glow); }
+.btn-gradient:not(.gk-create-btn):not(.gk-update-btn):not(.gk-fixed-btn):hover { --tw-shadow-color: var(--gk-btn-glow-hover); }
+/* Halo on HOVER ONLY — for every primary gradient button, in both light and
+   dark mode. At rest there is no glow; on hover the button gets a shadow-lg
+   sized halo whose colour is the --tw-shadow-color each button already
+   resolves (the themed glow above for primary buttons, the button's own
+   colour for create / update buttons). This overrides the per-button
+   Tailwind shadow utilities by source order (globalCSS loads after Tailwind);
+   it also beats dark:hover:shadow-none, because Tailwind v4 wraps dark:
+   variants in :where(), which contributes zero specificity. */
+.btn-gradient { box-shadow: none; }
+.btn-gradient:hover:not(:disabled) {
+  box-shadow:
+    0 10px 15px -3px var(--tw-shadow-color, transparent),
+    0 4px 6px -4px var(--tw-shadow-color, transparent);
+}
+html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):not(.gk-update-btn):not(.gk-fixed-btn) {
+  background-image: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+}
+html[class*="gk-theme-"] .btn-gradient:not(.gk-create-btn):not(.gk-update-btn):not(.gk-fixed-btn):hover {
+  background-image: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
+    color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
+  );
+}
+/* The note's read/edit toggle paints its gradient via .modal-footer-btn--mode
+   with !important, so it needs its own themed override (same scoping rule:
+   GlassKeep keeps the base indigo->violet). Only the gradient changes. */
+html[class*="gk-theme-"] .modal-footer-btn--mode,
+html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode {
+  background: linear-gradient(90deg, var(--gk-chrome-grad-from) 0%, var(--gk-chrome-grad-to) 100%) !important;
+  /* Halo on hover only. */
+  box-shadow: none !important;
+}
+html[class*="gk-theme-"] .modal-footer-btn--mode:hover,
+html[class*="gk-theme-"] .modal-footer-labeled-btn.modal-footer-btn--mode:hover {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000) 0%,
+    color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000) 100%
+  ) !important;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--gk-chrome-grad-from) 45%, transparent) !important;
+}
+/* Toggle switches in the Settings / Admin panels: "on" colour follows the
+   theme (GlassKeep keeps indigo-600 from :root). Also retint the button glow
+   tokens to the theme accent (same subtle rest / stronger hover balance). */
+html[class*="gk-theme-"] {
+  --gk-switch-on: var(--gk-chrome-grad-from);
+  --gk-btn-glow: color-mix(in srgb, var(--gk-chrome-grad-from) 22%, transparent);
+  --gk-btn-glow-hover: color-mix(in srgb, var(--gk-chrome-grad-from) 34%, transparent);
+}
+/* Text-field focus ring follows the theme. Scoped to form fields so it only
+   recolours the "box" that appears around a text zone on click/focus; the
+   ring geometry (ring-2) still comes from the element's own utilities.
+   GlassKeep (no theme class) keeps the indigo ring. */
+html[class*="gk-theme-"] :is(input, textarea, select):focus {
+  --tw-ring-color: var(--gk-chrome-accent);
+}
+/* Settings/Admin accordion body. Clipped while collapsed AND during the
+   open/close transition so the grid-rows animation hides content cleanly;
+   once open it switches to visible (after the 300ms expand, via a discrete
+   transition-delay) so a button's hover glow or a focus ring on the last row
+   isn't clipped at the section's bottom edge. Closing removes .is-open with
+   no delay, restoring the clip immediately for a clean collapse. */
+.gk-acc-body { overflow: hidden; transition: overflow 0s; }
+.gk-acc-body.is-open { overflow-x: clip; overflow-y: visible; transition: overflow 0s 300ms; }
 button, [role="button"] { cursor: pointer; }
 /* Selection rules:
  *  - Body allows text selection so users can copy titles, error
@@ -42,16 +412,70 @@ button, [role="button"] {
   user-select: none;
 }
 body {
-  background-color: #f0e8ff;
-  background-image: linear-gradient(135deg, #f0e8ff 0%, #e8f4fd 50%, #fde8f0 100%);
+  /* Notes canvas — theme-driven via --gk-app-bg / --gk-app-bg-image so the
+     main area follows the active workspace theme (light + dark cascade from
+     the token blocks). GlassKeep keeps the exact validated lavender → blue →
+     pink sweep. Stays clearly lighter than the bordered/shadowed chrome. */
+  background-color: var(--gk-app-bg);
+  background-image: var(--gk-app-bg-image);
   background-attachment: fixed;
   color: var(--text-light);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
-html.dark body {
-  background-color: #1a1a1a;
-  background-image: none;
-  background-attachment: fixed;
+/* Mobile PWA bottom system-bar tint — best effort. When an installed PWA is
+   edge-to-edge under the Android navigation bar (gesture nav / newer Android),
+   safe-area-inset-bottom > 0 and the browser samples the pixels behind the bar
+   to colour it. Paint that strip with the chrome colour so, where the platform
+   allows it, the nav bar matches the theme like the status bar.
+
+   NOTE: on devices that letterbox the PWA between the bars (e.g. 3-button nav
+   on older Android), safe-area-inset-bottom is 0 — the page never reaches the
+   nav-bar region, so the bar stays the browser default and there is no web hook
+   to recolour it (the native app uses the Android navigationBarColor API).
+
+   Uses env(safe-area-inset-bottom) directly (NOT --safe-bottom): inside the
+   native Android WebView that env() resolves to 0, so the strip has zero height
+   there and the native navbar handling is left untouched. pointer-events:none
+   + low z-index keep it clear of the FAB and bottom sheets. */
+@media (display-mode: standalone) and (pointer: coarse) {
+  body::after {
+    content: "";
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: env(safe-area-inset-bottom);
+    background: var(--gk-statusbar);
+    z-index: 1;
+    pointer-events: none;
+    transition: background-color 0.3s ease;
+  }
+}
+
+/* Backdrop-filter shader warm-up. On touch devices the header / modal-scrim
+   blurs are disabled (see the pointer:coarse block), so the create-note FAB
+   scrim is usually the FIRST backdrop-filter painted in a session — and the
+   browser pays a one-off cost (GL program compile + layer setup) the first
+   time, which showed up as a lag before the + menu opened on a cold start.
+   This 2px, ~invisible, always-mounted element keeps a backdrop-filter live
+   from load, so that one-off cost is paid at startup (imperceptible) and the
+   first FAB open reuses the warmed pipeline. Mobile only; pointer-events:none
+   so it never intercepts taps. */
+.gk-backdrop-warm {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 2px;
+  height: 2px;
+  z-index: 0;
+  opacity: 0.01;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+@media (pointer: fine) {
+  /* Desktop already warms the blur via the header glass; don't add a layer. */
+  .gk-backdrop-warm { display: none; }
 }
 
 /* Disable browser pull-to-refresh while any overlay (notification
@@ -66,26 +490,47 @@ html.gk-overlay-locked body {
   overscroll-behavior: none !important;
   overscroll-behavior-y: none !important;
 }
+/* While any full-screen overlay is open, the decorative background cards
+   sit behind its scrim — invisible (occluded, and blurred when the scrim
+   has a backdrop-filter) but still animating. A moving backdrop forces
+   the scrim's blur to re-rasterise every frame (the old ≈99%-GPU "open a
+   note" case, and the Settings-panel stutter). Freeze the cards while an
+   overlay is open so the scrim blurs a STATIC backdrop the GPU caches;
+   they resume on close. The float is a pure transform, so pausing is
+   free and imperceptible behind the overlay. */
+html.gk-overlay-locked .floating-cards-bg .login-deco-card {
+  animation-play-state: paused;
+}
+/* Same trick during active scrolling: a moving backdrop behind the sticky
+   blurred header forces the GPU to re-rasterise the blur every frame, which
+   janks the scroll on weak GPUs. FloatingCardsBackground toggles gk-scrolling
+   on <html> while the user scrolls (removed ~180ms after it stops), so the
+   cards freeze for the duration of the scroll and resume the moment it ends —
+   imperceptible, and it hands the whole frame budget back to the scroll. */
+html.gk-scrolling .floating-cards-bg .login-deco-card {
+  animation-play-state: paused;
+}
+/* Frosted-glass surfaces, FLATTENED for performance. The live
+   backdrop-filter blur is re-rasterised by the GPU on every composite
+   frame — a gridful of glass cards scrolling pegs weak integrated GPUs
+   (and still costs ~30% of a high-end GPU just to scroll) — so it's dropped
+   app-wide and the surfaces are near-opaque instead (legible without it).
+   Touch devices got this treatment all along via @media (pointer: coarse);
+   now every device does. The ONE blur kept is the modal scrim (see
+   .modal-scrim) — the frosted separation behind an open note — which stays
+   cheap because the animated background is frozen while any overlay is open
+   (html.gk-overlay-locked), so it blurs a STATIC backdrop the GPU caches. */
 .glass-card {
-  background-color: var(--card-bg-light);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background-color: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--border-light);
-  box-shadow: 0 4px 24px rgba(139, 92, 246, 0.07);
-  /* box-shadow transition removed — the shadow value never changes on
-     hover so it's dead repaint cost on every frame of the scale anim. */
-  transition: transform 0.2s ease;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.06);
+  /* background-color is transitioned so toggling a custom background
+     (which flips these surfaces) fades smoothly. */
+  transition: transform 0.2s ease, background-color 0.3s ease;
   break-inside: avoid;
 }
-/* Touch devices (phones, tablets) drop the backdrop blur entirely:
-   compositing blur(20px) on every visible note card costs ~5ms each
-   on a mid-range Snapdragon, which is the main reason the list scroll
-   feels soft. Desktop browsers keep the glass aesthetic. */
-@media (hover: none) and (pointer: coarse) {
-  .glass-card {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
+html.dark .glass-card {
+  background-color: rgba(40, 40, 40, 0.92);
 }
 /* Note cards: skip rendering when off-screen, isolate paint */
 .note-card {
@@ -97,6 +542,11 @@ html.gk-overlay-locked body {
   user-select: none;
 }
 .note-card { cursor: pointer; }
+/* Desktop hover only: promote the hovered card to its own compositor layer
+   so the group-hover scale animates as a pure transform instead of
+   re-rasterising its box-shadow every frame. Scoped to :hover so we never
+   keep 200+ promoted layers around — only the one card under the cursor. */
+.note-card-wrapper:hover .note-card { will-change: transform; }
 /* Draw note cards: disable content-visibility which forces paint containment */
 .note-card--draw {
   content-visibility: visible;
@@ -141,19 +591,182 @@ html.gk-overlay-locked body {
   to   { opacity: 1; }
 }
 header.glass-card {
-  background: linear-gradient(
-    90deg,
-    rgba(99, 102, 241, 0.07) 0%,
-    rgba(168, 85, 247, 0.07) 50%,
-    rgba(236, 72, 153, 0.05) 100%
-  ), var(--card-bg-light);
-  border-bottom: 1px solid rgba(139, 92, 246, 0.18);
-  box-shadow: 0 2px 20px rgba(139, 92, 246, 0.10);
+  /* Frosted glass — a SMALL real blur, but on the header ONLY: it's a single
+     thin fixed strip (like a macOS/iOS toolbar), not the scrolling grid of
+     cards that used to peg the GPU, so re-blurring it each frame is cheap.
+     A semi-transparent blue→indigo→violet tint + a top light sheen colour the
+     glass; the blur diffuses whatever scrolls behind so it's no longer
+     readable, while the fond stays visible. The tint is derived from the
+     shared --gk-chrome-* tokens (so themes apply) but made more translucent
+     via color-mix — the blur, not opacity, is what hides the content. On
+     touch / weak GPUs the blur is dropped for a solid header (see
+     @media pointer: coarse). */
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background:
+    linear-gradient(180deg, var(--gk-statusbar) 0%, transparent 100%),
+    linear-gradient(100deg,
+      color-mix(in srgb, var(--gk-chrome-1) 86%, transparent) 0%,
+      color-mix(in srgb, var(--gk-chrome-2) 86%, transparent) 52%,
+      color-mix(in srgb, var(--gk-chrome-3) 86%, transparent) 100%);
+  /* Only a bottom edge: the base .glass-card border is on all four sides, and
+     its left edge showed as a grey 1px liseret against the sidebar. */
+  border: 0;
+  border-bottom: 1px solid var(--gk-chrome-border);
+  box-shadow:
+    inset 0 1px 0 var(--gk-chrome-highlight),
+    0 1px 2px var(--gk-chrome-shadow),
+    0 6px 18px -12px var(--gk-chrome-shadow);
 }
-html.dark header.glass-card {
-  background: var(--card-bg-light);
-  border-bottom: 1px solid var(--border-light);
-  box-shadow: none;
+/* Installed DESKTOP PWA: the OS title bar sits directly above the header and
+   is painted with theme-color (--gk-statusbar). Drop the header's top border
+   and its bright inset rim-highlight so there's no hard line where the title
+   bar meets the header — they read as one continuous surface (the mobile
+   pointer:coarse block already does this against the status bar). */
+@media (display-mode: standalone) and (pointer: fine) {
+  header.glass-card {
+    border-top: 0;
+    box-shadow:
+      0 1px 2px var(--gk-chrome-shadow),
+      0 6px 18px -12px var(--gk-chrome-shadow);
+  }
+}
+/* Sidebar — the same static fake-glass recipe, oriented vertically. The
+   surface + border + depth live here (token-driven, so it follows every
+   theme); TagSidebar.jsx only sets layout (width + safe-area padding).
+   Header tint runs left→right and sidebar top→bottom, both starting on
+   --gk-chrome-1, so the shared top-left corner stays seamless. */
+.gk-sidebar {
+  background:
+    linear-gradient(180deg, var(--gk-statusbar) 0%, transparent 64px),
+    linear-gradient(180deg, var(--gk-chrome-1) 0%, var(--gk-chrome-2) 55%, var(--gk-chrome-3) 100%),
+    var(--gk-chrome-solid);
+  box-shadow:
+    inset 0 1px 0 var(--gk-chrome-highlight),
+    8px 0 24px -16px var(--gk-chrome-shadow);
+}
+/* Sidebar right edge drawn as a masked pseudo-element instead of a plain
+   border-right: the top ~header-height strip is masked out so the 1px line
+   doesn't cross the header (no "T" intersection at the top-left corner — the
+   sidebar and header tops read as one surface). It fades in below the header
+   and stays solid the rest of the way down. The sidebar is position:fixed, so
+   it's the containing block for this absolute child. */
+.gk-sidebar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--gk-chrome-border);
+  pointer-events: none;
+  /* Transparent up to the header's exact bottom edge (safe-top inset + the
+     measured header height published by NotesHeader), then a HARD cut to
+     solid so the line starts crisply right at the corner — no fade that would
+     make it look like it dies before reaching the header/sidebar angle. */
+  --gk-sidebar-edge-cut: calc(var(--safe-top, 0px) + var(--gk-header-h, 84px));
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent var(--gk-sidebar-edge-cut),
+    #000 var(--gk-sidebar-edge-cut)
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent var(--gk-sidebar-edge-cut),
+    #000 var(--gk-sidebar-edge-cut)
+  );
+}
+/* Installed DESKTOP PWA: drop the sidebar's bright inset top rim-highlight so
+   its top edge (the title-bar colour) meets the OS title bar with no 1px line.
+   MUST live after the .gk-sidebar base rule above — at equal specificity the
+   later rule wins, so placing it inside the earlier standalone block would be
+   silently overridden by the base box-shadow (that was the visible seam). */
+@media (display-mode: standalone) and (pointer: fine) {
+  .gk-sidebar {
+    box-shadow: 8px 0 24px -16px var(--gk-chrome-shadow);
+  }
+}
+/* Sidebar nav entries — hover/active driven by the same chrome tokens so they
+   stay coherent with the glass and follow every theme (light + dark). */
+.gk-side-item {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.gk-side-item:hover {
+  background-color: var(--gk-chrome-hover);
+}
+.gk-side-item--active {
+  /* Vivid brand-gradient pill — the same indigo→violet sweep as the app's
+     primary buttons, with white text. The strongest gradient accent of the
+     chrome, and fully legible (white on a saturated fill). */
+  background: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 10px -4px color-mix(in srgb, var(--gk-chrome-grad-to) 55%, transparent);
+}
+/* Custom background image active (login screen or app), LIGHT mode only.
+   The photo is shown raw (vivid), so legibility can't come from the
+   backdrop — instead the text-bearing surfaces become near-opaque so
+   their text reads over any image, and the few texts that float directly
+   on the photo (login logo/title/slogan) get a soft light halo. Dark
+   mode keeps its veil + glass look and is intentionally untouched. */
+html.gk-custom-bg:not(.dark) .glass-card {
+  background-color: rgba(255, 255, 255, 0.92);
+}
+/* The login form card(s) over a custom background: FULLY opaque (white in
+   light, near-black in dark) so the photo never bleeds through behind the
+   form. Scoped to .auth-card so the header / note modal are unaffected, and
+   the higher specificity (.glass-card.auth-card) beats the 0.92 rule above. */
+html.gk-custom-bg:not(.dark) .glass-card.auth-card {
+  background-color: #ffffff;
+}
+html.gk-custom-bg.dark .glass-card.auth-card {
+  background-color: #282828;
+}
+html.gk-custom-bg:not(.dark) header.glass-card {
+  /* Opaque even over a custom wallpaper — the header is a solid chrome bar,
+     not a frosted panel, so it occludes (and never re-blurs) the animated
+     background behind it. */
+  background:
+    linear-gradient(
+      90deg,
+      rgba(99, 102, 241, 0.07) 0%,
+      rgba(168, 85, 247, 0.07) 50%,
+      rgba(236, 72, 153, 0.05) 100%
+    ),
+    #ffffff;
+}
+/* Even over a custom wallpaper the sidebar stays a SOLID, opaque panel with
+   no backdrop blur — like the header, it occludes the animated background
+   instead of re-blurring it every frame (the perf priority on these two
+   large chrome surfaces). !important overrides the component's inline
+   colour. */
+html.gk-custom-bg:not(.dark) .gk-sidebar {
+  /* Over a wallpaper the sidebar stays a solid opaque panel (occludes, never
+     re-blurs); the background shorthand (not -color) also clears the gradient. */
+  background: rgb(240, 232, 255) !important;
+}
+html.gk-custom-bg.dark .gk-sidebar {
+  background: #222222 !important;
+}
+/* Note-type creation buttons: their light pastel drop-shadow reads as a
+   white halo over a photo in light mode (dark mode already uses
+   shadow-none). Swap it for a neutral dark shadow so the button sits on
+   the wallpaper cleanly. */
+html.gk-custom-bg:not(.dark) .gk-create-btn {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22) !important;
+}
+/* Section labels ("Pinned" / "Others") float directly on the wallpaper,
+   so in light mode they get a small frosted pill to stay readable over
+   any photo (dark mode reads fine on its veil). */
+html.gk-custom-bg:not(.dark) .gk-section-label {
+  display: inline-block;
+  color: #374151;
+  /* Near-opaque pill (no blur) so the label reads over any wallpaper. */
+  background: rgba(255, 255, 255, 0.95);
+  padding: 3px 12px;
+  border-radius: 9999px;
 }
 /* Shim around composer + sections that yields vertical room for the
    floating multi-select dock at the top of the page. The dock itself
@@ -394,6 +1007,102 @@ html.dark .multi-select-dock__menu {
 .note-content--dense li { margin: 0; padding: 0; line-height: 1.45; }
 .note-content--dense li > p { margin: 0; }
 .note-content--dense li ul, .note-content--dense li ol { margin: 0.1rem 0 0; padding-left: 1rem; }
+
+/* --------------------------------------------------------------------
+   Task lists (checkbox lists) inside rich-text notes.
+
+   Edit-mode reality check: TaskItem ships an addNodeView() that builds
+   the live <li> by hand and only sets dataset.checked. The
+   data-type="taskItem" attribute that TaskItem.renderHTML() injects is
+   therefore ONLY present in the static HTML used by read mode /
+   previews — never inside the editor. We anchor every selector on the
+   <ul data-type="taskList"> (which IS marked in both modes) so the
+   layout works identically in edit and read mode. Strike-on-check is
+   then keyed off the per-item [data-checked="true"] which the NodeView
+   sets via dataset, and which generateHTML emits as data-checked="true"
+   in the static output. Same selector, both modes — no fragile data-type
+   matching on the <li>.
+
+   DOM shape (both modes):
+       ul[data-type=taskList]
+         > li[data-checked]
+             > label > input[type=checkbox] (+ helper span)
+             > div  > p   (the editable item text)
+   -------------------------------------------------------------------- */
+.rt-editor-content ul[data-type="taskList"],
+.note-content ul[data-type="taskList"] {
+  list-style: none;
+  margin: 0.15rem 0;
+  padding-left: 0;
+}
+.rt-editor-content ul[data-type="taskList"] > li,
+.note-content ul[data-type="taskList"] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.1rem 0;
+  padding: 0;
+  /* Kill the inherited bullet marker that would otherwise leak in from
+     the generic .note-content ul rule. */
+  list-style: none;
+}
+.rt-editor-content ul[data-type="taskList"] > li::marker,
+.note-content ul[data-type="taskList"] > li::marker {
+  content: "";
+}
+.rt-editor-content ul[data-type="taskList"] > li > label,
+.note-content ul[data-type="taskList"] > li > label {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  margin: 0.18em 0 0;
+  user-select: none;
+}
+/* Tiptap's NodeView appends an empty <span> next to the input as a
+   styling hook. We don't use it — keep it out of the layout. */
+.rt-editor-content ul[data-type="taskList"] > li > label > span,
+.note-content ul[data-type="taskList"] > li > label > span {
+  display: none;
+}
+.rt-editor-content ul[data-type="taskList"] > li > div,
+.note-content ul[data-type="taskList"] > li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.rt-editor-content ul[data-type="taskList"] > li > div > p,
+.note-content ul[data-type="taskList"] > li > div > p {
+  margin: 0;
+}
+.rt-editor-content ul[data-type="taskList"] input[type="checkbox"],
+.note-content ul[data-type="taskList"] input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: rgb(var(--rt-accent));
+}
+/* Read mode + card previews have no save path, so a checkbox toggle there
+   would not persist — make them display-only. The editor's NodeView keeps
+   them interactive on its own. */
+.note-content:not(.rt-editor-content) ul[data-type="taskList"] input[type="checkbox"] {
+  pointer-events: none;
+  cursor: default;
+}
+/* Nested checklists keep a modest indent. */
+.rt-editor-content ul[data-type="taskList"] ul[data-type="taskList"],
+.note-content ul[data-type="taskList"] ul[data-type="taskList"] {
+  margin-top: 0.15rem;
+  padding-left: 1.25rem;
+}
+/* "Strike through checked items" reading preference (per device), gated by
+   the gk-strike-checked class on <html>. Purely visual — the checked state
+   itself lives in the note's Tiptap JSON, this only restyles the content
+   wrapper. The selector matches BOTH modes because dataset.checked (edit)
+   and renderHTML's data-checked (read) both produce data-checked="true". */
+html.gk-strike-checked .rt-editor-content ul[data-type="taskList"] > li[data-checked="true"] > div,
+html.gk-strike-checked .note-content ul[data-type="taskList"] > li[data-checked="true"] > div {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
 
 /* --------------------------------------------------------------------
    Continuous numbering for ordered lists.
@@ -656,7 +1365,8 @@ html.dark .note-ai-panel-icon {
 .modal-icon-btn--mode {
   background: linear-gradient(90deg, #6366f1 0%, #7c3aed 100%) !important;
   color: #fff !important;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35) !important;
+  /* Halo on hover only. */
+  box-shadow: none !important;
 }
 .modal-icon-btn--mode:hover {
   background: linear-gradient(90deg, #4f46e5 0%, #6d28d9 100%) !important;
@@ -672,7 +1382,8 @@ html.dark .modal-icon-btn--mode {
 .modal-icon-btn--save-active {
   color: #fff !important;
   background: linear-gradient(90deg, #10b981 0%, #059669 100%) !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+  /* Halo on hover only. */
+  box-shadow: none !important;
 }
 .modal-icon-btn--save-active:hover {
   background: linear-gradient(90deg, #059669 0%, #047857 100%) !important;
@@ -1031,6 +1742,7 @@ html.dark .modal-footer-btn--fmt.is-active {
   transition:
     background 0.14s ease,
     color      0.14s ease,
+    box-shadow 0.18s ease,
     transform  0.18s cubic-bezier(0.34, 1.5, 0.64, 1);
 }
 
@@ -1053,6 +1765,7 @@ html.dark .modal-footer-btn--fmt.is-active {
   transition:
     background 0.14s ease,
     color      0.14s ease,
+    box-shadow 0.18s ease,
     transform  0.18s cubic-bezier(0.34, 1.5, 0.64, 1);
 }
 .modal-footer-labeled-btn span {
@@ -1148,7 +1861,8 @@ html.dark .modal-footer-btn--image:hover, html.dark .modal-footer-labeled-btn.mo
 .modal-footer-btn--mode, .modal-footer-labeled-btn.modal-footer-btn--mode {
   background: linear-gradient(90deg, #6366f1 0%, #7c3aed 100%) !important;
   color: #fff !important;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35) !important;
+  /* Halo on hover only. */
+  box-shadow: none !important;
 }
 .modal-footer-btn--mode:hover, .modal-footer-labeled-btn.modal-footer-btn--mode:hover {
   background: linear-gradient(90deg, #4f46e5 0%, #6d28d9 100%) !important;
@@ -1163,7 +1877,8 @@ html.dark .modal-footer-btn--mode, html.dark .modal-footer-labeled-btn.modal-foo
 .modal-footer-btn--save-active {
   color: #fff !important;
   background: linear-gradient(90deg, #10b981 0%, #059669 100%) !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+  /* Halo on hover only. */
+  box-shadow: none !important;
 }
 .modal-footer-btn--save-active:hover {
   background: linear-gradient(90deg, #059669 0%, #047857 100%) !important;
@@ -1387,25 +2102,21 @@ html:not(.dark) .code-copy-btn {
 .masonry-grid-column { padding-left: 0.75rem; background-clip: padding-box; }
 .masonry-grid-column > div { margin-bottom: 0.75rem; }
 
-/* === Scrollbars thématiques (indigo→violet, même thème que les boutons) === */
+/* === Global app scrollbars — themed via tokens (main page, sidebar, the
+   Settings/Admin panels, global lists). Mode-aware tokens carry the light /
+   dark values so no separate dark rules are needed. Note-content scrollbars
+   are intentionally NOT touched: .modal-scroll-themed below is more specific
+   and keeps each open note's own colour. === */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-button { display: none; height: 0; width: 0; }
-::-webkit-scrollbar-track { background: #7547ee3d; }
-::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #7c3aed 100%); border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #4f46e5 0%, #6d28d9 100%); }
-/* Descendants of html.dark */
-.dark ::-webkit-scrollbar-track { background: #1e1b4b !important; }
-.dark ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #7c3aed 100%) !important; }
-.dark ::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #4f46e5 0%, #6d28d9 100%) !important; }
-/* html element itself (main page scrollbar) */
-html.dark::-webkit-scrollbar-track { background: #1e1b4b !important; }
-html.dark::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #6366f1 0%, #7c3aed 100%) !important; border-radius: 10px; }
-html.dark::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #4f46e5 0%, #6d28d9 100%) !important; }
-/* Firefox fallback (no webkit support) */
+::-webkit-scrollbar-track { background: var(--gk-scroll-track); }
+::-webkit-scrollbar-thumb { background: var(--gk-scroll-thumb); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gk-scroll-thumb-hover); }
+/* Firefox fallback (no ::-webkit-scrollbar): scrollbar-color needs solid
+   colours, so use the theme accent for the thumb + the faint track token.
+   Cannot be scoped away from note content here, same as before. */
 @supports not selector(::-webkit-scrollbar) {
-  * { scrollbar-width: thin; scrollbar-color: #6366f1 #7547ee3d; }
-  .dark * { scrollbar-color: #6366f1 #1e1b4b; }
-  html.dark { scrollbar-color: #6366f1 #1e1b4b; scrollbar-width: thin; }
+  * { scrollbar-width: thin; scrollbar-color: var(--gk-chrome-accent) var(--gk-scroll-track); }
 }
 /* Modal — scrollbar adaptée à la couleur de la note */
 .modal-scroll-themed::-webkit-scrollbar-track { background: var(--sb-track); }
@@ -1434,15 +2145,18 @@ html.dark .modal-scroll-themed::-webkit-scrollbar-thumb { background: var(--sb-t
 }
 
 /* scrim blur */
+/* The one blur kept app-wide: the scrim behind an open note (frosted
+   separation from the page). Cheap because the animated background is
+   frozen while an overlay is open, so the backdrop is static and the GPU
+   rasterises the blur once and caches it. */
 .modal-scrim {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* modal header blur */
+/* Modal sticky header — flat (no blur), matching the rest of the app. */
 .modal-header-blur {
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background-color: inherit;
 }
 
 /* Note modal enter / exit animations — only transform+opacity (GPU composited, no layout)
@@ -1899,8 +2613,12 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
   position: absolute;
   pointer-events: none;
   background-color: var(--card-bg-light);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* No backdrop-filter here on purpose: these cards animate forever
+     (floatCard), and a moving element with backdrop-filter forces the GPU
+     to re-rasterise the blurred backdrop every frame — ~17 cards × 60fps =
+     a pegged GPU at idle (very visible on integrated graphics). The float
+     is a pure transform (compositor-only, cheap); the translucent fill
+     alone reads fine without the blur. */
   border: 1px solid var(--border-light);
   border-radius: 0.75rem;
   padding: 1rem;
@@ -1912,8 +2630,6 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
 }
 @media (pointer: coarse) {
   .login-deco-card {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
     background-color: rgba(255,255,255,0.55);
   }
   html.dark .login-deco-card {
@@ -1939,16 +2655,31 @@ body.sbs-active.sbs-closing-left .modal-scrim[data-split-mode="true"][data-split
   .modal-header-blur {
     background-color: inherit;
   }
+  /* Touch / mobile: the .glass-card rule above already strips the header blur
+     (!important). Make the header a FLAT block in the exact status-bar colour
+     (--gk-statusbar) so the native status bar and the header read as one
+     continuous surface — no gradient on mobile. The sidebar keeps its own
+     fake-glass look. Also drop the top border + inset top highlight so there's
+     no seam where the header meets the status bar; keep the bottom border +
+     soft shadow to separate the header from the scrolling content. */
   header.glass-card {
-    background: linear-gradient(
-      90deg,
-      rgba(99, 102, 241, 0.07) 0%,
-      rgba(168, 85, 247, 0.07) 50%,
-      rgba(236, 72, 153, 0.05) 100%
-    ), rgba(255, 255, 255, 0.92);
+    background: var(--gk-statusbar);
+    border-top: 0;
+    box-shadow:
+      0 1px 2px var(--gk-chrome-shadow),
+      0 6px 18px -12px var(--gk-chrome-shadow);
   }
+  /* In dark, the html.dark .glass-card rule above (rgba(40,40,40,.92)) is more
+     specific than header.glass-card, so without this the header fell back to
+     that semi-transparent grey (looked black / not matching the sidebar).
+     Re-assert the opaque status-bar colour at matching specificity. */
   html.dark header.glass-card {
-    background: rgba(40, 40, 40, 0.92);
+    background: var(--gk-statusbar);
+  }
+  /* Sidebar matches the header on mobile: a flat, FULLY OPAQUE block in the
+     same --gk-statusbar colour (no fake-glass gradient / translucency). */
+  .gk-sidebar {
+    background: var(--gk-statusbar);
   }
 }
 @media (max-width: 639px) {
@@ -1977,6 +2708,66 @@ html.dark .login-deco-card {
   margin-bottom: 7px;
 }
 
+/* Range slider (e.g. login-background blur). The filled portion is
+   painted via an inline linear-gradient background set on the element
+   (works in WebKit + Firefox); this block styles the rail height and a
+   clearly-visible thumb that reads on both light and dark themes. */
+.gk-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+.gk-range::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+.gk-range::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+.gk-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -6px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 2px solid rgb(var(--rt-accent));
+  box-shadow: 0 1px 4px rgba(var(--rt-accent), 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.gk-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgb(var(--rt-accent));
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(var(--rt-accent), 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.gk-range:hover::-webkit-slider-thumb { transform: scale(1.12); }
+.gk-range:hover::-moz-range-thumb { transform: scale(1.12); }
+.gk-range:focus-visible::-webkit-slider-thumb,
+.gk-range:active::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(var(--rt-accent), 0.25); }
+.gk-range:focus-visible::-moz-range-thumb,
+.gk-range:active::-moz-range-thumb { box-shadow: 0 0 0 4px rgba(var(--rt-accent), 0.25); }
+html.dark .gk-range::-webkit-slider-thumb {
+  background: #e5e7eb;
+  border-color: color-mix(in srgb, rgb(var(--rt-accent)) 65%, #fff);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+html.dark .gk-range::-moz-range-thumb {
+  background: #e5e7eb;
+  border-color: color-mix(in srgb, rgb(var(--rt-accent)) 65%, #fff);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
 /* ================================================================
    Rich-text editor (Tiptap) — refined GlassKeep look
    ================================================================ */
@@ -2000,6 +2791,8 @@ html.dark .login-deco-card {
   --rt-btn-hover: rgba(0, 0, 0, 0.055);
   --rt-btn-active-bg: rgba(var(--rt-accent), 0.14);
   --rt-btn-active-text: rgb(var(--rt-accent));
+  /* Checklist toolbar icon — dark gray, clearly not black at icon size. */
+  --rt-task-icon: #4b5563;
   --rt-pop-bg: #ffffff;
   --rt-pop-border: rgba(0, 0, 0, 0.1);
   --rt-pop-shadow: 0 12px 32px -6px rgba(17, 24, 39, 0.28), 0 2px 8px rgba(17, 24, 39, 0.1);
@@ -2023,7 +2816,12 @@ html.dark {
   --rt-divider-strong: rgba(255, 255, 255, 0.18);
   --rt-btn-hover: rgba(255, 255, 255, 0.08);
   --rt-btn-active-bg: rgba(var(--rt-accent), 0.26);
-  --rt-btn-active-text: rgb(165, 180, 252);
+  /* Lightened theme accent so the active label stays legible on the dark
+     toolbar; follows --rt-accent for every theme (GlassKeep ~= indigo-300). */
+  --rt-btn-active-text: color-mix(in srgb, rgb(var(--rt-accent)) 60%, #fff);
+  /* Light gray on the dark toolbar — the dark-gray light-mode value would
+     be invisible here; keeps the checklist icon neutral but legible. */
+  --rt-task-icon: #cbd5e1;
   --rt-hl-1: #b45309;
   --rt-hl-2: #c2410c;
   --rt-hl-3: #b91c1c;
@@ -2305,6 +3103,28 @@ html.dark .rt-toolbar {
   align-items: center;
   gap: 0;
   flex-wrap: nowrap;
+}
+
+/* Advanced toolbar — Paragraph / list super-group. Both rows push their
+   last button to the right with margin-left: auto. The top row's last
+   button (Increase indent) is then shifted back inward by exactly half a
+   button width, so it sits centred horizontally above the gap between
+   the bottom row's last two buttons (Justify and Decrease indent),
+   echoing how the font group's Tx button reads as "between" the bottom
+   row's X₂ / X². Scoped to this group only — the simple toolbar has
+   no indent buttons and is untouched. */
+.rt-sg[data-sg="paragraph"] .rt-sg-row > .rt-btn:last-child {
+  margin-left: auto;
+}
+.rt-sg[data-sg="paragraph"] > .rt-sg-row:first-child > .rt-btn:last-child {
+  /* 17px ≈ .rt-btn's 34px min-width / 2 — one half-button slot back from
+     the right edge, which centres Increase indent on the Justify/
+     Decrease-indent join below it. */
+  margin-right: 17px;
+}
+.rt-sg[data-sg="paragraph"] > .rt-sg-row:last-child > .rt-btn:last-child {
+  /* Nudge Decrease indent very slightly left of the group's right edge. */
+  margin-right: 6px;
 }
 
 .rt-btn {
@@ -2706,6 +3526,29 @@ html.dark .rt-icon-swatch-bar { border-color: rgba(255, 255, 255, 0.12); }
 }
 .rt-pop-label--spaced { margin-top: 8px; }
 
+/* Task-list options popover — one labelled checkbox row. */
+.rt-pop--task { min-width: 232px; }
+.rt-pop-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+.rt-pop-check:hover { background: var(--rt-btn-hover); }
+.rt-pop-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+  accent-color: rgb(var(--rt-accent));
+  cursor: pointer;
+}
+.rt-pop-check span { flex: 1 1 auto; }
+
 .rt-pop--blocks, .rt-pop--font, .rt-pop--fontsize, .rt-pop--more {
   min-width: 180px;
   padding: 4px;
@@ -2784,13 +3627,11 @@ html.dark .rt-icon-swatch-bar { border-color: rgba(255, 255, 255, 0.12); }
   letter-spacing: 0.05em;
   padding: 2px 6px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.14);
-  color: rgb(99, 102, 241);
+  /* Follow the active theme accent (same vocabulary as the is-current rows).
+     The tokens already resolve light vs dark, so no separate dark rule. */
+  background: var(--rt-btn-active-bg);
+  color: var(--rt-btn-active-text);
   line-height: 1;
-}
-html.dark .rt-size-default-badge {
-  background: rgba(129, 140, 248, 0.22);
-  color: rgb(165, 180, 252);
 }
 .rt-size-row--is-default {
   font-weight: 700;
@@ -2855,9 +3696,8 @@ html.dark .rt-swatch.is-current {
   font-size: 0.8rem;
   cursor: pointer;
   font-weight: 600;
-  box-shadow:
-    0 4px 6px -1px rgba(165, 180, 252, 0.4),
-    0 2px 4px -2px rgba(165, 180, 252, 0.4);
+  /* No resting halo — the coloured glow appears on :hover only (see below). */
+  box-shadow: none;
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 .rt-pop-clear::after {
@@ -2891,8 +3731,25 @@ html.dark .rt-swatch.is-current {
 .rt-pop-clear:active {
   transform: scale(0.98);
 }
-html.dark .rt-pop-clear { box-shadow: none; }
-html.dark .rt-pop-clear:hover { box-shadow: none; }
+/* Themed gradient + halo — both the background AND the coloured hover glow
+   follow the active workspace theme (GlassKeep keeps the original
+   indigo→violet + indigo-300 halo since it has no class). Every other
+   style — shape, padding, ::after shimmer, hover scale, transition — is
+   inherited unchanged. Excludes the --danger variant (flat red, no fill).
+   The halo is hover-only and shows in BOTH light and dark mode. */
+html[class*="gk-theme-"] .rt-pop-clear:not(.rt-pop-clear--danger) {
+  background: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+}
+html[class*="gk-theme-"] .rt-pop-clear:not(.rt-pop-clear--danger):hover {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
+    color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
+  );
+  box-shadow:
+    0 10px 15px -3px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent),
+    0 4px 6px -4px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent);
+}
 .rt-pop-clear--danger {
   /* Danger variant overrides the gradient — it's a "remove" action,
      not a primary CTA, so it reads as a flat red link button. */
@@ -2983,9 +3840,8 @@ html.dark .rt-pop-clear--danger { color: #f87171; border-color: rgba(248, 113, 1
   color: #fff;
   border-color: transparent;
   font-weight: 600;
-  box-shadow:
-    0 4px 6px -1px rgba(165, 180, 252, 0.4),
-    0 2px 4px -2px rgba(165, 180, 252, 0.4);
+  /* No resting halo — the coloured glow appears on :hover only (see below). */
+  box-shadow: none;
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 .rt-link-btn--primary::after {
@@ -3022,8 +3878,24 @@ html.dark .rt-pop-clear--danger { color: #f87171; border-color: rgba(248, 113, 1
   cursor: not-allowed;
   box-shadow: none;
 }
-html.dark .rt-link-btn--primary { box-shadow: none; }
-html.dark .rt-link-btn--primary:hover:not(:disabled) { box-shadow: none; }
+/* Themed gradient + halo — same scoping rule as .rt-pop-clear above:
+   GlassKeep keeps indigo→violet + its indigo-300 halo; every other theme
+   swaps in its own gradient stops AND glow hue. Only the colours change;
+   the rest of the button is untouched. The halo is hover-only and shows
+   in BOTH light and dark mode. */
+html[class*="gk-theme-"] .rt-link-btn--primary {
+  background: linear-gradient(to right, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+}
+html[class*="gk-theme-"] .rt-link-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--gk-chrome-grad-from) 88%, #000),
+    color-mix(in srgb, var(--gk-chrome-grad-to) 88%, #000)
+  );
+  box-shadow:
+    0 10px 15px -3px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent),
+    0 4px 6px -4px color-mix(in srgb, var(--gk-chrome-grad-from) 50%, transparent);
+}
 .rt-link-btn--danger {
   color: #dc2626;
   border-color: rgba(220, 38, 38, 0.28);
@@ -4595,9 +5467,84 @@ html.dark .gk-notif-bell-dot {
 .gk-notif-center--mobile {
   animation: none;
   transform: translateY(-100%);
-  transition: transform 0.48s cubic-bezier(0.32, 0.72, 0, 1);
+  /* Match the sync sheet's open/close timing (was 0.48s). */
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
+  /* Flat opaque header colour + NO backdrop blur. The sheet slides via
+     transform; a live backdrop-filter forced the GPU to re-rasterise the
+     blur every frame, which made the open animation stutter. Opaque fill +
+     transform-only = smooth, and it matches the header. */
+  background: var(--gk-statusbar);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
+html.dark .gk-notif-center--mobile {
+  background: var(--gk-statusbar);
+}
+/* Settings / Admin side panels: a subtly theme-tinted surface on desktop
+   (--gk-panel-bg follows the active theme, light + dark), but the flat header
+   colour (--gk-statusbar) on phones so the whole panel matches the chrome.
+   Background lives here (not inline) so the media query can win. */
+.gk-side-panel {
+  background-color: var(--gk-panel-bg);
+  /* Hard guard against any horizontal overflow leaking out of the panel
+     (e.g. a long label). overflow-x:clip + the default overflow-y:visible is
+     a valid combo that, unlike overflow-x:hidden, does NOT promote the Y axis
+     to a scroll container — so it can't spawn a second vertical scrollbar. */
+  overflow-x: clip;
+}
+@media (max-width: 639px) {
+  .gk-side-panel { background: var(--gk-statusbar); }
+}
+/* Sync status popover → full-width top SHEET on phones, mirroring the
+   notification sheet (slide down from the top + bottom grabber). Driven from
+   CSS so it overrides the desktop popover's Tailwind positioning without
+   touching it; the sheet's own transform-animation also supersedes the
+   centring -translate-x utility. Desktop (>=640px) keeps the anchored popover. */
+@media (max-width: 639px) {
+  .gk-sync-sheet {
+    position: fixed !important;
+    top: var(--safe-top, 0px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    /* Tailwind v4's -translate-x-1/2 sets the translate property (not
+       transform), so kill it or the full-width sheet is shoved off-screen. */
+    translate: none !important;
+    border-radius: 0 0 1rem 1rem !important;
+    border-width: 0 0 1px 0 !important;
+    /* Slide via a transition + .is-open class, NOT a keyframe animation: a
+       running animation's fill holds transform and would override the
+       grabber's inline drag transform, so the tirette wouldn't follow the
+       finger. A transition leaves transform free for the drag. */
+    transform: translateY(-100%);
+    transition: transform 0.42s cubic-bezier(0.32, 0.72, 0, 1);
+    will-change: transform;
+  }
+  .gk-sync-sheet.is-open { transform: translateY(0); }
+}
+.gk-sync-sheet__grabber {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.gk-sync-sheet__grabber::after {
+  content: "";
+  width: 42px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.gk-sync-sheet__grabber:active { cursor: grabbing; }
+.gk-sync-sheet__grabber:active::after { background: rgba(0, 0, 0, 0.45); transform: scaleX(1.15); }
+html.dark .gk-sync-sheet__grabber::after { background: rgba(255, 255, 255, 0.32); }
+html.dark .gk-sync-sheet__grabber:active::after { background: rgba(255, 255, 255, 0.5); }
 .gk-notif-center--mobile.is-open {
   transform: translateY(0);
 }
@@ -4774,6 +5721,14 @@ html.dark .gk-notif-center__header {
   background: linear-gradient(180deg, rgba(32, 30, 42, 0.96), rgba(28, 28, 38, 0.90));
 }
 
+/* Mobile: the notification sheet header matches the main app header — a flat
+   --gk-statusbar block (same colour as the status bar / header). Two selectors
+   so it beats both the light and html.dark base rules above. */
+.gk-notif-center--mobile .gk-notif-center__header,
+html.dark .gk-notif-center--mobile .gk-notif-center__header {
+  background: var(--gk-statusbar);
+}
+
 /* Soft 6 px bottom fade that bleeds into the list — no hard line. */
 .gk-notif-center__header::after {
   content: "";
@@ -4941,4 +5896,62 @@ html.dark .gk-notif-card-swipe-bg {
 /* Dismissed-in-history rows keep their X — the user wants per-item
    removal in the panel (it calls REMOVE, not DISMISS, so the row is
    actually deleted). Only "Effacer" wipes the entire list. */
+
+/* ── Admin user-edit icon button (themed square icon button) ── */
+.gk-admin-edit-btn {
+  background-color: var(--gk-icon-bg);
+  color: var(--gk-icon-fg);
+}
+.gk-admin-edit-btn:hover {
+  background-color: color-mix(in srgb, var(--gk-chrome-grad-from) 22%, transparent);
+}
+
+/* ── Tags popover — elements that follow the active theme ── */
+
+/* Count badge on the Tags toolbar button */
+.gk-tag-count-badge {
+  background: linear-gradient(135deg, var(--gk-chrome-grad-from), var(--gk-chrome-grad-to));
+  color: #fff;
+}
+
+/* Popover container border tint */
+.gk-tag-popover {
+  border-color: color-mix(in srgb, var(--gk-chrome-accent) 22%, transparent);
+}
+
+/* Search input focus ring */
+.gk-tag-search-wrap:focus-within {
+  border-color: var(--gk-chrome-accent);
+}
+
+/* Tag list item hover background */
+.gk-tag-popover button:hover {
+  background-color: color-mix(in srgb, var(--gk-chrome-grad-from) 8%, transparent);
+}
+
+/* Checkbox — checked fill and border */
+.gk-tag-cb.gk-tag-cb--on {
+  background-color: var(--gk-chrome-grad-from);
+  border-color: var(--gk-chrome-grad-from);
+}
+
+/* Checkbox — unchecked hover border */
+.gk-tag-popover button:hover .gk-tag-cb:not(.gk-tag-cb--on) {
+  border-color: var(--gk-chrome-accent);
+}
+
+/* Applied tag chips */
+.gk-tag-chip {
+  background-color: color-mix(in srgb, var(--gk-chrome-accent) 12%, transparent);
+  color: var(--gk-icon-fg);
+  border-color: color-mix(in srgb, var(--gk-chrome-accent) 24%, transparent);
+}
+.gk-tag-chip-remove {
+  color: color-mix(in srgb, var(--gk-chrome-accent) 65%, transparent);
+}
+
+/* Header icon buttons hover circle */
+.gk-header-icon-btn:hover {
+  background-color: color-mix(in srgb, var(--gk-chrome-accent) 15%, transparent);
+}
 `;

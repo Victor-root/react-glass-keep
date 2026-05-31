@@ -10,6 +10,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useBranding } from "../../branding/BrandingContext.jsx";
 import { useNotifications } from "./NotificationProvider.jsx";
 import NotificationCard from "./NotificationCard.jsx";
 import { t } from "../../i18n";
@@ -36,6 +37,7 @@ export default function NotificationCenter({
   onClearAll,
 }) {
   const { notifications, remove, clear } = useNotifications();
+  const { branding } = useBranding();
   const handleClearAll = onClearAll || clear;
   const panelRef = useRef(null);
   // Used by the pointerdown handler below — same pattern as NotesHeader's
@@ -147,34 +149,9 @@ export default function NotificationCenter({
     };
   }, [open, onClose, anchor]);
 
-  // Mobile body-scroll lock — the panel covers the screen, but without
-  // an explicit lock on body the underlying notes view can still
-  // intercept horizontal swipes started on empty panel area (the
-  // touch-action of body cascades into the touch resolution). Setting
-  // touchAction:pan-y allows vertical scrolling inside the list (the
-  // list keeps its own overflow-y:auto) while blocking everything else
-  // — page swipes, native drag-and-drop, pull-to-refresh.
-  useEffect(() => {
-    if (!isMobile) return undefined;
-    const html = document.documentElement;
-    const body = document.body;
-    const prev = {
-      htmlOverflow: html.style.overflow,
-      bodyOverflow: body.style.overflow,
-      bodyTouchAction: body.style.touchAction,
-      bodyOverscroll: body.style.overscrollBehavior,
-    };
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    body.style.touchAction = "pan-y";
-    body.style.overscrollBehavior = "contain";
-    return () => {
-      html.style.overflow = prev.htmlOverflow;
-      body.style.overflow = prev.bodyOverflow;
-      body.style.touchAction = prev.bodyTouchAction;
-      body.style.overscrollBehavior = prev.bodyOverscroll;
-    };
-  }, [isMobile]);
+  // No body-scroll lock on purpose: setting overflow:hidden on html/body
+  // shifted the page (and could leave it stuck). The sheet just overlays the
+  // chrome; the list keeps its own overflow-y for scrolling.
 
   // Grabber drag-to-close — mirrors the editor's .mobile-fmt-sheet
   // grabber except the panel is anchored at the TOP, so the drag is
@@ -314,13 +291,23 @@ export default function NotificationCenter({
       <header className="gk-notif-center__header">
         <div className="gk-notif-center__brand">
           <span className="gk-notif-center__logo-wrap" aria-hidden="true">
-            <img
-              src="/favicon-32x32.png"
-              srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
-              alt=""
-              className="gk-notif-center__logo"
-              draggable="false"
-            />
+            {branding.logo ? (
+              <img
+                src={branding.logo}
+                alt=""
+                className="gk-notif-center__logo"
+                style={{ objectFit: "contain", borderRadius: 0, boxShadow: "none" }}
+                draggable="false"
+              />
+            ) : (
+              <img
+                src="/favicon-32x32.png"
+                srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
+                alt=""
+                className="gk-notif-center__logo"
+                draggable="false"
+              />
+            )}
           </span>
           <h2 className="gk-notif-center__title">
             {t("notificationCenterTitle")}

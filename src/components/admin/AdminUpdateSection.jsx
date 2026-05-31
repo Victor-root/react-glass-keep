@@ -92,18 +92,18 @@ function DockerSocketHint() {
     }
   };
   return (
-    <div className="rounded-lg border border-indigo-300/60 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 p-3 mb-3">
-      <p className="text-xs text-indigo-900 dark:text-indigo-200 mb-2">
+    <div className="rounded-lg border border-[var(--gk-accent-soft-border)] bg-[var(--gk-accent-soft-bg)] p-3 mb-3">
+      <p className="text-xs text-[var(--gk-chrome-accent)] mb-2">
         {t("selfUpdateDockerHintIntro")}
       </p>
       <div className="flex items-center gap-2">
-        <code className="flex-1 text-xs font-mono text-indigo-900 dark:text-indigo-100 bg-white dark:bg-black/40 border border-indigo-200 dark:border-indigo-500/30 rounded-md px-2 py-1.5 whitespace-nowrap overflow-x-auto">
+        <code className="flex-1 text-xs font-mono text-[var(--gk-chrome-accent)] bg-white dark:bg-black/40 border border-[var(--gk-accent-soft-border)] rounded-md px-2 py-1.5 whitespace-nowrap overflow-x-auto">
           {DOCKER_SOCKET_MOUNT_HINT}
         </code>
         <button
           type="button"
           onClick={onCopy}
-          className="shrink-0 inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-white dark:bg-white/10 border border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-50 dark:hover:bg-white/15"
+          className="shrink-0 inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md bg-white dark:bg-white/10 border border-[var(--gk-accent-soft-border)] hover:bg-[var(--gk-accent-soft-bg)] dark:hover:bg-white/15"
         >
           {copied ? (
             <TI.Check className="tabler-icon w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" />
@@ -113,9 +113,27 @@ function DockerSocketHint() {
           {copied ? t("copied") : t("copy")}
         </button>
       </div>
-      <p className="text-[11px] text-indigo-800/80 dark:text-indigo-200/70 mt-2">
+      <p className="text-[11px] text-[var(--gk-chrome-accent)] opacity-80 mt-2">
         {t("selfUpdateDockerHintFootnote")}
       </p>
+    </div>
+  );
+}
+
+// Shown when the socket IS mounted but the app still can't drive Docker:
+// permission denied (the Synology root:root case) or the daemon not
+// answering. Unlike DockerSocketHint there is no line to copy — the
+// remedy is to recreate/restart the container or fix the daemon — so
+// this is a text-only notice in a distinct (amber) colour.
+function DockerNoticeHint({ intro, footnote }) {
+  return (
+    <div className="rounded-lg border border-amber-300/60 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 p-3 mb-3">
+      <p className="text-xs text-amber-900 dark:text-amber-200">{intro}</p>
+      {footnote && (
+        <p className="text-[11px] font-mono text-amber-800/80 dark:text-amber-200/70 mt-2">
+          {footnote}
+        </p>
+      )}
     </div>
   );
 }
@@ -184,7 +202,7 @@ export default function AdminUpdateSection({
           className={`shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${
             updateAvailable
               ? "text-emerald-600 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-400/15"
-              : "text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 dark:bg-indigo-400/15"
+              : "text-[var(--gk-chrome-accent)] bg-[var(--gk-accent-soft-bg)]"
           }`}
         >
           <TI.Refresh className="tabler-icon w-6 h-6" />
@@ -222,7 +240,7 @@ export default function AdminUpdateSection({
                 type="button"
                 onClick={onClickUpdateNow}
                 disabled={!canOneClick}
-                className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:from-emerald-600 hover:to-green-700 shadow-md shadow-emerald-300/40 dark:shadow-none hover:shadow-lg hover:shadow-emerald-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none"
+                className="gk-update-btn inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:from-emerald-600 hover:to-green-700 shadow-md shadow-emerald-300/40 dark:shadow-none hover:shadow-lg hover:shadow-emerald-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none"
               >
                 <TI.Download className="tabler-icon w-4 h-4" />
                 {isUpdateRunning
@@ -234,7 +252,7 @@ export default function AdminUpdateSection({
               type="button"
               onClick={() => setShowManualCommands((v) => !v)}
               aria-expanded={showManualCommands}
-              className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-gray-700 to-gray-900 text-white hover:from-gray-800 hover:to-black shadow-md shadow-gray-700/40 dark:shadow-none hover:shadow-lg hover:shadow-gray-700/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
+              className="gk-update-btn inline-flex items-center gap-2 text-sm px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-gray-900 to-black text-white hover:from-black hover:to-gray-950 shadow-md shadow-gray-900/40 dark:shadow-none hover:shadow-lg hover:shadow-gray-900/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
             >
               <TI.Terminal2 className="tabler-icon w-4 h-4" />
               {t("selfUpdateManualButton")}
@@ -256,6 +274,25 @@ export default function AdminUpdateSection({
             mode === "docker" &&
             oneClickReason === "docker-socket-missing" && (
               <DockerSocketHint />
+            )}
+
+          {/* Docker + socket mounted but not accessible (Synology root:root):
+              the mount is already there, so tell the admin to recreate the
+              container rather than re-adding a line they already have. */}
+          {!oneClickAvailable &&
+            mode === "docker" &&
+            oneClickReason === "docker-socket-permission-denied" && (
+              <DockerNoticeHint
+                intro={t("selfUpdateDockerPermIntro")}
+                footnote={t("selfUpdateDockerPermFootnote")}
+              />
+            )}
+
+          {/* Docker + socket reachable but the daemon did not answer. */}
+          {!oneClickAvailable &&
+            mode === "docker" &&
+            oneClickReason === "docker-daemon-unreachable" && (
+              <DockerNoticeHint intro={t("selfUpdateDockerDaemonHint")} />
             )}
 
           {/* Manual commands stay around as a fallback for either mode. */}

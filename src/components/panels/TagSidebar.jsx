@@ -21,17 +21,11 @@ export default function TagSidebar({
   const isAllNotes = activeTag === null && activeTagFilters.length === 0;
   const isAllImages = activeTag === ALL_IMAGES;
 
-  // Active / hover styling for sidebar entries — tinted with the app's
-  // indigo accent instead of the old neutral gray "bg-black/5" which
-  // looked washed out against the violet background.
-  const itemClass = (active) => {
-    if (active) {
-      return dark
-        ? "bg-indigo-500/20 text-indigo-100 font-semibold"
-        : "bg-[#c1cfffcc] text-indigo-800 font-semibold";
-    }
-    return dark ? "hover:bg-indigo-500/10" : "hover:bg-[#c1cfff66]";
-  };
+  // Active / hover styling for sidebar entries — driven by the chrome theme
+  // tokens (see .gk-side-item in globalCSS) so they follow the workspace
+  // theme and the glass identity in both light and dark.
+  const itemClass = (active) =>
+    active ? "gk-side-item gk-side-item--active" : "gk-side-item";
 
   // Long-press support for multi-tag selection on touch devices
   const longPressTimer = useRef(null);
@@ -73,18 +67,18 @@ export default function TagSidebar({
         />
       )}
       <aside
-        className={`fixed top-0 left-0 z-40 h-full ${skipTransition ? "" : "transition-transform duration-200 "}${permanent || open ? "translate-x-0 shadow-2xl" : "-translate-x-full shadow-none"}`}
+        className={`gk-sidebar fixed top-0 left-0 z-40 h-full ${skipTransition ? "" : "transition-[transform,background-color] duration-200 "}${permanent || open ? "translate-x-0" : "-translate-x-full"}`}
         style={{
+          // Visuals (background, border, glass shadow) live in the .gk-sidebar
+          // CSS rule so they follow the chrome theme tokens; only layout here.
           width: permanent ? `${width}px` : "288px",
-          backgroundColor: dark ? "#222222" : "rgba(240,232,255,0.97)",
-          borderRight: "1px solid var(--border-light)",
           paddingTop: "var(--safe-top)",
           paddingBottom: "var(--safe-bottom)",
           paddingLeft: "var(--safe-left)",
         }}
         aria-hidden={!(permanent || open)}
       >
-        <div className="p-4 flex items-center justify-between">
+        <div className="px-4 flex items-center justify-between h-[var(--gk-header-h,56px)] shrink-0">
           <h3 className="text-lg font-semibold">{t("tags")}</h3>
           <button
             className="p-2 rounded hover:bg-black/5 dark:hover:bg-white/10"
@@ -94,7 +88,7 @@ export default function TagSidebar({
             <CloseIcon />
           </button>
         </div>
-        <nav className="p-2 overflow-y-auto h-[calc(100%-56px)]">
+        <nav className="p-2 overflow-y-auto h-[calc(100%-var(--gk-header-h,56px))]">
           {/* Multi-tag filter indicator — at the top so it's impossible to miss */}
           {activeTagFilters.length > 1 && (
             <div

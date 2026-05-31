@@ -19,10 +19,38 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#f0e8ff">
+  <meta name="theme-color" content="#e7e9fc">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Glass Keep</title>
+  <script>
+    /* Boot-time branding: apply the cached custom app name + logo to the
+       tab title and favicon BEFORE React mounts, so a reload doesn't
+       flash the default name/logo. The BrandingProvider reads the same
+       cache for its first render and then refreshes from the server.
+       We also snapshot the bundled icon links so the app can restore
+       them verbatim if the admin later clears the custom logo. */
+    (function () {
+      try {
+        var sel = 'link[rel~="icon"], link[rel="apple-touch-icon"]';
+        window.__GK_DEFAULT_ICONS__ = Array.prototype.map
+          .call(document.head.querySelectorAll(sel), function (l) { return l.outerHTML; })
+          .join('');
+        var c = JSON.parse(localStorage.getItem('gk:branding') || 'null');
+        if (c && c.appName) document.title = c.appName;
+        var fav = localStorage.getItem('gk:favicon');
+        if (fav) {
+          Array.prototype.forEach.call(document.head.querySelectorAll(sel), function (l) {
+            l.parentNode.removeChild(l);
+          });
+          var icon = document.createElement('link'); icon.rel = 'icon'; icon.href = fav;
+          document.head.appendChild(icon);
+          var apple = document.createElement('link'); apple.rel = 'apple-touch-icon'; apple.href = fav;
+          document.head.appendChild(apple);
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
 
 <body>

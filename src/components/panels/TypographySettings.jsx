@@ -87,7 +87,7 @@ export default function TypographySettings({ presets, setPresets }) {
         </div>
         <button
           type="button"
-          className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-300"
+          className="text-xs text-[var(--gk-chrome-accent)] hover:brightness-90 dark:hover:brightness-110"
           onClick={reset}
         >
           {t("typographyReset")}

@@ -13,7 +13,7 @@ import { localizeServerError } from "../../utils/serverErrors.js";
 import TI from "../../icons/editor/index.jsx";
 
 const FIELD_INPUT_CLASSES =
-  "w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400 text-sm";
+  "w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400 text-sm";
 
 function PrivacyWarning({ tone = "amber" }) {
   const palette =
@@ -261,7 +261,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
           disabled={loading || saving || !adminAiEnabled}
           onClick={onToggleEnabled}
           className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-            effectiveEnabled ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
+            effectiveEnabled ? "bg-[var(--gk-switch-on)]" : "bg-gray-300 dark:bg-gray-600"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
           aria-pressed={effectiveEnabled}
         >
@@ -287,7 +287,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
                 disabled={loading || saving || !serverAiAvailable}
                 className={`text-left rounded-lg border px-3 py-2 transition-colors disabled:opacity-50 ${
                   mode === "server"
-                    ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
+                    ? "border-[var(--gk-chrome-accent)] bg-[var(--gk-accent-soft-bg)]"
                     : "border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10"
                 }`}
                 aria-pressed={mode === "server"}
@@ -308,7 +308,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
                 disabled={loading || saving}
                 className={`text-left rounded-lg border px-3 py-2 transition-colors disabled:opacity-50 ${
                   mode === "custom"
-                    ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
+                    ? "border-[var(--gk-chrome-accent)] bg-[var(--gk-accent-soft-bg)]"
                     : "border-[var(--border-light)] hover:bg-black/5 dark:hover:bg-white/10"
                 }`}
                 aria-pressed={mode === "custom"}
@@ -496,7 +496,7 @@ export default function UserAiSettingsSection({ token, showToast, onEnabledChang
               <button
                 type="submit"
                 disabled={loading || saving}
-                className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none disabled:opacity-50 disabled:pointer-events-none"
+                className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 hover:shadow-lg hover:shadow-indigo-300/50 disabled:opacity-50 disabled:pointer-events-none"
               >
                 {saving ? t("saving") : t("save")}
               </button>

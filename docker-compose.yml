@@ -89,4 +89,10 @@ services:
       # the image (you do — you self-host it). The container still runs
       # as the unprivileged 'node' user inside, the socket is only used
       # by the update flow.
+      #
+      # Synology Container Manager / DSM: the socket is owned by
+      # root:root (no 'docker' group). The entrypoint detects this and
+      # grants the 'node' user access automatically — just recreate the
+      # container (stop + start the project, or `docker compose up -d
+      # --force-recreate`) once after first adding this mount.
       - /var/run/docker.sock:/var/run/docker.sock

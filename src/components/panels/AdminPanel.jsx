@@ -6,6 +6,7 @@ import TI from "../../icons/editor/index.jsx";
 import EncryptionAdminSection from "../lock/EncryptionAdminSection.jsx";
 import AiAdminSection from "./AiAdminSection.jsx";
 import AdminUpdateSection from "../admin/AdminUpdateSection.jsx";
+import LoginBrandingSection from "./LoginBrandingSection.jsx";
 import { localizeServerError } from "../../utils/serverErrors.js";
 import { RowIcon, SettingsSection } from "../common/SettingsAccordion.jsx";
 const SectionHeaderIcon = RowIcon;
@@ -48,17 +49,17 @@ function LoginSloganRow({ value, onSave, showToast }) {
   return (
     <div className="flex flex-col gap-2 px-3">
       <div className="flex items-center gap-3 min-w-0">
-        <RowIcon icon={TI.Note} />
+        <RowIcon icon={TI.Quote} />
         <div className="min-w-0">
           <div className="font-medium">{t("loginSloganLabel")}</div>
           <div className="text-sm text-gray-500">{t("loginSlogan")}</div>
         </div>
       </div>
-      <div className="ml-11 flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="text"
           maxLength={200}
-          className="flex-1 px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400 text-sm"
+          className="flex-1 px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400 text-sm"
           placeholder={t("loginSloganPlaceholder")}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -351,9 +352,8 @@ export default function AdminPanel({
         />
       )}
       <div
-        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[28rem] lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
+        className={`gk-side-panel fixed top-0 right-0 z-50 h-full w-full lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
         style={{
-          backgroundColor: dark ? "#222222" : "#f9f6ff",
           borderLeft: "1px solid var(--border-light)",
           paddingTop: "var(--safe-top)",
           paddingBottom: "var(--safe-bottom)",
@@ -397,7 +397,7 @@ export default function AdminPanel({
           </div>
         </div>
 
-        <div className="p-4 overflow-y-auto h-[calc(100%-64px)]">
+        <div className="p-4 overflow-y-auto overflow-x-hidden h-[calc(100%-64px)]">
           <AdminUpdateSection
             updateInfo={updateInfo}
             selfUpdate={selfUpdate}
@@ -506,7 +506,7 @@ export default function AdminPanel({
                 <button
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
                     adminSettings.allowNewAccounts
-                      ? "bg-indigo-600"
+                      ? "bg-[var(--gk-switch-on)]"
                       : "bg-gray-300 dark:bg-gray-600"
                   }`}
                   onClick={() =>
@@ -528,6 +528,18 @@ export default function AdminPanel({
                 onSave={(slogan) => updateAdminSettings({ loginSlogan: slogan })}
                 showToast={showToast}
               />
+
+              {/* Branding (custom app name, logo, login background +
+                  blur) — separated from the toggle/slogan rows by a
+                  hairline so the section reads as two logical groups. */}
+              <div className="pt-2 border-t border-[var(--border-light)]">
+                <LoginBrandingSection
+                  dark={dark}
+                  adminSettings={adminSettings}
+                  updateAdminSettings={updateAdminSettings}
+                  showToast={showToast}
+                />
+              </div>
             </div>
             </SettingsSection>
           </div>
@@ -540,7 +552,7 @@ export default function AdminPanel({
               title={
                 <span className="flex items-center gap-2">
                   <span>{t("allUsers")}</span>
-                  <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 rounded-full">
+                  <span className="px-2 py-0.5 text-xs font-semibold bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] rounded-full">
                     {allUsers.length}
                   </span>
                 </span>
@@ -576,7 +588,7 @@ export default function AdminPanel({
                     <div className="flex flex-shrink-0 gap-2">
                       <button
                         onClick={() => openEditUserModal(user)}
-                        className="w-9 h-9 flex items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/60 transition-colors"
+                        className="w-9 h-9 flex items-center justify-center rounded-lg gk-admin-edit-btn transition-colors"
                         data-tooltip={t("edit")}
                         aria-label={t("edit")}
                       >
@@ -655,7 +667,7 @@ export default function AdminPanel({
                 onChange={(e) =>
                   setNewUserForm((prev) => ({ ...prev, name: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400"
+                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400"
               />
               <input
                 type="text"
@@ -664,7 +676,7 @@ export default function AdminPanel({
                 onChange={(e) =>
                   setNewUserForm((prev) => ({ ...prev, email: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400"
+                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400"
               />
               <input
                 type="password"
@@ -673,7 +685,7 @@ export default function AdminPanel({
                 onChange={(e) =>
                   setNewUserForm((prev) => ({ ...prev, password: e.target.value }))
                 }
-                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400"
+                className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)] placeholder-gray-500 dark:placeholder-gray-400"
               />
               <p className="text-xs text-gray-400 dark:text-gray-500">
                 {t("temporaryPasswordHint")}
@@ -687,7 +699,7 @@ export default function AdminPanel({
                   }
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
                     newUserForm.is_admin
-                      ? "bg-indigo-600"
+                      ? "bg-[var(--gk-switch-on)]"
                       : "bg-gray-300 dark:bg-gray-600"
                   }`}
                   aria-pressed={newUserForm.is_admin}
@@ -702,7 +714,7 @@ export default function AdminPanel({
               <button
                 type="submit"
                 disabled={isCreatingUser}
-                className="w-full px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none"
+                className="block w-[90%] mx-auto px-4 py-2 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient disabled:opacity-50 disabled:pointer-events-none"
               >
                 {isCreatingUser ? t("creating") : t("createUser")}
               </button>
@@ -770,7 +782,7 @@ export default function AdminPanel({
                   onChange={(e) =>
                     setEditUserForm((prev) => ({ ...prev, name: e.target.value }))
                   }
-                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)]"
                   required
                 />
               </div>
@@ -782,7 +794,7 @@ export default function AdminPanel({
                   onChange={(e) =>
                     setEditUserForm((prev) => ({ ...prev, email: e.target.value }))
                   }
-                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)]"
                   required
                 />
               </div>
@@ -794,7 +806,7 @@ export default function AdminPanel({
                   onChange={(e) =>
                     setEditUserForm((prev) => ({ ...prev, password: e.target.value }))
                   }
-                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-[var(--border-light)] rounded-lg bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)]"
                   placeholder={t("leaveEmptyKeepCurrentPassword")}
                 />
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
@@ -810,7 +822,7 @@ export default function AdminPanel({
                   }
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
                     editUserForm.is_admin
-                      ? "bg-indigo-600"
+                      ? "bg-[var(--gk-switch-on)]"
                       : "bg-gray-300 dark:bg-gray-600"
                   }`}
                   aria-pressed={editUserForm.is_admin}
@@ -850,7 +862,7 @@ export default function AdminPanel({
             {restartPhase === "waiting" ? (
               <>
                 <div className="flex justify-center mb-4">
-                  <TI.Refresh className="tabler-icon w-10 h-10 text-indigo-500 animate-spin" />
+                  <TI.Refresh className="tabler-icon w-10 h-10 text-[var(--gk-chrome-accent)] animate-spin" />
                 </div>
                 <h3 className="text-lg font-semibold mb-1">{t("restartServerInProgress")}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{t("restartServerWaiting")}</p>
@@ -878,7 +890,7 @@ export default function AdminPanel({
             {shutdownPhase === "waiting" ? (
               <>
                 <div className="flex justify-center mb-4">
-                  <TI.Power className="tabler-icon w-10 h-10 text-indigo-500 animate-spin" />
+                  <TI.Power className="tabler-icon w-10 h-10 text-[var(--gk-chrome-accent)] animate-spin" />
                 </div>
                 <h3 className="text-lg font-semibold mb-1">{t("shutdownServerInProgress")}</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{t("shutdownServerWaiting")}</p>

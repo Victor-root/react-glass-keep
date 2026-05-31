@@ -494,6 +494,17 @@ class WebViewActivity : AppCompatActivity() {
                 setSupportMultipleWindows(false)
             }
 
+            // Disable the native WebView overscroll bounce. Without this,
+            // flinging to the top of the page triggers an Android-level glow
+            // / stretch animation that briefly shifts the WebView's content
+            // down by a few pixels before snapping back. The sticky header
+            // moves with the content and leaves a visible gap against the
+            // status bar. CSS overscroll-behavior-y:none is not enough because
+            // the bounce happens at the native View layer.
+            // Pull-to-refresh is handled by SwipeRefreshLayout (a sibling view),
+            // so disabling WebView's own overscroll doesn't affect it.
+            overScrollMode = android.view.View.OVER_SCROLL_NEVER
+
             // Cookies
             CookieManager.getInstance().apply {
                 setAcceptCookie(true)
@@ -505,16 +516,25 @@ class WebViewActivity : AppCompatActivity() {
                     view: WebView,
                     request: WebResourceRequest
                 ): Boolean {
-                    val requestUrl = request.url.toString()
-                    return if (requestUrl.startsWith(url)) {
+                    val target = request.url
+                    // Compare HOSTS, not a string prefix. The app's own pages
+                    // must always stay in the WebView, but a brittle
+                    // requestUrl.startsWith(url) check let some same-server
+                    // navigations slip through to the external browser — SPA
+                    // hash routes (#/notes), reloads (manual / SW auto-update /
+                    // pull-to-refresh), and server redirects don't necessarily
+                    // start with the exact launch URL. That's the intermittent
+                    // "the app reopens in Brave on top of itself" bug.
+                    val appHost = try { Uri.parse(url).host } catch (e: Exception) { null }
+                    val sameHost = appHost != null &&
+                        appHost.equals(target.host, ignoreCase = true)
+                    return if (sameHost) {
                         false
                     } else {
-                        // Link out of the app's own domain (a note's external
-                        // link, a redirect to GitHub, etc.). Hand it to a
-                        // Custom Tab so the user stays in our task stack —
-                        // hitting back returns to the WebView instead of
-                        // dumping them into a separate browser app.
-                        openUrlExternally(request.url)
+                        // Genuinely external link (a note's link, GitHub, …) —
+                        // hand it to a Custom Tab so Back returns to the WebView
+                        // instead of dumping the user into a separate browser app.
+                        openUrlExternally(target)
                         true
                     }
                 }

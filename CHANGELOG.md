@@ -1,5 +1,32 @@
 # 📋 Changelog
 
+## 🚀 v2.4.5 — 2026-05-31
+
+Two headline features: fully **customisable branding** (each instance can theme its login page from the UI, nothing hard-coded) and **interface colour themes** — pick a workspace theme and the whole app chrome (header, sidebar, notes background, scrollbars, panels, icons, buttons and editor highlights) recolours coherently in light **and** dark mode, while your notes stay exactly as they are. The release also lands a big **desktop performance pass**, a **seamless desktop-PWA title bar**, a round of **mobile chrome polish**, and fixes one-click in-app updates on **Synology Container Manager / DSM**.
+
+### ➕ Added
+- 🎨 **Interface themes (workspace theme picker)** — from Settings → *UI Preferences* → *Workspace theme*, choose between **GlassKeep** (the validated default), **Emerald**, **Amber**, **Ruby**, **Graphite** and **Blush**. Each theme is a coherent recolour of the same design system — it retints the **header, sidebar, notes-area background, global scrollbars, Settings/Admin panels, section icons, active/hover states, primary buttons (and their glow), the read/edit toggle, the rich-text toolbar highlights and the search/field focus rings** — without ever touching your notes, note colours or the note cards. Fully **light + dark aware**, and the choice is **saved on the server** so it follows you across devices and reloads (with a clean fall-back to GlassKeep). The mobile PWA status bar and, where the platform allows it, the bottom navigation bar follow the active theme too.
+- 🏷️ **Login page branding (admin)** — from Admin → *Login page settings*, set a custom **app name** (≤ 10 chars), **logo** and **login background image** with an adjustable **blur**. The name + logo also drive the in-app header, the browser tab title and the favicon (kept square so it isn't flattened). Everything is optional and light/dark-aware; unset values fall back to the defaults, and the content panels stay legible over any image.
+- 📲 **Installable PWA adapts to your branding** — the PWA install name and icon now use the instance's custom app name and logo instead of the bundled defaults.
+- ⚡ **Desktop performance pass** — the header and sidebar now use a static, **blur-free "fake-glass"** recipe (token-driven, no per-frame GPU re-raster), the floating background cards pause while you scroll and while an overlay is open, note-card callbacks are stabilised so the masonry grid no longer re-renders on unrelated state changes, and note previews/images are lighter. Scrolling, opening and closing notes feel noticeably smoother on laptops, with the glass aesthetic preserved.
+- 🪟 **"Reduce transparency effects"** — a flattened, no-`backdrop-filter` rendering path (on by default) for weaker GPUs, keeping only the modal scrim blur.
+- 🖥️ **Seamless desktop PWA title bar** — the installed desktop app's header and sidebar blend into the Windows title bar with no visible seam line, and the sidebar's edge no longer crosses the header.
+- 📱 **Mobile chrome polish** — the header sits flush with the status bar in a single flat colour, the sidebar and the Settings/Admin/sync panels match the chrome, the **sync status opens as a full-width top sheet** (like the notifications), and a **Scan QR** entry was added to the header kebab menu.
+
+### 🐛 Fixed
+- 🐳 **One-click update on Synology (and any `root:root` docker.sock)** — the container entrypoint discovered the Docker socket's owning group at runtime but **skipped** granting access when that group was GID 0 (root) — exactly how Synology DSM / Container Manager exposes it (`root:root`, no `docker` group). The unprivileged `node` user could never open the socket, so the admin panel kept showing **"Update manually"** and suggested adding a mount that was already present. The entrypoint now adds `node` to the root group when the socket is `root:root`, so one-click updates work after recreating the container once. (Hosts with a normal non-zero `docker` group, e.g. most Debian/Ubuntu setups, are unaffected.)
+- 🔎 **Accurate self-update diagnostics** — the backend now distinguishes *socket missing* vs *mounted but permission denied* vs *daemon unreachable*, and the admin panel shows the matching remedy instead of always telling you to add a mount you may already have.
+- 🌐 **Android app no longer escapes to the external browser** — same-host links now stay inside the in-app WebView instead of opening Brave/Chrome.
+- 📶 **No more "stuck offline"** — an SSE hello/ping is now treated as proof the server is reachable, clearing a false offline state.
+- 🎚️ **Multi-select button toggles correctly** — tapping it again closes the selection bar instead of scrolling the page down.
+- 🌗 **Android status bar colour restored** after closing a note, instead of keeping the note's colour.
+- 📱 **Header stays flush with the status bar when flinging to the top** — the native WebView overscroll bounce no longer creates a brief gap between the header and the status bar.
+- 🔄 **QR scanner disables pull-to-refresh** (and the device back button closes it) so scanning isn't interrupted.
+
+### 🛠️ Upgrade
+
+> **Synology / Docker users:** pull the new image and recreate the container **once** — stop then start the project in Container Manager, or run `docker compose up -d --force-recreate`. After that first recreate, the **"Update now"** button appears and every future update is one-click.
+
 ## 🚀 v2.4.0 — 2026-05-24
 
 Headline change: a **completely rewritten in-app notification system**. Every toast, error, share alert and admin event now flows through a single provider, renders as a premium LED-neon card in the floating viewport, and shows up in a new **Notification Center** panel (bell icon in the header) with full cross-device history sync over SSE. The release also lands actionable admin notifications (approve / refuse pending registrations, deletion confirmations), live cross-session sync of user settings, a mobile Notification Center with swipe-to-dismiss, a collaboration-notification pass (owners get told when collaborators walk away), an editor paste/copy polish pass, a **"Read mode for notes"** opt-out, and a major Android app maturity pass (in-app APK self-updater, first-launch welcome screen, F-Droid-aware build).

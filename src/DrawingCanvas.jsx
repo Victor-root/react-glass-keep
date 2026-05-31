@@ -701,7 +701,7 @@ function DrawingCanvas({
             onClick={() => setMode(mode === 'view' ? 'draw' : 'view')}
             className={`px-3 py-1.5 rounded-xl border-2 text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 ${
               mode === 'draw'
-                ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent shadow-md shadow-indigo-300/40 dark:shadow-none hover:from-indigo-600 hover:to-violet-700'
+                ? 'bg-gradient-to-r from-indigo-500 to-violet-600 text-white border-transparent hover:from-indigo-600 hover:to-violet-700 hover:shadow-lg hover:shadow-indigo-300/50'
                 : 'border-indigo-200/80 bg-gradient-to-br from-indigo-50 to-violet-50/60 text-indigo-600 hover:from-indigo-100 hover:to-violet-100 hover:border-indigo-300 hover:shadow-sm hover:shadow-indigo-200/50 dark:hover:shadow-none dark:from-indigo-900/20 dark:to-violet-900/10 dark:border-indigo-700/50 dark:text-indigo-400'
             }`}
             data-tooltip={mode === 'view' ? t('switchToDrawMode') : t('switchToViewMode')}

@@ -5,6 +5,7 @@ import { Hamburger, SearchIcon, CloseIcon, GridIcon, ListIcon, SunIcon, MoonIcon
 import TI from "../../icons/editor/index.jsx";
 import SyncStatusIcon from "../../sync/SyncStatusIcon.jsx";
 import UserAvatar from "../common/UserAvatar.jsx";
+import { useBranding, DEFAULT_APP_NAME } from "../../branding/BrandingContext.jsx";
 
 export default function NotesHeader({
   dark,
@@ -59,6 +60,9 @@ export default function NotesHeader({
   notificationBellDesktop = null,
   notificationBellMobile = null,
 }) {
+  const { branding } = useBranding();
+  const appName = branding.appName || DEFAULT_APP_NAME;
+
   // The kebab dropdown can't rely on the typical "fixed inset-0
   // backdrop captures the click" pattern: the host <header> has a
   // permanent `transform: translateY(0)` for its slide-in animation,
@@ -88,6 +92,27 @@ export default function NotesHeader({
   // the next legitimate click.
   const swallowNextClickRef = React.useRef(false);
   const swallowClearTimerRef = React.useRef(null);
+
+  // Publish the header's exact rendered height as --gk-header-h so the
+  // sidebar can mask its right-edge line precisely over the header strip
+  // (the top-left header/sidebar corner reads as one surface, to the pixel).
+  // ResizeObserver keeps it correct across breakpoints, font/zoom changes,
+  // and the offline-badge row that adds height on narrow widths.
+  const headerRef = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return undefined;
+    const apply = () => {
+      document.documentElement.style.setProperty(
+        "--gk-header-h",
+        `${el.getBoundingClientRect().height}px`,
+      );
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   React.useEffect(() => {
     const onClick = (e) => {
@@ -141,6 +166,7 @@ export default function NotesHeader({
   const showOfflineBadge = !isOnline || syncStatus?.syncState === "offline" || syncStatus?.serverReachable === false;
   return (
       <header
+        ref={headerRef}
         className={`${qrQuickEnabled ? "px-1.5" : "px-2.5"} py-4 sm:p-6 flex justify-between items-center sticky top-0 ${mobileSearchOpen ? "z-[1000]" : "z-40"} glass-card mb-6${showOfflineBadge && windowWidth < 640 ? " pb-7" : ""}`}
         style={{
           // Keep the sticky header tight against the status bar.
@@ -170,19 +196,30 @@ export default function NotesHeader({
             </button>
           )}
 
-          {/* App logo */}
-          <img
-            src="/favicon-32x32.png"
-            srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
-            alt={t("glassKeepLogo")}
-            className="h-7 w-7 rounded-xl shadow-sm select-none pointer-events-none"
-            draggable="false"
-          />
+          {/* App logo — custom logo (single src, no srcSet so it isn't
+              overridden by the bundled 2x/3x defaults) or the bundled
+              favicon with its retina set. */}
+          {branding.logo ? (
+            <img
+              src={branding.logo}
+              alt={appName}
+              className="h-7 w-7 select-none pointer-events-none object-contain"
+              draggable="false"
+            />
+          ) : (
+            <img
+              src="/favicon-32x32.png"
+              srcSet="/pwa-192.png 2x, /pwa-512.png 3x"
+              alt={appName}
+              className="h-7 w-7 rounded-xl shadow-sm select-none pointer-events-none"
+              draggable="false"
+            />
+          )}
 
           {/* Mobile: stacked name + badge */}
           <div className={`flex flex-col ${mobileOnly} leading-tight relative`}>
-            <h1 className="text-lg font-bold">Glass Keep</h1>
-            <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1 max-w-[160px]">
+            <h1 className="text-lg font-bold">{appName}</h1>
+            <span className="text-xs font-medium text-[var(--gk-chrome-accent)] flex items-center gap-1 max-w-[160px]">
               <span className="shrink-0 w-3 h-3 [&>svg]:w-3 [&>svg]:h-3"><SectionIcon /></span>
               <span className="truncate">{sectionLabel}</span>
             </span>
@@ -197,10 +234,10 @@ export default function NotesHeader({
               input down to a few characters ("Reche..."). The section
               badge is the more informative anchor of the two and stays. */}
           <h1 className={`hidden xl:block text-2xl sm:text-3xl font-bold ${isLandscapeMobile ? "!hidden" : ""}`}>
-            Glass Keep
+            {appName}
           </h1>
-          <span className={`hidden xl:inline-block h-6 w-px bg-gray-300 dark:bg-gray-600 mx-1 ${isLandscapeMobile ? "!hidden" : ""}`} />
-          <span className={`${desktopOnly} text-base font-medium px-3 py-1 rounded-lg bg-indigo-600/10 text-indigo-700 dark:text-indigo-300 border border-indigo-600/20 items-center gap-1.5 max-w-[200px]`}>
+          <span className={`hidden xl:inline-block h-6 w-px bg-slate-400/60 dark:bg-gray-600 mx-1 ${isLandscapeMobile ? "!hidden" : ""}`} />
+          <span className={`${desktopOnly} text-base font-medium px-3 py-1 rounded-lg bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] border border-[var(--gk-accent-soft-border)] items-center gap-1.5 max-w-[200px]`}>
             <span className="shrink-0 w-4 h-4 [&>svg]:w-4 [&>svg]:h-4"><SectionIcon /></span>
             <span className="truncate">{sectionLabel}</span>
           </span>
@@ -220,7 +257,7 @@ export default function NotesHeader({
             <input
               type="text"
               placeholder={aiAssistantEnabled ? t("searchOrAskAi") : t("search")}
-              className={`w-full bg-transparent border border-[var(--border-light)] rounded-lg pl-4 ${aiAssistantEnabled ? "pr-20" : "pr-8"} py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
+              className={`w-full bg-transparent border border-transparent rounded-lg pl-4 ${aiAssistantEnabled ? "pr-20" : "pr-8"} py-2 ring-1 ring-slate-400/15 transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
@@ -295,7 +332,7 @@ export default function NotesHeader({
                 ref={mobileSearchRef}
                 type="text"
                 placeholder={aiAssistantEnabled ? t("searchOrAskAi") : t("search")}
-                className={`w-full bg-transparent border border-[var(--border-light)] rounded-lg pl-3 ${aiAssistantEnabled ? "pr-16" : "pr-8"} py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
+                className={`w-full bg-transparent border border-transparent rounded-lg pl-3 ${aiAssistantEnabled ? "pr-16" : "pr-8"} py-2 text-sm ring-1 ring-slate-400/15 transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 dark:placeholder-gray-400`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => {
@@ -346,7 +383,7 @@ export default function NotesHeader({
             {notificationBellDesktop}
             <button
               onClick={() => onToggleViewMode?.()}
-              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-blue-400 hover:text-blue-300 hover:bg-blue-500/15 focus:ring-blue-500" : "text-blue-600 hover:text-blue-700 hover:bg-blue-100 focus:ring-blue-400"}`}
+              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${dark ? "text-blue-400 hover:text-blue-300 focus:ring-blue-500" : "text-blue-600 hover:text-blue-700 focus:ring-blue-400"}`}
               data-tooltip={listView ? t("gridView") : t("listView")}
               aria-label={listView ? t("gridView") : t("listView")}
             >
@@ -354,7 +391,7 @@ export default function NotesHeader({
             </button>
             <button
               onClick={() => toggleDark?.()}
-              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-amber-400 hover:text-amber-300 hover:bg-amber-500/15 focus:ring-amber-500" : "text-indigo-500 hover:text-indigo-700 hover:bg-indigo-100 focus:ring-indigo-400"}`}
+              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${dark ? "text-amber-400 hover:text-amber-300 focus:ring-amber-500" : "text-indigo-500 hover:text-indigo-700 focus:ring-indigo-400"}`}
               data-tooltip={dark ? t("lightMode") : t("darkMode")}
               aria-label={dark ? t("lightMode") : t("darkMode")}
             >
@@ -363,7 +400,7 @@ export default function NotesHeader({
             <SyncStatusIcon dark={dark} syncStatus={syncStatus} onSyncNow={handleSyncNow} syncDropdownOpen={syncDropdownOpen} setSyncDropdownOpen={setSyncDropdownOpen} instanceLocked={instanceLocked} />
             <button
               onClick={() => onStartMulti?.()}
-              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-violet-400 hover:text-violet-300 hover:bg-violet-500/15 focus:ring-violet-500" : "text-violet-600 hover:text-violet-700 hover:bg-violet-100 focus:ring-violet-400"}`}
+              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${dark ? "text-violet-400 hover:text-violet-300 focus:ring-violet-500" : "text-violet-600 hover:text-violet-700 focus:ring-violet-400"}`}
               data-tooltip={t("multiSelect")}
               aria-label={t("multiSelect")}
             >
@@ -371,18 +408,18 @@ export default function NotesHeader({
             </button>
             <button
               onClick={() => openSettingsPanel?.()}
-              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-gray-400 hover:text-gray-200 hover:bg-gray-700 focus:ring-gray-500" : "text-gray-500 hover:text-gray-700 hover:bg-gray-200 focus:ring-gray-400"}`}
+              className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${dark ? "text-gray-400 hover:text-gray-200 focus:ring-gray-500" : "text-gray-500 hover:text-gray-700 focus:ring-gray-400"}`}
               data-tooltip={t("settings")}
               aria-label={t("settings")}
             >
               <SettingsIcon />
             </button>
-            <span className={`mx-1 w-px h-5 ${dark ? "bg-gray-600" : "bg-gray-300"}`} />
+            <span className={`mx-1 w-px h-5 ${dark ? "bg-gray-600" : "bg-slate-400/60"}`} />
             {currentUser?.is_admin && (
               <div className="relative flex items-center justify-center">
                 <button
                   onClick={() => openAdminPanel?.()}
-                  className={`relative p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${dark ? "text-red-400 hover:text-red-300 hover:bg-red-500/15 focus:ring-red-500" : "text-red-600 hover:text-red-700 hover:bg-red-100 focus:ring-red-400"}`}
+                  className={`relative p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${dark ? "text-red-400 hover:text-red-300 focus:ring-red-500" : "text-red-600 hover:text-red-700 focus:ring-red-400"}`}
                   data-tooltip={t("adminPanel")}
                   aria-label={t("adminPanel")}
                 >
@@ -508,7 +545,7 @@ export default function NotesHeader({
                     than ~95vw so it can't overflow on tiny phones. */}
                 <div
                   ref={headerMenuRef}
-                  className={`absolute top-0 sm:top-12 right-0 w-max max-w-[95vw] sm:min-w-[220px] sm:max-w-[360px] max-h-[50vh] sm:max-h-[80vh] overflow-y-auto z-[1100] border border-[var(--border-light)] rounded-lg shadow-lg ${dark ? "text-gray-100" : "bg-white text-gray-800"}`}
+                  className={`absolute top-0 sm:top-12 right-0 w-max max-w-[95vw] sm:min-w-[220px] sm:max-w-[360px] max-h-[72vh] sm:max-h-[80vh] overflow-y-auto z-[1100] border border-[var(--border-light)] rounded-lg shadow-lg ${dark ? "text-gray-100" : "bg-white text-gray-800"}`}
                   style={{ backgroundColor: dark ? "#222222" : undefined }}
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -548,6 +585,14 @@ export default function NotesHeader({
                     }}
                   >
                     <span className={dark ? "text-violet-400" : "text-violet-600"}><CheckSquareIcon /></span>{t("multiSelect")}</button>
+                  <button
+                    className={`flex items-center gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}
+                    onClick={() => {
+                      setHeaderMenuOpen(false);
+                      onOpenQrScanner?.();
+                    }}
+                  >
+                    <span className={dark ? "text-teal-400" : "text-teal-600"}><TI.Qrcode style={{ width: "1.5rem", height: "1.5rem" }} /></span>{t("qrScanTitle")}</button>
                   {currentUser?.is_admin && (
                     <button
                       className={`flex items-start gap-3 sm:gap-2 w-full text-left px-4 sm:px-3 py-3.5 sm:py-2 text-base sm:text-sm whitespace-nowrap ${dark ? "hover:bg-white/10" : "hover:bg-gray-100"}`}

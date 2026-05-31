@@ -8,6 +8,7 @@ import { TextStyle, Color, FontFamily, FontSize } from "@tiptap/extension-text-s
 import Highlight from "@tiptap/extension-highlight";
 import Subscript from "@tiptap/extension-subscript";
 import Superscript from "@tiptap/extension-superscript";
+import { TaskList, TaskItem } from "@tiptap/extension-list";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
 import UnderlineVariant from "./extensions/UnderlineVariant.js";
@@ -49,6 +50,14 @@ export function buildRichTextExtensions({ placeholder = "" } = {}) {
     Highlight.configure({ multicolor: true }),
     Subscript,
     Superscript,
+    // Checkbox / task lists for normal text notes. Distinct from the
+    // dedicated checklist note type — these are an inline block format
+    // alongside bullet / ordered lists. TaskList + TaskItem share the
+    // schema across the editor, generateHTML (read mode) and
+    // generateJSON (legacy migration). `checked` is stored per item in
+    // the Tiptap JSON so the state persists across save / reopen.
+    TaskList,
+    TaskItem.configure({ nested: true }),
     TextAlign.configure({
       types: ["heading", "paragraph"],
       // Emit explicit `text-align: left` so round-trips through HTML keep

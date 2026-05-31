@@ -114,6 +114,10 @@ const Underline = ({ style = "simple", color }) => {
 // --- List family (kept colour-accented per earlier design decision) ---
 const LIST_BULLET_COLOR  = "#6366f1";
 const LIST_ORDERED_COLOR = "#0ea5e9";
+// Neutral dark-gray, kept distinct from the colourful list icons AND from
+// pure black (a small stroke icon in near-black just reads as black). Driven
+// by a CSS variable so it stays legible in dark mode (see --rt-task-icon).
+const LIST_TASK_COLOR    = "var(--rt-task-icon)";
 const LIST_OUTDENT_COLOR = "#f59e0b";
 const LIST_INDENT_COLOR  = "#10b981";
 
@@ -131,6 +135,7 @@ function colouredList(Icon, color) {
 
 const BulletList  = colouredList(TI.List,           LIST_BULLET_COLOR);
 const OrderedList = colouredList(TI.ListNumbers,    LIST_ORDERED_COLOR);
+const TaskList    = colouredList(TI.ListCheck,      LIST_TASK_COLOR);
 const Outdent     = colouredList(TI.IndentDecrease, LIST_OUTDENT_COLOR);
 const Indent      = colouredList(TI.IndentIncrease, LIST_INDENT_COLOR);
 
@@ -156,7 +161,7 @@ const RichIcons = {
   Chevron, Paragraph, H1, H2, H3, H4, H5, More,
   Bold, Italic, Underline, Strike, Code, CodeBlock, Quote, HR, Link, LinkOpen, Clear,
   Subscript, Superscript, SizeUp, SizeDown,
-  BulletList, OrderedList, Indent, Outdent,
+  BulletList, OrderedList, TaskList, Indent, Outdent,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   TextColor, Highlight,
 };

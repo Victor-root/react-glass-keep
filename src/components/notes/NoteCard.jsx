@@ -2,7 +2,7 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import { t } from "../../i18n";
 import { bgFor, solid } from "../../utils/colors.js";
 import { renderSafeMarkdown } from "../../utils/markdown.jsx";
-import { isRichContent, contentToHTML, contentToPlain } from "../../utils/richText.js";
+import { isRichContent, contentToHTML, contentToHTMLPreview } from "../../utils/richText.js";
 import { PinOutline, PinFilled, ImageIcon, MicrophoneFilledIcon } from "../../icons/index.jsx";
 import ChecklistRow from "../common/ChecklistRow.jsx";
 import DrawingPreview from "../common/DrawingPreview.jsx";
@@ -60,12 +60,10 @@ function NoteCard({
     const raw = n.content || "";
     if (!raw) return "";
     if (isRichContent(raw)) {
-      const plain = contentToPlain(raw);
-      if (plain.length <= MAX_CHARS) return contentToHTML(raw);
-      // For very long rich notes we fall back to a truncated plain preview
-      // to stay cheap. Full rich render on 350+ chars is still fine, but we
-      // keep parity with the old ellipsis behaviour.
-      return contentToHTML(raw);
+      // The card clips to a fixed max-height, so cap the preview to its
+      // first few blocks — a note with many code blocks (or any long note)
+      // no longer lays out/paints content that's hidden anyway.
+      return contentToHTMLPreview(raw);
     }
     const isLong = raw.length > MAX_CHARS;
     const slice = isLong ? raw.slice(0, MAX_CHARS).trimEnd() + "\u2026" : raw;

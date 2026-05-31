@@ -255,6 +255,17 @@ function attachSelfUpdateRoutes(app, { auth, adminOnly, log = console } = {}) {
     app.get("/api/admin/self-update/mode", auth, adminOnly, async (_req, res) => {
         try {
             const info = await orchestrator.getMode({ verifyDocker: true });
+            if (
+                info.reason === "docker-socket-permission-denied" &&
+                log &&
+                typeof log.warn === "function"
+            ) {
+                log.warn(
+                    "self-update: docker.sock is mounted but the app user cannot access it " +
+                    "— one-click update disabled. On Synology the socket is owned by root:root; " +
+                    "recreate the container so the entrypoint can grant 'node' access to it."
+                );
+            }
             return res.json(info);
         } catch (e) {
             if (log && log.warn) log.warn("self-update/mode failed:", e.message);

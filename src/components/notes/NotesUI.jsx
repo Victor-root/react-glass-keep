@@ -6,7 +6,6 @@ import MultiSelectToolbar from "./MultiSelectToolbar.jsx";
 import NotesHeader from "./NotesHeader.jsx";
 import NotesComposer from "./NotesComposer.jsx";
 import NotesSections from "./NotesSections.jsx";
-
 /** ---------- NotesUI (presentational) ---------- */
 function NotesUI({
   currentUser,

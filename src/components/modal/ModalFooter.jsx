@@ -346,7 +346,7 @@ export default function ModalFooter({
             {isDesktop && <span>{t("tags")}</span>}
             {/* Badge — tag count */}
             {mTagList.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-bold leading-none px-1">
+              <span className="gk-tag-count-badge absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-indigo-500 text-white text-[10px] font-bold leading-none px-1">
                 {mTagList.length}
               </span>
             )}
@@ -391,12 +391,12 @@ export default function ModalFooter({
                   ...(nearRight && arrowDir === "up" && { borderTopRightRadius: '4px' }),
                   ...(nearRight && arrowDir === "down" && { borderBottomRightRadius: '4px' }),
                 }}
-                className="rounded-2xl shadow-2xl bg-white dark:bg-gray-900 border border-indigo-100/80 dark:border-indigo-800/50 ring-1 ring-black/5 dark:ring-white/5"
+                className="gk-tag-popover rounded-2xl shadow-2xl bg-white dark:bg-gray-900 border border-indigo-100/80 dark:border-indigo-800/50 ring-1 ring-black/5 dark:ring-white/5"
               >
                 <div className="overflow-hidden rounded-2xl">
                 {/* Search input */}
                 <div className="px-2 pt-2 pb-1.5">
-                  <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60 focus-within:border-indigo-300 dark:focus-within:border-indigo-600 transition-colors duration-150">
+                  <div className="gk-tag-search-wrap flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/60 focus-within:border-indigo-300 dark:focus-within:border-indigo-600 transition-colors duration-150">
                     <svg className="w-3 h-3 text-gray-400 dark:text-gray-500 shrink-0" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <circle cx="6.5" cy="6.5" r="4"/><line x1="10" y1="10" x2="14" y2="14"/>
                     </svg>
@@ -442,10 +442,10 @@ export default function ModalFooter({
                             }}
                             className="w-full text-left px-2.5 py-1.5 rounded-xl hover:bg-indigo-50/80 dark:hover:bg-indigo-900/30 text-sm text-gray-700 dark:text-gray-200 flex items-center gap-2.5 transition-all duration-150 group cursor-pointer"
                           >
-                            <span className={`inline-flex items-center justify-center rounded-md border-2 transition-all duration-150 shrink-0 ${
+                            <span className={`gk-tag-cb inline-flex items-center justify-center rounded-md border-2 transition-all duration-150 shrink-0 ${
                               checked
-                                ? "bg-indigo-500 border-indigo-500 dark:bg-indigo-600 dark:border-indigo-600"
-                                : "border-gray-300 dark:border-gray-600 group-hover:border-indigo-400 dark:group-hover:border-indigo-500"
+                                ? "gk-tag-cb--on"
+                                : "border-gray-300 dark:border-gray-600"
                             }`} style={{ width: 18, height: 18 }}>
                               {checked && (
                                 <svg className="w-3 h-3 text-white" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -504,11 +504,11 @@ export default function ModalFooter({
                         {mTagList.map((tag) => (
                           <span
                             key={tag}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100/80 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-700/40"
+                            className="gk-tag-chip inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100/80 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-700/40"
                           >
                             {tag}
                             <button
-                              className="w-3 h-3 rounded-full text-indigo-400 dark:text-indigo-300 hover:bg-red-400 dark:hover:bg-red-500 hover:text-white flex items-center justify-center transition-all duration-150 cursor-pointer focus:outline-none leading-none"
+                              className="gk-tag-chip-remove w-3 h-3 rounded-full text-indigo-400 dark:text-indigo-300 hover:bg-red-400 dark:hover:bg-red-500 hover:text-white flex items-center justify-center transition-all duration-150 cursor-pointer focus:outline-none leading-none"
                               onMouseDown={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();

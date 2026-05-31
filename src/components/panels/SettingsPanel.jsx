@@ -10,6 +10,7 @@ import { fileToCompressedDataURL } from "../../utils/helpers.js";
 import TypographyModal from "./TypographyModal.jsx";
 import PasskeySettingsSection from "../settings/PasskeySettingsSection.jsx";
 import UserAiSettingsSection from "../settings/UserAiSettingsSection.jsx";
+import WorkspaceThemeSection from "../settings/WorkspaceThemeSection.jsx";
 import { RowIcon, SettingsSection, SettingsSubHeading as UISubHeading } from "../common/SettingsAccordion.jsx";
 
 const SectionHeaderIcon = RowIcon;
@@ -273,9 +274,8 @@ export default function SettingsPanel({
         />
       )}
       <div
-        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[28rem] lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
+        className={`gk-side-panel fixed top-0 right-0 z-50 h-full w-full lg:w-[32rem] transition-transform duration-200 ${open ? "translate-x-0 shadow-2xl" : "translate-x-full shadow-none"}`}
         style={{
-          backgroundColor: dark ? "#222222" : "#f9f6ff",
           borderLeft: "1px solid var(--border-light)",
           paddingTop: "var(--safe-top)",
           paddingBottom: "var(--safe-bottom)",
@@ -295,7 +295,7 @@ export default function SettingsPanel({
           </button>
         </div>
 
-        <div className="p-4 pb-12 overflow-y-auto h-[calc(100%-64px)]">
+        <div className="p-4 pb-12 overflow-y-auto overflow-x-hidden h-[calc(100%-64px)]">
           {/* Profile Section — header (icon + "Profil" title) intentionally
               omitted; the avatar block is self-explanatory. */}
           <div className="mb-8">
@@ -327,7 +327,7 @@ export default function SettingsPanel({
                 <div className="font-medium truncate">{currentUser?.name || currentUser?.email}</div>
                 <div className="flex gap-2 mt-1">
                   <button
-                    className="text-xs text-indigo-600 hover:underline"
+                    className="text-xs text-[var(--gk-chrome-accent)] hover:underline"
                     onClick={() => avatarFileRef.current?.click()}
                   >{currentUser?.avatar_url ? t("changePhoto") : t("uploadPhoto")}</button>
                   {currentUser?.avatar_url && (
@@ -340,7 +340,7 @@ export default function SettingsPanel({
                 {window.AndroidTheme && (
                   <div className="mt-1">
                     <button
-                      className="text-xs text-indigo-600 hover:underline"
+                      className="text-xs text-[var(--gk-chrome-accent)] hover:underline"
                       onClick={() => window.AndroidTheme.changeServer()}
                     >{t("changeServer")}</button>
                   </div>
@@ -368,7 +368,7 @@ export default function SettingsPanel({
               </div>
               <button
                 className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
-                  profileShowOnLogin ? "bg-indigo-600" : "bg-gray-300 dark:bg-gray-600"
+                  profileShowOnLogin ? "bg-[var(--gk-switch-on)]" : "bg-gray-300 dark:bg-gray-600"
                 }`}
                 onClick={handleShowOnLoginToggle}
               >
@@ -411,7 +411,7 @@ export default function SettingsPanel({
                   openQrScanner?.();
                 }
               }}
-              className={`mt-5 cursor-pointer w-full flex items-start gap-3 px-3 py-3 border border-[var(--border-light)] rounded-lg ${dark ? "hover:bg-white/10" : "hover:bg-gray-50"} transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500`}
+              className={`mt-5 cursor-pointer w-full flex items-start gap-3 px-3 py-3 border border-[var(--border-light)] rounded-lg ${dark ? "hover:bg-white/10" : "hover:bg-gray-50"} transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--gk-chrome-accent)]`}
             >
               <RowIcon icon={TI.Qrcode} />
               <div className="min-w-0 flex-1">
@@ -499,7 +499,7 @@ export default function SettingsPanel({
                 <button
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
                     alwaysShowSidebarOnWide
-                      ? "bg-indigo-600"
+                      ? "bg-[var(--gk-switch-on)]"
                       : "bg-gray-300 dark:bg-gray-600"
                   }`}
                   onClick={() =>
@@ -517,7 +517,7 @@ export default function SettingsPanel({
               </div>
 
               {alwaysShowSidebarOnWide && (
-                <div className="flex flex-col gap-2 px-3 sm:pl-14">
+                <div className="flex flex-col gap-2 px-3">
                   <div className="min-w-0">
                     <div className="font-medium">{t("sidebarBreakpoint")}</div>
                     <div className="text-sm text-gray-500">{t("sidebarBreakpointDesc")}</div>
@@ -526,11 +526,11 @@ export default function SettingsPanel({
                     ref={breakpointBtnRef}
                     type="button"
                     onClick={() => setBreakpointMenuOpen((v) => !v)}
-                    className="w-full inline-flex items-center justify-between gap-2 pl-3 pr-1.5 py-1.5 text-sm rounded-lg font-semibold border border-[var(--border-light)] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-[0.99] transition-all duration-200"
+                    className="w-full min-w-0 flex items-center justify-between gap-2 pl-3 pr-1.5 py-1.5 text-sm rounded-lg font-semibold border border-[var(--border-light)] bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-[0.99] transition-all duration-200"
                     aria-haspopup="listbox"
                     aria-expanded={breakpointMenuOpen}
                   >
-                    <span className="truncate text-left">
+                    <span className="truncate text-left flex-1 min-w-0">
                       {t(
                         (SIDEBAR_BREAKPOINT_PRESETS.find((p) => p.value === sidebarBreakpoint) || {}).labelKey
                       ) || `≥ ${sidebarBreakpoint} px`}
@@ -560,7 +560,7 @@ export default function SettingsPanel({
                               type="button"
                               className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
                                 selected
-                                  ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                                  ? "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] font-semibold"
                                   : "hover:bg-black/5 dark:hover:bg-white/10"
                               }`}
                               onClick={() => {
@@ -595,7 +595,7 @@ export default function SettingsPanel({
                   <button
                     className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
                       edgeToEdgeLandscape
-                        ? "bg-indigo-600"
+                        ? "bg-[var(--gk-switch-on)]"
                         : "bg-gray-300 dark:bg-gray-600"
                     }`}
                     onClick={() => setEdgeToEdgeLandscape(!edgeToEdgeLandscape)}
@@ -619,9 +619,7 @@ export default function SettingsPanel({
                 </div>
                 <button
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
-                    floatingCardsEnabled
-                      ? "bg-indigo-600"
-                      : "bg-gray-300 dark:bg-gray-600"
+                    floatingCardsEnabled ? "bg-[var(--gk-switch-on)]" : "bg-gray-300 dark:bg-gray-600"
                   }`}
                   onClick={() => setFloatingCardsEnabled(!floatingCardsEnabled)}
                 >
@@ -631,6 +629,12 @@ export default function SettingsPanel({
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* Workspace colour theme (header + sidebar chrome only) —
+                  its own group, separated by a hairline. */}
+              <div className="pt-2 border-t border-[var(--border-light)]">
+                <WorkspaceThemeSection token={token} showToast={showToast} />
               </div>
 
             </div>
@@ -689,7 +693,7 @@ export default function SettingsPanel({
                                 aria-pressed={selected}
                                 className={`px-3 py-1.5 text-sm font-semibold transition-colors ${
                                   selected
-                                    ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white"
+                                    ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white btn-gradient"
                                     : "bg-transparent text-gray-700 dark:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10"
                                 }`}
                               >
@@ -741,7 +745,7 @@ export default function SettingsPanel({
                                   type="button"
                                   className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
                                     selected
-                                      ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                                      ? "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] font-semibold"
                                       : "hover:bg-black/5 dark:hover:bg-white/10"
                                   }`}
                                   onClick={() => {
@@ -783,7 +787,7 @@ export default function SettingsPanel({
                         onClick={() => setNotifSoundTypesOpen((v) => !v)}
                         className={`shrink-0 p-1.5 rounded-md transition-colors ${
                           notifSoundTypesOpen
-                            ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"
+                            ? "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)]"
                             : "text-gray-500 hover:bg-black/5 dark:hover:bg-white/10"
                         }`}
                       >
@@ -794,7 +798,7 @@ export default function SettingsPanel({
                       <button
                         className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
                           notificationsSound
-                            ? "bg-indigo-600"
+                            ? "bg-[var(--gk-switch-on)]"
                             : "bg-gray-300 dark:bg-gray-600"
                         }`}
                         onClick={() => setNotificationsSound?.(!notificationsSound)}
@@ -851,7 +855,7 @@ export default function SettingsPanel({
                               }
                               className={`relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${
                                 enabled
-                                  ? "bg-gradient-to-r from-indigo-500 to-violet-600"
+                                  ? "bg-gradient-to-r from-indigo-500 to-violet-600 btn-gradient"
                                   : "bg-gray-300 dark:bg-gray-600"
                               } ${notificationsSound ? "" : "cursor-not-allowed"}`}
                             >
@@ -918,7 +922,7 @@ export default function SettingsPanel({
                               type="button"
                               className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
                                 selected
-                                  ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                                  ? "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] font-semibold"
                                   : "hover:bg-black/5 dark:hover:bg-white/10"
                               }`}
                               onClick={() => {
@@ -961,7 +965,7 @@ export default function SettingsPanel({
                 <button
                   className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full self-end sm:self-auto transition-colors ${
                     readModeEnabled
-                      ? "bg-indigo-600"
+                      ? "bg-[var(--gk-switch-on)]"
                       : "bg-gray-300 dark:bg-gray-600"
                   }`}
                   onClick={() => setReadModeEnabled(!readModeEnabled)}
@@ -1193,7 +1197,7 @@ export default function SettingsPanel({
                       href="https://support.google.com/accounts/answer/3024190?hl=en-AM&utm"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-indigo-500 hover:text-indigo-600 dark:text-indigo-300 dark:hover:text-indigo-200 underline underline-offset-2"
+                      className="text-[var(--gk-chrome-accent)] hover:brightness-90 dark:hover:brightness-110 underline underline-offset-2"
                       onClick={(e) => e.stopPropagation()}
                     >
                       {t("howToExportGoogleKeep")}
@@ -1316,7 +1320,7 @@ export default function SettingsPanel({
                        the "Check for updates" button entirely — keeping
                        both side-by-side made the section feel redundant
                        (the card is itself the answer to the check). */
-                    <div className="px-3 py-3 border border-indigo-300/60 dark:border-indigo-500/40 rounded-lg bg-indigo-50/60 dark:bg-indigo-900/20">
+                    <div className="px-3 py-3 border border-[var(--gk-accent-soft-border)] rounded-lg bg-[var(--gk-accent-soft-bg)]">
                       <div className="flex items-start gap-3">
                         <RowIcon icon={TI.Sparkles} />
                         <div className="min-w-0 flex-1">
@@ -1345,7 +1349,7 @@ export default function SettingsPanel({
                           onClick={() => {
                             try { window.AndroidTheme?.installAvailableUpdate?.(); } catch (e) {}
                           }}
-                          className="px-4 py-1.5 rounded-lg text-sm font-semibold bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 shadow-md shadow-indigo-300/40 dark:shadow-none hover:shadow-lg hover:shadow-indigo-300/50 dark:hover:shadow-none hover:scale-[1.03] active:scale-[0.98] btn-gradient"
+                          className="px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 bg-gradient-to-r from-indigo-500 to-violet-600 text-white hover:from-indigo-600 hover:to-violet-700 hover:scale-[1.03] active:scale-[0.98] btn-gradient"
                         >
                           {t("updateAvailableDownload")}
                         </button>
@@ -1436,7 +1440,7 @@ export default function SettingsPanel({
                             type="button"
                             className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${
                               selected
-                                ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 font-semibold"
+                                ? "bg-[var(--gk-accent-soft-bg)] text-[var(--gk-chrome-accent)] font-semibold"
                                 : "hover:bg-black/5 dark:hover:bg-white/10"
                             }`}
                             onClick={() => {
@@ -1492,7 +1496,7 @@ export default function SettingsPanel({
                 type="checkbox"
                 checked={overridePositions}
                 onChange={(e) => setOverridePositions(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                className="w-4 h-4 rounded border-gray-300 text-[var(--gk-chrome-accent)] focus:ring-[var(--gk-chrome-accent)]"
               />
               <span className="text-sm">{t("resetNoteOrderOverridePositions")}</span>
             </label>

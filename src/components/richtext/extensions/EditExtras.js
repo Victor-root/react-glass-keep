@@ -126,7 +126,7 @@ function hideTooltip() {
 // the user hovers another inline `<code>` or re-enters the button),
 // giving the user enough time to reach and click it without having to
 // keep the cursor on the underlying inline code.
-const INLINE_COPY_VISIBLE_MS = 2000;
+const INLINE_COPY_VISIBLE_MS = 500;
 let inlineCopyEl = null;
 let inlineCopyTarget = null;
 let inlineCopyHideTimer = null;
@@ -276,7 +276,32 @@ function clearBelowSpacer() {
     belowSpacerEl.parentNode.removeChild(belowSpacerEl);
   }
 }
+// While the content is actively scrolling, the cursor stays put on screen
+// and inline `<code>` elements sweep under it — the browser fires a burst
+// of `mouseover`s, each of which would pop + reposition the copy overlay
+// (getClientRects/getBoundingClientRect + DOM writes). On a note with lots
+// of inline code that thrashes layout and janks the scroll. We suppress
+// hover-triggered overlays for a short window after any scroll; a real
+// pointer hover (once scrolling settles) still works.
+let inlineCopyScrollSuppressUntil = 0;
+let inlineCopyScrollHooked = false;
+function hookInlineCopyScrollSuppression() {
+  if (inlineCopyScrollHooked || typeof document === "undefined") return;
+  inlineCopyScrollHooked = true;
+  // Capture so it catches scrolls from any scroll container (the note
+  // modal scrolls an inner element, not the window).
+  document.addEventListener(
+    "scroll",
+    () => { inlineCopyScrollSuppressUntil = performance.now() + 150; },
+    true,
+  );
+}
+
 function showInlineCopyFor(codeEl, { sticky = false } = {}) {
+  hookInlineCopyScrollSuppression();
+  // Hover overlays caused by content scrolling under a stationary cursor
+  // are skipped; explicit taps (sticky) always show.
+  if (!sticky && performance.now() < inlineCopyScrollSuppressUntil) return;
   inlineCopyTarget = codeEl;
   inlineCopySticky = sticky;
   if (inlineCopyHideTimer) {
@@ -310,10 +335,9 @@ function showInlineCopyFor(codeEl, { sticky = false } = {}) {
   // rides the scroll container natively — its position:absolute
   // coords are relative to the scrolled content, not the viewport.
   requestAnimationFrame(positionInlineCopyForCurrent);
-  // Desktop hover: arm the auto-hide so the button stays visible for a
-  // few seconds without requiring the cursor to stay on the inline
-  // code. Sticky (mobile tap) is dismissed by an explicit outside tap.
-  if (!sticky) scheduleInlineCopyHide();
+  // The hide timer is NOT started here — it fires only when the cursor
+  // leaves the inline code (mouseout) or the button (mouseleave).
+  // Sticky (mobile tap) is dismissed by an explicit outside tap.
 }
 function scheduleInlineCopyHide() {
   if (inlineCopySticky) return;

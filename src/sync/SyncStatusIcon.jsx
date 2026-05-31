@@ -2,6 +2,7 @@
 // Cloud sync status icon with dropdown menu showing detailed sync state
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { t } from "../i18n";
 
 // ─── SVG Icons ───
@@ -81,7 +82,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudPending,
         color: dark ? "text-gray-400" : "text-gray-500",
-        hoverBg: dark ? "hover:bg-gray-500/15" : "hover:bg-gray-200",
+        hoverBg: "",
         label: t("syncServerChecking"),
         animate: true,
       };
@@ -89,7 +90,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudCheck,
         color: dark ? "text-emerald-400" : "text-emerald-600",
-        hoverBg: dark ? "hover:bg-emerald-500/15" : "hover:bg-emerald-100",
+        hoverBg: "",
         label: t("syncStatusSynced"),
         animate: false,
       };
@@ -97,7 +98,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudPending,
         color: dark ? "text-amber-400" : "text-amber-600",
-        hoverBg: dark ? "hover:bg-amber-500/15" : "hover:bg-amber-100",
+        hoverBg: "",
         label: t("syncStatusPending"),
         animate: false,
       };
@@ -105,7 +106,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudSync,
         color: dark ? "text-blue-400" : "text-blue-600",
-        hoverBg: dark ? "hover:bg-blue-500/15" : "hover:bg-blue-100",
+        hoverBg: "",
         label: t("syncStatusSyncing"),
         animate: true,
       };
@@ -113,7 +114,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudOff,
         color: dark ? "text-gray-400" : "text-gray-500",
-        hoverBg: dark ? "hover:bg-gray-500/15" : "hover:bg-gray-200",
+        hoverBg: "",
         label: t("syncStatusOffline"),
         animate: false,
       };
@@ -121,7 +122,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudError,
         color: dark ? "text-red-400" : "text-red-600",
-        hoverBg: dark ? "hover:bg-red-500/15" : "hover:bg-red-100",
+        hoverBg: "",
         label: t("syncStatusError"),
         animate: false,
       };
@@ -129,7 +130,7 @@ function getStatusConfig(syncState, dark) {
       return {
         Icon: CloudPending,
         color: dark ? "text-gray-400" : "text-gray-500",
-        hoverBg: dark ? "hover:bg-gray-500/15" : "hover:bg-gray-200",
+        hoverBg: "",
         label: "...",
         animate: false,
       };
@@ -213,6 +214,13 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
   useEffect(() => {
     if (!open) return undefined;
     const onPointerDown = (e) => {
+      // Portal-safe + null-safe: the sheet is portalled to <body>, and across
+      // the portal/IIFE re-render menuRef.current can be momentarily null —
+      // in which case the menuRef check below falls through and the sheet
+      // closes the instant you touch its OWN grabber. closest() walks the
+      // target's real DOM ancestry, so a touch anywhere inside the sheet
+      // (grabber included) is correctly treated as "inside".
+      if (e.target?.closest?.(".gk-sync-sheet")) return;
       if (menuRef.current && menuRef.current.contains(e.target)) return;
       if (btnRef.current && btnRef.current.contains(e.target)) return;
       e.preventDefault();
@@ -229,6 +237,55 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [open, setOpen]);
 
+  // Slide the phone sheet in: flip .is-open one frame after mount so the
+  // transform transition has a from-state (translateY(-100%)) to animate from.
+  // No body-scroll lock on purpose — it shifted the page and could get stuck;
+  // the sheet simply overlays the header.
+  const [animIn, setAnimIn] = useState(false);
+  useEffect(() => {
+    if (!open) { setAnimIn(false); return undefined; }
+    let r2 = 0;
+    const r1 = requestAnimationFrame(() => { r2 = requestAnimationFrame(() => setAnimIn(true)); });
+    return () => { cancelAnimationFrame(r1); if (r2) cancelAnimationFrame(r2); };
+  }, [open]);
+
+  // Grabber drag-to-close (phone sheet). The sheet is anchored at the top, so
+  // dragging the grabber UP collapses it. The drag moves the panel via an
+  // inline transform; the CSS uses a transition (not a keyframe animation) so
+  // nothing holds transform and the panel follows the finger 1:1.
+  const dragRef = useRef({ active: false, startY: 0, currentY: 0 });
+  const handleGrabberDown = (e) => {
+    if (e.button != null && e.button !== 0) return;
+    const panel = menuRef.current;
+    if (!panel) return;
+    dragRef.current = { active: true, startY: e.clientY, currentY: 0 };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    panel.style.transition = "none";
+  };
+  const handleGrabberMove = (e) => {
+    if (!dragRef.current.active) return;
+    const dy = Math.max(0, dragRef.current.startY - e.clientY);
+    dragRef.current.currentY = dy;
+    if (menuRef.current) menuRef.current.style.transform = `translateY(-${dy}px)`;
+  };
+  const handleGrabberUp = (e) => {
+    if (!dragRef.current.active) return;
+    const dy = dragRef.current.currentY;
+    dragRef.current.active = false;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
+    const panel = menuRef.current;
+    if (!panel) return;
+    if (dy > 60) {
+      setOpen(false);
+    } else {
+      // Snap back: restore the CSS transition, clear the inline transform so
+      // .is-open (translateY 0) takes over and animates the panel home.
+      panel.style.transition = "";
+      panel.style.transform = "";
+    }
+  };
+  const isMobileSheet = typeof window !== "undefined" && window.innerWidth < 640;
+
   if (!syncStatus) return null;
 
   const {
@@ -237,7 +294,7 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
   } = syncStatus;
 
   const config = getStatusConfig(syncState, dark);
-  const { Icon, color, hoverBg, label, animate } = config;
+  const { Icon, color, label, animate } = config;
 
   const retryItems = (items || []).filter((i) => i.status === "retry");
   const failedItems = (items || []).filter((i) => i.status === "failed");
@@ -280,7 +337,7 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
       <button
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}
-        className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${color} ${hoverBg} ${animate ? "animate-pulse" : ""}`}
+        className={`p-2 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 gk-header-icon-btn ${color} ${animate ? "animate-pulse" : ""}`}
         data-tooltip={label}
         aria-label={label}
         aria-haspopup="menu"
@@ -303,28 +360,43 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
         )}
       </button>
 
-      {open && (
-        <>
-          {/* On mobile we used `absolute right-0` relative to the
-              wrapper around the sync icon — that's a ~40 px-wide
-              container, so the 280-340 px popover extended off the
-              left edge of the screen. Switch to fixed positioning
-              centered horizontally on the viewport. The host
-              <header> has a `transform: translateY(0)`, so `fixed`
-              is technically relative to the header rather than the
-              viewport, but the header itself occupies the top of
-              the viewport at full width, so the maths work out
-              the same. On desktop we keep the legacy "anchored to
-              the button" layout. */}
+      {open && (() => {
+        // Phone (<640px): a full-width top SHEET portalled to <body> so it's
+        // positioned relative to the viewport (the header's transform would
+        // otherwise make `fixed` relative to the header + its padding). The
+        // .gk-sync-sheet CSS drives the full-width/slide/safe-top on phones.
+        // Desktop keeps the anchored popover rendered inline (sm: classes).
+        //
+        // NotesHeader renders TWO SyncStatusIcon (desktop + mobile clusters)
+        // that share syncDropdownOpen. The hidden one used to keep its inline
+        // dropdown hidden via its display:none container — but a portal escapes
+        // to <body> and would show a DUPLICATE sheet. So the hidden instance
+        // (its button has no offsetParent) renders nothing on phones.
+        if (isMobileSheet && btnRef.current && btnRef.current.offsetParent === null) {
+          return null;
+        }
+        const sheet = (
           <div
             ref={menuRef}
-            className={`fixed top-14 left-1/2 -translate-x-1/2 sm:absolute sm:top-12 sm:left-auto sm:right-0 sm:translate-x-0 w-[calc(100vw-1rem)] max-w-[340px] sm:w-auto sm:min-w-[280px] z-[1100] border rounded-lg shadow-lg overflow-hidden ${
+            className={`gk-sync-sheet ${animIn ? "is-open" : ""} fixed top-14 left-1/2 -translate-x-1/2 sm:absolute sm:top-12 sm:left-auto sm:right-0 sm:translate-x-0 w-[calc(100vw-1rem)] max-w-[340px] sm:w-auto sm:min-w-[280px] z-[1100] border rounded-lg shadow-lg overflow-hidden ${
               dark
-                ? "bg-[#222] border-gray-700 text-gray-100"
-                : "bg-[#f9f6ff] border-gray-200 text-gray-800"
+                ? "bg-[var(--gk-statusbar)] sm:bg-[#222] border-gray-700 text-gray-100"
+                : "bg-[var(--gk-statusbar)] sm:bg-[#f9f6ff] border-gray-200 text-gray-800"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Phone sheet: small close affordance, below the status bar. */}
+            {isMobileSheet && (
+              <button
+                type="button"
+                aria-label={t("close")}
+                onClick={() => setOpen(false)}
+                className={`absolute right-2 z-10 w-8 h-8 rounded-md flex items-center justify-center ${dark ? "text-gray-400 hover:text-gray-100 hover:bg-white/10" : "text-gray-500 hover:text-gray-800 hover:bg-black/5"}`}
+                style={{ top: "0.5rem" }}
+              >
+                ✕
+              </button>
+            )}
             {/* ── Section 1: Status header ── */}
             <div className={`px-4 py-3 border-b ${dark ? "border-gray-700" : "border-gray-200"}`}>
               <div className="flex items-center gap-2">
@@ -507,9 +579,20 @@ export default function SyncStatusIcon({ dark, syncStatus, onSyncNow, syncDropdo
                 {t("syncSafeToClose")}
               </div>
             ) : null}
+            {/* Phone sheet: bottom grabber — drag up to dismiss (like the notif sheet). */}
+            {isMobileSheet && (
+              <div
+                className="gk-sync-sheet__grabber"
+                onPointerDown={handleGrabberDown}
+                onPointerMove={handleGrabberMove}
+                onPointerUp={handleGrabberUp}
+                onPointerCancel={handleGrabberUp}
+              />
+            )}
           </div>
-        </>
-      )}
+        );
+        return isMobileSheet ? createPortal(sheet, document.body) : sheet;
+      })()}
     </div>
   );
 }

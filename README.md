@@ -253,7 +253,7 @@ The container appears in the **Containers** tab once it's pulled and started.
 4. Edit the `ADMIN_EMAIL` / `ADMIN_PASSWORD` values
 5. Click **Next** → **Done**
 
-The Docker socket volume works out of the box on DSM, so the in-app "Update now" button will work without extra setup.
+On DSM the Docker socket is owned by `root:root` (there is no `docker` group). GlassKeep's entrypoint detects this and grants the in-container `node` user access to it automatically, so the in-app **"Update now"** button works after the container's first start — no extra setup. If you added the socket mount to an **existing** project, recreate the container once (stop then start the project in Container Manager, or `docker compose up -d --force-recreate`) so the entrypoint can apply the permission.
 
 </details>
 

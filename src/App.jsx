@@ -5,6 +5,7 @@ import React, {
   useState,
   useLayoutEffect,
   useCallback,
+  useDeferredValue,
 } from "react";
 import { askAI, askNoteAIStream } from "./ai";
 import { t } from "./i18n";
@@ -27,7 +28,8 @@ import {
 import { api, getAuth, setAuth, AUTH_KEY, getClientId } from "./utils/api.js";
 import { localizeServerError } from "./utils/serverErrors.js";
 import { mdForDownload } from "./utils/markdown.jsx";
-import { uid, sanitizeFilename, downloadText, triggerBlobDownload, ensureJSZip, imageExtFromDataURL, fileToCompressedDataURL, setThemeColor } from "./utils/helpers.js";
+import { uid, sanitizeFilename, downloadText, triggerBlobDownload, ensureJSZip, imageExtFromDataURL, fileToCompressedDataURL, setThemeColor, currentStatusBarColor } from "./utils/helpers.js";
+import { setShellTheme, isValidShellTheme } from "./theme/shellTheme.js";
 import { textToChecklistItems, checklistItemsToText } from "./utils/noteConversion.js";
 import { isRichContent, contentToPlain, serializeRichContent, legacyMarkdownToRichDoc } from "./utils/richText.js";
 import {
@@ -75,11 +77,13 @@ import { dataUrlToBlob } from "./utils/audioConvert.js";
 import useModalState from "./hooks/useModalState.js";
 import useDraftNote from "./hooks/useDraftNote.js";
 import useAdminActions from "./hooks/useAdminActions.js";
+import { useBranding } from "./branding/BrandingContext.jsx";
 import { useShareNotifications } from "./hooks/useShareNotifications.js";
 import useImportExport from "./hooks/useImportExport.js";
 import useCollaboration from "./hooks/useCollaboration.js";
 import useFormatting from "./hooks/useFormatting.js";
 import useInstanceLockStatus from "./hooks/useInstanceLockStatus.js";
+import { useStableCallback } from "./hooks/useStableCallback.js";
 import InstanceUnlockScreen from "./components/lock/InstanceUnlockScreen.jsx";
 import LockedBanner from "./components/lock/LockedBanner.jsx";
 
@@ -889,6 +893,10 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState([]); // array of string ids
   const isSelected = (id) => selectedIds.includes(String(id));
   const onStartMulti = () => {
+    // Toggle: a second click on the multi-select button closes the bar
+    // instead of re-running the open logic (which re-added the dock's padding
+    // to the scroll position, so each extra click scrolled the page down).
+    if (multiMode) { onExitMulti(); return; }
     const scrollX = window.scrollX;
     const scrollY = window.scrollY;
     setMultiMode(true);
@@ -1011,6 +1019,12 @@ export default function App() {
         if (settings && typeof settings.floatingCardsEnabled === "boolean") {
           setFloatingCardsEnabled(settings.floatingCardsEnabled);
           localStorage.setItem("floatingCardsEnabled", String(settings.floatingCardsEnabled));
+        }
+        // Workspace shell theme — server is the source of truth (applied here,
+        // overriding the localStorage cache the boot script already used).
+        // Absent/invalid → keep the local fallback (which defaults to GlassKeep).
+        if (settings && isValidShellTheme(settings.shellTheme)) {
+          setShellTheme(settings.shellTheme);
         }
         if (settings?.checklistInsertPosition) {
           setChecklistInsertPosition(settings.checklistInsertPosition);
@@ -1742,6 +1756,12 @@ export default function App() {
   const [sseConnected, setSseConnected] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
+  // Instance branding (custom app name / logo / login background +
+  // blur). The provider owns the fetch; we only need refreshBranding to
+  // re-pull after an admin saves so the live header / next login render
+  // the new values without a reload.
+  const { refreshBranding } = useBranding();
+
   // Admin panel state (hook)
   const {
     adminPanelOpen, setAdminPanelOpen,
@@ -1756,6 +1776,9 @@ export default function App() {
   } = useAdminActions(token, {
     onSettingsUpdated: (settings) => {
       if (typeof settings.loginSlogan === 'string') setLoginSlogan(settings.loginSlogan);
+      // Branding (name/logo/background/blur) may have changed too —
+      // re-pull the public branding so the live app reflects it.
+      refreshBranding();
     },
   });
   const [allowRegistration, setAllowRegistration] = useState(true);
@@ -1885,14 +1908,14 @@ export default function App() {
       : (androidDark != null ? androidDark : (mq?.matches ?? false));
     setDark(savedDark);
     document.documentElement.classList.toggle("dark", savedDark);
-    setThemeColor(savedDark ? "#1a1a1a" : "#f0e8ff");
+    setThemeColor(currentStatusBarColor());
 
     // Apply dark mode from system/bridge without persisting — only toggleDark marks a manual pref
     const applyDark = (isDark) => {
       setDark(isDark);
       document.documentElement.classList.toggle("dark", isDark);
       // Skip if note modal is open — NoteModal effect handles its own color
-      if (!window.__noteModalOpen) setThemeColor(isDark ? "#1a1a1a" : "#f0e8ff");
+      if (!window.__noteModalOpen) setThemeColor(currentStatusBarColor());
     };
     const hasManualPref = () => sessionStorage.getItem("glass-keep-dark-mode-manual") !== null;
 
@@ -1921,7 +1944,7 @@ export default function App() {
     document.documentElement.classList.toggle("dark", next);
     sessionStorage.setItem("glass-keep-dark-mode-manual", String(next));
     // Skip if note modal is open — NoteModal effect handles its own color
-    if (!window.__noteModalOpen) setThemeColor(next ? "#1a1a1a" : "#f0e8ff");
+    if (!window.__noteModalOpen) setThemeColor(currentStatusBarColor());
   };
 
   // Close sidebar with Escape
@@ -3187,6 +3210,25 @@ export default function App() {
           reconnectAttempts = 0;
         };
 
+        // The backend emits NAMED SSE events as proof-of-life: `hello` right
+        // after connect and `ping` every 25s (server/index.js). Named events do
+        // NOT trigger es.onmessage (that only fires for unnamed "message"
+        // events), so we listen for them explicitly. Each is written by the
+        // Node backend itself — a reverse proxy can't fabricate one — so
+        // receiving it proves the backend, not just the proxy, is reachable.
+        // This is what breaks the "stuck offline after resuming from
+        // background" deadlock: on resume the /health fetch can keep timing out
+        // (AbortError) while SSE reconnects fine, leaving serverReachable=false
+        // and the recovery reload gated forever until a manual refresh. The
+        // hello on reconnect (and the 25s ping as a safety net) now confirms
+        // reachability and triggers recovery. notifyServerReachable() is a
+        // no-op once we're already online, so the heartbeat is essentially free.
+        const onBackendAlive = () => {
+          syncEngineRef.current?.notifyServerReachable();
+        };
+        es.addEventListener("hello", onBackendAlive);
+        es.addEventListener("ping", onBackendAlive);
+
         // SSE message handler (server sends generic data: messages)
         es.onmessage = (e) => {
           try {
@@ -3212,6 +3254,13 @@ export default function App() {
               // local change.
               remoteSyncedKeysRef.current = new Set();
               const mark = (k) => remoteSyncedKeysRef.current.add(k);
+
+              // Workspace shell theme — apply live across tabs/devices. No
+              // outbound-PATCH useEffect watches it (the picker writes the
+              // server directly), so no echo-suppression mark is needed.
+              if (keys.has("shellTheme") && isValidShellTheme(settings.shellTheme)) {
+                setShellTheme(settings.shellTheme);
+              }
 
               if (keys.has("notificationsPosition")) {
                 const v = settings.notificationsPosition;
@@ -3438,11 +3487,14 @@ export default function App() {
               }
             } else if (msg && msg.type === "admin_settings_updated") {
               // Another admin flipped the "allow new accounts"
-              // toggle or changed the login slogan. Pull the fresh
-              // server-side admin settings so this admin's panel
-              // shows the new values immediately.
+              // toggle or changed the login slogan / branding. Pull the
+              // fresh server-side admin settings so this admin's panel
+              // shows the new values immediately, and refresh the live
+              // branding so the header logo/name update without a reload.
+              // (This event is only broadcast to admins.)
               if (currentUserRef.current?.is_admin) {
                 loadAdminSettings?.();
+                refreshBranding();
               }
             } else if (msg && msg.type === "user_settings_updated" && msg.settings) {
               // Live sync of user preferences from another session of
@@ -3600,6 +3652,12 @@ export default function App() {
       // auto-triggers processQueue on recovery. Also restarts the
       // health timer chain if it was broken by tab suspension.
       if (engine) {
+        // Background AbortErrors accumulated in _consecutiveTimeouts under the
+        // hidden-tab tolerance (limit=3). If we don't reset here, the first
+        // post-resume check uses the visible-tab limit (1), immediately exceeds
+        // it, and marks the server offline even though it's reachable.
+        engine.notifyVisible();
+
         // force=true on every attempt: the retry gap (1.5s) is shorter than
         // the 3s throttle in healthCheck(), so unforced retries silently
         // return the cached "offline" value and waste a slot in the loop.
@@ -4293,7 +4351,7 @@ export default function App() {
     modalKebabOpen, modalTagFocused, notifCenterOpen, syncDropdownOpen, mobileSearchOpen,
     showColorPop, showComposerFmt, headerMenuOpen, multiMode,
     typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
-    noteAiOpen, changelogOpen,
+    noteAiOpen, changelogOpen, qrScannerOpen,
   ].filter(Boolean).length;
   const prevOverlayCountRef = useRef(0);
 
@@ -4338,6 +4396,7 @@ export default function App() {
       // Tell the count effect to skip (back button already popped the entry)
       popInProgressRef.current = true;
       // Close topmost overlay (highest z-index first)
+      if (qrScannerOpen) { closeQrScanner(); return; }
       if (imgViewOpen) { setImgViewOpen(false); return; }
       if (changelogOpen) { setChangelogOpen(false); return; }
       if (confirmDeleteOpen) { setConfirmDeleteOpen(false); return; }
@@ -4372,7 +4431,7 @@ export default function App() {
       showModalColorPop, showModalFmt, modalMenuOpen, modalKebabOpen, modalTagFocused,
       notifCenterOpen, syncDropdownOpen, mobileSearchOpen, showColorPop, showComposerFmt,
       headerMenuOpen, multiMode, typographyModalOpen, settingsPanelOpen, adminPanelOpen, sidebarOpen, open, fabOpen,
-      noteAiOpen, changelogOpen]);
+      noteAiOpen, changelogOpen, qrScannerOpen]);
 
   const addImagesToState = async (fileList, setter) => {
     const files = Array.from(fileList || []);
@@ -5889,6 +5948,25 @@ export default function App() {
     ev.currentTarget.classList.remove("dragging");
   };
 
+  // Stable identities for the note-card callbacks. App.jsx recreates these
+  // handlers on every render; handing the raw versions to NoteCard defeats
+  // its React.memo, so the whole notes grid re-renders on every modal open
+  // and every keystroke in the editor — the main-thread cost the LoAF trace
+  // pinned to React render tasks (fn "q") and click handlers (fn "fE").
+  // useStableCallback keeps a stable identity while always invoking the
+  // latest closure, so the memo holds and only the modal subtree re-renders.
+  const sOpenModal = useStableCallback(openModal);
+  const sTogglePin = useStableCallback(togglePin);
+  const sOnDragStart = useStableCallback(onDragStart);
+  const sOnDragOver = useStableCallback(onDragOver);
+  const sOnDragLeave = useStableCallback(onDragLeave);
+  const sOnDrop = useStableCallback(onDrop);
+  const sOnDragEnd = useStableCallback(onDragEnd);
+  const sOnToggleSelect = useStableCallback(onToggleSelect);
+  const sOnCtrlSelect = useStableCallback(onCtrlSelect);
+  const sOnUpdateChecklistItem = useStableCallback(onUpdateChecklistItem);
+  const sOnEmptyTrash = useStableCallback(onEmptyTrash);
+
   // Checklist item drag handlers (for modal reordering)
 
   // Local-first helper: persist checklist changes to IndexedDB + sync queue
@@ -6152,8 +6230,13 @@ export default function App() {
   }, [allNotesForTags]);
 
   /** -------- Derived lists (search + tag filter) -------- */
+  // Deferred so fast typing in the search box stays responsive: the input
+  // updates immediately (search) while the expensive grid re-filter/re-render
+  // runs as a non-urgent update. No visual change — results settle a frame
+  // later only under heavy load.
+  const deferredSearch = useDeferredValue(search);
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = deferredSearch.toLowerCase();
     const tag =
       tagFilter === ALL_IMAGES
         ? null
@@ -6204,13 +6287,13 @@ export default function App() {
         images.includes(q)
       );
     });
-  }, [notes, search, tagFilter, activeTagFilters]);
-  const pinned = filtered.filter((n) => n.pinned);
-  const others = filtered.filter((n) => !n.pinned);
+  }, [notes, deferredSearch, tagFilter, activeTagFilters]);
+  const pinned = useMemo(() => filtered.filter((n) => n.pinned), [filtered]);
+  const others = useMemo(() => filtered.filter((n) => !n.pinned), [filtered]);
   const filteredEmptyWithSearch =
     filtered.length === 0 &&
     notes.length > 0 &&
-    !!(search || (tagFilter && tagFilter !== "ARCHIVED" && tagFilter !== "TRASHED") || activeTagFilters.length > 0);
+    !!(deferredSearch || (tagFilter && tagFilter !== "ARCHIVED" && tagFilter !== "TRASHED") || activeTagFilters.length > 0);
   const allEmpty = notes.length === 0;
 
   const formatComposer = (type) =>
@@ -6767,13 +6850,13 @@ export default function App() {
         onDirectAudio={handleDirectAudio}
         pinned={pinned}
         others={others}
-        openModal={openModal}
-        onDragStart={onDragStart}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        onDragEnd={onDragEnd}
-        togglePin={togglePin}
+        openModal={sOpenModal}
+        onDragStart={sOnDragStart}
+        onDragOver={sOnDragOver}
+        onDragLeave={sOnDragLeave}
+        onDrop={sOnDrop}
+        onDragEnd={sOnDragEnd}
+        togglePin={sTogglePin}
         addImagesToState={addImagesToState}
         filteredEmptyWithSearch={filteredEmptyWithSearch}
         allEmpty={allEmpty}
@@ -6831,8 +6914,8 @@ export default function App() {
         selectedIds={selectedIds}
         onStartMulti={onStartMulti}
         onExitMulti={onExitMulti}
-        onToggleSelect={onToggleSelect}
-        onCtrlSelect={onCtrlSelect}
+        onToggleSelect={sOnToggleSelect}
+        onCtrlSelect={sOnCtrlSelect}
         onSelectAllPinned={onSelectAllPinned}
         onSelectAllOthers={onSelectAllOthers}
         onBulkDelete={onBulkDelete}
@@ -6847,7 +6930,7 @@ export default function App() {
         onBulkDownloadZip={onBulkDownloadZip}
         onSelectAll={onSelectAll}
         onOpenSideBySide={onOpenSideBySide}
-        onEmptyTrash={onEmptyTrash}
+        onEmptyTrash={sOnEmptyTrash}
         // view mode
         listView={listView}
         onToggleViewMode={onToggleViewMode}
@@ -6866,7 +6949,7 @@ export default function App() {
         fabOpen={fabOpen}
         setFabOpen={setFabOpen}
         // checklist update
-        onUpdateChecklistItem={onUpdateChecklistItem}
+        onUpdateChecklistItem={sOnUpdateChecklistItem}
         // Admin panel
         openAdminPanel={openAdminPanel}
         hasUpdate={!!updateInfo?.updateAvailable && !!currentUser?.is_admin}

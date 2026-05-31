@@ -51,8 +51,12 @@ export default function MobileCreateFab({
 
   return (
     <>
+      {/* Keeps the backdrop-filter pipeline warm from page load so the first
+          open of this menu doesn't pay the one-off blur-shader compile cost
+          (the cold-start lag). See .gk-backdrop-warm in globalCSS. */}
+      <div aria-hidden="true" className="gk-backdrop-warm" />
       <div
-        className={`fixed inset-0 z-30 transition-all duration-200 ease-out bg-black/30 backdrop-blur-[2px] ${
+        className={`fixed inset-0 z-30 transition-opacity duration-200 ease-out bg-black/30 backdrop-blur-[2px] ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       />
@@ -71,7 +75,7 @@ export default function MobileCreateFab({
         }}
       >
       <div
-        className={`flex flex-col items-end gap-3 transition-all duration-200 ease-out ${
+        className={`flex flex-col items-end gap-3 transition-[opacity,transform] duration-200 ease-out ${
           open
             ? "opacity-100 translate-y-0 pointer-events-auto"
             : "opacity-0 translate-y-3 pointer-events-none"
@@ -120,7 +124,7 @@ export default function MobileCreateFab({
         onClick={() => setOpen((v) => !v)}
         aria-label={t("addNote")}
         aria-expanded={open}
-        className="pointer-events-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white active:scale-95 transition-all duration-200 flex items-center justify-center focus:outline-none btn-gradient"
+        className="pointer-events-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white active:scale-95 transition-transform duration-200 flex items-center justify-center focus:outline-none btn-gradient"
       >
         <svg
           className={`w-7 h-7 transition-transform duration-200 ${open ? "rotate-45" : ""}`}
@@ -146,7 +150,7 @@ function FabDialButton({ onClick, label, icon, colorClasses, iconBg, title, desc
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={`w-44 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 active:scale-[0.98] transition-transform duration-200 text-left focus:outline-none ${colorClasses}`}
+      className={`w-44 flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 active:scale-[0.98] transition-transform duration-150 text-left focus:outline-none ${colorClasses}`}
     >
       <span className={`inline-flex shrink-0 items-center justify-center w-9 h-9 rounded-lg ${iconBg}`}>
         {icon}
